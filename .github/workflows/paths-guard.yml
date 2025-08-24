@@ -1,4 +1,5 @@
 ﻿name: paths-guard
+
 on:
   pull_request:
     types: [opened, synchronize, labeled, unlabeled, reopened, edited]
@@ -12,16 +13,16 @@ jobs:
         with:
           filters: |
             backend:
-              - "contract_review_app/**"
-              - "legal_rules/**"
+              - 'contract_review_app/**'
+              - 'legal_rules/**'
             panel:
-              - "word_addin_dev/**"
-              - "!word_addin_dev/certs/**"
+              - 'word_addin_dev/**'
+              - 'word_addin_dev/certs/**'
             docs:
-              - "docs/**"
-              - ".github/**"
-              - "README.md"
-              - "LICENSE"
+              - 'docs/**'
+              - '.github/**'
+              - 'README.md'
+              - 'LICENSE'
 
       - name: decide scope by labels
         id: scope
@@ -29,14 +30,16 @@ jobs:
           labels=${{ toJson(github.event.pull_request.labels.*.name) }}
           echo "labels=$labels"
           allow="docs"
-          echo "$labels" | grep -qi "scope:backend" && allow="$allow backend"
-          echo "$labels" | grep -qi "scope:panel"   && allow="$allow panel"
-          echo "allow=$allow" >> $GITHUB_OUTPUT
+          echo "$labels" | grep -qi 'scope:backend' && allow=backend
+          echo "$labels" | grep -qi 'scope:panel'   && allow=panel
+          echo "allow=$allow" >> "$GITHUB_OUTPUT"
 
       - name: enforce
         run: |
-          ALLOW=${{ steps.scope.outputs.allow }}
-          if [[ "${{ steps.filter.outputs.backend }}" == "true" && ! "$ALLOW" =~ backend ]]; then
-            echo "::error::Backend files changed but label 'scope:backend' not set"; exit 1; fi
-          if [[ "${{ steps.filter.outputs.panel }}" == "true" && ! "$ALLOW" =~ panel ]]; then
-            echo "::error::Panel files changed but label 'scope:panel' not set"; exit 1; fi
+          ALLOW="${{ steps.scope.outputs.allow }}"
+          echo "ALLOW=$ALLOW"
+          if [[ "${{ steps.filter.outputs.backend }}" == "true" && "$ALLOW" != "backend" ]]; then
+            echo "::error::backend files changed but label 'scope:backend' not set"; exit 1; fi
+          if [[ "${{ steps.filter.outputs.panel }}" == "true" && "$ALLOW" != "panel" ]]; then
+            echo "::error::panel files changed but label 'scope:panel' not set"; exit 1; fi
+          echo "paths-guard passed"

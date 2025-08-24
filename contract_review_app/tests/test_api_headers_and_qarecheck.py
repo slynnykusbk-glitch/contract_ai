@@ -40,5 +40,5 @@ def test_qarecheck_always_enveloped_status_ok_and_flattened():
     assert r.status_code == 200
     j = r.json()
     assert j.get("status") == "ok"
-    for k in ("score_delta", "risk_delta", "status_from", "status_to", "residual_risks"):
+    for k in ("score_delta", "risk_delta", "status_from", "status_to", "residual_risks", "issues"):
         assert k in j

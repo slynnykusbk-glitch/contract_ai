@@ -430,8 +430,19 @@ def _top3_residuals(after: Dict[str, Any]) -> List[Dict[str, Any]]:
     if not isinstance(findings, list):
         return []
     sev_rank = {"critical": 3, "high": 2, "medium": 1, "low": 0}
+    norm: List[Dict[str, Any]] = []
+    for f in findings:
+        if isinstance(f, dict):
+            code = f.get("code")
+            msg = f.get("message")
+            sev = f.get("severity") or f.get("risk") or f.get("severity_level")
+        else:
+            code = getattr(f, "code", None)
+            msg = getattr(f, "message", None)
+            sev = getattr(f, "severity", None) or getattr(f, "risk", None) or getattr(f, "severity_level", None)
+        norm.append({"code": code, "message": msg, "severity": sev})
     findings_sorted = sorted(
-        findings, key=lambda f: sev_rank.get((f.get("severity") or "").lower(), -1), reverse=True
+        norm, key=lambda f: sev_rank.get(str(f.get("severity") or "").lower(), -1), reverse=True
     )
     return findings_sorted[:3]
 
@@ -802,6 +813,8 @@ async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[s
             result = await asyncio.wait_for(_maybe_await(run_qa_recheck, model), timeout=QA_TIMEOUT_SEC)
             if not isinstance(result, dict):
                 result = _as_dict(result)
+            if "issues" not in result and "residual_risks" in result:
+                result["issues"] = result.get("residual_risks", [])
         except asyncio.TimeoutError:
             return _problem_response(504, "Timeout", "QA Recheck timed out")
         except Exception:
@@ -810,12 +823,14 @@ async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[s
                     before = await asyncio.wait_for(_maybe_await(run_analyze, AnalyzeIn(text=model.text)), timeout=ANALYZE_TIMEOUT_SEC)
                     patched_text = _safe_apply_patches(model.text, model.applied_changes or [])
                     after = await asyncio.wait_for(_maybe_await(run_analyze, AnalyzeIn(text=patched_text)), timeout=ANALYZE_TIMEOUT_SEC)
+                    issues = _top3_residuals(after)
                     result = {
                         "risk_delta": _safe_delta_risk(before, after),
                         "score_delta": _safe_delta_score(before, after),
                         "status_from": _safe_doc_status(before),
                         "status_to": _safe_doc_status(after),
-                        "residual_risks": _top3_residuals(after),
+                        "residual_risks": issues,
+                        "issues": issues,
                     }
                 except Exception as ex2:
                     return _problem_response(500, "QA Recheck failed", f"{ex2}")
@@ -827,6 +842,7 @@ async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[s
                     "status_from": "OK",
                     "status_to": "OK",
                     "residual_risks": [],
+                    "issues": [],
                 }
     else:
         if run_analyze is not None:
@@ -834,12 +850,14 @@ async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[s
                 before = await asyncio.wait_for(_maybe_await(run_analyze, AnalyzeIn(text=model.text)), timeout=ANALYZE_TIMEOUT_SEC)
                 patched_text = _safe_apply_patches(model.text, model.applied_changes or [])
                 after = await asyncio.wait_for(_maybe_await(run_analyze, AnalyzeIn(text=patched_text)), timeout=ANALYZE_TIMEOUT_SEC)
+                issues = _top3_residuals(after)
                 result = {
                     "risk_delta": _safe_delta_risk(before, after),
                     "score_delta": _safe_delta_score(before, after),
                     "status_from": _safe_doc_status(before),
                     "status_to": _safe_doc_status(after),
-                    "residual_risks": _top3_residuals(after),
+                    "residual_risks": issues,
+                    "issues": issues,
                 }
             except Exception as ex2:
                 return _problem_response(500, "QA Recheck failed", f"{ex2}")
@@ -851,10 +869,14 @@ async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[s
                 "status_from": "OK",
                 "status_to": "OK",
                 "residual_risks": [],
+                "issues": [],
             }
 
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    payload = {"status": "ok", **result, "deltas": {
+    issues = result.get("issues")
+    if issues is None:
+        issues = result.get("residual_risks", [])
+    payload = {"status": "ok", "issues": issues, **result, "deltas": {
         "score_delta": result.get("score_delta", 0),
         "risk_delta": result.get("risk_delta", 0),
         "status_from": result.get("status_from", "OK"),

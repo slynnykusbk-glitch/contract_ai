@@ -48,7 +48,13 @@
 
   function $(id) { return document.getElementById(id); }
   function val(e) { return e ? (e.value || "") : ""; }
-  function setVal(e, v) { if (e) e.value = (v == null ? "" : String(v)); }
+  function setVal(e, v) {
+    if (!e) return;
+    if (v && typeof v === "object") {
+      v = v.draft_text || JSON.stringify(v, null, 2);
+    }
+    e.value = (v == null ? "" : String(v));
+  }
   function txt(e, v) { if (e) e.textContent = (v == null ? "" : String(v)); }
   function en(e, on) { if (e) e.disabled = !on; }
   function log(s) {

@@ -1,0 +1,4 @@
+# file: C:\Users\Ludmila\contract_ai\contract_review_app\intake\adapters.py
+# hypothesis_version: 6.136.7
+
+['char_count', 'clause_type', 'doc_id', 'index', 'intake.extractor', 'len', 'source']

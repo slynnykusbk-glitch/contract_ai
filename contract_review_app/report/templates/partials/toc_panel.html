@@ -1,0 +1,12 @@
+<div style="margin-top: 16px;">
+  <h3 style="margin: 0 0 8px 0; font-size: 16px;">
+    {{ t("toc.title") if t else "Contents" }}
+  </h3>
+  <ul style="margin: 0; padding-left: 18px; list-style-type: disc;">
+    {% for c in results %}
+      <li>
+        <a href="#clause-{{ c.id }}">{{ c.title }}</a>
+      </li>
+    {% endfor %}
+  </ul>
+</div>

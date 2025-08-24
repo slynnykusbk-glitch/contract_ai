@@ -1,0 +1,308 @@
+{
+  "meta": {
+    "python": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]",
+    "cwd": "C:\\Users\\Ludmila\\contract_ai"
+  },
+  "summary": {
+    "PASS": 11,
+    "WARN": 0,
+    "FAIL": 6
+  },
+  "checks": [
+    {
+      "section": "FRONT",
+      "name": "Manifest SourceLocation",
+      "status": "PASS",
+      "details": "url=https://localhost:3000/app/build-20250814-1150/taskpane.html cache_bust=no hosts=Document",
+      "data": {
+        "ok": true,
+        "source_location": "https://localhost:3000/app/build-20250814-1150/taskpane.html",
+        "cache_bust": false,
+        "hosts": [
+          "Document"
+        ]
+      },
+      "ms": null
+    },
+    {
+      "section": "FRONT",
+      "name": "Taskpane files",
+      "status": "PASS",
+      "details": "exists=True containers-missing=[] render_fn=ok backend_hint=https://localhost:9000",
+      "data": {
+        "exists": true,
+        "html": "C:\\Users\\Ludmila\\contract_ai\\word_addin_dev\\taskpane.html",
+        "js": "C:\\Users\\Ludmila\\contract_ai\\word_addin_dev\\taskpane.bundle.js",
+        "containers": {
+          "resClauseType": true,
+          "findingsList": true,
+          "recsList": true,
+          "rawJson": true
+        },
+        "backend_hint": "https://localhost:9000",
+        "has_render_fn": true
+      },
+      "ms": null
+    },
+    {
+      "section": "NET",
+      "name": "TLS certificate",
+      "status": "PASS",
+      "details": "cert retrieved",
+      "data": {
+        "subject": null,
+        "issuer": null,
+        "notBefore": null,
+        "notAfter": null
+      },
+      "ms": null
+    },
+    {
+      "section": "NET",
+      "name": "Health endpoint",
+      "status": "PASS",
+      "details": "200 ",
+      "data": {
+        "status": "ok",
+        "rules": [
+          "confidentiality",
+          "definitions",
+          "force_majeure",
+          "governing_law",
+          "indemnity",
+          "jurisdiction",
+          "legal_rules",
+          "termination"
+        ],
+        "count": 8
+      },
+      "ms": 2207
+    },
+    {
+      "section": "NET",
+      "name": "CORS preflight",
+      "status": "PASS",
+      "details": "status=200 allow-origin=https://localhost:3000",
+      "data": {
+        "date": "Thu, 14 Aug 2025 13:51:34 GMT",
+        "server": "uvicorn",
+        "vary": "Origin",
+        "access-control-allow-methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+        "access-control-max-age": "600",
+        "access-control-allow-credentials": "true",
+        "access-control-allow-origin": "https://localhost:3000",
+        "access-control-allow-headers": "content-type",
+        "content-length": "2",
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "ms": 2145
+    },
+    {
+      "section": "API",
+      "name": "POST /api/analyze",
+      "status": "FAIL",
+      "details": "http=500 inv=ok ",
+      "data": {
+        "keys": [
+          "raw"
+        ]
+      },
+      "ms": 2138
+    },
+    {
+      "section": "API",
+      "name": "Trace by CID",
+      "status": "PASS",
+      "details": "200 ",
+      "data": [
+        {
+          "cid": "cid-1755179494",
+          "path": "/api/analyze",
+          "ms": 5,
+          "status": 0,
+          "exc": "3 validation errors for AnalyzeResponse\nanalysis.findings.0.severity\n  Input should be 'info', 'minor', 'major' or 'critical' [type=literal_error, input_value='medium', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error\nanalysis.findings.1.severity\n  Input should be 'info', 'minor', 'major' or 'critical' [type=literal_error, input_value='high', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error\nanalysis.findings.2.severity\n  Input should be 'info', 'minor', 'major' or 'critical' [type=literal_error, input_value='low', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error",
+          "panel_build": "",
+          "manifest_src": "",
+          "ua": "python-requests/2.32.4"
+        }
+      ],
+      "ms": 2132
+    },
+    {
+      "section": "RULES",
+      "name": "Rules discovery",
+      "status": "PASS",
+      "details": "8 module(s) in pipeline.discover_rules",
+      "data": {
+        "rules": [
+          "confidentiality",
+          "definitions",
+          "force_majeure",
+          "governing_law",
+          "indemnity",
+          "jurisdiction",
+          "legal_rules",
+          "termination"
+        ]
+      },
+      "ms": null
+    },
+    {
+      "section": "RULES",
+      "name": "Rule run: confidentiality",
+      "status": "FAIL",
+      "details": "exception: 1 validation error for Finding\nseverity\n  Input should be 'info', 'minor', 'major' or 'critical' [type=literal_error, input_value='medium', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error",
+      "data": {
+        "out_keys": []
+      },
+      "ms": null
+    },
+    {
+      "section": "RULES",
+      "name": "Rule run: definitions",
+      "status": "PASS",
+      "details": "status=FAIL find=1",
+      "data": {
+        "out_keys": [
+          "clause_type",
+          "text",
+          "status",
+          "score",
+          "risk_level",
+          "severity",
+          "findings",
+          "recommendations",
+          "diagnostics",
+          "trace",
+          "citations",
+          "category"
+        ]
+      },
+      "ms": null
+    },
+    {
+      "section": "RULES",
+      "name": "Rule run: force_majeure",
+      "status": "FAIL",
+      "details": "exception: 1 validation error for Finding\nseverity\n  Input should be 'info', 'minor', 'major' or 'critical' [type=literal_error, input_value='high', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error",
+      "data": {
+        "out_keys": []
+      },
+      "ms": null
+    },
+    {
+      "section": "RULES",
+      "name": "Rule run: governing_law",
+      "status": "PASS",
+      "details": "status=OK find=0",
+      "data": {
+        "out_keys": [
+          "clause_id",
+          "clause_type",
+          "text",
+          "status",
+          "score",
+          "risk",
+          "severity_level",
+          "risk_level",
+          "severity",
+          "findings",
+          "recommendations",
+          "proposed_text"
+        ]
+      },
+      "ms": null
+    },
+    {
+      "section": "RULES",
+      "name": "Rule run: indemnity",
+      "status": "FAIL",
+      "details": "exception: 1 validation error for Finding\nseverity\n  Input should be 'info', 'minor', 'major' or 'critical' [type=literal_error, input_value='medium', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error",
+      "data": {
+        "out_keys": []
+      },
+      "ms": null
+    },
+    {
+      "section": "RULES",
+      "name": "Rule run: jurisdiction",
+      "status": "PASS",
+      "details": "status=OK find=0",
+      "data": {
+        "out_keys": [
+          "clause_id",
+          "clause_type",
+          "text",
+          "status",
+          "score",
+          "risk",
+          "severity_level",
+          "risk_level",
+          "severity",
+          "findings",
+          "recommendations",
+          "proposed_text"
+        ]
+      },
+      "ms": null
+    },
+    {
+      "section": "RULES",
+      "name": "Rule run: termination",
+      "status": "FAIL",
+      "details": "exception: 1 validation error for Finding\nseverity\n  Input should be 'info', 'minor', 'major' or 'critical' [type=literal_error, input_value='high', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error",
+      "data": {
+        "out_keys": []
+      },
+      "ms": null
+    },
+    {
+      "section": "RULES",
+      "name": "Rule run: legal_rules",
+      "status": "FAIL",
+      "details": "exception: 1 validation error for Finding\nseverity\n  Input should be 'info', 'minor', 'major' or 'critical' [type=literal_error, input_value='medium', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.11/v/literal_error",
+      "data": {
+        "out_keys": []
+      },
+      "ms": null
+    },
+    {
+      "section": "PIPELINE",
+      "name": "pipeline.analyze_document",
+      "status": "PASS",
+      "details": "results=['definitions']",
+      "data": {
+        "result_keys": [
+          "definitions"
+        ]
+      },
+      "ms": null
+    }
+  ],
+  "chain_view": [
+    {
+      "stage": "Word ➜ Taskpane UI",
+      "status": "depends on FRONT:Manifest/Taskpane checks"
+    },
+    {
+      "stage": "Taskpane fetch ➜ Backend",
+      "status": "depends on NET:Health/CORS + API:POST /api/analyze"
+    },
+    {
+      "stage": "Backend router ➜ Pipeline",
+      "status": "see PIPELINE check"
+    },
+    {
+      "stage": "Pipeline ➜ Rules",
+      "status": "see RULES discovery & Rule run checks"
+    },
+    {
+      "stage": "Backend ➜ JSON",
+      "status": "see API invariants"
+    },
+    {
+      "stage": "Taskpane ➜ Render",
+      "status": "FRONT:Taskpane containers + renderAnalysis() present"
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+Дивлюсь на логи/скріни — причина тиші проста і подвійна:
+
+1. **Uvicorn впав** через неправильний шлях до ключа
+   (`$KEY="..\word_addin_dev\certs\localhost-key.pem"` → такого файлу немає з поточного каталогу). Через це бекенд на 9443 не стартує стабільно (падає “FileNotFoundError” на SSL).
+2. **Сервер панелі на :3000 не запущений** (або закрито вікно). Тому `127.0.0.1:3000/...` дає *ERR\_CONNECTION\_REFUSED*. Ще й відкривали **http\://** замість **https\://**.
+
+Нижче — точні команди, які усувають усе (шляхи — **абсолютні**, без `..` та без плутанини з https).
+
+---
+
+# 1) Бекенд (TLS 9443) — правильний запуск
+
+```powershell
+# НОВЕ ВІКНО PowerShell
+cd C:\Users\Ludmila\contract_ai
+.\.venv\Scripts\Activate.ps1
+
+# Переконайся, що серти є
+Get-ChildItem C:\Users\Ludmila\contract_ai\word_addin_dev\certs\localhost*.pem,*.pfx
+
+# Шляхи до сертів (АБСОЛЮТНІ)
+$CERT = "C:\Users\Ludmila\contract_ai\word_addin_dev\certs\localhost.pem"
+$KEY  = "C:\Users\Ludmila\contract_ai\word_addin_dev\certs\localhost-key.pem"
+
+# Запуск бекенда по HTTPS (без відносних шляхів!)
+uvicorn contract_review_app.api.app:app `
+  --host 127.0.0.1 --port 9443 `
+  --ssl-certfile "$CERT" --ssl-keyfile "$KEY" `
+  --reload
+```
+
+Очікуєш у консолі: `Uvicorn running on https://127.0.0.1:9443`.
+Швидка перевірка (PS, це не JS!):
+
+```powershell
+curl.exe -k https://127.0.0.1:9443/health
+```
+
+Мається вивестись JSON зі `status":"ok"`.
+
+---
+
+# 2) Панель (TLS 3000) — правильний запуск
+
+```powershell
+# ДРУГЕ ВІКНО PowerShell
+cd C:\Users\Ludmila\contract_ai
+.\.venv\Scripts\Activate.ps1
+
+python .\word_addin_dev\serve_https_panel.py `
+  --cert "C:\Users\Ludmila\contract_ai\word_addin_dev\certs\localhost.pem" `
+  --key  "C:\Users\Ludmila\contract_ai\word_addin_dev\certs\localhost-key.pem"
+```
+
+У консолі має бути: `PANEL HTTPS READY https://127.0.0.1:3000/`.
+**Не закривай** це вікно — інакше порт 3000 “замовкне”.
+
+Відкрий у браузері **саме https** (не http):
+
+```powershell
+start https://127.0.0.1:3000/panel_selftest.html?v=dev
+start https://127.0.0.1:3000/taskpane.bundle.js?v=DEV
+```
+
+Якщо JS-файл відкривається — ок. Якщо показує *ERR\_CONNECTION\_REFUSED* — значить не запущено `serve_https_panel.py` або його вікно закрито.
+
+---
+
+# 3) Швидкі smoke-тести портів
+
+```powershell
+Test-NetConnection 127.0.0.1 -Port 9443
+Test-NetConnection 127.0.0.1 -Port 3000
+```
+
+Обидва мають показати `TcpTestSucceeded : True`.
+
+---
+
+# 4) У Word
+
+* У полі **Backend URL** має бути `https://127.0.0.1:9443`. Натисни **Save** → **Test** (Conn:200 й бейджі з’являються).
+* Далі **Use whole doc** → **Analyze (doc)** → **Get AI Draft / Suggest / QA Recheck**.
+
+---
+
+## Типові помилки, яких уникнути
+
+* **Неправильний шлях до ключа/серта** → *FileNotFoundError* і падіння Uvicorn (як у вашому логу). Використовуй **абсолютні** шляхи.
+* **Запуск лише одного з двох процесів**: потрібні **обидва** (9443 і 3000) **і відкриті вікна**.
+* **Відкриваєш [http://127.0.0.1:3000](http://127.0.0.1:3000)** — сервер панелі слухає **HTTPS**, завжди пиши `https://`.
+* **В PowerShell не виконуються JS-команди** (`fetch(...)`) — користуйся `curl.exe` або `Invoke-WebRequest`.
+
+Зроби ці кроки — і панель стане “живою”: self-test покаже **ok**, а в Word кнопки почнуть відпрацьовувати з відповідями бекенду.

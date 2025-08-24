@@ -1,0 +1,35 @@
+pack_id: core_en_v1
+language: en
+jurisdiction: common_law
+
+rules:
+  - id: governing_law_present
+    title: Governing law is stated
+    severity: medium
+    tags: [governing_law]
+    when:
+      any:
+        - regex: "(?i)\bgoverning law\b"
+        - regex: "(?i)\blaws? of [A-Z][A-Za-z ]+"
+
+  - id: termination_for_convenience
+    title: Termination for convenience clause found
+    severity: high
+    tags: [termination]
+    when:
+      any:
+        - regex: "(?i)\btermination\b.{0,60}\bfor convenience\b"
+        - regex: "(?i)\bterminate for convenience\b"
+    extract:
+      notice_days:
+        regex: "(?i)(?:upon|with)\s+(\d{1,3})\s+(?:day|days)\s+notice"
+
+  - id: confidentiality_definition
+    title: Confidential Information definition present
+    severity: low
+    tags: [confidentiality]
+    when:
+      any:
+        - regex: "(?i)\bConfidential Information\b"
+    advice: >
+      Include standard carve-outs (public domain, independently developed, rightfully received).

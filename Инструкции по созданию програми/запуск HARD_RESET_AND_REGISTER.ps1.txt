@@ -1,0 +1,2 @@
+cd C:\Users\Ludmila\contract_ai
+powershell -NoProfile -ExecutionPolicy Bypass -File .\HARD_RESET_AND_REGISTER.ps1

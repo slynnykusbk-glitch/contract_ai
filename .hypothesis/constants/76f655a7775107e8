@@ -1,0 +1,4 @@
+# file: C:\Users\Ludmila\contract_ai\contract_review_app\legal_rules\governing_law.py
+# hypothesis_version: 6.136.7
+
+[120, ' | ', '1.0.0', '; ', 'FAIL', 'GLAW_COL_RULES', 'GLAW_DETECTED', 'GLAW_JUR_ONLY', 'GLAW_MISSING', 'GLAW_NO_SEVERABILITY', 'GLAW_UK_BROAD', 'GLAW_UNCERTAIN', 'OK', 'WARN', '\\s+', 'citations', 'code', 'en', 'england_and_wales', 'evidence', 'generic', 'governing_law', 'high', 'info', 'language', 'low', 'medium', 'message', 'northern\\s+ireland', 'northern_ireland', 'rule', 'rule_version', 'scotland', 'severity', 'trace', 'ukraine', 'ukrain|україн', 'united\\s+kingdom', 'united_kingdom', 'шотланд(ія|ії)', '…']

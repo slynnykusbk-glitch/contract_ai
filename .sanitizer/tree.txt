@@ -1,0 +1,156 @@
+contract_review_app/
+├── .sanitizer
+│   ├── duplicates.json
+│   ├── inventory.json
+│   ├── keep_plan.json
+│   └── tree.txt
+├── contract_review_app
+│   ├── core
+│   │   ├── __init__.py
+│   │   ├── interfaces.py
+│   │   └── schemas.py
+│   ├── engine
+│   │   ├── __init__.py
+│   │   ├── executor.py
+│   │   ├── pipeline.py
+│   │   └── pipeline_compat.py
+│   ├── intake
+│   │   ├── __init__.py
+│   │   ├── adapters.py
+│   │   ├── extractor.py
+│   │   ├── loader.py
+│   │   ├── matcher.py
+│   │   ├── patterns.py
+│   │   ├── resolver.py
+│   │   ├── splitter.py
+│   │   └── text_cleaning.py
+│   ├── legal_rules
+│   │   ├── rules
+│   │   │   ├── governing_law.py
+│   │   │   ├── test_governing_law.py
+│   │   │   └── test_registry.py
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── check_parties_definitions_clause.py
+│   │   ├── confidentiality.py
+│   │   ├── force_majeure.py
+│   │   ├── governing_law.py
+│   │   ├── indemnity.py
+│   │   ├── jurisdiction.py
+│   │   ├── legal_rules.py
+│   │   ├── registry.py
+│   │   └── termination.py
+│   ├── report
+│   │   ├── templates
+│   │   │   └── clause_card.html
+│   │   ├── __init__.py
+│   │   ├── i18n.py
+│   │   ├── messages_en.py
+│   │   ├── messages_uk.py
+│   │   ├── metrics.py
+│   │   ├── pdf.py
+│   │   └── renderer.py
+│   ├── utils
+│   │   └── __init__.py
+│   └── __init__.py
+├── core
+│   ├── __init__.py
+│   ├── interfaces.py
+│   └── schemas.py
+├── engine
+│   ├── __init__.py
+│   ├── executor.py
+│   ├── pipeline.py
+│   └── pipeline_compat.py
+├── intake
+│   ├── __init__.py
+│   ├── adapters.py
+│   ├── extractor.py
+│   ├── loader.py
+│   ├── matcher.py
+│   ├── patterns.py
+│   ├── resolver.py
+│   ├── splitter.py
+│   └── text_cleaning.py
+├── legal_rules
+│   ├── rules
+│   │   ├── __init__.py
+│   │   ├── test_governing_law.py
+│   │   └── test_registry.py
+│   ├── __init__.py
+│   ├── base.py
+│   ├── check_parties_definitions_clause.py
+│   ├── confidentiality.py
+│   ├── force_majeure.py
+│   ├── governing_law.py
+│   ├── indemnity.py
+│   ├── jurisdiction.py
+│   ├── legal_rules.py
+│   ├── registry.py
+│   └── termination.py
+├── report
+│   ├── templates
+│   │   ├── partials
+│   │   │   ├── clause_card.html
+│   │   │   ├── footer.html
+│   │   │   ├── header.html
+│   │   │   ├── summary_panel.html
+│   │   │   └── toc_panel.html
+│   │   ├── base.html
+│   │   ├── email_minimal.html
+│   │   ├── report_dark.html
+│   │   └── report_light.html
+│   ├── __init__.py
+│   ├── i18n.py
+│   ├── messages_en.py
+│   ├── messages_uk.py
+│   ├── metrics.py
+│   ├── pdf.py
+│   └── renderer.py
+├── tests
+│   ├── intake
+│   │   ├── test_adapters.py
+│   │   ├── test_extractor_e2e.py
+│   │   ├── test_loader.py
+│   │   ├── test_matcher.py
+│   │   ├── test_patterns.py
+│   │   ├── test_resolver.py
+│   │   ├── test_splitter.py
+│   │   └── test_text_cleaning.py
+│   ├── legal_rules
+│   │   ├── test_basic_rules_property.py
+│   │   ├── test_governing_law_property.py
+│   │   └── test_governing_law_unit.py
+│   ├── report
+│   │   ├── __init__.py
+│   │   ├── test_i18n.py
+│   │   ├── test_metrics.py
+│   │   ├── test_pdf.py
+│   │   ├── test_renderer_email.py
+│   │   ├── test_renderer_matrix_snapshots.py
+│   │   └── test_renderer_snapshot.py
+│   ├── test_e2e_pipeline.py
+│   ├── test_executor.py
+│   ├── test_interface.py
+│   └── test_pipeline.py
+├── tools
+│   ├── __init__.py
+│   ├── diag_report.py
+│   ├── make_report.py
+│   ├── make_report_from_docx.py
+│   ├── run_and_open_report.py
+│   └── run_demo.py
+├── utils
+│   └── __init__.py
+├── .coveragerc
+├── __init__.py
+├── config.py
+├── conftest.py
+├── contract.docx
+├── contract_review_app.rar
+├── generate_report.py
+├── main.py
+├── pytest.ini
+├── repo_sanitizer.py
+├── reportpdf.py
+└── setup.cfg

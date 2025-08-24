@@ -1,0 +1,4 @@
+# file: C:\Users\Ludmila\contract_ai\contract_review_app\report\pdf.py
+# hypothesis_version: 6.136.7
+
+[5000, 'auto', 'none', 'report.html', 'templates', 'utf-8', 'weasyprint', 'wkhtmltopdf']

@@ -1,0 +1,4 @@
+# file: C:\Users\Ludmila\contract_ai\contract_review_app\report\renderer.py
+# hypothesis_version: 6.136.7
+
+['Clause', 'anchors', 'asset_root', 'clause_id', 'clause_type', 'contract_review_app', 'email_minimal', 'email_minimal.html', 'en', 'html', 'id', 'lang', 'law_reference', 'light', 'problems', 'recommendations', 'report', 'report_dark.html', 'report_light.html', 'risk_level', 'score', 'severity', 'status', 'templates', 'text', 'theme', 'title', 'type', 'xml']

@@ -1,0 +1,4 @@
+# file: C:\Users\Ludmila\contract_ai\contract_review_app\legal_rules\termination.py
+# hypothesis_version: 6.136.7
+
+[120, '1.0.0', '; ', 'FAIL', 'OK', 'TERM_CONV_NO_NOTICE', 'TERM_MISSING', 'TERM_NO_CURE', 'TERM_NO_SURVIVAL', 'WARN', '\\s+', 'citations', 'code', 'evidence', 'high', 'low', 'medium', 'message', 'rule', 'rule_version', 'severity', 'termination', 'trace']

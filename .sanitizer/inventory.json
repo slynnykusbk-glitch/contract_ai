@@ -1,0 +1,657 @@
+[
+  {
+    "path": ".coveragerc",
+    "size": 277,
+    "sha256": "8aae8576d853d51908aca3b3fc2d382d4abf2b600b81eeb2808054d78da437b7"
+  },
+  {
+    "path": "config.py",
+    "size": 6205,
+    "sha256": "6fd68408c32be091beb842658f72a6bcdda37d7c5c1d80a447a55977440a9505"
+  },
+  {
+    "path": "conftest.py",
+    "size": 372,
+    "sha256": "d05f85a526d696a6e2cf704d5773354b12dda2234ef5720640370d56f73e547e"
+  },
+  {
+    "path": "contract.docx",
+    "size": 53115,
+    "sha256": "f08d72dbdeb2959b34c4e99be60f93d93fafc9a4db59eeb49aa393e20e3a3a6a"
+  },
+  {
+    "path": "contract_review_app.rar",
+    "size": 422840,
+    "sha256": "cde78ffe5da5215553bd349649ed19638c3c06595671ce7ee5d96404e7f2addb"
+  },
+  {
+    "path": "generate_report.py",
+    "size": 9830,
+    "sha256": "d68d7a70376e3cf29fd6663f7a4b325e2b99a248995781fe7ff6a2380ddd0c04"
+  },
+  {
+    "path": "main.py",
+    "size": 921,
+    "sha256": "2259ad8984887933f6fb37c07a505064b89cf7efab0328b8bbc7319c5618dedd"
+  },
+  {
+    "path": "pytest.ini",
+    "size": 216,
+    "sha256": "b50cfa0efab3ddfc6b67cf00e73d89c45704ba3b920ec532ac561d7fb25a2c05"
+  },
+  {
+    "path": "reportpdf.py",
+    "size": 3712,
+    "sha256": "ab135aa5defad29371c779936ae1b6f646cea9625cafeb6d4c338ada6b01c87b"
+  },
+  {
+    "path": "repo_sanitizer.py",
+    "size": 7140,
+    "sha256": "85ecc116f70af75b9be5629b0a1aa71b0aa0e817c7e800dea543f42c02667a50"
+  },
+  {
+    "path": "setup.cfg",
+    "size": 181,
+    "sha256": "6414b533916ad9892e827c7efa5f50e4b1de1deeaffab3ec7f9a61638ef89c3e"
+  },
+  {
+    "path": "__init__.py",
+    "size": 125,
+    "sha256": "03c5cc5dcc77504f9614962ca735e32af9cea78c532ddb849ace8866f41f6a00"
+  },
+  {
+    "path": ".sanitizer/duplicates.json",
+    "size": 790,
+    "sha256": "7b28d876dd46c44fc0ed5ef169affe0c7f52d530b309a9a9734bd0da20ded4c8"
+  },
+  {
+    "path": ".sanitizer/inventory.json",
+    "size": 20573,
+    "sha256": "49a656f6a486b8324fede5945ac1d529548f86a2700eb1c869ef5fcf8fda273b"
+  },
+  {
+    "path": ".sanitizer/keep_plan.json",
+    "size": 1066,
+    "sha256": "e7e0e57b6143ff4937b1e8b7228d268d0abbfc4102d146945e6993c238347ce6"
+  },
+  {
+    "path": ".sanitizer/tree.txt",
+    "size": 5494,
+    "sha256": "2d4ed083bac88777b94069272920e25930b74a0947de619157c5a824cfb43cd4"
+  },
+  {
+    "path": "contract_review_app/__init__.py",
+    "size": 15,
+    "sha256": "f760ebb7aa3dd46ff6e47a4ed72e0e81a1caa77654760835abf5e26f610aebc4"
+  },
+  {
+    "path": "core/interfaces.py",
+    "size": 244,
+    "sha256": "b63affcffb9e7999c2dca529ae4e9bac32fee655d3268f843dc5de9971b5cca1"
+  },
+  {
+    "path": "core/schemas.py",
+    "size": 1636,
+    "sha256": "63bbc4df74fc9be43b21d8ac45c1a74ce2463a911f6b07ae4b79d894c9d460f5"
+  },
+  {
+    "path": "core/__init__.py",
+    "size": 37,
+    "sha256": "14d9b80458ac96863787d54825c41c0eac463413691f78034f573b2d1b46972f"
+  },
+  {
+    "path": "engine/executor.py",
+    "size": 5303,
+    "sha256": "9888d3fbe08f956caaae4ec8e51efc244a539a4861234589b98e10fd7856aac8"
+  },
+  {
+    "path": "engine/pipeline.py",
+    "size": 5328,
+    "sha256": "49772593e301dc07a1987fa38b280dabb2f3d71d50661f10aa70d24cf6b79e5e"
+  },
+  {
+    "path": "engine/pipeline_compat.py",
+    "size": 3097,
+    "sha256": "53c7dd8cb6ac8c83561c1ced282dec82416c0fc585380051a50185d87bb59dac"
+  },
+  {
+    "path": "engine/__init__.py",
+    "size": 15,
+    "sha256": "f760ebb7aa3dd46ff6e47a4ed72e0e81a1caa77654760835abf5e26f610aebc4"
+  },
+  {
+    "path": "intake/adapters.py",
+    "size": 1582,
+    "sha256": "fea05dcd010c11cafbded2f57ff24fcec445d9f10aa78291590da7935ce37bf1"
+  },
+  {
+    "path": "intake/extractor.py",
+    "size": 3181,
+    "sha256": "640eab19a9aa954fc90f91026c4fe067b8907edfb52e44bf178903fe0221df48"
+  },
+  {
+    "path": "intake/loader.py",
+    "size": 2193,
+    "sha256": "faf3aa877a450ceed5b3c75643ce593cb648193175d3138329e8c232226f9ae9"
+  },
+  {
+    "path": "intake/matcher.py",
+    "size": 7670,
+    "sha256": "8e28747dd77fe0bfe780123b0c70ebed14d5f4065e7feeb4916e566b1e0ae5fe"
+  },
+  {
+    "path": "intake/patterns.py",
+    "size": 3717,
+    "sha256": "5c755855cdb3f4dfbf01cb0e449f7795b89722c014e9a328afefc562b3abcc16"
+  },
+  {
+    "path": "intake/resolver.py",
+    "size": 2561,
+    "sha256": "797c64606d045919e97769f4a001ad084d5ccf6a2d4ce8061944d4dfc26c990d"
+  },
+  {
+    "path": "intake/splitter.py",
+    "size": 7536,
+    "sha256": "01f74623e4a2b2393239339821cf1f6e034a96de860313440dcf9a1e67682712"
+  },
+  {
+    "path": "intake/text_cleaning.py",
+    "size": 6227,
+    "sha256": "3a91a337f52057af29b95829df36aa0009d7143a1ac665b9b2da9efc3813bd53"
+  },
+  {
+    "path": "intake/__init__.py",
+    "size": 15,
+    "sha256": "f760ebb7aa3dd46ff6e47a4ed72e0e81a1caa77654760835abf5e26f610aebc4"
+  },
+  {
+    "path": "legal_rules/base.py",
+    "size": 3325,
+    "sha256": "c85cab2b1e5b1190fce35542b52b02033195ab33100e26de11d8caaa5abd8c61"
+  },
+  {
+    "path": "legal_rules/check_parties_definitions_clause.py",
+    "size": 47379,
+    "sha256": "13a5686f3a4c8969d2c239a402c583cfafacbd9de4f733e4fcfb97b84142715e"
+  },
+  {
+    "path": "legal_rules/confidentiality.py",
+    "size": 4112,
+    "sha256": "54f27343616a275ed40e32bba1289e4e787473c8d740bd7d3697c96c20f5abea"
+  },
+  {
+    "path": "legal_rules/force_majeure.py",
+    "size": 3717,
+    "sha256": "19db35c445059c91d802f067e1fd12a51a194c14178fd2313b599bbc741eeba3"
+  },
+  {
+    "path": "legal_rules/governing_law.py",
+    "size": 10209,
+    "sha256": "72c065abe61b8a268a9e89d6cf29bd69209b2b53ad3a9f7a7ae89a147b0555cb"
+  },
+  {
+    "path": "legal_rules/indemnity.py",
+    "size": 3635,
+    "sha256": "b0239ae0c37da82f216b7f2e27eed7887b0e53b3277b8357a89cb3e18ff8cb78"
+  },
+  {
+    "path": "legal_rules/jurisdiction.py",
+    "size": 2744,
+    "sha256": "6f1e7ec22f3cf0123a608c2787790466b39e35148e511171bb6da63245950498"
+  },
+  {
+    "path": "legal_rules/legal_rules.py",
+    "size": 78543,
+    "sha256": "a49933e85aced90697bcdf64381cdd2cd75244fc016820b40ef067a7d969a844"
+  },
+  {
+    "path": "legal_rules/registry.py",
+    "size": 1611,
+    "sha256": "3df694cee6012cb89a88735be0f4903bc2e4860892f1cae453be4ab6b518157f"
+  },
+  {
+    "path": "legal_rules/termination.py",
+    "size": 3884,
+    "sha256": "94588bb60d44f7c700bcd7722468a0c0439f8aa27af76118093b35b0c7d35215"
+  },
+  {
+    "path": "legal_rules/__init__.py",
+    "size": 119,
+    "sha256": "4713f9e093b64755a088d5aace8eb22c953f2356f06746b79e0b3a00f4551b81"
+  },
+  {
+    "path": "report/i18n.py",
+    "size": 1459,
+    "sha256": "3b10c38326928eaf723e060f4169e2d02071e051e9bc2c17cadc874fc579163b"
+  },
+  {
+    "path": "report/messages_en.py",
+    "size": 888,
+    "sha256": "f5472fd24a552321b94064a9931567e9de4dcd4fd31ca5de60920c155d4ae407"
+  },
+  {
+    "path": "report/messages_uk.py",
+    "size": 1185,
+    "sha256": "cead7d132183a706d25921ade37c7c5219595cf60859a70b70ad9df49c256743"
+  },
+  {
+    "path": "report/metrics.py",
+    "size": 648,
+    "sha256": "d65fcf9a7a254c44c3507ce5e255eaf08982bee40b2ae0715a04687650783227"
+  },
+  {
+    "path": "report/pdf.py",
+    "size": 3733,
+    "sha256": "b9091d0c5fe5bb07594900fe4c1dd0f273998cde606e2caea88b452ed3bdcc4e"
+  },
+  {
+    "path": "report/renderer.py",
+    "size": 3397,
+    "sha256": "3ca821679f97b973deeb60646de7e4fd9033f113cb40dc40cf5f479e50d433ab"
+  },
+  {
+    "path": "report/__init__.py",
+    "size": 15,
+    "sha256": "f760ebb7aa3dd46ff6e47a4ed72e0e81a1caa77654760835abf5e26f610aebc4"
+  },
+  {
+    "path": "tests/test_e2e_pipeline.py",
+    "size": 4693,
+    "sha256": "47e7d8a87361c73f2630b32de087207bb09050836e2b073b5811c0787bddb803"
+  },
+  {
+    "path": "tests/test_executor.py",
+    "size": 3473,
+    "sha256": "1f2a436f04f44798e05e676603270321aa5d1976873b49f56966edc09af709bf"
+  },
+  {
+    "path": "tests/test_interface.py",
+    "size": 2922,
+    "sha256": "f19b6791b755c15634c8e3c90721b31b5b8fb72e654c5111a23a56b23a04820f"
+  },
+  {
+    "path": "tests/test_pipeline.py",
+    "size": 2879,
+    "sha256": "4e8fce5f974f2ec17b6b150e406c51aaea4cb7234559ec5139bf7122cce78a60"
+  },
+  {
+    "path": "tools/diag_report.py",
+    "size": 2551,
+    "sha256": "46b2103d95f417404a673204377cc51f9dae2c182c03f3b0913f0e49d244f119"
+  },
+  {
+    "path": "tools/make_report.py",
+    "size": 1109,
+    "sha256": "f93214a6168d26f04718b022f8d209bb7b758a1a2244fba23403d85a1b4b8003"
+  },
+  {
+    "path": "tools/make_report_from_docx.py",
+    "size": 5529,
+    "sha256": "75cc8eb787757239e2433a2d737e4cc5cc83acfa80814d53d71ebac20cfc8248"
+  },
+  {
+    "path": "tools/run_and_open_report.py",
+    "size": 1135,
+    "sha256": "dc96e60c36b6d3eab214d10cecd7bbf4f1300ad313322c6a9b6431136b7ba6aa"
+  },
+  {
+    "path": "tools/run_demo.py",
+    "size": 7424,
+    "sha256": "30e2850a277e321bcffea6fd97a53e6698de99b2a970e14d57827ac2e2b07bbd"
+  },
+  {
+    "path": "tools/__init__.py",
+    "size": 187,
+    "sha256": "6aaac7eadd22740e198a5d456119f74ae7748b8912d1f29a5d16946fcac4d1b0"
+  },
+  {
+    "path": "utils/__init__.py",
+    "size": 15,
+    "sha256": "f760ebb7aa3dd46ff6e47a4ed72e0e81a1caa77654760835abf5e26f610aebc4"
+  },
+  {
+    "path": "tests/intake/test_adapters.py",
+    "size": 1212,
+    "sha256": "3b44986fa3c73b8cce465aff8a9d8fc1453cbc154fba55bacd4e909bfa864afe"
+  },
+  {
+    "path": "tests/intake/test_extractor_e2e.py",
+    "size": 2249,
+    "sha256": "b8640493cdc19546d628eb839d76dd8235274fb3045e174bb5d330d6cba0400c"
+  },
+  {
+    "path": "tests/intake/test_loader.py",
+    "size": 1556,
+    "sha256": "2ee3f64b9a84528da79246d5e88a55ef3c137455c9f586cf2c6f9583a9be6bf8"
+  },
+  {
+    "path": "tests/intake/test_matcher.py",
+    "size": 3486,
+    "sha256": "15738040a633266bd57c4ef2f4d92c7686f6fa700abdc7dc3193f685d3709c01"
+  },
+  {
+    "path": "tests/intake/test_patterns.py",
+    "size": 2590,
+    "sha256": "71fea46e49fe610f79b267300215c2e8fdd4d34e9a4951ae07c734dfef623a6c"
+  },
+  {
+    "path": "tests/intake/test_resolver.py",
+    "size": 2057,
+    "sha256": "c9482c2aa21fb9a2188c45dd7f98198e1b5143c26f14ea73a88a39d828ff0e53"
+  },
+  {
+    "path": "tests/intake/test_splitter.py",
+    "size": 2452,
+    "sha256": "4e1ba918840c430a50420cbae64a2072913496eceac5e7d56531cbe725aa0312"
+  },
+  {
+    "path": "tests/intake/test_text_cleaning.py",
+    "size": 1175,
+    "sha256": "5857c32e56bdfa6089d909396a5e33f03b7c3b254fc1c57eb4dada828e029bc6"
+  },
+  {
+    "path": "tests/legal_rules/test_basic_rules_property.py",
+    "size": 2703,
+    "sha256": "14cc66138df99339ebf2fe02f6196cd81f96d51dcf34f75d4b5daa860abcc494"
+  },
+  {
+    "path": "tests/legal_rules/test_governing_law_property.py",
+    "size": 2458,
+    "sha256": "607cc90ae2ecd56899f11f3eb42d52add7496f03fd3b90b330ed2429782e2dc2"
+  },
+  {
+    "path": "tests/legal_rules/test_governing_law_unit.py",
+    "size": 2056,
+    "sha256": "b8bf971b4c5e5c3061544f5fd51ea55b09012668644671d5f1234642721a200d"
+  },
+  {
+    "path": "tests/report/test_i18n.py",
+    "size": 3657,
+    "sha256": "cdff40ef92744ed749dbc1b55c561cc0b236edbcece45040806f3b5047a55b21"
+  },
+  {
+    "path": "tests/report/test_metrics.py",
+    "size": 725,
+    "sha256": "d9e21d7f505d799e594a2d416876e40d09874bfee850d4180e4c5926a1e7956e"
+  },
+  {
+    "path": "tests/report/test_pdf.py",
+    "size": 1834,
+    "sha256": "73200ee7b3bc68c474b5a9d22600a32d5f080587a4218f8fd7fa6119a950f68e"
+  },
+  {
+    "path": "tests/report/test_renderer_email.py",
+    "size": 861,
+    "sha256": "bc843e26372c3042ae1c0e2bb3b3ec23b1a9f4d94369a51e98cbf0ad983ca06a"
+  },
+  {
+    "path": "tests/report/test_renderer_matrix_snapshots.py",
+    "size": 2466,
+    "sha256": "cccdb53210a044743f72170b1b25d4aa54fe5bbaa10df75793aa30073c10a7df"
+  },
+  {
+    "path": "tests/report/test_renderer_snapshot.py",
+    "size": 2741,
+    "sha256": "6bee6f3f0057d08039646893f6d3c6d171f32a47030a48077b7bbba1016cfac9"
+  },
+  {
+    "path": "tests/report/__init__.py",
+    "size": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+    "path": "report/templates/base.html",
+    "size": 3167,
+    "sha256": "ad082ebc052e1f4303e85ad997166a5bafd09d731c0f9858413574d9182fe69d"
+  },
+  {
+    "path": "report/templates/email_minimal.html",
+    "size": 5730,
+    "sha256": "de9ddf71ae2a8a9ca0be363b9bd876e79391b78a34106a12385e3d218b2b79c0"
+  },
+  {
+    "path": "report/templates/report_dark.html",
+    "size": 367,
+    "sha256": "5ece1001f52304319517a45241fa83489b9a89b9a8c9cb455ca7eebc69424c10"
+  },
+  {
+    "path": "report/templates/report_light.html",
+    "size": 367,
+    "sha256": "4be3155e9a0c227b3e44a47594a7535833db4142817ec4aba930eae340df673b"
+  },
+  {
+    "path": "report/templates/partials/clause_card.html",
+    "size": 2345,
+    "sha256": "6e78d5010a6e38c5f811683807d9dcba5f94885b08548a6a5b6c21aeb06ab526"
+  },
+  {
+    "path": "report/templates/partials/footer.html",
+    "size": 101,
+    "sha256": "127a1dc4e2001dd2d32b0c90f45e4319c78c0022601f1ed5d0bdc1e40e2c1dea"
+  },
+  {
+    "path": "report/templates/partials/header.html",
+    "size": 257,
+    "sha256": "b6c9f111f56688baa8ec8b9af631e3d669e9c7f6163d194a9537eb494f39e63b"
+  },
+  {
+    "path": "report/templates/partials/summary_panel.html",
+    "size": 944,
+    "sha256": "9db06c601297024c478eb705cd25e3040a429ddfd60764d319292e25c0a5ce59"
+  },
+  {
+    "path": "report/templates/partials/toc_panel.html",
+    "size": 355,
+    "sha256": "a86417678fbb6fc2236c4bd5e8dea1fa5daabda261b4983d5b46f3c1f71c3882"
+  },
+  {
+    "path": "legal_rules/rules/test_governing_law.py",
+    "size": 4291,
+    "sha256": "6c65d0dd8f033d948bee9b8ba73f2d8bceb10bc169492e35a2ab21ea7b5a9773"
+  },
+  {
+    "path": "legal_rules/rules/test_registry.py",
+    "size": 1342,
+    "sha256": "ab9898af3588b036f79e55ae938a7be947c506fa94eedcf4931a63648d4cf056"
+  },
+  {
+    "path": "legal_rules/rules/__init__.py",
+    "size": 2,
+    "sha256": "12ae32cb1ec02d01eda3581b127c1fee3b0dc53572ed6baf239721a03d82e126"
+  },
+  {
+    "path": "contract_review_app/core/interfaces.py",
+    "size": 244,
+    "sha256": "b63affcffb9e7999c2dca529ae4e9bac32fee655d3268f843dc5de9971b5cca1"
+  },
+  {
+    "path": "contract_review_app/core/schemas.py",
+    "size": 1636,
+    "sha256": "63bbc4df74fc9be43b21d8ac45c1a74ce2463a911f6b07ae4b79d894c9d460f5"
+  },
+  {
+    "path": "contract_review_app/core/__init__.py",
+    "size": 37,
+    "sha256": "14d9b80458ac96863787d54825c41c0eac463413691f78034f573b2d1b46972f"
+  },
+  {
+    "path": "contract_review_app/engine/executor.py",
+    "size": 5303,
+    "sha256": "9888d3fbe08f956caaae4ec8e51efc244a539a4861234589b98e10fd7856aac8"
+  },
+  {
+    "path": "contract_review_app/engine/pipeline.py",
+    "size": 5328,
+    "sha256": "49772593e301dc07a1987fa38b280dabb2f3d71d50661f10aa70d24cf6b79e5e"
+  },
+  {
+    "path": "contract_review_app/engine/pipeline_compat.py",
+    "size": 3097,
+    "sha256": "53c7dd8cb6ac8c83561c1ced282dec82416c0fc585380051a50185d87bb59dac"
+  },
+  {
+    "path": "contract_review_app/engine/__init__.py",
+    "size": 15,
+    "sha256": "f760ebb7aa3dd46ff6e47a4ed72e0e81a1caa77654760835abf5e26f610aebc4"
+  },
+  {
+    "path": "contract_review_app/intake/adapters.py",
+    "size": 1582,
+    "sha256": "fea05dcd010c11cafbded2f57ff24fcec445d9f10aa78291590da7935ce37bf1"
+  },
+  {
+    "path": "contract_review_app/intake/extractor.py",
+    "size": 3181,
+    "sha256": "640eab19a9aa954fc90f91026c4fe067b8907edfb52e44bf178903fe0221df48"
+  },
+  {
+    "path": "contract_review_app/intake/loader.py",
+    "size": 2193,
+    "sha256": "faf3aa877a450ceed5b3c75643ce593cb648193175d3138329e8c232226f9ae9"
+  },
+  {
+    "path": "contract_review_app/intake/matcher.py",
+    "size": 7670,
+    "sha256": "8e28747dd77fe0bfe780123b0c70ebed14d5f4065e7feeb4916e566b1e0ae5fe"
+  },
+  {
+    "path": "contract_review_app/intake/patterns.py",
+    "size": 3717,
+    "sha256": "5c755855cdb3f4dfbf01cb0e449f7795b89722c014e9a328afefc562b3abcc16"
+  },
+  {
+    "path": "contract_review_app/intake/resolver.py",
+    "size": 2561,
+    "sha256": "797c64606d045919e97769f4a001ad084d5ccf6a2d4ce8061944d4dfc26c990d"
+  },
+  {
+    "path": "contract_review_app/intake/splitter.py",
+    "size": 7536,
+    "sha256": "01f74623e4a2b2393239339821cf1f6e034a96de860313440dcf9a1e67682712"
+  },
+  {
+    "path": "contract_review_app/intake/text_cleaning.py",
+    "size": 6227,
+    "sha256": "3a91a337f52057af29b95829df36aa0009d7143a1ac665b9b2da9efc3813bd53"
+  },
+  {
+    "path": "contract_review_app/intake/__init__.py",
+    "size": 15,
+    "sha256": "f760ebb7aa3dd46ff6e47a4ed72e0e81a1caa77654760835abf5e26f610aebc4"
+  },
+  {
+    "path": "contract_review_app/legal_rules/base.py",
+    "size": 2422,
+    "sha256": "3da965b1b465a0702f1a8dfab75c751ec5474fd79800bd77c20b9cff9976a161"
+  },
+  {
+    "path": "contract_review_app/legal_rules/check_parties_definitions_clause.py",
+    "size": 47379,
+    "sha256": "13a5686f3a4c8969d2c239a402c583cfafacbd9de4f733e4fcfb97b84142715e"
+  },
+  {
+    "path": "contract_review_app/legal_rules/confidentiality.py",
+    "size": 4112,
+    "sha256": "54f27343616a275ed40e32bba1289e4e787473c8d740bd7d3697c96c20f5abea"
+  },
+  {
+    "path": "contract_review_app/legal_rules/force_majeure.py",
+    "size": 3717,
+    "sha256": "19db35c445059c91d802f067e1fd12a51a194c14178fd2313b599bbc741eeba3"
+  },
+  {
+    "path": "contract_review_app/legal_rules/governing_law.py",
+    "size": 10741,
+    "sha256": "f5b5d6af0cee33acfdba5bb747642812f023c26002e32bef8c76fc6ecf3a7a83"
+  },
+  {
+    "path": "contract_review_app/legal_rules/indemnity.py",
+    "size": 3635,
+    "sha256": "b0239ae0c37da82f216b7f2e27eed7887b0e53b3277b8357a89cb3e18ff8cb78"
+  },
+  {
+    "path": "contract_review_app/legal_rules/jurisdiction.py",
+    "size": 2744,
+    "sha256": "6f1e7ec22f3cf0123a608c2787790466b39e35148e511171bb6da63245950498"
+  },
+  {
+    "path": "contract_review_app/legal_rules/legal_rules.py",
+    "size": 78543,
+    "sha256": "a49933e85aced90697bcdf64381cdd2cd75244fc016820b40ef067a7d969a844"
+  },
+  {
+    "path": "contract_review_app/legal_rules/registry.py",
+    "size": 1611,
+    "sha256": "3df694cee6012cb89a88735be0f4903bc2e4860892f1cae453be4ab6b518157f"
+  },
+  {
+    "path": "contract_review_app/legal_rules/termination.py",
+    "size": 3884,
+    "sha256": "94588bb60d44f7c700bcd7722468a0c0439f8aa27af76118093b35b0c7d35215"
+  },
+  {
+    "path": "contract_review_app/legal_rules/__init__.py",
+    "size": 119,
+    "sha256": "4713f9e093b64755a088d5aace8eb22c953f2356f06746b79e0b3a00f4551b81"
+  },
+  {
+    "path": "contract_review_app/report/i18n.py",
+    "size": 1459,
+    "sha256": "3b10c38326928eaf723e060f4169e2d02071e051e9bc2c17cadc874fc579163b"
+  },
+  {
+    "path": "contract_review_app/report/messages_en.py",
+    "size": 888,
+    "sha256": "f5472fd24a552321b94064a9931567e9de4dcd4fd31ca5de60920c155d4ae407"
+  },
+  {
+    "path": "contract_review_app/report/messages_uk.py",
+    "size": 1185,
+    "sha256": "cead7d132183a706d25921ade37c7c5219595cf60859a70b70ad9df49c256743"
+  },
+  {
+    "path": "contract_review_app/report/metrics.py",
+    "size": 648,
+    "sha256": "d65fcf9a7a254c44c3507ce5e255eaf08982bee40b2ae0715a04687650783227"
+  },
+  {
+    "path": "contract_review_app/report/pdf.py",
+    "size": 3733,
+    "sha256": "b9091d0c5fe5bb07594900fe4c1dd0f273998cde606e2caea88b452ed3bdcc4e"
+  },
+  {
+    "path": "contract_review_app/report/renderer.py",
+    "size": 3397,
+    "sha256": "3ca821679f97b973deeb60646de7e4fd9033f113cb40dc40cf5f479e50d433ab"
+  },
+  {
+    "path": "contract_review_app/report/__init__.py",
+    "size": 15,
+    "sha256": "f760ebb7aa3dd46ff6e47a4ed72e0e81a1caa77654760835abf5e26f610aebc4"
+  },
+  {
+    "path": "contract_review_app/utils/__init__.py",
+    "size": 15,
+    "sha256": "f760ebb7aa3dd46ff6e47a4ed72e0e81a1caa77654760835abf5e26f610aebc4"
+  },
+  {
+    "path": "contract_review_app/report/templates/clause_card.html",
+    "size": 2345,
+    "sha256": "6e78d5010a6e38c5f811683807d9dcba5f94885b08548a6a5b6c21aeb06ab526"
+  },
+  {
+    "path": "contract_review_app/legal_rules/rules/governing_law.py",
+    "size": 6944,
+    "sha256": "d9903072f82a38e775f6e907d0de0c8b3becbb8f81240438542cbd735f0ad916"
+  },
+  {
+    "path": "contract_review_app/legal_rules/rules/test_governing_law.py",
+    "size": 4291,
+    "sha256": "6c65d0dd8f033d948bee9b8ba73f2d8bceb10bc169492e35a2ab21ea7b5a9773"
+  },
+  {
+    "path": "contract_review_app/legal_rules/rules/test_registry.py",
+    "size": 1342,
+    "sha256": "ab9898af3588b036f79e55ae938a7be947c506fa94eedcf4931a63648d4cf056"
+  }
+]

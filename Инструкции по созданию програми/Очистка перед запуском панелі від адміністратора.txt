@@ -1,0 +1,49 @@
+# 0) Перевірка сеансу
+Write-Host "PowerShell:" $PSVersionTable.PSVersion
+$IsAdmin = (New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+Write-Host "IsAdmin:" $IsAdmin
+if(-not $IsAdmin){ throw "Потрібно відкрити *Windows PowerShell (Адміністратор)*, не CMD." }
+
+# 1) Вбиваємо всі можливі блокувальники
+$kill = @("WINWORD","EXCEL","OUTLOOK","POWERPNT","ONENOTE","msedgewebview2","msedge","WWAHost","sdiagnhost","OneDrive","Teams","OfficeClickToRun","ClickToRun")
+foreach($n in $kill){ Get-Process $n -EA SilentlyContinue | Stop-Process -Force -EA SilentlyContinue }
+Start-Sleep -Milliseconds 400
+
+# 2) Шляхи кешів
+$Wef = "$env:LOCALAPPDATA\Microsoft\Office\16.0\Wef"
+$Svc = "$env:LOCALAPPDATA\Microsoft\Office\16.0\WebServiceCache"
+$WV2 = "$env:LOCALAPPDATA\Microsoft\EdgeWebView"
+$paths = @($Wef,$Svc,$WV2)
+
+# 3) Знімаємо атрибути й даємо FullControl (на випадок Access Denied)
+foreach($p in $paths){
+  if(Test-Path $p){
+    Get-ChildItem $p -Recurse -Force -EA SilentlyContinue | ForEach-Object { try { attrib -r -s -h $_.FullName 2>$null } catch {} }
+    try { icacls $p /grant "$($env:USERNAME):(OI)(CI)F" /T /C | Out-Null } catch {}
+  }
+}
+
+# 4) Агресивне видалення кешів з kill-петлею WebView2
+foreach($p in $paths){
+  if(Test-Path $p){
+    for($i=0;$i -lt 5;$i++){
+      try {
+        Remove-Item "$p\*" -Recurse -Force -EA Stop
+        break
+      } catch {
+        # якщо щось тримає — добити й спробувати ще раз
+        Get-Process "msedgewebview2" -EA SilentlyContinue | Stop-Process -Force -EA SilentlyContinue
+        Start-Sleep -Milliseconds 300
+      }
+    }
+  }
+}
+
+# 5) Прибрати ВСІ dev-реєстрації цього manifest.xml і залишити одну
+$mf = "C:\Users\Ludmila\contract_ai\word_addin_dev\manifest.xml"
+for($i=0;$i -lt 10;$i++){ npx office-addin-dev-settings unregister "$mf" | Out-Null }
+# перевірка
+npx office-addin-dev-settings registered
+# реєструємо один-єдиний
+npx office-addin-dev-settings register "$mf"
+npx office-addin-dev-settings registered

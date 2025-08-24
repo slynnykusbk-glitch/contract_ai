@@ -1,0 +1,17 @@
+[INFO] Starting STEP3 at 13.08.2025 21:16:38,32 
+[INFO] Script dir: C:\Users\Ludmila\contract_ai\ 
+[INFO] Log file:   "C:\Users\Ludmila\contract_ai\logs\step3_20250813-211638.log" 
+
+C:\Users\Ludmila\contract_ai\STEP3_OPEN_WORD.ps1:67 знак:67
++ ... e pane doesn't auto-open, use Insert -> My Add-ins -> Shared Folder." ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+В строке отсутствует завершающий символ: '.
+C:\Users\Ludmila\contract_ai\STEP3_OPEN_WORD.ps1:44 знак:6
++ }else{ Log "[WARN] certs\dev.crt not found в?" continuing" 'Yellow' }
++      ~
+Отсутствует закрывающий знак "}" в блоке операторов или определении типа.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : TerminatorExpectedAtEndOfString
+ 
+
+[INFO] Exit code: 1 

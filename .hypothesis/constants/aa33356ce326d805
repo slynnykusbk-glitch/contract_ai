@@ -1,0 +1,4 @@
+# file: C:\Users\Ludmila\contract_ai\contract_review_app\legal_rules\base.py
+# hypothesis_version: 6.136.7
+
+[100, '; ', 'CRITICAL', 'FAIL', 'GENERIC', 'MAJOR', 'MINOR', 'OK', 'WARN', 'code', 'critical', 'evidence', 'high', 'info', 'legal_basis', 'low', 'major', 'medium', 'message', 'minor', 'severity', 'warn', 'warning']

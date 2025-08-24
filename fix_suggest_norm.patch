@@ -1,0 +1,122 @@
+﻿--- a/contract_review_app/api/app.py
++++ b/contract_review_app/api/app.py
+@@ -664,29 +664,90 @@
+-    norm: List[Dict[str, Any]] = []
+-    for s in suggestions or []:
+-        s = dict(s)
+-        if "range" in s and isinstance(s["range"], dict):
+-            r = s["range"]
+-            start = int(r.get("start") or 0)
+-            if "length" in r:
+-                length = int(r.get("length") or 0)
+-            else:
+-                if "end" in r:
+-                    length = max(0, int(r.get("end")) - start)
+-                else:
+-                    length = 0
+-            s["range"] = {"start": max(0, start), "length": max(0, length)}
+-        elif isinstance(s.get("span"), dict):
+-            sp = s["span"]
+-            start = int(sp.get("start") or 0)
+-            if "length" in sp:
+-                length = int(sp.get("length") or 0)
+-            else:
+-                end = int(sp.get("end") or (start))
+-                length = max(0, end - start)
+-            s["range"] = {"start": max(0, start), "length": max(0, length)}
+-        else:
+-            s["range"] = {"start": 0, "length": 0}
+-        if "message" not in s:
+-            s["message"] = s.get("text") or s.get("proposed_text") or s.get("proposed") or ""
+-        norm.append(s)
+-    suggestions = norm
++    norm: List[Dict[str, Any]] = []
++    for s in suggestions or []:
++        # Coerce various forms to a dict
++        if hasattr(s, "model_dump"):
++            try:
++                s_dict = s.model_dump()
++            except Exception:
++                s_dict = {}
++        elif isinstance(s, dict):
++            s_dict = dict(s)
++        elif isinstance(s, str):
++            s_dict = {"message": s, "proposed_text": s}
++        elif isinstance(s, (list, tuple)):
++            try:
++                if s and all(isinstance(p, (list, tuple)) and len(p) == 2 for p in s):
++                    s_dict = dict(s)  # iterable of pairs
++                elif len(s) == 2 and not isinstance(s[0], (list, tuple, dict)):
++                    s_dict = {"message": str(s[0]), "proposed_text": str(s[1])}
++                else:
++                    s_dict = {}
++            except Exception:
++                s_dict = {}
++        else:
++            s_dict = {}
++
++        # Ensure message
++        msg = s_dict.get("message")
++        if not isinstance(msg, str) or msg is None:
++            msg = s_dict.get("text") or s_dict.get("proposed_text") or s_dict.get("proposed") or ""
++            if not isinstance(msg, str):
++                msg = str(msg)
++
++        # Normalize range from range or span (dict or tuple)
++        start = 0
++        length = 0
++        r = s_dict.get("range")
++        sp = s_dict.get("span")
++
++        if isinstance(r, dict):
++            try:
++                start = int(r.get("start") or 0)
++            except Exception:
++                start = 0
++            if "length" in r:
++                try:
++                    length = int(r.get("length") or 0)
++                except Exception:
++                    length = 0
++            else:
++                try:
++                    end = int(r.get("end") or 0)
++                except Exception:
++                    end = start
++                length = max(0, end - start)
++        elif isinstance(sp, dict):
++            try:
++                start = int(sp.get("start") or 0)
++            except Exception:
++                start = 0
++            if "length" in sp:
++                try:
++                    length = int(sp.get("length") or 0)
++                except Exception:
++                    length = 0
++            else:
++                try:
++                    end = int(sp.get("end") or start)
++                except Exception:
++                    end = start
++                length = max(0, end - start)
++        elif isinstance(sp, (list, tuple)) and len(sp) == 2:
++            try:
++                start = int(sp[0] or 0)
++            except Exception:
++                start = 0
++            try:
++                end = int(sp[1] or start)
++            except Exception:
++                end = start
++            length = max(0, end - start)
++
++        if start < 0:
++            start = 0
++        if length < 0:
++            length = 0
++
++        s_dict["range"] = {"start": start, "length": length}
++        s_dict["message"] = msg
++        norm.append(s_dict)
++    suggestions = norm

@@ -1,0 +1,286 @@
+# contract_review_app/learning/replay_io.py
+# ASCII-only
+
+import os, io, json, gzip, time, uuid, hmac, hashlib, threading
+from datetime import datetime, timedelta
+
+# ---------- paths / constants
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # contract_review_app/
+LEARNING_DIR = os.path.join(BASE_DIR, "learning")
+REPLAY_FILE = os.path.join(LEARNING_DIR, "replay_buffer.jsonl")
+KEYS_FILE = os.path.join(LEARNING_DIR, "replay_keys.idx")
+SALT_FILE = os.path.join(LEARNING_DIR, ".salt")
+HMAC_KEY_FILE = os.path.join(LEARNING_DIR, ".key")
+LOCK_FILE = os.path.join(LEARNING_DIR, ".replay.lock")
+
+DEFAULT_ROTATION_MB = 10
+DEFAULT_RETENTION_DAYS = 90
+MAX_EVENT_BYTES = 4096  # defensive upper bound per line
+MAX_KEYS_IN_MEM = 100_000  # sliding window for dedup
+
+# in-memory dedup window
+_recent_keys = set()
+_recent_keys_lock = threading.Lock()
+
+# ---------- utilities
+
+def _ensure_dir():
+    os.makedirs(LEARNING_DIR, exist_ok=True)
+
+def _read_or_create_hex(path: str, nbytes: int) -> str:
+    if os.path.exists(path):
+        with open(path, "r", encoding="ascii", errors="ignore") as f:
+            val = f.read().strip()
+            if val:
+                return val
+    val = os.urandom(nbytes).hex()
+    with open(path, "w", encoding="ascii") as f:
+        f.write(val)
+    return val
+
+def _load_recent_keys(limit: int = MAX_KEYS_IN_MEM):
+    if not os.path.exists(KEYS_FILE):
+        return
+    # load last portion only to cap memory
+    try:
+        size = os.path.getsize(KEYS_FILE)
+        # read last ~8MB worth of keys as a heuristic
+        back = min(size, 8 * 1024 * 1024)
+        with open(KEYS_FILE, "rb") as f:
+            if back < size:
+                f.seek(size - back)
+                f.readline()  # skip partial
+            for line in f:
+                k = line.decode("ascii", "ignore").strip()
+                if k:
+                    _recent_keys.add(k)
+                    if len(_recent_keys) >= limit:
+                        break
+    except Exception:
+        # best-effort; ignore corrupt idx
+        pass
+
+def _append_key(k: str):
+    with open(KEYS_FILE, "a", encoding="ascii") as f:
+        f.write(k + "\n")
+
+def _sha256_hex(s: str) -> str:
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+def _to_iso(ts: float = None) -> str:
+    dt = datetime.utcfromtimestamp(ts if ts is not None else time.time())
+    return dt.replace(microsecond=0).isoformat() + "Z"
+
+def _ts_minute(ts_iso: str) -> str:
+    # "2025-08-15T14:12:03Z" -> "2025-08-15T14:12Z"
+    if not ts_iso:
+        return ""
+    s = ts_iso.strip()
+    # ensure length >= 16 to safely slice
+    if len(s) >= 16:
+        return s[:16] + "Z"
+    return s
+
+def _lock(timeout_ms: int = 500):
+    # primitive cross-process lock via lockfile
+    t0 = time.time()
+    while True:
+        try:
+            fd = os.open(LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.close(fd)
+            return
+        except FileExistsError:
+            if (time.time() - t0) * 1000 > timeout_ms:
+                # stale lock? try remove if older than 30s
+                try:
+                    if time.time() - os.path.getmtime(LOCK_FILE) > 30:
+                        os.remove(LOCK_FILE)
+                        continue
+                except Exception:
+                    pass
+                raise TimeoutError("replay lock busy")
+            time.sleep(0.01)
+
+def _unlock():
+    try:
+        os.remove(LOCK_FILE)
+    except FileNotFoundError:
+        pass
+    except Exception:
+        pass
+
+def _rotate_if_needed(max_mb: int, retention_days: int):
+    if not os.path.exists(REPLAY_FILE):
+        return
+    max_bytes = max_mb * 1024 * 1024
+    size = os.path.getsize(REPLAY_FILE)
+    if size >= max_bytes:
+        ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+        gz_path = os.path.join(LEARNING_DIR, f"replay_buffer.{ts}.jsonl.gz")
+        with open(REPLAY_FILE, "rb") as fin, gzip.open(gz_path, "wb", compresslevel=5) as fout:
+            while True:
+                chunk = fin.read(1024 * 1024)
+                if not chunk:
+                    break
+                fout.write(chunk)
+        # truncate original
+        with open(REPLAY_FILE, "w", encoding="ascii") as f:
+            pass
+        # rotate keys idx as well (best-effort: clear)
+        with open(KEYS_FILE, "w", encoding="ascii") as f:
+            pass
+        # purge old archives
+        cutoff = datetime.utcnow() - timedelta(days=retention_days)
+        for name in os.listdir(LEARNING_DIR):
+            if not name.startswith("replay_buffer.") or not name.endswith(".jsonl.gz"):
+                continue
+            path = os.path.join(LEARNING_DIR, name)
+            try:
+                mtime = datetime.utcfromtimestamp(os.path.getmtime(path))
+                if mtime < cutoff:
+                    os.remove(path)
+            except Exception:
+                pass
+
+def ensure_storage():
+    """
+    Create learning storage and load recent keys window.
+    Idempotent; safe to call on startup.
+    """
+    _ensure_dir()
+    _read_or_create_hex(SALT_FILE, 16)
+    _read_or_create_hex(HMAC_KEY_FILE, 32)
+    if not os.path.exists(REPLAY_FILE):
+        with open(REPLAY_FILE, "w", encoding="ascii") as f:
+            pass
+    if not os.path.exists(KEYS_FILE):
+        with open(KEYS_FILE, "w", encoding="ascii") as f:
+            pass
+    # populate in-memory window once
+    with _recent_keys_lock:
+        if not _recent_keys:
+            _load_recent_keys()
+
+def _compute_event_key(event: dict, salt: str) -> str:
+    # key = sha256(doc_id|clause_id|template_id|action|ts_minute|salt)
+    ts_iso = event.get("ts") or _to_iso()
+    parts = [
+        str(event.get("doc_id", "")),
+        str(event.get("clause_id", "")),
+        str(event.get("template_id", "")),
+        str(event.get("action", "")),
+        _ts_minute(ts_iso),
+        salt or "",
+    ]
+    return _sha256_hex("|".join(parts))
+
+def _hmac_sign(payload_without_hmac: dict, key_hex: str) -> str:
+    key = bytes.fromhex(key_hex.strip())
+    data = json.dumps(payload_without_hmac, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    sig = hmac.new(key, data.encode("ascii"), hashlib.sha256).hexdigest()
+    return sig
+
+def _sanitize_event(evt: dict) -> dict:
+    # shallow copy, enforce schema_ver/event_id/ts
+    e = dict(evt or {})
+    if not e.get("schema_ver"):
+        e["schema_ver"] = "1"
+    if not e.get("event_id"):
+        e["event_id"] = str(uuid.uuid4())
+    if not e.get("ts"):
+        e["ts"] = _to_iso()
+    # clamp action
+    allowed_actions = {"applied", "rejected", "accepted_all", "rejected_all"}
+    if e.get("action") not in allowed_actions:
+        e["action"] = "applied"
+    # ensure minimal required fields exist (empty strings if absent)
+    for k in ("doc_id", "clause_id", "clause_type", "mode", "template_id"):
+        e.setdefault(k, "")
+    # limit span size fields
+    span = e.get("span") or {}
+    try:
+        s = int(span.get("start", 0)); l = int(span.get("length", 0))
+        if s < 0: s = 0
+        if l < 0: l = 0
+        e["span"] = {"start": s, "length": l}
+    except Exception:
+        e["span"] = {"start": 0, "length": 0}
+    return e
+
+def append_events(events: list, rotation_mb: int = DEFAULT_ROTATION_MB, retention_days: int = DEFAULT_RETENTION_DAYS) -> dict:
+    """
+    Append a batch of events into replay_buffer.jsonl with dedup and HMAC.
+    Returns: {"accepted": N, "skipped": M}
+    """
+    if not isinstance(events, list):
+        raise ValueError("events must be a list")
+
+    ensure_storage()
+    salt = _read_or_create_hex(SALT_FILE, 16)
+    key_hex = _read_or_create_hex(HMAC_KEY_FILE, 32)
+
+    accepted = 0
+    skipped = 0
+
+    _lock()
+    try:
+        _rotate_if_needed(rotation_mb, retention_days)
+        with open(REPLAY_FILE, "a", encoding="ascii") as f:
+            for raw in events:
+                e = _sanitize_event(raw)
+                # compute event_key (based on salt and minute-bucket)
+                ekey = _compute_event_key(e, salt)
+                e["event_key"] = ekey
+
+                # dedup window
+                with _recent_keys_lock:
+                    if ekey in _recent_keys:
+                        skipped += 1
+                        continue
+
+                # build payload without hmac, sign, size-guard
+                payload_wo_hmac = dict(e)
+                payload_wo_hmac.pop("hmac", None)
+                # temporary text length guard fields
+                line_wo = json.dumps(payload_wo_hmac, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+                if len(line_wo) > MAX_EVENT_BYTES:
+                    # trim large optional fields
+                    ctx = payload_wo_hmac.get("context")
+                    if isinstance(ctx, dict):
+                        for k in list(ctx.keys()):
+                            if isinstance(ctx[k], str) and len(ctx[k]) > 128:
+                                ctx[k] = ctx[k][:128]
+                    line_wo = json.dumps(payload_wo_hmac, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+                    if len(line_wo) > MAX_EVENT_BYTES:
+                        skipped += 1
+                        continue
+
+                sig = _hmac_sign(payload_wo_hmac, key_hex)
+                payload = dict(payload_wo_hmac)
+                payload["hmac"] = sig
+                line = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+
+                if len(line) > MAX_EVENT_BYTES:
+                    skipped += 1
+                    continue
+
+                f.write(line + "\n")
+                accepted += 1
+
+                # update dedup idx
+                with _recent_keys_lock:
+                    _recent_keys.add(ekey)
+                    if len(_recent_keys) > MAX_KEYS_IN_MEM:
+                        # drop random element (simple cap)
+                        _recent_keys.pop()
+                _append_key(ekey)
+
+    finally:
+        _unlock()
+
+    return {"accepted": accepted, "skipped": skipped}
+{"action":"applied","clause_id":null,"clause_type":"ip","client":{"app_build":"panel","cid":"cid-1755523063121","panel_build":"dev-1755523048524"},"context":{"jurisdiction":"UK","language":"en","policy_pack":"default@1","risk_ord":1,"severity_max":"medium"},"contract_type":"generic","doc_id":"9fb84c1aba58e4183fb91acef34721bd88bdec757e538e5dae647330af0143e2","event_id":"ev-1755523083203","event_key":"2025-08-18T13:18|cid-1755523063121","hmac":"d4a79a70899433ba704427dcf43eb6884c5997decf78481ebee774ffaab1434b","mode":"standard","proposed_text_hash":"","schema_ver":"1","span":null,"suggestion_id":"manual","template_id":"GEN_STANDARD_01","ts":"2025-08-18T13:18:03.202Z","ui_latency_ms":38,"user":"local","user_role":"neutral","verdict_snapshot":null}
+{"action":"applied","clause_id":null,"clause_type":"confidentiality","client":{"app_build":"panel","cid":"cid-1755523102350","panel_build":"dev-1755523048524"},"context":{"jurisdiction":"UK","language":"en","policy_pack":"default@1","risk_ord":1,"severity_max":"medium"},"contract_type":"generic","doc_id":"7554acbf01f16e3bf94cef8ebddf356427477b08effd7c0bb24cbba18716c96a","event_id":"ev-1755523108928","event_key":"2025-08-18T13:18|cid-1755523102350","hmac":"95d9f85a39151bc110ef520788f48e03ca7537d803cbc635ddbabd71bdac6fc7","mode":"standard","proposed_text_hash":"","schema_ver":"1","span":null,"suggestion_id":"manual","template_id":"GEN_STANDARD_01","ts":"2025-08-18T13:18:28.927Z","ui_latency_ms":7,"user":"local","user_role":"neutral","verdict_snapshot":null}
+{"action":"applied","clause_id":null,"clause_type":"confidentiality","client":{"app_build":"panel","cid":"cid-1755523102350","panel_build":"dev-1755523048524"},"context":{"jurisdiction":"UK","language":"en","policy_pack":"default@1","risk_ord":1,"severity_max":"medium"},"contract_type":"generic","doc_id":"7554acbf01f16e3bf94cef8ebddf356427477b08effd7c0bb24cbba18716c96a","event_id":"ev-1755523110302","event_key":"2025-08-18T13:18|cid-1755523102350","hmac":"232ddfc60bb70cce8df4d8bfeea98dfffc04aa9b6f11493c91b4beb96338da03","mode":"standard","proposed_text_hash":"","schema_ver":"1","span":null,"suggestion_id":"manual","template_id":"GEN_STANDARD_01","ts":"2025-08-18T13:18:30.302Z","ui_latency_ms":7,"user":"local","user_role":"neutral","verdict_snapshot":null}
+{"action":"applied","clause_id":null,"clause_type":"confidentiality","client":{"app_build":"panel","cid":"cid-1755523102350","panel_build":"dev-1755523048524"},"context":{"jurisdiction":"UK","language":"en","policy_pack":"default@1","risk_ord":1,"severity_max":"medium"},"contract_type":"generic","doc_id":"7554acbf01f16e3bf94cef8ebddf356427477b08effd7c0bb24cbba18716c96a","event_id":"ev-1755523111349","event_key":"2025-08-18T13:18|cid-1755523102350","hmac":"5f49f7967c971cb2be8caf4a0ad0c68cf75b5bcc111e19364b35852f62328c82","mode":"standard","proposed_text_hash":"","schema_ver":"1","span":null,"suggestion_id":"manual","template_id":"GEN_STANDARD_01","ts":"2025-08-18T13:18:31.349Z","ui_latency_ms":7,"user":"local","user_role":"neutral","verdict_snapshot":null}
+{"action":"applied","clause_id":null,"clause_type":"confidentiality","client":{"app_build":"panel","cid":"cid-1755523102350","panel_build":"dev-1755523048524"},"context":{"jurisdiction":"UK","language":"en","policy_pack":"default@1","risk_ord":1,"severity_max":"medium"},"contract_type":"generic","doc_id":"7554acbf01f16e3bf94cef8ebddf356427477b08effd7c0bb24cbba18716c96a","event_id":"ev-1755523117367","event_key":"2025-08-18T13:18|cid-1755523102350","hmac":"c595adc8c5320e2a889b4a0f746bcd276f9765b9ea1126e6521ccc76eff60981","mode":"standard","proposed_text_hash":"","schema_ver":"1","span":null,"suggestion_id":"manual","template_id":"GEN_STANDARD_01","ts":"2025-08-18T13:18:37.366Z","ui_latency_ms":7,"user":"local","user_role":"neutral","verdict_snapshot":null}

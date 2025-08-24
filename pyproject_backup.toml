@@ -1,0 +1,15 @@
+﻿[tool.black]
+line-length = 100
+target-version = ["py313"]
+
+[tool.isort]
+profile = "black"
+
+[tool.ruff]
+line-length = 100
+select = ["E","F","I"]
+
+[tool.pytest.ini_options]
+testpaths = ["contract_review_app/tests"]
+addopts = "-q"
+

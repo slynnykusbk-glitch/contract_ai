@@ -1,0 +1,4 @@
+# file: C:\Users\Ludmila\contract_ai\contract_review_app\legal_rules\confidentiality.py
+# hypothesis_version: 6.136.7
+
+[120, '1.0.0', '; ', 'CONF_MISSING', 'CONF_NO_DEF', 'CONF_NO_EXCLUSIONS', 'CONF_NO_NEED_TO_KNOW', 'CONF_NO_TERM', 'CONF_NO_USE_LIMIT', 'FAIL', 'OK', 'WARN', '\\s+', 'citations', 'code', 'confidentiality', 'evidence', 'high', 'low', 'medium', 'message', 'rule', 'rule_version', 'severity', 'trace']

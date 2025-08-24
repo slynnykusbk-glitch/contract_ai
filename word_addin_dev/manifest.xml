@@ -1,0 +1,97 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp xsi:type="TaskPaneApp"
+  xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+  xsi:schemaLocation="http://schemas.microsoft.com/office/appforoffice/1.1 https://appsforoffice.microsoft.com/lib/1.1/hosted/officeAppManifestv1_1.xsd">
+
+  <Id>8f6f3c9e-8a7c-4d3e-9f6a-000000000001</Id>
+  <Version>1.0.2025.0824</Version>
+  <ProviderName>Contract AI</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="Contract AI — Draft Assistant (Dev)"/>
+  <Description DefaultValue="Review, QA and drafting assistant for Word contracts."/>
+
+  <IconUrl DefaultValue="https://127.0.0.1:3000/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://127.0.0.1:3000/assets/icon-80.png"/>
+
+  <SupportUrl DefaultValue="https://127.0.0.1:3000/help.html"/>
+  <AppDomains>
+    <AppDomain>https://127.0.0.1:3000</AppDomain>
+    <AppDomain>https://localhost:3000</AppDomain>
+    <AppDomain>https://127.0.0.1:9443</AppDomain>
+    <AppDomain>https://localhost:9443</AppDomain>
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Document"/>
+  </Hosts>
+
+  <DefaultSettings>
+    <!-- dev panel served by serve_https_panel.py -->
+    <SourceLocation DefaultValue="https://localhost:3000/app/build-20250821-2055/taskpane.html"/>
+  </DefaultSettings>
+
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides xsi:type="ov:VersionOverridesV1_0">
+    <ov:Hosts>
+      <ov:Host xsi:type="ov:Document">
+        <ov:DesktopFormFactor>
+          <ov:GetStarted>
+            <ov:Title resid="residGetStartedTitle"/>
+            <ov:Description resid="residGetStartedDescription"/>
+            <ov:LearnMoreUrl resid="residGetStartedLearnMoreUrl"/>
+          </ov:GetStarted>
+
+          <ov:FunctionFile resid="residFunctionFile"/>
+
+          <ov:ExtensionPoint xsi:type="ov:PrimaryCommandSurface">
+            <ov:OfficeTab id="TabHome">
+              <ov:Group id="grpContractAI" label="Contract AI">
+                <ov:Control xsi:type="ov:Button"
+                            id="btnOpenTaskpane"
+                            label="Open panel"
+                            onAction="openTaskPane"
+                            visible="true">
+                  <ov:Supertip>
+                    <ov:Title resid="residButtonTitle"/>
+                    <ov:Description resid="residButtonDesc"/>
+                  </ov:Supertip>
+                  <ov:Icon>
+                    <bt:Image size="16" resid="icon16"/>
+                    <bt:Image size="32" resid="icon32"/>
+                  </ov:Icon>
+                </ov:Control>
+              </ov:Group>
+            </ov:OfficeTab>
+          </ov:ExtensionPoint>
+        </ov:DesktopFormFactor>
+      </ov:Host>
+    </ov:Hosts>
+
+    <ov:Resources>
+      <bt:Images>
+        <bt:Image id="icon16" DefaultValue="https://127.0.0.1:3000/assets/icon-16.png"/>
+        <bt:Image id="icon32" DefaultValue="https://127.0.0.1:3000/assets/icon-32.png"/>
+      </bt:Images>
+
+      <bt:Urls>
+        <bt:Url id="residFunctionFile" DefaultValue="https://127.0.0.1:3000/commands.html"/>
+        <bt:Url id="residGetStartedLearnMoreUrl" DefaultValue="https://127.0.0.1:3000/help.html"/>
+      </bt:Urls>
+
+      <bt:ShortStrings>
+        <bt:String id="residGetStartedTitle" DefaultValue="Open Contract AI"/>
+        <bt:String id="residButtonTitle" DefaultValue="Contract AI"/>
+      </bt:ShortStrings>
+
+      <bt:LongStrings>
+        <bt:String id="residGetStartedDescription" DefaultValue="Open the Contract AI panel."/>
+        <bt:String id="residButtonDesc" DefaultValue="Launch Contract AI task pane."/>
+      </bt:LongStrings>
+    </ov:Resources>
+  </VersionOverrides>
+</OfficeApp>
+

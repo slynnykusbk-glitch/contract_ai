@@ -1,0 +1,4 @@
+# file: C:\Users\Ludmila\contract_ai\contract_review_app\report\messages_uk.py
+# hypothesis_version: 6.136.7
+
+['Contract Review App', 'clause.issues', 'clause.law_refs', 'clause.risk_level', 'clause.score', 'clause.severity', 'clause.type', 'footer.app_name', 'footer.copyright', 'report.subtitle', 'report.title', 'summary.fail', 'summary.note', 'summary.ok', 'summary.overview', 'summary.total', 'summary.warn', 'toc.title', 'Зведення', 'Зміст', 'Критичні', 'ОК', 'Оцінка', 'Попередження', 'Проблеми', 'Рекомендації', 'Ризик', 'Серйозність', 'Тип', 'Усього']

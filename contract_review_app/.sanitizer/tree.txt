@@ -1,0 +1,150 @@
+contract_review_app/
+├── .sanitizer
+│   └── inventory.json
+├── core
+│   ├── __init__.py
+│   ├── interfaces.py
+│   └── schemas.py
+├── engine
+│   ├── __init__.py
+│   ├── executor.py
+│   ├── pipeline.py
+│   └── pipeline_compat.py
+├── intake
+│   ├── __init__.py
+│   ├── adapters.py
+│   ├── extractor.py
+│   ├── loader.py
+│   ├── matcher.py
+│   ├── patterns.py
+│   ├── resolver.py
+│   ├── splitter.py
+│   └── text_cleaning.py
+├── legacy
+│   ├── document_checker.py
+│   ├── document_loader.py
+│   ├── load_docx_text.py
+│   └── output_report.html
+├── legal_rules
+│   ├── rules
+│   │   ├── __init__.py
+│   │   ├── governing_law.py
+│   │   ├── test_governing_law.py
+│   │   └── test_registry.py
+│   ├── __init__.py
+│   ├── base.py
+│   ├── check_parties_definitions_clause.py
+│   ├── confidentiality.py
+│   ├── force_majeure.py
+│   ├── governing_law.py
+│   ├── indemnity.py
+│   ├── jurisdiction.py
+│   ├── legal_rules.py
+│   ├── registry.py
+│   └── termination.py
+├── molecular_build
+│   ├── contract_consistency
+│   ├── contract_engine
+│   │   ├── preprocessing
+│   │   │   ├── detect_numbered_headings.py
+│   │   │   ├── group_by_clause_keywords.py
+│   │   │   ├── merge_adjacent_clauses.py
+│   │   │   ├── normalize_unicode.py
+│   │   │   ├── normalize_whitespace.py
+│   │   │   ├── remove_empty_lines.py
+│   │   │   ├── sanitize_ocr_artifacts.py
+│   │   │   ├── strip_header_footer_noise.py
+│   │   │   ├── structure_detection.py
+│   │   │   ├── structure_filter.py
+│   │   │   ├── structure_merge.py
+│   │   │   ├── test_preprocess_text.py
+│   │   │   └── text_cleaning.py
+│   │   ├── tests
+│   │   │   ├── __init__.py
+│   │   │   ├── normalize_unicode
+│   │   │   ├── test_interface.py
+│   │   │   ├── test_normalize_whitespace.py
+│   │   │   ├── test_remove_empty_lines.py
+│   │   │   ├── test_sanitize_ocr_artifacts.py
+│   │   │   ├── test_text_cleaning.py
+│   │   │   └── teststest_strip_header_footer_noise.py
+│   │   ├── __init__.py
+│   │   ├── compare_code_versions.py
+│   │   ├── config.py
+│   │   ├── executor.py
+│   │   ├── pipeline.py
+│   │   ├── preprocess_text.py
+│   │   └── test_legal_rules.py
+│   └── __init__.py
+├── report
+│   ├── templates
+│   │   ├── partials
+│   │   │   ├── clause_card.html
+│   │   │   ├── footer.html
+│   │   │   ├── header.html
+│   │   │   └── summary_panel.html
+│   │   ├── __init__.py
+│   │   ├── base.html
+│   │   ├── email_minimal.html
+│   │   ├── partialsheader.html
+│   │   ├── report_dark.html
+│   │   ├── report_light.html
+│   │   └── toc_panel.html
+│   ├── __init__.py
+│   ├── i18n.py
+│   ├── messages_en.py
+│   ├── messages_uk.py
+│   ├── metrics.py
+│   ├── pdf.py
+│   └── renderer.py
+├── templates
+│   ├── __init__.py
+│   └── report.html
+├── tests
+│   ├── intake
+│   │   ├── __init__.py
+│   │   ├── test_adapters.py
+│   │   ├── test_extractor_e2e.py
+│   │   ├── test_loader.py
+│   │   ├── test_matcher.py
+│   │   ├── test_patterns.py
+│   │   ├── test_resolver.py
+│   │   ├── test_splitter.py
+│   │   └── test_text_cleaning.py
+│   ├── legal_rules
+│   │   ├── __init__.py
+│   │   ├── test_basic_rules_property.py
+│   │   ├── test_governing_law_property.py
+│   │   └── test_governing_law_unit.py
+│   ├── report
+│   │   ├── test_renderer_matrix_snapshots
+│   │   │   └── test_renderer_snapshots_light_en_True_.light_en_email.html
+│   │   ├── __init__.py
+│   │   ├── test_i18n.py
+│   │   ├── test_metrics.py
+│   │   ├── test_pdf.py
+│   │   ├── test_renderer_email.py
+│   │   ├── test_renderer_matrix_snapshots.py
+│   │   ├── test_renderer_snapshot.py
+│   │   └── Новый текстовый документ.txt
+│   ├── __init__.py
+│   ├── test_e2e_pipeline.py
+│   ├── test_executor.py
+│   ├── test_interface.py
+│   └── test_pipeline.py
+├── tools
+│   ├── __init__.py
+│   ├── diag_report.py
+│   ├── make_report.py
+│   ├── make_report_from_docx.py
+│   └── run_and_open_report.py
+├── __init__.py
+├── config.py
+├── contract.docx
+├── generate_report.py
+├── main.py
+├── NEW_output_report.html
+├── repo_sanitizer.py
+├── report_template.html
+├── setup.cfg
+└── test_run.py

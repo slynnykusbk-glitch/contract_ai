@@ -1,0 +1,1090 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Contract Analysis Report</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { color: #2E4053; }
+            table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #2E86C1; color: white; }
+            .ok { color: green; font-weight: bold; }
+            .fail { color: red; font-weight: bold; }
+            .warn { color: orange; font-weight: bold; }
+            .code { font-family: monospace; }
+        </style>
+    </head>
+    <body>
+        <h1>📄 Contract Analysis Report</h1>
+        <table>
+            <tr>
+                <th>Clause</th>
+                <th>Status</th>
+                <th>Risk Level</th>
+                <th>Score</th>
+                <th>Category</th>
+                <th>Findings</th>
+                <th>Recommendations</th>
+                <th>Citations</th>
+                <th>Diagnostics</th>
+                <th>Trace</th>
+            </tr>
+            
+            <tr>
+                <td>confidentiality</td>
+                <td class="fail">FAIL</td>
+                <td>high</td>
+                <td>35</td>
+                <td>confidentiality</td>
+                <td>
+                    
+                        <div class="code">CONF-002</div>
+                        <div>Scope of 'confidential information' is not clearly defined.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>Chitty on Contracts, NDA best practices</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-003</div>
+                        <div>No clear survival clause for confidentiality after termination.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>NDA model clauses, Chitty on Contracts – Confidentiality</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-005</div>
+                        <div>No obligation to return or destroy confidential information.</div>
+                        <div><i>high</i></div>
+                        <div>None</div>
+                        <div><small>ICO guidance, GDPR Art. 17 (erasure)</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-006</div>
+                        <div>No restrictions/controls on third-party disclosures.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>Confidentiality agreements – third party access control</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-011</div>
+                        <div>No reference to equitable remedies/injunctions for breach.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>UK equitable remedies, Attorney General v Blake</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-012</div>
+                        <div>No statement that disclosure does not grant licence/rights.</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Chitty on Contracts, IP principles</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-009</div>
+                        <div>No explicit exception for legally required disclosures.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>FCA Handbook, GDPR, FOIA (where applicable)</small></div>
+                        <hr>
+                    
+                </td>
+                <td>
+                    
+                        <li>Add a non-exhaustive list of examples of confidential information.</li>
+                    
+                        <li>Add explicit survival wording for confidentiality obligations.</li>
+                    
+                        <li>Add obligation to return or securely destroy confidential information and certify destruction.</li>
+                    
+                        <li>Limit third-party disclosures to need-to-know basis with equivalent confidentiality obligations.</li>
+                    
+                        <li>Add explicit right to seek injunctive or equitable relief if confidentiality is breached.</li>
+                    
+                        <li>Add statement that disclosure does not grant any licence or IP rights.</li>
+                    
+                        <li>Add exception permitting disclosure required by law, court, or regulator.</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/4-107-6580" target="_blank">https://uk.practicallaw.thomsonreuters.com/4-107-6580</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/2-382-1276" target="_blank">https://uk.practicallaw.thomsonreuters.com/2-382-1276</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/1-503-1806" target="_blank">https://uk.practicallaw.thomsonreuters.com/1-503-1806</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/7-547-1030" target="_blank">https://uk.practicallaw.thomsonreuters.com/7-547-1030</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/8-386-2789" target="_blank">https://uk.practicallaw.thomsonreuters.com/8-386-2789</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/7-503-1391" target="_blank">https://uk.practicallaw.thomsonreuters.com/7-503-1391</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/6-519-2153" target="_blank">https://uk.practicallaw.thomsonreuters.com/6-519-2153</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='No explicit definition/list of what is confidential.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No indication that confidentiality survives termination.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No instruction to return or destroy materials.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No limits or flow-down obligations for third parties.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No explicit right to seek injunctive relief.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No clarification that rights are not granted by disclosure.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No clause allowing legally mandated disclosure.', severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'confidentiality' → Matched rule: analyze → Rule matched for: confidentiality → Confidentiality clause analysis started. → R1 keywords found: ['confidential', 'confidentiality', 'keep confidential', 'confidential information'] → R2 scope keywords: [] → R3 survival present: False → R4 carve-outs present: True → R5 return/destroy present: False → R6 third-party controls present: False → R7 equitable relief present: False → R8 no-licence present: False → R9 legal/regulatory exception present: False</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>definitions</td>
+                <td class="warn">WARN</td>
+                <td>medium</td>
+                <td>80</td>
+                <td>definitions</td>
+                <td>
+                    
+                        <div class="code">DEF_005</div>
+                        <div>Definitions lack clear styling (quotes/capitalization).</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Contract Drafting Standards – Style Conventions</small></div>
+                        <hr>
+                    
+                        <div class="code">DEF_008</div>
+                        <div>Defined terms used only once: Confidentiality, Force Majeure, Governing law, Indemnity, Termination.</div>
+                        <div><i>low</i></div>
+                        <div>Confidentiality, Force Majeure, Governing law, Indemnity, Termination</div>
+                        <div><small>Best Drafting Practice – Effective Definitions</small></div>
+                        <hr>
+                    
+                        <div class="code">DEF_009</div>
+                        <div>No hint of parties’ legal capacity (incorporated/registered).</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Companies Act 2006; Capacity to Contract</small></div>
+                        <hr>
+                    
+                </td>
+                <td>
+                    
+                        <li>Use consistent quote + capitalization for defined terms (e.g., 'Services' means ...).</li>
+                    
+                        <li>Remove redundant one-off definitions or broaden their usage.</li>
+                    
+                        <li>Add a brief capacity statement (e.g., 'a company incorporated in …').</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Chitty on Contracts (34th ed.), Interpretation & Parties" target="_blank">Chitty on Contracts (34th ed.), Interpretation & Parties</a><br>
+                    
+                        <a href="Interpretation Act 1978" target="_blank">Interpretation Act 1978</a><br>
+                    
+                        <a href="Contract Drafting Standards – Defined Terms Formatting" target="_blank">Contract Drafting Standards – Defined Terms Formatting</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'definitions' → Matched rule: analyze → Rule matched for: definitions → Started definitions clause analysis. → presence_found=True → found_named_parties=True → distinct_entities_or_roles=2 → definition_heading=False, explicit_hits=6 → formatting_found=False → typos_count=0 → defined_terms=6, unused=0, single_use=5 → capacity_hint=False → final_status=WARN, score=80</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>force_majeure</td>
+                <td class="ok">OK</td>
+                <td>low</td>
+                <td>100</td>
+                <td>force_majeure</td>
+                <td>
+                    
+                </td>
+                <td>
+                    
+                </td>
+                <td>
+                    
+                        <a href="ICC Force Majeure guidance (neutral drafting principles)" target="_blank">ICC Force Majeure guidance (neutral drafting principles)</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/2-107-7411" target="_blank">https://uk.practicallaw.thomsonreuters.com/2-107-7411</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='events=True', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='notice=True', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='mitig=True', severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'force_majeure' → Matched rule: analyze → Rule matched for: force_majeure → events=True → notice=True → mitig=True → longterm_primary=True</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>governing_law</td>
+                <td class="warn">WARN</td>
+                <td>medium</td>
+                <td>65</td>
+                <td>governing_law</td>
+                <td>
+                    
+                </td>
+                <td>
+                    
+                        <li>Clarify the governing law to a single, specific legal system.</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Chitty on Contracts (34th ed.), Chapter 30 – Governing Law" target="_blank">Chitty on Contracts (34th ed.), Chapter 30 – Governing Law</a><br>
+                    
+                        <a href="Rome I Regulation (EC) No 593/2008" target="_blank">Rome I Regulation (EC) No 593/2008</a><br>
+                    
+                        <a href="UK Private International Law (Implementation of Agreements) Act 2020" target="_blank">UK Private International Law (Implementation of Agreements) Act 2020</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='has_governed=False', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='has_law_word=True', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='has_construed=False', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message="jurisdiction_hits={'england_wales': True, 'scotland': False, 'northern_ireland': False, 'uk_ambiguous': False, 'other_country': False}", severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'governing_law' → Matched rule: analyze → Rule matched for: governing_law → Started governing law analysis. → has_governed=False → has_law_word=True → has_construed=False → jurisdiction_hits={'england_wales': True, 'scotland': False, 'northern_ireland': False, 'uk_ambiguous': False, 'other_country': False}</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>indemnity</td>
+                <td class="warn">WARN</td>
+                <td>medium</td>
+                <td>70</td>
+                <td>indemnity</td>
+                <td>
+                    
+                        <div class="code">IND_NO_3P</div>
+                        <div>No extension to employees/agents/affiliates etc.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>Market practice – flow down protections</small></div>
+                        <hr>
+                    
+                        <div class="code">IND_NO_DEFENCE</div>
+                        <div>No duty to defend or coverage of defence costs stated.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>Market practice – defence cost allocation</small></div>
+                        <hr>
+                    
+                        <div class="code">IND_NO_COOP</div>
+                        <div>No obligation to cooperate/assist in handling indemnity claims.</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Chitty on Contracts – procedural duties</small></div>
+                        <hr>
+                    
+                        <div class="code">IND_NO_CARVEOUT</div>
+                        <div>No carve-outs (e.g., beneficiary’s own negligence/misconduct) — may be unbalanced.</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Chitty on Contracts – balancing indemnities</small></div>
+                        <hr>
+                    
+                </td>
+                <td>
+                    
+                        <li>Consider extending indemnity to employees, agents and subcontractors.</li>
+                    
+                        <li>Clarify duty to defend and responsibility for legal/defence costs.</li>
+                    
+                        <li>Include a cooperation obligation for handling claims.</li>
+                    
+                        <li>Add carve-outs (e.g., no indemnity to the extent caused by the beneficiary’s negligence).</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Unfair Contract Terms Act 1977 (UCTA), ss. 2–3" target="_blank">Unfair Contract Terms Act 1977 (UCTA), ss. 2–3</a><br>
+                    
+                        <a href="Chitty on Contracts (34th ed.), Indemnities" target="_blank">Chitty on Contracts (34th ed.), Indemnities</a><br>
+                    
+                        <a href="PLC Practical Law: Indemnity clauses – drafting" target="_blank">PLC Practical Law: Indemnity clauses – drafting</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='checks_ok=7; high_issue=False; roles=(True/True); scope=True; cap=True', severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'indemnity' → Matched rule: analyze → Rule matched for: indemnity → Indemnity clause analysis started. → has_indemnity=True → roles: indemnifier=True, beneficiary=True → has_triggers=True → has_scope=True → has_third_parties=False → has_cap=True → has_defence=False → has_notice=True → has_coop=False → has_carveout=False</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>jurisdiction</td>
+                <td class="ok">OK</td>
+                <td>low</td>
+                <td>100</td>
+                <td>jurisdiction</td>
+                <td>
+                    
+                </td>
+                <td>
+                    
+                        <li>No action needed.</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Chitty on Contracts (Jurisdiction & Dispute Resolution)" target="_blank">Chitty on Contracts (Jurisdiction & Dispute Resolution)</a><br>
+                    
+                        <a href="Civil Jurisdiction and Judgments Act 1982 (as amended)" target="_blank">Civil Jurisdiction and Judgments Act 1982 (as amended)</a><br>
+                    
+                        <a href="Recast Brussels I (EU) – relevance where applicable" target="_blank">Recast Brussels I (EU) – relevance where applicable</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='has_trigger=True', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='has_forum_or_venue=False', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message="jurisdiction_hits={'england_wales': True, 'scotland': False, 'northern_ireland': False, 'uk_ambiguous': False, 'other_country': False, 'exclusive': True, 'non_exclusive': False}", severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'jurisdiction' → Matched rule: analyze → Rule matched for: jurisdiction → Started jurisdiction analysis. → has_trigger=True → has_forum_or_venue=False → jurisdiction_hits={'england_wales': True, 'scotland': False, 'northern_ireland': False, 'uk_ambiguous': False, 'other_country': False, 'exclusive': True, 'non_exclusive': False}</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>termination</td>
+                <td class="warn">WARN</td>
+                <td>medium</td>
+                <td>60</td>
+                <td>termination</td>
+                <td>
+                    
+                        <div class="code">termination.insolvency.missing</div>
+                        <div>Termination clause is missing insolvency.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small></small></div>
+                        <hr>
+                    
+                </td>
+                <td>
+                    
+                        <li>Ensure the clause specifies notice period, breach trigger, insolvency trigger, and balanced rights.</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Chitty on Contracts (34th ed.), Chapter 24 – Termination" target="_blank">Chitty on Contracts (34th ed.), Chapter 24 – Termination</a><br>
+                    
+                        <a href="Supply of Goods and Services Act 1982" target="_blank">Supply of Goods and Services Act 1982</a><br>
+                    
+                        <a href="UCTA 1977 – Unfair Terms" target="_blank">UCTA 1977 – Unfair Terms</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='termination', message='Termination clause analysis completed.', severity='info', legal_basis=['Chitty on Contracts (34th ed.), Chapter 24 – Termination', 'Supply of Goods and Services Act 1982', 'UCTA 1977 – Unfair Terms'])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'termination' → Matched rule: analyze → Rule matched for: termination → 🔍 Started termination clause analysis → ✅ Clause text present. → ✅ All required keywords found: ['terminate', 'termination', 'notice', 'breach'] → ✅ Notice period present. → ✅ Breach trigger present. → ⚠️ Missing insolvency. → 📚 Added legal references.</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>definitions and interpretation</td>
+                <td class="warn">WARN</td>
+                <td>medium</td>
+                <td>80</td>
+                <td>definitions</td>
+                <td>
+                    
+                        <div class="code">DEF_005</div>
+                        <div>Definitions lack clear styling (quotes/capitalization).</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Contract Drafting Standards – Style Conventions</small></div>
+                        <hr>
+                    
+                        <div class="code">DEF_008</div>
+                        <div>Defined terms used only once: Confidentiality, Force Majeure, Governing law, Indemnity, Termination.</div>
+                        <div><i>low</i></div>
+                        <div>Confidentiality, Force Majeure, Governing law, Indemnity, Termination</div>
+                        <div><small>Best Drafting Practice – Effective Definitions</small></div>
+                        <hr>
+                    
+                        <div class="code">DEF_009</div>
+                        <div>No hint of parties’ legal capacity (incorporated/registered).</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Companies Act 2006; Capacity to Contract</small></div>
+                        <hr>
+                    
+                </td>
+                <td>
+                    
+                        <li>Use consistent quote + capitalization for defined terms (e.g., 'Services' means ...).</li>
+                    
+                        <li>Remove redundant one-off definitions or broaden their usage.</li>
+                    
+                        <li>Add a brief capacity statement (e.g., 'a company incorporated in …').</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Chitty on Contracts (34th ed.), Interpretation & Parties" target="_blank">Chitty on Contracts (34th ed.), Interpretation & Parties</a><br>
+                    
+                        <a href="Interpretation Act 1978" target="_blank">Interpretation Act 1978</a><br>
+                    
+                        <a href="Contract Drafting Standards – Defined Terms Formatting" target="_blank">Contract Drafting Standards – Defined Terms Formatting</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'definitions and interpretation' → Matched rule: analyze → Rule matched for: definitions and interpretation → Started definitions clause analysis. → presence_found=True → found_named_parties=True → distinct_entities_or_roles=2 → definition_heading=False, explicit_hits=6 → formatting_found=False → typos_count=0 → defined_terms=6, unused=0, single_use=5 → capacity_hint=False → final_status=WARN, score=80</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>interpretation</td>
+                <td class="warn">WARN</td>
+                <td>medium</td>
+                <td>80</td>
+                <td>definitions</td>
+                <td>
+                    
+                        <div class="code">DEF_005</div>
+                        <div>Definitions lack clear styling (quotes/capitalization).</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Contract Drafting Standards – Style Conventions</small></div>
+                        <hr>
+                    
+                        <div class="code">DEF_008</div>
+                        <div>Defined terms used only once: Confidentiality, Force Majeure, Governing law, Indemnity, Termination.</div>
+                        <div><i>low</i></div>
+                        <div>Confidentiality, Force Majeure, Governing law, Indemnity, Termination</div>
+                        <div><small>Best Drafting Practice – Effective Definitions</small></div>
+                        <hr>
+                    
+                        <div class="code">DEF_009</div>
+                        <div>No hint of parties’ legal capacity (incorporated/registered).</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Companies Act 2006; Capacity to Contract</small></div>
+                        <hr>
+                    
+                </td>
+                <td>
+                    
+                        <li>Use consistent quote + capitalization for defined terms (e.g., 'Services' means ...).</li>
+                    
+                        <li>Remove redundant one-off definitions or broaden their usage.</li>
+                    
+                        <li>Add a brief capacity statement (e.g., 'a company incorporated in …').</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Chitty on Contracts (34th ed.), Interpretation & Parties" target="_blank">Chitty on Contracts (34th ed.), Interpretation & Parties</a><br>
+                    
+                        <a href="Interpretation Act 1978" target="_blank">Interpretation Act 1978</a><br>
+                    
+                        <a href="Contract Drafting Standards – Defined Terms Formatting" target="_blank">Contract Drafting Standards – Defined Terms Formatting</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'interpretation' → Matched rule: analyze → Rule matched for: interpretation → Started definitions clause analysis. → presence_found=True → found_named_parties=True → distinct_entities_or_roles=2 → definition_heading=False, explicit_hits=6 → formatting_found=False → typos_count=0 → defined_terms=6, unused=0, single_use=5 → capacity_hint=False → final_status=WARN, score=80</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>term and termination</td>
+                <td class="warn">WARN</td>
+                <td>medium</td>
+                <td>60</td>
+                <td>termination</td>
+                <td>
+                    
+                        <div class="code">termination.insolvency.missing</div>
+                        <div>Termination clause is missing insolvency.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small></small></div>
+                        <hr>
+                    
+                </td>
+                <td>
+                    
+                        <li>Ensure the clause specifies notice period, breach trigger, insolvency trigger, and balanced rights.</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Chitty on Contracts (34th ed.), Chapter 24 – Termination" target="_blank">Chitty on Contracts (34th ed.), Chapter 24 – Termination</a><br>
+                    
+                        <a href="Supply of Goods and Services Act 1982" target="_blank">Supply of Goods and Services Act 1982</a><br>
+                    
+                        <a href="UCTA 1977 – Unfair Terms" target="_blank">UCTA 1977 – Unfair Terms</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='termination', message='Termination clause analysis completed.', severity='info', legal_basis=['Chitty on Contracts (34th ed.), Chapter 24 – Termination', 'Supply of Goods and Services Act 1982', 'UCTA 1977 – Unfair Terms'])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'term and termination' → Matched rule: analyze → Rule matched for: term and termination → 🔍 Started termination clause analysis → ✅ Clause text present. → ✅ All required keywords found: ['terminate', 'termination', 'notice', 'breach'] → ✅ Notice period present. → ✅ Breach trigger present. → ⚠️ Missing insolvency. → 📚 Added legal references.</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>termination and suspension</td>
+                <td class="warn">WARN</td>
+                <td>medium</td>
+                <td>60</td>
+                <td>termination</td>
+                <td>
+                    
+                        <div class="code">termination.insolvency.missing</div>
+                        <div>Termination clause is missing insolvency.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small></small></div>
+                        <hr>
+                    
+                </td>
+                <td>
+                    
+                        <li>Ensure the clause specifies notice period, breach trigger, insolvency trigger, and balanced rights.</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Chitty on Contracts (34th ed.), Chapter 24 – Termination" target="_blank">Chitty on Contracts (34th ed.), Chapter 24 – Termination</a><br>
+                    
+                        <a href="Supply of Goods and Services Act 1982" target="_blank">Supply of Goods and Services Act 1982</a><br>
+                    
+                        <a href="UCTA 1977 – Unfair Terms" target="_blank">UCTA 1977 – Unfair Terms</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='termination', message='Termination clause analysis completed.', severity='info', legal_basis=['Chitty on Contracts (34th ed.), Chapter 24 – Termination', 'Supply of Goods and Services Act 1982', 'UCTA 1977 – Unfair Terms'])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'termination and suspension' → Matched rule: analyze → Rule matched for: termination and suspension → 🔍 Started termination clause analysis → ✅ Clause text present. → ✅ All required keywords found: ['terminate', 'termination', 'notice', 'breach'] → ✅ Notice period present. → ✅ Breach trigger present. → ⚠️ Missing insolvency. → 📚 Added legal references.</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>governing law and jurisdiction</td>
+                <td class="warn">WARN</td>
+                <td>medium</td>
+                <td>65</td>
+                <td>governing_law</td>
+                <td>
+                    
+                </td>
+                <td>
+                    
+                        <li>Clarify the governing law to a single, specific legal system.</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Chitty on Contracts (34th ed.), Chapter 30 – Governing Law" target="_blank">Chitty on Contracts (34th ed.), Chapter 30 – Governing Law</a><br>
+                    
+                        <a href="Rome I Regulation (EC) No 593/2008" target="_blank">Rome I Regulation (EC) No 593/2008</a><br>
+                    
+                        <a href="UK Private International Law (Implementation of Agreements) Act 2020" target="_blank">UK Private International Law (Implementation of Agreements) Act 2020</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='has_governed=False', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='has_law_word=True', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='has_construed=False', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message="jurisdiction_hits={'england_wales': True, 'scotland': False, 'northern_ireland': False, 'uk_ambiguous': False, 'other_country': False}", severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'governing law and jurisdiction' → Matched rule: analyze → Rule matched for: governing law and jurisdiction → Started governing law analysis. → has_governed=False → has_law_word=True → has_construed=False → jurisdiction_hits={'england_wales': True, 'scotland': False, 'northern_ireland': False, 'uk_ambiguous': False, 'other_country': False}</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>jurisdiction and governing law</td>
+                <td class="warn">WARN</td>
+                <td>medium</td>
+                <td>65</td>
+                <td>governing_law</td>
+                <td>
+                    
+                </td>
+                <td>
+                    
+                        <li>Clarify the governing law to a single, specific legal system.</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Chitty on Contracts (34th ed.), Chapter 30 – Governing Law" target="_blank">Chitty on Contracts (34th ed.), Chapter 30 – Governing Law</a><br>
+                    
+                        <a href="Rome I Regulation (EC) No 593/2008" target="_blank">Rome I Regulation (EC) No 593/2008</a><br>
+                    
+                        <a href="UK Private International Law (Implementation of Agreements) Act 2020" target="_blank">UK Private International Law (Implementation of Agreements) Act 2020</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='has_governed=False', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='has_law_word=True', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='has_construed=False', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message="jurisdiction_hits={'england_wales': True, 'scotland': False, 'northern_ireland': False, 'uk_ambiguous': False, 'other_country': False}", severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'jurisdiction and governing law' → Matched rule: analyze → Rule matched for: jurisdiction and governing law → Started governing law analysis. → has_governed=False → has_law_word=True → has_construed=False → jurisdiction_hits={'england_wales': True, 'scotland': False, 'northern_ireland': False, 'uk_ambiguous': False, 'other_country': False}</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>choice of law</td>
+                <td class="warn">WARN</td>
+                <td>medium</td>
+                <td>65</td>
+                <td>governing_law</td>
+                <td>
+                    
+                </td>
+                <td>
+                    
+                        <li>Clarify the governing law to a single, specific legal system.</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Chitty on Contracts (34th ed.), Chapter 30 – Governing Law" target="_blank">Chitty on Contracts (34th ed.), Chapter 30 – Governing Law</a><br>
+                    
+                        <a href="Rome I Regulation (EC) No 593/2008" target="_blank">Rome I Regulation (EC) No 593/2008</a><br>
+                    
+                        <a href="UK Private International Law (Implementation of Agreements) Act 2020" target="_blank">UK Private International Law (Implementation of Agreements) Act 2020</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='has_governed=False', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='has_law_word=True', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='has_construed=False', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message="jurisdiction_hits={'england_wales': True, 'scotland': False, 'northern_ireland': False, 'uk_ambiguous': False, 'other_country': False}", severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'choice of law' → Matched rule: analyze → Rule matched for: choice of law → Started governing law analysis. → has_governed=False → has_law_word=True → has_construed=False → jurisdiction_hits={'england_wales': True, 'scotland': False, 'northern_ireland': False, 'uk_ambiguous': False, 'other_country': False}</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>venue</td>
+                <td class="ok">OK</td>
+                <td>low</td>
+                <td>100</td>
+                <td>jurisdiction</td>
+                <td>
+                    
+                </td>
+                <td>
+                    
+                        <li>No action needed.</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Chitty on Contracts (Jurisdiction & Dispute Resolution)" target="_blank">Chitty on Contracts (Jurisdiction & Dispute Resolution)</a><br>
+                    
+                        <a href="Civil Jurisdiction and Judgments Act 1982 (as amended)" target="_blank">Civil Jurisdiction and Judgments Act 1982 (as amended)</a><br>
+                    
+                        <a href="Recast Brussels I (EU) – relevance where applicable" target="_blank">Recast Brussels I (EU) – relevance where applicable</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='has_trigger=True', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='has_forum_or_venue=False', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message="jurisdiction_hits={'england_wales': True, 'scotland': False, 'northern_ireland': False, 'uk_ambiguous': False, 'other_country': False, 'exclusive': True, 'non_exclusive': False}", severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'venue' → Matched rule: analyze → Rule matched for: venue → Started jurisdiction analysis. → has_trigger=True → has_forum_or_venue=False → jurisdiction_hits={'england_wales': True, 'scotland': False, 'northern_ireland': False, 'uk_ambiguous': False, 'other_country': False, 'exclusive': True, 'non_exclusive': False}</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>confidential information</td>
+                <td class="fail">FAIL</td>
+                <td>high</td>
+                <td>35</td>
+                <td>confidentiality</td>
+                <td>
+                    
+                        <div class="code">CONF-002</div>
+                        <div>Scope of 'confidential information' is not clearly defined.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>Chitty on Contracts, NDA best practices</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-003</div>
+                        <div>No clear survival clause for confidentiality after termination.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>NDA model clauses, Chitty on Contracts – Confidentiality</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-005</div>
+                        <div>No obligation to return or destroy confidential information.</div>
+                        <div><i>high</i></div>
+                        <div>None</div>
+                        <div><small>ICO guidance, GDPR Art. 17 (erasure)</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-006</div>
+                        <div>No restrictions/controls on third-party disclosures.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>Confidentiality agreements – third party access control</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-011</div>
+                        <div>No reference to equitable remedies/injunctions for breach.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>UK equitable remedies, Attorney General v Blake</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-012</div>
+                        <div>No statement that disclosure does not grant licence/rights.</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Chitty on Contracts, IP principles</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-009</div>
+                        <div>No explicit exception for legally required disclosures.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>FCA Handbook, GDPR, FOIA (where applicable)</small></div>
+                        <hr>
+                    
+                </td>
+                <td>
+                    
+                        <li>Add a non-exhaustive list of examples of confidential information.</li>
+                    
+                        <li>Add explicit survival wording for confidentiality obligations.</li>
+                    
+                        <li>Add obligation to return or securely destroy confidential information and certify destruction.</li>
+                    
+                        <li>Limit third-party disclosures to need-to-know basis with equivalent confidentiality obligations.</li>
+                    
+                        <li>Add explicit right to seek injunctive or equitable relief if confidentiality is breached.</li>
+                    
+                        <li>Add statement that disclosure does not grant any licence or IP rights.</li>
+                    
+                        <li>Add exception permitting disclosure required by law, court, or regulator.</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/4-107-6580" target="_blank">https://uk.practicallaw.thomsonreuters.com/4-107-6580</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/2-382-1276" target="_blank">https://uk.practicallaw.thomsonreuters.com/2-382-1276</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/1-503-1806" target="_blank">https://uk.practicallaw.thomsonreuters.com/1-503-1806</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/7-547-1030" target="_blank">https://uk.practicallaw.thomsonreuters.com/7-547-1030</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/8-386-2789" target="_blank">https://uk.practicallaw.thomsonreuters.com/8-386-2789</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/7-503-1391" target="_blank">https://uk.practicallaw.thomsonreuters.com/7-503-1391</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/6-519-2153" target="_blank">https://uk.practicallaw.thomsonreuters.com/6-519-2153</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='No explicit definition/list of what is confidential.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No indication that confidentiality survives termination.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No instruction to return or destroy materials.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No limits or flow-down obligations for third parties.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No explicit right to seek injunctive relief.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No clarification that rights are not granted by disclosure.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No clause allowing legally mandated disclosure.', severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'confidential information' → Matched rule: analyze → Rule matched for: confidential information → Confidentiality clause analysis started. → R1 keywords found: ['confidential', 'confidentiality', 'keep confidential', 'confidential information'] → R2 scope keywords: [] → R3 survival present: False → R4 carve-outs present: True → R5 return/destroy present: False → R6 third-party controls present: False → R7 equitable relief present: False → R8 no-licence present: False → R9 legal/regulatory exception present: False</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>non-disclosure agreement</td>
+                <td class="fail">FAIL</td>
+                <td>high</td>
+                <td>35</td>
+                <td>confidentiality</td>
+                <td>
+                    
+                        <div class="code">CONF-002</div>
+                        <div>Scope of 'confidential information' is not clearly defined.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>Chitty on Contracts, NDA best practices</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-003</div>
+                        <div>No clear survival clause for confidentiality after termination.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>NDA model clauses, Chitty on Contracts – Confidentiality</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-005</div>
+                        <div>No obligation to return or destroy confidential information.</div>
+                        <div><i>high</i></div>
+                        <div>None</div>
+                        <div><small>ICO guidance, GDPR Art. 17 (erasure)</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-006</div>
+                        <div>No restrictions/controls on third-party disclosures.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>Confidentiality agreements – third party access control</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-011</div>
+                        <div>No reference to equitable remedies/injunctions for breach.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>UK equitable remedies, Attorney General v Blake</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-012</div>
+                        <div>No statement that disclosure does not grant licence/rights.</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Chitty on Contracts, IP principles</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-009</div>
+                        <div>No explicit exception for legally required disclosures.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>FCA Handbook, GDPR, FOIA (where applicable)</small></div>
+                        <hr>
+                    
+                </td>
+                <td>
+                    
+                        <li>Add a non-exhaustive list of examples of confidential information.</li>
+                    
+                        <li>Add explicit survival wording for confidentiality obligations.</li>
+                    
+                        <li>Add obligation to return or securely destroy confidential information and certify destruction.</li>
+                    
+                        <li>Limit third-party disclosures to need-to-know basis with equivalent confidentiality obligations.</li>
+                    
+                        <li>Add explicit right to seek injunctive or equitable relief if confidentiality is breached.</li>
+                    
+                        <li>Add statement that disclosure does not grant any licence or IP rights.</li>
+                    
+                        <li>Add exception permitting disclosure required by law, court, or regulator.</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/4-107-6580" target="_blank">https://uk.practicallaw.thomsonreuters.com/4-107-6580</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/2-382-1276" target="_blank">https://uk.practicallaw.thomsonreuters.com/2-382-1276</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/1-503-1806" target="_blank">https://uk.practicallaw.thomsonreuters.com/1-503-1806</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/7-547-1030" target="_blank">https://uk.practicallaw.thomsonreuters.com/7-547-1030</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/8-386-2789" target="_blank">https://uk.practicallaw.thomsonreuters.com/8-386-2789</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/7-503-1391" target="_blank">https://uk.practicallaw.thomsonreuters.com/7-503-1391</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/6-519-2153" target="_blank">https://uk.practicallaw.thomsonreuters.com/6-519-2153</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='No explicit definition/list of what is confidential.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No indication that confidentiality survives termination.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No instruction to return or destroy materials.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No limits or flow-down obligations for third parties.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No explicit right to seek injunctive relief.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No clarification that rights are not granted by disclosure.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No clause allowing legally mandated disclosure.', severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'non-disclosure agreement' → Matched rule: analyze → Rule matched for: non-disclosure agreement → Confidentiality clause analysis started. → R1 keywords found: ['confidential', 'confidentiality', 'keep confidential', 'confidential information'] → R2 scope keywords: [] → R3 survival present: False → R4 carve-outs present: True → R5 return/destroy present: False → R6 third-party controls present: False → R7 equitable relief present: False → R8 no-licence present: False → R9 legal/regulatory exception present: False</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>nda</td>
+                <td class="fail">FAIL</td>
+                <td>high</td>
+                <td>35</td>
+                <td>confidentiality</td>
+                <td>
+                    
+                        <div class="code">CONF-002</div>
+                        <div>Scope of 'confidential information' is not clearly defined.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>Chitty on Contracts, NDA best practices</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-003</div>
+                        <div>No clear survival clause for confidentiality after termination.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>NDA model clauses, Chitty on Contracts – Confidentiality</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-005</div>
+                        <div>No obligation to return or destroy confidential information.</div>
+                        <div><i>high</i></div>
+                        <div>None</div>
+                        <div><small>ICO guidance, GDPR Art. 17 (erasure)</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-006</div>
+                        <div>No restrictions/controls on third-party disclosures.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>Confidentiality agreements – third party access control</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-011</div>
+                        <div>No reference to equitable remedies/injunctions for breach.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>UK equitable remedies, Attorney General v Blake</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-012</div>
+                        <div>No statement that disclosure does not grant licence/rights.</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Chitty on Contracts, IP principles</small></div>
+                        <hr>
+                    
+                        <div class="code">CONF-009</div>
+                        <div>No explicit exception for legally required disclosures.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>FCA Handbook, GDPR, FOIA (where applicable)</small></div>
+                        <hr>
+                    
+                </td>
+                <td>
+                    
+                        <li>Add a non-exhaustive list of examples of confidential information.</li>
+                    
+                        <li>Add explicit survival wording for confidentiality obligations.</li>
+                    
+                        <li>Add obligation to return or securely destroy confidential information and certify destruction.</li>
+                    
+                        <li>Limit third-party disclosures to need-to-know basis with equivalent confidentiality obligations.</li>
+                    
+                        <li>Add explicit right to seek injunctive or equitable relief if confidentiality is breached.</li>
+                    
+                        <li>Add statement that disclosure does not grant any licence or IP rights.</li>
+                    
+                        <li>Add exception permitting disclosure required by law, court, or regulator.</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/4-107-6580" target="_blank">https://uk.practicallaw.thomsonreuters.com/4-107-6580</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/2-382-1276" target="_blank">https://uk.practicallaw.thomsonreuters.com/2-382-1276</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/1-503-1806" target="_blank">https://uk.practicallaw.thomsonreuters.com/1-503-1806</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/7-547-1030" target="_blank">https://uk.practicallaw.thomsonreuters.com/7-547-1030</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/8-386-2789" target="_blank">https://uk.practicallaw.thomsonreuters.com/8-386-2789</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/7-503-1391" target="_blank">https://uk.practicallaw.thomsonreuters.com/7-503-1391</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/6-519-2153" target="_blank">https://uk.practicallaw.thomsonreuters.com/6-519-2153</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='No explicit definition/list of what is confidential.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No indication that confidentiality survives termination.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No instruction to return or destroy materials.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No limits or flow-down obligations for third parties.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No explicit right to seek injunctive relief.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No clarification that rights are not granted by disclosure.', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='No clause allowing legally mandated disclosure.', severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'nda' → Matched rule: analyze → Rule matched for: nda → Confidentiality clause analysis started. → R1 keywords found: ['confidential', 'confidentiality', 'keep confidential', 'confidential information'] → R2 scope keywords: [] → R3 survival present: False → R4 carve-outs present: True → R5 return/destroy present: False → R6 third-party controls present: False → R7 equitable relief present: False → R8 no-licence present: False → R9 legal/regulatory exception present: False</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>indemnities</td>
+                <td class="warn">WARN</td>
+                <td>medium</td>
+                <td>70</td>
+                <td>indemnity</td>
+                <td>
+                    
+                        <div class="code">IND_NO_3P</div>
+                        <div>No extension to employees/agents/affiliates etc.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>Market practice – flow down protections</small></div>
+                        <hr>
+                    
+                        <div class="code">IND_NO_DEFENCE</div>
+                        <div>No duty to defend or coverage of defence costs stated.</div>
+                        <div><i>medium</i></div>
+                        <div>None</div>
+                        <div><small>Market practice – defence cost allocation</small></div>
+                        <hr>
+                    
+                        <div class="code">IND_NO_COOP</div>
+                        <div>No obligation to cooperate/assist in handling indemnity claims.</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Chitty on Contracts – procedural duties</small></div>
+                        <hr>
+                    
+                        <div class="code">IND_NO_CARVEOUT</div>
+                        <div>No carve-outs (e.g., beneficiary’s own negligence/misconduct) — may be unbalanced.</div>
+                        <div><i>low</i></div>
+                        <div>None</div>
+                        <div><small>Chitty on Contracts – balancing indemnities</small></div>
+                        <hr>
+                    
+                </td>
+                <td>
+                    
+                        <li>Consider extending indemnity to employees, agents and subcontractors.</li>
+                    
+                        <li>Clarify duty to defend and responsibility for legal/defence costs.</li>
+                    
+                        <li>Include a cooperation obligation for handling claims.</li>
+                    
+                        <li>Add carve-outs (e.g., no indemnity to the extent caused by the beneficiary’s negligence).</li>
+                    
+                </td>
+                <td>
+                    
+                        <a href="Unfair Contract Terms Act 1977 (UCTA), ss. 2–3" target="_blank">Unfair Contract Terms Act 1977 (UCTA), ss. 2–3</a><br>
+                    
+                        <a href="Chitty on Contracts (34th ed.), Indemnities" target="_blank">Chitty on Contracts (34th ed.), Indemnities</a><br>
+                    
+                        <a href="PLC Practical Law: Indemnity clauses – drafting" target="_blank">PLC Practical Law: Indemnity clauses – drafting</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='checks_ok=7; high_issue=False; roles=(True/True); scope=True; cap=True', severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'indemnities' → Matched rule: analyze → Rule matched for: indemnities → Indemnity clause analysis started. → has_indemnity=True → roles: indemnifier=True, beneficiary=True → has_triggers=True → has_scope=True → has_third_parties=False → has_cap=True → has_defence=False → has_notice=True → has_coop=False → has_carveout=False</small>
+                </td>
+            </tr>
+            
+            <tr>
+                <td>force-majeure</td>
+                <td class="ok">OK</td>
+                <td>low</td>
+                <td>100</td>
+                <td>force_majeure</td>
+                <td>
+                    
+                </td>
+                <td>
+                    
+                </td>
+                <td>
+                    
+                        <a href="ICC Force Majeure guidance (neutral drafting principles)" target="_blank">ICC Force Majeure guidance (neutral drafting principles)</a><br>
+                    
+                        <a href="https://uk.practicallaw.thomsonreuters.com/2-107-7411" target="_blank">https://uk.practicallaw.thomsonreuters.com/2-107-7411</a><br>
+                    
+                </td>
+                <td>
+                    <pre>[Diagnostic(rule='ENGINE', message='events=True', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='notice=True', severity='info', legal_basis=[]), Diagnostic(rule='ENGINE', message='mitig=True', severity='info', legal_basis=[])]</pre>
+                </td>
+                <td>
+                    <small>analyze(): clause_type = 'force-majeure' → Matched rule: analyze → Rule matched for: force-majeure → events=True → notice=True → mitig=True → longterm_primary=True</small>
+                </td>
+            </tr>
+            
+        </table>
+    </body>
+    </html>
+    

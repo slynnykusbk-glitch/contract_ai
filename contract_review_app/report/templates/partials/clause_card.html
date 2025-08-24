@@ -1,0 +1,61 @@
+{# Очікуємо у контексті змінну c = item з _to_view_model #}
+{% set status = (c.status or "").upper() %}
+{% set badge_class = "badge" %}
+{% if status == "OK" %}
+  {% set badge_class = "badge badge-ok" %}
+{% elif status == "WARN" %}
+  {% set badge_class = "badge badge-warn" %}
+{% elif status == "FAIL" %}
+  {% set badge_class = "badge badge-fail" %}
+{% endif %}
+
+<article id="clause-{{ c.id }}" class="card">
+  <header style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+    <h3>{{ c.title }}</h3>
+    <span class="{{ badge_class }}">{{ status }}</span>
+  </header>
+  <div class="meta">
+    {{ t("clause.type") if t else "Type" }}: {{ c.type }}
+    {% if c.score is not none %} • {{ t("clause.score") if t else "Score" }}: {{ c.score }}{% endif %}
+    {% if c.risk_level %} • {{ t("clause.risk_level") if t else "Risk" }}: {{ c.risk_level }}{% endif %}
+    {% if c.severity %} • {{ t("clause.severity") if t else "Severity" }}: {{ c.severity }}{% endif %}
+  </div>
+
+  {% if c.text %}
+    <div style="white-space:pre-wrap; margin-bottom:8px;">{{ c.text }}</div>
+  {% endif %}
+
+  {% if c.problems and c.problems|length > 0 %}
+    <div style="margin-bottom:6px;">
+      <strong>{{ t("clause.issues") if t else "Issues" }}:</strong>
+      <ul style="margin:6px 0 0 18px;">
+        {% for p in c.problems %}<li>{{ p }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if c.recommendations and c.recommendations|length > 0 %}
+    <div style="margin-bottom:6px;">
+      <strong>{{ t("clause.recommendations") if t else "Recommendations" }}:</strong>
+      <ul style="margin:6px 0 0 18px;">
+        {% for r in c.recommendations %}<li>{{ r }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if c.law_reference and c.law_reference|length > 0 %}
+    <div class="muted">
+      <strong>{{ t("clause.law_refs") if t else "Law references" }}:</strong>
+      <ul style="margin:6px 0 0 18px;">
+        {% for ref in c.law_reference %}<li>{{ ref }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+{% if c.anchors and c.anchors.source_id %}
+  <div style="margin-top: 8px;">
+    <a href="#{{ c.anchors.source_id }}">
+      {{ t("clause.back_to_original") if t else "Back to original" }}
+    </a>
+  </div>
+{% endif %}
+</article>

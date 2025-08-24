@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+    <title>Contract AI — React Draft Panel (Dev)</title>
+    <meta name="referrer" content="no-referrer" />
+    <style>
+      html, body { margin: 0; padding: 0; }
+      #root { min-height: 100vh; }
+    </style>
+    <script>
+      // Optional: seed backend for dev parity with the Word panel
+      (function(){
+        try {
+          var k = "contract_ai_backend";
+          if (!localStorage.getItem(k)) {
+            localStorage.setItem(k, "http://127.0.0.1:9000");
+          }
+        } catch (_) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Vite will load TSX directly in dev -->
+    <script type="module" src="/draft_panel/index.tsx"></script>
+  </body>
+</html>

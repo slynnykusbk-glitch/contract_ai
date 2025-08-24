@@ -1,0 +1,17 @@
+[INFO] Starting STEP3 at 13.08.2025 17:59:02,36 
+[INFO] Script dir: C:\Users\Ludmila\contract_ai\ 
+[INFO] Log file:   "C:\Users\Ludmila\contract_ai\logs\step3_20250813-175902.log" 
+
+C:\Users\Ludmila\contract_ai\STEP3_OPEN_WORD.ps1:110 знак:122
++ ... Shared Folder в┼' select 'Contract AI в?" Draft Assistant'." DarkGray
++                                                              ~~~~~~~~~~~~
+В строке отсутствует завершающий символ: '.
+C:\Users\Ludmila\contract_ai\STEP3_OPEN_WORD.ps1:107 знак:8
++ } else {
++        ~
+Отсутствует закрывающий знак "}" в блоке операторов или определении типа.
+    + CategoryInfo          : ParserError: (:) [], ParentContainsErrorRecordException
+    + FullyQualifiedErrorId : TerminatorExpectedAtEndOfString
+ 
+
+[INFO] Exit code: 1 

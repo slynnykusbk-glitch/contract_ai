@@ -1,0 +1,264 @@
+<!-- word_addin_dev/panel_selftest.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Contract AI — Panel Self-Test (Doctor)</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root{
+      --bg:#0f1318; --panel:#0b0f14; --muted:#9ca3af; --text:#e5e7eb; --border:#1f2937; --border2:#374151;
+      --mono: ui-monospace,SFMono-Regular,Consolas,Menlo,monospace;
+      --ui: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;
+      --ok:#10b981; --err:#f87171; --ink:#d1d5db;
+    }
+    html,body{ height:100%; }
+    body { background:var(--bg); color:var(--text); font-family:var(--ui); margin:0; }
+    .wrap { max-width:1100px; margin:28px auto; padding:0 16px; }
+    h1 { font-size:22px; margin:0 0 12px; display:flex; align-items:center; gap:10px; }
+    .muted { color:var(--muted); font-weight:500; }
+    .badge { display:inline-block; padding:3px 8px; border-radius:999px; border:1px solid var(--border2); color:var(--muted); font-size:12px; }
+    .row { display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+    input[type=text]{ width:420px; background:#111827; color:var(--text); border:1px solid var(--border2); border-radius:6px; padding:8px 10px; }
+    button { background:#111827; color:var(--text); border:1px solid var(--border2); border-radius:6px; padding:8px 10px; cursor:pointer; }
+    button:hover { background:#0b1220; }
+    .card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px; margin-top:14px; }
+    .card h3 { margin:0 0 8px; font-size:14px; color:var(--muted);}
+    .pre { white-space:pre-wrap; word-break:break-word; font-family:var(--mono); font-size:12px;
+           background:#0a0d12; border:1px solid var(--border); border-radius:6px; padding:8px; color:var(--ink); min-height:48px;}
+    .mono{ font-family:var(--mono); }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { border-bottom:1px solid var(--border); padding:6px 8px; text-align:left; }
+    th { color:var(--muted); font-weight:600; }
+    tr:last-child td { border-bottom:none; }
+    .ok { color:var(--ok); }
+    .err{ color:var(--err); }
+    .pill{ display:inline-block; padding:2px 6px; border-radius:999px; border:1px solid var(--border2); font-size:12px; }
+    .btns { display:flex; flex-wrap:wrap; gap:8px; }
+    .small { font-size:12px; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Contract AI — <span class="muted">Panel Self-Test</span> <span class="badge">Doctor</span></h1>
+
+    <div class="row">
+      <label for="backendInput">Backend URL:</label>
+      <input id="backendInput" type="text" value="http://127.0.0.1:9000" class="mono" />
+      <button id="saveBtn">Save</button>
+      <button id="runAllBtn">Run All</button>
+      <span class="small">Saved in localStorage</span>
+    </div>
+
+    <div class="card">
+      <h3>Tests</h3>
+      <div class="btns" style="margin-bottom:8px;">
+        <button id="btnHealth">GET /health</button>
+        <button id="btnAnalyze">POST /api/analyze</button>
+        <button id="btnDraft">POST /api/gpt/draft</button>
+        <button id="btnSuggest">POST /api/suggest_edits</button>
+        <button id="btnQA">POST /api/qa-recheck</button>
+        <button id="btnTrace">GET /api/trace/{cid}</button>
+      </div>
+      <div class="small">CID used for requests: <span id="cidLbl" class="mono pill"></span></div>
+      <div class="small">Last response CID (from headers): <span id="lastCidLbl" class="mono pill"></span></div>
+      <div style="overflow:auto;">
+        <table id="statusTbl">
+          <thead>
+            <tr>
+              <th style="width:160px;">Test</th>
+              <th>HTTP</th>
+              <th>x-cid</th>
+              <th>x-cache</th>
+              <th>x-schema-version</th>
+              <th>latency</th>
+              <th>status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="row-health"><td>GET /health</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr id="row-analyze"><td>POST /api/analyze</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr id="row-draft"><td>POST /api/gpt/draft</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr id="row-suggest"><td>POST /api/suggest_edits</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr id="row-qa"><td>POST /api/qa-recheck</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr id="row-trace"><td>GET /api/trace/{cid}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Last Response JSON</h3>
+      <div id="resp" class="pre"></div>
+    </div>
+
+    <div class="card">
+      <h3>Trace Payload</h3>
+      <div id="trace" class="pre"></div>
+    </div>
+
+    <p class="small muted">Tip: For local dev, ensure the backend sends headers: x-cid, x-cache, x-schema-version="1.0".</p>
+  </div>
+
+  <script>
+    // ---------------------- helpers ----------------------
+    const LS_KEY = "doctor:backendUrl";
+    let clientCid = genCid();
+    let lastCid = ""; // from response headers
+
+    function genCid(){ return "cid-" + Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
+
+    function normBase(v){
+      v = (v || "").trim();
+      if (!v) return "";
+      if (!/^https?:\/\//i.test(v)) v = "http://" + v;
+      v = v.replace(/\/+$/,"");
+      return v;
+    }
+    function saveBase(){ try{ localStorage.setItem(LS_KEY, document.getElementById("backendInput").value.trim()); }catch{} }
+    function loadBase(){
+      let v = localStorage.getItem(LS_KEY) || document.getElementById("backendInput").value || "http://127.0.0.1:9000";
+      v = normBase(v);
+      document.getElementById("backendInput").value = v || "http://127.0.0.1:9000";
+      return v;
+    }
+    function setCidLabels(){
+      document.getElementById("cidLbl").textContent = clientCid;
+      document.getElementById("lastCidLbl").textContent = lastCid || "(none yet)";
+    }
+    function setJSON(elId, obj){
+      const el = document.getElementById(elId);
+      try { el.textContent = JSON.stringify(obj, null, 2); }
+      catch { el.textContent = String(obj); }
+    }
+    function setStatusRow(rowId, {code, xcid, xcache, xschema, latencyMs, ok}){
+      const tr = document.getElementById(rowId);
+      const cells = tr.getElementsByTagName('td');
+      const latencyText = (latencyMs != null ? `${latencyMs} ms` : (xcid ? "" : ""));
+      cells[1].textContent = code ?? "";
+      cells[2].textContent = xcid ?? "";
+      cells[3].textContent = xcache ?? "";
+      cells[4].textContent = xschema ?? "";
+      cells[5].textContent = latencyText;
+      cells[6].innerHTML = ok ? '<span class="ok">ok</span>' : '<span class="err">error</span>';
+    }
+
+    async function callEndpoint({name, method, path, body, dynamicPathFn}) {
+      const base = normBase(document.getElementById("backendInput").value);
+      if (!base) { alert("Please enter backend URL"); return { error:true }; }
+      const url = base + (dynamicPathFn ? dynamicPathFn() : path);
+      const headers = { "content-type": "application/json", "x-cid": clientCid };
+      const t0 = performance.now();
+      let resp, json;
+      try{
+        resp = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+      }catch(err){
+        return { error:true, err, url };
+      }
+      const t1 = performance.now();
+      const hdrCid = resp.headers.get("x-cid") || "";
+      const hdrCache = resp.headers.get("x-cache") || "";
+      const hdrSchema = resp.headers.get("x-schema-version") || "";
+      const hdrLatency = resp.headers.get("x-latency-ms");
+      const latencyMs = hdrLatency ? parseInt(hdrLatency,10) : Math.round(t1 - t0);
+      if (hdrCid) lastCid = hdrCid;
+      setCidLabels();
+      try{ json = await resp.json(); }catch{ json = {}; }
+      const ok = resp.ok && json && (json.status === "ok");
+      return {
+        url, code: resp.status, body: json,
+        xcid: hdrCid, xcache: hdrCache, xschema: hdrSchema, latencyMs, ok
+      };
+    }
+
+    // ---------------------- individual tests ----------------------
+    async function testHealth(){
+      const r = await callEndpoint({ name:"health", method:"GET", path:"/health" });
+      setStatusRow("row-health", r);
+      setJSON("resp", r.body);
+      return r;
+    }
+    async function testAnalyze(){
+      const r = await callEndpoint({
+        name:"analyze", method:"POST", path:"/api/analyze",
+        body:{ text:"Hello world" }
+      });
+      setStatusRow("row-analyze", r);
+      setJSON("resp", r.body);
+      return r;
+    }
+    async function testDraft(){
+      const r = await callEndpoint({
+        name:"draft", method:"POST", path:"/api/gpt/draft",
+        body:{ text:"Make this clause polite." }
+      });
+      setStatusRow("row-draft", r);
+      setJSON("resp", r.body);
+      return r;
+    }
+    async function testSuggest(){
+      const r = await callEndpoint({
+        name:"suggest", method:"POST", path:"/api/suggest_edits",
+        body:{ text:"Payment within 30 days.", clause_type:"payment_terms", mode:"friendly", top_k:1 }
+      });
+      setStatusRow("row-suggest", r);
+      setJSON("resp", r.body);
+      return r;
+    }
+    async function testQA(){
+      const r = await callEndpoint({
+        name:"qa", method:"POST", path:"/api/qa-recheck",
+        body:{ text:"Hello world", applied_changes:[{ range:{ start:6, length:5 }, text:"TEAM" }] }
+      });
+      setStatusRow("row-qa", r);
+      setJSON("resp", r.body);
+      return r;
+    }
+    async function testTrace(){
+      const cid = lastCid || clientCid || "cid-dummy";
+      const r = await callEndpoint({
+        name:"trace", method:"GET",
+        dynamicPathFn: () => `/api/trace/${encodeURIComponent(cid)}`
+      });
+      setStatusRow("row-trace", r);
+      setJSON("trace", r.body);
+      return r;
+    }
+
+    async function runAll(){
+      // reset table rows
+      for (const id of ["row-health","row-analyze","row-draft","row-suggest","row-qa","row-trace"]) {
+        setStatusRow(id, {code:"",xcid:"",xcache:"",xschema:"",latencyMs:null,ok:false});
+      }
+      document.getElementById("resp").textContent = "";
+      document.getElementById("trace").textContent = "";
+      clientCid = genCid();
+      setCidLabels();
+
+      await testHealth();
+      await testAnalyze();
+      await testDraft();
+      await testSuggest();
+      await testQA();
+      await testTrace();
+    }
+
+    // ---------------------- init & events ----------------------
+    document.getElementById("saveBtn").addEventListener("click", () => { saveBase(); alert("Saved"); });
+    document.getElementById("runAllBtn").addEventListener("click", runAll);
+    document.getElementById("btnHealth").addEventListener("click", testHealth);
+    document.getElementById("btnAnalyze").addEventListener("click", testAnalyze);
+    document.getElementById("btnDraft").addEventListener("click", testDraft);
+    document.getElementById("btnSuggest").addEventListener("click", testSuggest);
+    document.getElementById("btnQA").addEventListener("click", testQA);
+    document.getElementById("btnTrace").addEventListener("click", testTrace);
+
+    // Load defaults on first paint
+    window.addEventListener("DOMContentLoaded", () => {
+      loadBase();
+      setCidLabels();
+    });
+  </script>
+</body>
+</html>

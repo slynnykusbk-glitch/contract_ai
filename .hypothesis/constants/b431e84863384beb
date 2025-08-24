@@ -1,0 +1,4 @@
+# file: C:\Users\Ludmila\contract_ai\contract_review_app\legal_rules\force_majeure.py
+# hypothesis_version: 6.136.7
+
+[120, '1.0.0', '; ', 'FAIL', 'FM_MISSING', 'FM_NO_EVENTS', 'FM_NO_LONG_TERM', 'FM_NO_MITIGATION', 'FM_NO_NOTICE', 'OK', 'WARN', '\\s+', 'citations', 'code', 'evidence', 'force_majeure', 'high', 'low', 'medium', 'message', 'rule', 'rule_version', 'severity', 'trace']

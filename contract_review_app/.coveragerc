@@ -1,0 +1,20 @@
+[run]
+source =
+    engine
+    legal_rules
+    report
+    utils
+
+omit =
+    */tests/*
+    */_trash_*/
+    */legacy/*
+    */deprecated/*
+    */migrations/*
+    */setup.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError

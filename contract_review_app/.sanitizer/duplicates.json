@@ -1,0 +1,23 @@
+{
+  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855": [
+    "engine/__init__.py",
+    "intake/__init__.py",
+    "report/__init__.py",
+    "templates/__init__.py",
+    "tests/__init__.py",
+    "tests/intake/__init__.py",
+    "tests/legal_rules/__init__.py",
+    "tests/report/__init__.py",
+    "report/templates/__init__.py",
+    "molecular_build/contract_engine/tests/__init__.py",
+    "legal_rules/rules/__init__.py"
+  ],
+  "0486028fa4d1cc658211b606e5935a4c74386a6e9cf5055b812f3484b1b46e57": [
+    "molecular_build/__init__.py",
+    "molecular_build/contract_engine/__init__.py"
+  ],
+  "b6c9f111f56688baa8ec8b9af631e3d669e9c7f6163d194a9537eb494f39e63b": [
+    "report/templates/partialsheader.html",
+    "report/templates/partials/header.html"
+  ]
+}

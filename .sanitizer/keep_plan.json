@@ -1,0 +1,145 @@
+{
+  "keep": {
+    "f760ebb7aa3dd46ff6e47a4ed72e0e81a1caa77654760835abf5e26f610aebc4": "contract_review_app/report/__init__.py",
+    "b63affcffb9e7999c2dca529ae4e9bac32fee655d3268f843dc5de9971b5cca1": "contract_review_app/core/interfaces.py",
+    "63bbc4df74fc9be43b21d8ac45c1a74ce2463a911f6b07ae4b79d894c9d460f5": "contract_review_app/core/schemas.py",
+    "14d9b80458ac96863787d54825c41c0eac463413691f78034f573b2d1b46972f": "contract_review_app/core/__init__.py",
+    "9888d3fbe08f956caaae4ec8e51efc244a539a4861234589b98e10fd7856aac8": "contract_review_app/engine/executor.py",
+    "49772593e301dc07a1987fa38b280dabb2f3d71d50661f10aa70d24cf6b79e5e": "contract_review_app/engine/pipeline.py",
+    "53c7dd8cb6ac8c83561c1ced282dec82416c0fc585380051a50185d87bb59dac": "contract_review_app/engine/pipeline_compat.py",
+    "fea05dcd010c11cafbded2f57ff24fcec445d9f10aa78291590da7935ce37bf1": "contract_review_app/intake/adapters.py",
+    "640eab19a9aa954fc90f91026c4fe067b8907edfb52e44bf178903fe0221df48": "contract_review_app/intake/extractor.py",
+    "faf3aa877a450ceed5b3c75643ce593cb648193175d3138329e8c232226f9ae9": "contract_review_app/intake/loader.py",
+    "8e28747dd77fe0bfe780123b0c70ebed14d5f4065e7feeb4916e566b1e0ae5fe": "contract_review_app/intake/matcher.py",
+    "5c755855cdb3f4dfbf01cb0e449f7795b89722c014e9a328afefc562b3abcc16": "contract_review_app/intake/patterns.py",
+    "797c64606d045919e97769f4a001ad084d5ccf6a2d4ce8061944d4dfc26c990d": "contract_review_app/intake/resolver.py",
+    "01f74623e4a2b2393239339821cf1f6e034a96de860313440dcf9a1e67682712": "contract_review_app/intake/splitter.py",
+    "3a91a337f52057af29b95829df36aa0009d7143a1ac665b9b2da9efc3813bd53": "contract_review_app/intake/text_cleaning.py",
+    "13a5686f3a4c8969d2c239a402c583cfafacbd9de4f733e4fcfb97b84142715e": "contract_review_app/legal_rules/check_parties_definitions_clause.py",
+    "54f27343616a275ed40e32bba1289e4e787473c8d740bd7d3697c96c20f5abea": "contract_review_app/legal_rules/confidentiality.py",
+    "19db35c445059c91d802f067e1fd12a51a194c14178fd2313b599bbc741eeba3": "contract_review_app/legal_rules/force_majeure.py",
+    "b0239ae0c37da82f216b7f2e27eed7887b0e53b3277b8357a89cb3e18ff8cb78": "contract_review_app/legal_rules/indemnity.py",
+    "6f1e7ec22f3cf0123a608c2787790466b39e35148e511171bb6da63245950498": "contract_review_app/legal_rules/jurisdiction.py",
+    "a49933e85aced90697bcdf64381cdd2cd75244fc016820b40ef067a7d969a844": "contract_review_app/legal_rules/legal_rules.py",
+    "3df694cee6012cb89a88735be0f4903bc2e4860892f1cae453be4ab6b518157f": "contract_review_app/legal_rules/registry.py",
+    "94588bb60d44f7c700bcd7722468a0c0439f8aa27af76118093b35b0c7d35215": "contract_review_app/legal_rules/termination.py",
+    "4713f9e093b64755a088d5aace8eb22c953f2356f06746b79e0b3a00f4551b81": "contract_review_app/legal_rules/__init__.py",
+    "3b10c38326928eaf723e060f4169e2d02071e051e9bc2c17cadc874fc579163b": "contract_review_app/report/i18n.py",
+    "f5472fd24a552321b94064a9931567e9de4dcd4fd31ca5de60920c155d4ae407": "contract_review_app/report/messages_en.py",
+    "cead7d132183a706d25921ade37c7c5219595cf60859a70b70ad9df49c256743": "contract_review_app/report/messages_uk.py",
+    "d65fcf9a7a254c44c3507ce5e255eaf08982bee40b2ae0715a04687650783227": "contract_review_app/report/metrics.py",
+    "b9091d0c5fe5bb07594900fe4c1dd0f273998cde606e2caea88b452ed3bdcc4e": "contract_review_app/report/pdf.py",
+    "3ca821679f97b973deeb60646de7e4fd9033f113cb40dc40cf5f479e50d433ab": "contract_review_app/report/renderer.py",
+    "6e78d5010a6e38c5f811683807d9dcba5f94885b08548a6a5b6c21aeb06ab526": "contract_review_app/report/templates/clause_card.html",
+    "6c65d0dd8f033d948bee9b8ba73f2d8bceb10bc169492e35a2ab21ea7b5a9773": "contract_review_app/legal_rules/rules/test_governing_law.py",
+    "ab9898af3588b036f79e55ae938a7be947c506fa94eedcf4931a63648d4cf056": "contract_review_app/legal_rules/rules/test_registry.py"
+  },
+  "move": {
+    "f760ebb7aa3dd46ff6e47a4ed72e0e81a1caa77654760835abf5e26f610aebc4": [
+      "contract_review_app/__init__.py",
+      "engine/__init__.py",
+      "intake/__init__.py",
+      "report/__init__.py",
+      "utils/__init__.py",
+      "contract_review_app/engine/__init__.py",
+      "contract_review_app/intake/__init__.py",
+      "contract_review_app/utils/__init__.py"
+    ],
+    "b63affcffb9e7999c2dca529ae4e9bac32fee655d3268f843dc5de9971b5cca1": [
+      "core/interfaces.py"
+    ],
+    "63bbc4df74fc9be43b21d8ac45c1a74ce2463a911f6b07ae4b79d894c9d460f5": [
+      "core/schemas.py"
+    ],
+    "14d9b80458ac96863787d54825c41c0eac463413691f78034f573b2d1b46972f": [
+      "core/__init__.py"
+    ],
+    "9888d3fbe08f956caaae4ec8e51efc244a539a4861234589b98e10fd7856aac8": [
+      "engine/executor.py"
+    ],
+    "49772593e301dc07a1987fa38b280dabb2f3d71d50661f10aa70d24cf6b79e5e": [
+      "engine/pipeline.py"
+    ],
+    "53c7dd8cb6ac8c83561c1ced282dec82416c0fc585380051a50185d87bb59dac": [
+      "engine/pipeline_compat.py"
+    ],
+    "fea05dcd010c11cafbded2f57ff24fcec445d9f10aa78291590da7935ce37bf1": [
+      "intake/adapters.py"
+    ],
+    "640eab19a9aa954fc90f91026c4fe067b8907edfb52e44bf178903fe0221df48": [
+      "intake/extractor.py"
+    ],
+    "faf3aa877a450ceed5b3c75643ce593cb648193175d3138329e8c232226f9ae9": [
+      "intake/loader.py"
+    ],
+    "8e28747dd77fe0bfe780123b0c70ebed14d5f4065e7feeb4916e566b1e0ae5fe": [
+      "intake/matcher.py"
+    ],
+    "5c755855cdb3f4dfbf01cb0e449f7795b89722c014e9a328afefc562b3abcc16": [
+      "intake/patterns.py"
+    ],
+    "797c64606d045919e97769f4a001ad084d5ccf6a2d4ce8061944d4dfc26c990d": [
+      "intake/resolver.py"
+    ],
+    "01f74623e4a2b2393239339821cf1f6e034a96de860313440dcf9a1e67682712": [
+      "intake/splitter.py"
+    ],
+    "3a91a337f52057af29b95829df36aa0009d7143a1ac665b9b2da9efc3813bd53": [
+      "intake/text_cleaning.py"
+    ],
+    "13a5686f3a4c8969d2c239a402c583cfafacbd9de4f733e4fcfb97b84142715e": [
+      "legal_rules/check_parties_definitions_clause.py"
+    ],
+    "54f27343616a275ed40e32bba1289e4e787473c8d740bd7d3697c96c20f5abea": [
+      "legal_rules/confidentiality.py"
+    ],
+    "19db35c445059c91d802f067e1fd12a51a194c14178fd2313b599bbc741eeba3": [
+      "legal_rules/force_majeure.py"
+    ],
+    "b0239ae0c37da82f216b7f2e27eed7887b0e53b3277b8357a89cb3e18ff8cb78": [
+      "legal_rules/indemnity.py"
+    ],
+    "6f1e7ec22f3cf0123a608c2787790466b39e35148e511171bb6da63245950498": [
+      "legal_rules/jurisdiction.py"
+    ],
+    "a49933e85aced90697bcdf64381cdd2cd75244fc016820b40ef067a7d969a844": [
+      "legal_rules/legal_rules.py"
+    ],
+    "3df694cee6012cb89a88735be0f4903bc2e4860892f1cae453be4ab6b518157f": [
+      "legal_rules/registry.py"
+    ],
+    "94588bb60d44f7c700bcd7722468a0c0439f8aa27af76118093b35b0c7d35215": [
+      "legal_rules/termination.py"
+    ],
+    "4713f9e093b64755a088d5aace8eb22c953f2356f06746b79e0b3a00f4551b81": [
+      "legal_rules/__init__.py"
+    ],
+    "3b10c38326928eaf723e060f4169e2d02071e051e9bc2c17cadc874fc579163b": [
+      "report/i18n.py"
+    ],
+    "f5472fd24a552321b94064a9931567e9de4dcd4fd31ca5de60920c155d4ae407": [
+      "report/messages_en.py"
+    ],
+    "cead7d132183a706d25921ade37c7c5219595cf60859a70b70ad9df49c256743": [
+      "report/messages_uk.py"
+    ],
+    "d65fcf9a7a254c44c3507ce5e255eaf08982bee40b2ae0715a04687650783227": [
+      "report/metrics.py"
+    ],
+    "b9091d0c5fe5bb07594900fe4c1dd0f273998cde606e2caea88b452ed3bdcc4e": [
+      "report/pdf.py"
+    ],
+    "3ca821679f97b973deeb60646de7e4fd9033f113cb40dc40cf5f479e50d433ab": [
+      "report/renderer.py"
+    ],
+    "6e78d5010a6e38c5f811683807d9dcba5f94885b08548a6a5b6c21aeb06ab526": [
+      "report/templates/partials/clause_card.html"
+    ],
+    "6c65d0dd8f033d948bee9b8ba73f2d8bceb10bc169492e35a2ab21ea7b5a9773": [
+      "legal_rules/rules/test_governing_law.py"
+    ],
+    "ab9898af3588b036f79e55ae938a7be947c506fa94eedcf4931a63648d4cf056": [
+      "legal_rules/rules/test_registry.py"
+    ]
+  }
+}

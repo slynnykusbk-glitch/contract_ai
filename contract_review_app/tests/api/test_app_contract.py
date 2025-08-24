@@ -135,9 +135,8 @@ def test_panel_static_and_cache_headers():
 
 
 def test_learning_endpoints_minimal_ok():
-    log = client.post("/api/learning/log", json={"events": [{"event": "applied", "cid": "X"}]})
-    assert log.status_code == 200
-    assert log.json()["status"] == "ok"
+    log = client.post("/api/learning/log", json={"any": "json"})
+    assert log.status_code == 204
 
     upd = client.post("/api/learning/update", json={"force": True})
     assert upd.status_code == 200

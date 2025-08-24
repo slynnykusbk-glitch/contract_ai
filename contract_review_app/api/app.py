@@ -852,11 +852,18 @@ async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[s
     return payload
 
 
-@router.post("/api/learning/log")
-async def api_learning_log(response: Response, body: LearningLogIn):
+@router.post("/api/learning/log", response_class=Response)
+async def api_learning_log(response: Response, body: Any | None = None) -> Response:
     t0 = _now_ms()
-    _set_std_headers(response, cid="learning/log", xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    return {"status": "ok", "accepted": min(len(body.events), 100)}
+    _set_std_headers(
+        response,
+        cid="learning/log",
+        xcache="miss",
+        schema=SCHEMA_VERSION,
+        latency_ms=_now_ms() - t0,
+    )
+    response.status_code = 204
+    return response
 
 
 @router.post("/api/learning/update")

@@ -498,14 +498,25 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
             local_run_analyze = None
 
     if local_run_analyze is None:
-        envelope = {
-            "status": "ok",
-            "analysis": {"status": "OK", "clause_type": "general", "risk_level": "medium", "score": 0, "findings": []},
-            "results": {},
-            "clauses": [],
-            "document": {"text": model.text or ""},
-            "schema_version": SCHEMA_VERSION,
-        }
+        if rules_registry and hasattr(rules_registry, "run_all"):
+            legacy = rules_registry.run_all(model.text or "")
+            envelope = {
+                "status": "ok",
+                "analysis": legacy.get("analysis"),
+                "results": legacy.get("results", {}),
+                "clauses": legacy.get("clauses", []),
+                "document": legacy.get("document", {"text": model.text or ""}),
+                "schema_version": SCHEMA_VERSION,
+            }
+        else:
+            envelope = {
+                "status": "ok",
+                "analysis": {"status": "OK", "clause_type": "general", "risk_level": "medium", "score": 0, "findings": []},
+                "results": {},
+                "clauses": [],
+                "document": {"text": model.text or ""},
+                "schema_version": SCHEMA_VERSION,
+            }
         async with _cache_lock:
             IDEMPOTENT_CACHE.put(key, envelope)
         _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)

@@ -1,34 +1,45 @@
-# minimal registry that prefers YAML pack
 from __future__ import annotations
-from typing import Any, List, Dict
-from pathlib import Path
-from .yaml_runtime import load_pack, evaluate
 
-_DEFAULT_PACK = Path(__file__).with_suffix("").parent / "policy_packs" / "core_en_v1.yaml"
+from typing import Any, Dict, List
 
-def discover_rules() -> List[str]:
-    # Return stable ids for diagnostics
-    if _DEFAULT_PACK.exists():
-        data = load_pack(_DEFAULT_PACK)
-        return [r.id for r in data.rules]
-    return []
+from .loader import Rule, discover_rules as _discover_rules
+
+
+def discover_rules() -> List[Rule]:
+    """Expose loaded rules for diagnostics."""
+
+    return _discover_rules(include_yaml=True)
+
 
 def run_all(text: str) -> Dict[str, Any]:
-    if _DEFAULT_PACK.exists():
-        pack = load_pack(_DEFAULT_PACK)
-        f = evaluate(text, pack)
-        return {
-            "analysis": {
-                "status": "OK",
-                "clause_type": "general",
-                "risk_level": "medium",
-                "score": 0,
-                "findings": [vars(x) for x in f],
-            },
-            "results": {},
-            "clauses": [],
-            "document": {"text": text or ""},
-        }
-    # fallback empty
-    return {"analysis": {"status":"OK","clause_type":"general","risk_level":"medium","score":0,"findings":[]},
-            "results":{},"clauses":[],"document":{"text":text or ""}}
+    """Run all discovered rules against the provided text."""
+
+    findings: List[Dict[str, Any]] = []
+    for rule in discover_rules():
+        for pat in rule.patterns:
+            m = pat.search(text or "")
+            if m:
+                findings.append(
+                    {
+                        "rule_id": rule.id,
+                        "clause_type": rule.clause_type,
+                        "severity": rule.severity,
+                        "matched_text": m.group(0),
+                        "advice": rule.advice,
+                    }
+                )
+                break
+
+    return {
+        "analysis": {
+            "status": "OK",
+            "clause_type": "general",
+            "risk_level": "medium",
+            "score": 0,
+            "findings": findings,
+        },
+        "results": {},
+        "clauses": [],
+        "document": {"text": text or ""},
+    }
+

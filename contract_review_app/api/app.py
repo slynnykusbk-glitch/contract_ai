@@ -8,13 +8,14 @@ import os
 import time
 from collections import OrderedDict
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, FastAPI, Header, HTTPException, Request, Response
+from fastapi import APIRouter, FastAPI, Header, HTTPException, Request, Response, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 # SSOT DTO imports
 from contract_review_app.core.schemas import (
@@ -61,6 +62,8 @@ DRAFT_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_DRAFT_TIMEOUT_SEC", "25"))
 MAX_CONCURRENCY = int(os.getenv("CONTRACT_AI_MAX_CONCURRENCY", "4"))
 MAX_BODY_BYTES = int(os.getenv("CONTRACT_AI_MAX_BODY_BYTES", str(2_500_000)))
 CACHE_SIZE = int(os.getenv("CONTRACT_AI_CACHE_SIZE", "128"))
+
+LEARNING_LOG_PATH = Path(__file__).resolve().parents[2] / "var" / "learning_logs.jsonl"
 
 ALLOWED_ORIGINS = os.getenv(
     "CONTRACT_AI_ALLOWED_ORIGINS",
@@ -182,20 +185,8 @@ class _LRUCache(OrderedDict):
 IDEMPOTENT_CACHE = _LRUCache(CACHE_SIZE)
 
 # --------------------------------------------------------------------
-# Schemas (Pydantic) for learning endpoints only
+# Schemas (Pydantic) for learning endpoints
 # --------------------------------------------------------------------
-class LearningEvent(BaseModel):
-    event: str
-    cid: Optional[str] = None
-    clause_id: Optional[str] = None
-    payload: Optional[Dict[str, Any]] = None
-    ts: Optional[float] = None
-
-
-class LearningLogIn(BaseModel):
-    events: List[LearningEvent]
-
-
 class LearningUpdateIn(BaseModel):
     force: Optional[bool] = False
 
@@ -852,11 +843,25 @@ async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[s
     return payload
 
 
-@router.post("/api/learning/log")
-async def api_learning_log(response: Response, body: LearningLogIn):
+@router.post("/api/learning/log", status_code=204)
+async def api_learning_log(body: Any = Body(...)) -> Response:
     t0 = _now_ms()
-    _set_std_headers(response, cid="learning/log", xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    return {"status": "ok", "accepted": min(len(body.events), 100)}
+    try:
+        LEARNING_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with LEARNING_LOG_PATH.open("a", encoding="utf-8") as f:
+            json.dump(body, f, ensure_ascii=False)
+            f.write("\n")
+    except Exception:
+        pass
+    resp = Response(status_code=204)
+    _set_std_headers(
+        resp,
+        cid="learning/log",
+        xcache="miss",
+        schema=SCHEMA_VERSION,
+        latency_ms=_now_ms() - t0,
+    )
+    return resp
 
 
 @router.post("/api/learning/update")

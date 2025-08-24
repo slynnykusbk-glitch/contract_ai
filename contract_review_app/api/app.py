@@ -51,6 +51,11 @@ try:
 except Exception:  # pragma: no cover
     rules_registry = None  # type: ignore
 
+try:
+    from contract_review_app.legal_rules import loader as rules_loader  # type: ignore
+except Exception:  # pragma: no cover
+    rules_loader = None  # type: ignore
+
 # --------------------------------------------------------------------
 # Config
 # --------------------------------------------------------------------
@@ -359,6 +364,11 @@ def _safe_apply_patches(text: str, changes: List[Any]) -> str:
 
 def _discover_rules_count() -> int:
     try:
+        if rules_loader and hasattr(rules_loader, "rules_count"):
+            return int(rules_loader.rules_count())
+    except Exception:
+        pass
+    try:
         if rules_registry and hasattr(rules_registry, "discover_rules"):
             rules = rules_registry.discover_rules()
             return len(rules or [])
@@ -443,8 +453,9 @@ async def health(response: Response):
     t0 = _now_ms()
     data = {
         "status": "ok",
-        "schema_version": SCHEMA_VERSION,
+        "schema": SCHEMA_VERSION,
         "rules_count": _discover_rules_count(),
+        "schema_version": SCHEMA_VERSION,
         "uptime_hint": "process-alive",
     }
     _set_std_headers(response, cid="health", xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
@@ -498,13 +509,21 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
             local_run_analyze = None
 
     if local_run_analyze is None:
+        findings = rules_loader.match_text(model.text or "") if rules_loader else []
         envelope = {
             "status": "ok",
-            "analysis": {"status": "OK", "clause_type": "general", "risk_level": "medium", "score": 0, "findings": []},
+            "analysis": {
+                "status": "OK",
+                "clause_type": "general",
+                "risk_level": "medium",
+                "score": 0,
+                "findings": findings,
+            },
             "results": {},
             "clauses": [],
             "document": {"text": model.text or ""},
             "schema_version": SCHEMA_VERSION,
+            "meta": {"rules_count": _discover_rules_count()},
         }
         async with _cache_lock:
             IDEMPOTENT_CACHE.put(key, envelope)
@@ -523,6 +542,7 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
         "clauses": legacy.get("clauses") if isinstance(legacy, dict) else [],
         "document": legacy.get("document") if isinstance(legacy, dict) else {},
         "schema_version": SCHEMA_VERSION,
+        "meta": {"rules_count": _discover_rules_count()},
     }
     if isinstance(legacy, dict):
         analysis = legacy.get("analysis")

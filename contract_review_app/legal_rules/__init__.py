@@ -17,7 +17,10 @@ from .rules import (
 )
 
 # Публічний 'registry' — ТІЛЬКИ з кореня пакета (НЕ з .rules)
-from . import registry  # noqa: F401
+try:  # noqa: F401
+    from . import registry  # type: ignore
+except Exception:  # pragma: no cover
+    registry = None  # type: ignore
 
 __all__ = [
     "base",

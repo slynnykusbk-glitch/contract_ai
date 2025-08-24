@@ -1,0 +1,42 @@
+﻿name: paths-guard
+on:
+  pull_request:
+    types: [opened, synchronize, labeled, unlabeled, reopened, edited]
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - "contract_review_app/**"
+              - "legal_rules/**"
+            panel:
+              - "word_addin_dev/**"
+              - "!word_addin_dev/certs/**"
+            docs:
+              - "docs/**"
+              - ".github/**"
+              - "README.md"
+              - "LICENSE"
+
+      - name: decide scope by labels
+        id: scope
+        run: |
+          labels=${{ toJson(github.event.pull_request.labels.*.name) }}
+          echo "labels=$labels"
+          allow="docs"
+          echo "$labels" | grep -qi "scope:backend" && allow="$allow backend"
+          echo "$labels" | grep -qi "scope:panel"   && allow="$allow panel"
+          echo "allow=$allow" >> $GITHUB_OUTPUT
+
+      - name: enforce
+        run: |
+          ALLOW=${{ steps.scope.outputs.allow }}
+          if [[ "${{ steps.filter.outputs.backend }}" == "true" && ! "$ALLOW" =~ backend ]]; then
+            echo "::error::Backend files changed but label 'scope:backend' not set"; exit 1; fi
+          if [[ "${{ steps.filter.outputs.panel }}" == "true" && ! "$ALLOW" =~ panel ]]; then
+            echo "::error::Panel files changed but label 'scope:panel' not set"; exit 1; fi

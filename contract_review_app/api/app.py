@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 # SSOT DTO imports
 from contract_review_app.core.schemas import (
     AnalyzeIn,
+    AnalysisInput,
     DraftIn,
     SuggestIn,
     SuggestOut,
@@ -41,9 +42,16 @@ except Exception:  # pragma: no cover
     run_suggest_edits = None  # type: ignore
 
 try:
+    from contract_review_app.gpt.gpt_draft_api import run_gpt_drafting_pipeline  # type: ignore
+except Exception:  # pragma: no cover
+    run_gpt_drafting_pipeline = None  # type: ignore
+
+try:
     from contract_review_app.engine import pipeline  # type: ignore
 except Exception:  # pragma: no cover
     pipeline = None  # type: ignore
+
+from contract_review_app.engine.suggest import build_edits, compose_paragraph
 
 # Optional: rule registry for /health
 try:
@@ -553,31 +561,77 @@ async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[st
     draft_text: str = ""
     meta_title: Optional[str] = None
     meta_clause_type: Optional[str] = None
+    meta_error: Optional[str] = None
 
-    try:
-        if run_gpt_draft is not None:
-            dr = await asyncio.wait_for(
-                _maybe_await(run_gpt_draft, model),
-                timeout=DRAFT_TIMEOUT_SEC,
+    have_llm = any(
+        os.getenv(k)
+        for k in (
+            "OPENAI_API_KEY",
+            "AZURE_OPENAI_KEY",
+            "ANTHROPIC_API_KEY",
+            "GROQ_API_KEY",
+            "GEMINI_API_KEY",
+        )
+    )
+
+    async def _rule_fallback() -> str:
+        try:
+            from contract_review_app.legal_rules import legal_rules as _legal_rules
+            ana = _legal_rules.analyze(
+                AnalysisInput(text=model.text or "", clause_type=model.clause_type)
             )
-        elif pipeline and hasattr(pipeline, "synthesize_draft"):
-            # fallback pipeline path
-            doc: Dict[str, Any]
-            if model.analysis:
-                doc = model.analysis if isinstance(model.analysis, dict) else _as_dict(model.analysis)
-            elif run_analyze is not None:
-                ana_in = AnalyzeIn(text=model.text or "")
-                legacy = await asyncio.wait_for(_maybe_await(run_analyze, ana_in), timeout=ANALYZE_TIMEOUT_SEC)
-                doc = legacy.get("document") or {}
+            flist = [
+                f.model_dump() if hasattr(f, "model_dump") else dict(f)
+                for f in getattr(ana, "findings", [])
+            ]
+        except Exception:
+            flist = []
+        return compose_paragraph(model.text or "", flist, model.mode or "friendly")
+
+    dr: Any = None
+    if have_llm:
+        try:
+            if run_gpt_drafting_pipeline is not None:
+                dr = await asyncio.wait_for(
+                    _maybe_await(run_gpt_drafting_pipeline, model),
+                    timeout=DRAFT_TIMEOUT_SEC,
+                )
+            elif run_gpt_draft is not None:
+                dr = await asyncio.wait_for(
+                    _maybe_await(run_gpt_draft, model),
+                    timeout=DRAFT_TIMEOUT_SEC,
+                )
+            elif pipeline and hasattr(pipeline, "synthesize_draft"):
+                doc: Dict[str, Any]
+                if model.analysis:
+                    doc = (
+                        model.analysis
+                        if isinstance(model.analysis, dict)
+                        else _as_dict(model.analysis)
+                    )
+                elif run_analyze is not None:
+                    ana_in = AnalyzeIn(text=model.text or "")
+                    legacy = await asyncio.wait_for(
+                        _maybe_await(run_analyze, ana_in),
+                        timeout=ANALYZE_TIMEOUT_SEC,
+                    )
+                    doc = legacy.get("document") or {}
+                else:
+                    doc = {}
+                dr = await asyncio.wait_for(
+                    _maybe_await(pipeline.synthesize_draft, doc, mode=(model.mode or "friendly")),
+                    timeout=DRAFT_TIMEOUT_SEC,
+                )
             else:
-                doc = {}
-            dr = await asyncio.wait_for(
-                _maybe_await(pipeline.synthesize_draft, doc, mode=(model.mode or "friendly")),
-                timeout=DRAFT_TIMEOUT_SEC,
-            )
-        else:
-            dr = {"text": ""}
+                raise RuntimeError("LLM draft not configured")
+        except Exception as ex:
+            meta_error = str(ex)
+            dr = None
 
+    if dr is None:
+        draft_text = await _rule_fallback()
+        used_model = "rulebased"
+    else:
         if isinstance(dr, str):
             draft_text = dr
         elif isinstance(dr, dict):
@@ -590,19 +644,21 @@ async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[st
             meta_title = getattr(dr, "title", None)  # type: ignore[attr-defined]
             meta_clause_type = getattr(dr, "clause_type", None)  # type: ignore[attr-defined]
             used_model = getattr(dr, "model", used_model)  # type: ignore[attr-defined]
-    except Exception:
-        draft_text = draft_text or "No draft available due to an internal error."
+
+    _meta: Dict[str, Any] = {
+        "model": used_model,
+        "title": meta_title,
+        "clause_type": meta_clause_type,
+    }
+    if meta_error:
+        _meta["error"] = meta_error
 
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
     return {
         "status": "ok",
         "draft_text": draft_text,
         "citations_hint": [],
-        "meta": {
-            "model": used_model,
-            "title": meta_title,
-            "clause_type": meta_clause_type,
-        },
+        "meta": _meta,
     }
 
 
@@ -617,154 +673,27 @@ async def api_suggest_edits(request: Request, response: Response, x_cid: Optiona
     except Exception:
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
-    if isinstance(payload, dict) and 'top_k' in payload:
-        try:
-            payload['top_k'] = max(1, min(10, int(payload.get('top_k') or 1)))
-        except Exception:
-            payload['top_k'] = 1
     try:
         model = SuggestIn(**payload)
     except Exception as ex:
         return _problem_response(422, "Validation error", str(ex))
+
     cid = x_cid or _sha256_hex(str(t0) + model.text[:128])
 
-    suggestions: List[Dict[str, Any]] = []
     try:
-        if run_suggest_edits is not None:
-            suggestions = await asyncio.wait_for(
-                _maybe_await(
-                    run_suggest_edits,
-                    model,
-                ),
-                timeout=DRAFT_TIMEOUT_SEC,
-            )
-        elif pipeline and hasattr(pipeline, "suggest_edits"):
-            suggestions = await asyncio.wait_for(
-                _maybe_await(
-                    pipeline.suggest_edits,
-                    model.text,
-                    model.clause_id,
-                    getattr(model, "clause_type", None),
-                    (model.mode or "friendly"),
-                    int(getattr(model, "top_k", 1) or 1),
-                ),
-                timeout=DRAFT_TIMEOUT_SEC,
-            )
-            if isinstance(suggestions, dict):
-                suggestions = [suggestions]
-        else:
-            suggestions = []
+        from contract_review_app.legal_rules import legal_rules as _legal_rules
+        ana = _legal_rules.analyze(AnalysisInput(text=model.text, clause_type=model.clause_type))
+        flist = [
+            f.model_dump() if hasattr(f, "model_dump") else dict(f)
+            for f in getattr(ana, "findings", [])
+        ]
     except Exception:
-        suggestions = []
+        flist = []
 
-    if not suggestions:
-        suggestions = _fallback_suggest_minimal(
-            model.text,
-            (model.clause_id or ""),
-            model.mode or "friendly",
-            int(getattr(model, "top_k", 1) or 1),
-        )
-
-    # Robust normalization loop (handles non-dict items safely)
-    norm: List[Dict[str, Any]] = []
-    for s in suggestions or []:
-        # 1) Coerce to dict
-        if hasattr(s, "model_dump"):
-            try:
-                s_dict = s.model_dump()
-            except Exception:
-                s_dict = {}
-        elif isinstance(s, dict):
-            s_dict = dict(s)
-        elif isinstance(s, str):
-            s_dict = {"message": s}
-        elif isinstance(s, (list, tuple)):
-            try:
-                if len(s) == 1:
-                    s_dict = {"message": str(s[0])}
-                elif len(s) == 2 and not isinstance(s[0], (list, tuple, dict)) and not isinstance(s[1], (list, tuple, dict)):
-                    s_dict = {"message": str(s[0]), "proposed_text": str(s[1])}
-                else:
-                    try:
-                        s_dict = dict(s)  # iterable of pairs
-                    except Exception:
-                        s_dict = {"message": " ".join(map(str, s))}
-            except Exception:
-                s_dict = {"message": str(s)}
-        else:
-            s_dict = {"message": str(s)}
-
-        # 2) Normalize range/span to range{start,length}
-        start = 0
-        length = 0
-        r = s_dict.get("range")
-        sp = s_dict.get("span")
-
-        if isinstance(r, dict):
-            try:
-                start = int(r.get("start") or 0)
-            except Exception:
-                start = 0
-            if "length" in r:
-                try:
-                    length = int(r.get("length") or 0)
-                except Exception:
-                    length = 0
-            else:
-                try:
-                    end = int(r.get("end") or 0)
-                except Exception:
-                    end = start
-                length = max(0, end - start)
-        elif isinstance(sp, dict):
-            try:
-                start = int(sp.get("start") or 0)
-            except Exception:
-                start = 0
-            if "length" in sp:
-                try:
-                    length = int(sp.get("length") or 0)
-                except Exception:
-                    length = 0
-            else:
-                try:
-                    end = int(sp.get("end") or start)
-                except Exception:
-                    end = start
-                length = max(0, end - start)
-        elif isinstance(sp, (list, tuple)) and len(sp) == 2:
-            try:
-                start = int(sp[0] or 0)
-            except Exception:
-                start = 0
-            try:
-                end = int(sp[1] or start)
-            except Exception:
-                end = start
-            length = max(0, end - start)
-
-        if start < 0:
-            start = 0
-        if length < 0:
-            length = 0
-
-        s_dict["range"] = {"start": start, "length": length}
-
-        # 3) Ensure message
-        msg = s_dict.get("message")
-        if not isinstance(msg, str) or msg == "":
-            msg = s_dict.get("text") or s_dict.get("proposed_text") or s_dict.get("proposed") or ""
-            if not isinstance(msg, str):
-                msg = str(msg)
-            s_dict["message"] = msg
-
-        # 4) Preserve extra keys and append
-        norm.append(s_dict)
-
-    suggestions = norm
+    edits = build_edits(model.text, flist, model.mode or "friendly")
 
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    return {"status": "ok", "suggestions": suggestions}
+    return {"status": "ok", "edits": edits}
 
 
 @router.post("/api/qa-recheck")

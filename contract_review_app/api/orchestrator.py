@@ -1,4 +1,3 @@
-```python
 from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 from itertools import islice
@@ -72,17 +71,21 @@ def _ord_to_risk(i: int) -> str:
     return table[i]
 
 
-def _pick_headline(analyses: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    if not analyses:
+def _pick_headline(analyses: List[Any]) -> Optional[Dict[str, Any]]:
+    """
+    Choose the "headline" analysis deterministically.
+    Accepts either dicts or objects with attributes (e.g., pydantic models).
+    """
+    items = [_safe_dump(a) for a in (analyses or [])]
+    if not items:
         return None
-    # choose by (risk desc, findings count desc, score asc) deterministically
     return max(
-        analyses,
+        items,
         key=lambda a: (
             _risk_to_ord(str(a.get("risk_level") or a.get("risk") or a.get("severity") or "medium")),
             len(a.get("findings") or []),
             -int(a.get("score") or 0),
-            str(a.get("clause_type") or ""),
+            str(a.get("clause_type") or a.get("type") or ""),
         ),
     )
 
@@ -439,14 +442,19 @@ async def run_qa_recheck(inp: "QARecheckIn") -> Dict[str, Any]:
     score_delta = max(-100, min(100, sa - sb))
 
     # residual risks: pick top by severity from AFTER
-    analyses_after = list(after.get("analyses") or [])
+    analyses_after = [_safe_dump(a) for a in list(after.get("analyses") or [])]
     headline = _pick_headline(analyses_after) or {}
-    findings = list(headline.get("findings") or [])
-    # deterministic: sort by severity desc, then code/message
+    findings = [_safe_dump(f) for f in list(headline.get("findings") or [])]
+
     def _sev_ord(f: Dict[str, Any]) -> int:
         return _risk_to_ord(str(f.get("severity") or f.get("risk") or f.get("severity_level") or "medium"))
 
-    findings_sorted = sorted(findings, key=lambda f: (_sev_ord(f), str(f.get("code") or ""), str(f.get("message") or "")), reverse=True)
+    findings_sorted = sorted(
+        findings,
+        key=lambda f: (_sev_ord(f), str(f.get("code") or ""), str(f.get("message") or "")),
+        reverse=True,
+    )
+
     residuals: List[Dict[str, Any]] = []
     for f in findings_sorted[:3]:
         residuals.append(
@@ -465,4 +473,3 @@ async def run_qa_recheck(inp: "QARecheckIn") -> Dict[str, Any]:
         "status_to": after.get("summary_status", "OK"),
         "residual_risks": residuals,
     }
-```

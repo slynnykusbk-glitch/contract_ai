@@ -9,6 +9,12 @@ try:
 except Exception:
     _reg = None  # type: ignore
 
+# Optional lightweight loader for simple YAML packs
+try:
+    from contract_review_app.legal_rules import loader as _loader  # type: ignore
+except Exception:
+    _loader = None  # type: ignore
+
 # --- Safe engine import with fallback ---
 try:
     from contract_review_app.engine import pipeline as _engine  # type: ignore
@@ -319,6 +325,8 @@ async def run_analyze(inp: "AnalyzeIn") -> Dict[str, Any]:
 
     analysis = _ensure_analysis_keys(analysis)
     results = _ensure_results_keys(results)
+    if _loader is not None:
+        analysis["findings"] = _loader.match_text(text)
     return {"analysis": analysis, "results": results, "clauses": clauses, "document": doc}
 
 

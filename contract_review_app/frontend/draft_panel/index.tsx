@@ -132,7 +132,7 @@ const DraftAssistantPanel: React.FC = () => {
         analysis,
         mode: "friendly",
       });
-      setDraft(env);
+      setDraft({ ...env, draft_text: String(env?.draft_text || "") });
     } catch (e: any) {
       setError(e?.message || "Draft failed");
     } finally {

@@ -20,5 +20,4 @@ jobs:
       - name: Pytest
         env:
           SKIP_LLM: "1"
-          PYTHONPATH: ${{ github.workspace }}
-        run: pytest -q --maxfail=1 --disable-warnings --cov=.
+        run: pytest

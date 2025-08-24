@@ -1,5 +1,4 @@
 ﻿name: paths-guard
-
 on:
   pull_request:
     types: [opened, synchronize, labeled, unlabeled, reopened, edited]
@@ -13,33 +12,41 @@ jobs:
         with:
           filters: |
             backend:
-              - 'contract_review_app/**'
-              - 'legal_rules/**'
+              - "contract_review_app/**"
+              - "legal_rules/**"
             panel:
-              - 'word_addin_dev/**'
-              - 'word_addin_dev/certs/**'
+              - "word_addin_dev/**"
+              - "word_addin_dev/certs/**"
             docs:
-              - 'docs/**'
-              - '.github/**'
-              - 'README.md'
-              - 'LICENSE'
+              - "docs/**"
+              - ".github/**"
+              - "README.md"
+              - "LICENSE"
 
       - name: decide scope by labels
         id: scope
+        shell: bash
         run: |
-          labels=${{ toJson(github.event.pull_request.labels.*.name) }}
-          echo "labels=$labels"
-          allow="docs"
-          echo "$labels" | grep -qi 'scope:backend' && allow=backend
-          echo "$labels" | grep -qi 'scope:panel'   && allow=panel
-          echo "allow=$allow" >> "$GITHUB_OUTPUT"
+          labels="$(jq -r '.[].name' <<< '${{ toJson(github.event.pull_request.labels) }}' | tr '\n' ' ')"
+          echo "labels=$labels" >> "$GITHUB_OUTPUT"
+          allow_docs=false
+          if grep -qi 'docs only' <<< "$labels"; then allow_docs=true; fi
+          echo "allow=$allow_docs" >> "$GITHUB_OUTPUT"
 
       - name: enforce
+        shell: bash
         run: |
-          ALLOW="${{ steps.scope.outputs.allow }}"
-          echo "ALLOW=$ALLOW"
-          if [[ "${{ steps.filter.outputs.backend }}" == "true" && "$ALLOW" != "backend" ]]; then
-            echo "::error::backend files changed but label 'scope:backend' not set"; exit 1; fi
-          if [[ "${{ steps.filter.outputs.panel }}" == "true" && "$ALLOW" != "panel" ]]; then
-            echo "::error::panel files changed but label 'scope:panel' not set"; exit 1; fi
-          echo "paths-guard passed"
+          labels='${{ steps.scope.outputs.labels }}'
+          allow='${{ steps.scope.outputs.allow }}'
+          changed_backend='${{ steps.filter.outputs.backend }}'
+          changed_panel='${{ steps.filter.outputs.panel }}'
+
+          if [[ "$changed_backend" == "true" && ! "$labels" =~ scope:backend ]]; then
+            echo "::error::Backend files changed but label 'scope:backend' not set"; exit 1
+          fi
+          if [[ "$changed_panel" == "true" && ! "$labels" =~ scope:panel ]]; then
+            echo "::error::Panel files changed but label 'scope:panel' not set"; exit 1
+          fi
+          if [[ "$allow" != "true" && "$changed_backend" != "true" && "$changed_panel" != "true" ]]; then
+            echo "::error::Changes outside docs, but no scope labels provided"; exit 1
+          fi

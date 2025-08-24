@@ -1,4 +1,21 @@
-﻿.venv/
-__pycache__/
+﻿__pycache__/
 *.pyc
+.venv/
+dist/
+.build/
+
+# certificates / secrets / local env
+*.pem
+*.pfx
+word_addin_dev/certs/
 .env
+.env.*
+
+# editors
+.vscode/
+.idea/
+
+# docs & local binaries
+*.docx
+*.pdf
+~$*.docx

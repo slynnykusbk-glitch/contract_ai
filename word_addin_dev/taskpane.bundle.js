@@ -650,7 +650,7 @@
       var r = await apiGptDraft(input);
       if (!r.ok) { status("Draft HTTP " + r.status); return; }
       var env = (r.json && (r.json.data || r.json)) || {};
-      var draft = env.draft_text || env.draft || "";
+      var draft = String(env.draft_text || env.draft || "");
       setVal(els.draft, draft);
       window.LAST_DRAFT = draft;
       enableDraftApply(!!draft);

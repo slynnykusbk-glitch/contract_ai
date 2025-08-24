@@ -78,6 +78,12 @@ for _o in (
     if _o not in ALLOWED_ORIGINS:
         ALLOWED_ORIGINS.append(_o)
 
+_LLM_KEY_ENV_VARS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LLM_API_KEY")
+
+
+def _has_llm_keys() -> bool:
+    return any(os.getenv(k) for k in _LLM_KEY_ENV_VARS)
+
 # --------------------------------------------------------------------
 # App / Router
 # --------------------------------------------------------------------
@@ -549,10 +555,16 @@ async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[st
     model = DraftIn(**payload) if isinstance(payload, dict) else DraftIn()
     cid = x_cid or _sha256_hex(str(t0) + (model.text or "")[:128])
 
-    used_model = getattr(model, "model", None) or "rule-based"
+    if not _has_llm_keys():
+        draft_text = (
+            "This clause sets the governing law to England and Wales. "
+            "Confirm if consistent with parties’ policy."
+        )
+        _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return {"status": "ok", "draft_text": draft_text, "meta": {"model": "rulebased"}}
+
+    used_model = getattr(model, "model", None) or "rulebased"
     draft_text: str = ""
-    meta_title: Optional[str] = None
-    meta_clause_type: Optional[str] = None
 
     try:
         if run_gpt_draft is not None:
@@ -561,7 +573,6 @@ async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[st
                 timeout=DRAFT_TIMEOUT_SEC,
             )
         elif pipeline and hasattr(pipeline, "synthesize_draft"):
-            # fallback pipeline path
             doc: Dict[str, Any]
             if model.analysis:
                 doc = model.analysis if isinstance(model.analysis, dict) else _as_dict(model.analysis)
@@ -582,28 +593,15 @@ async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[st
             draft_text = dr
         elif isinstance(dr, dict):
             draft_text = str(dr.get("text") or "")
-            meta_title = dr.get("title")
-            meta_clause_type = dr.get("clause_type")
             used_model = dr.get("model") or used_model
         else:
             draft_text = str(getattr(dr, "text", "") or "")
-            meta_title = getattr(dr, "title", None)  # type: ignore[attr-defined]
-            meta_clause_type = getattr(dr, "clause_type", None)  # type: ignore[attr-defined]
             used_model = getattr(dr, "model", used_model)  # type: ignore[attr-defined]
     except Exception:
         draft_text = draft_text or "No draft available due to an internal error."
 
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    return {
-        "status": "ok",
-        "draft_text": draft_text,
-        "citations_hint": [],
-        "meta": {
-            "model": used_model,
-            "title": meta_title,
-            "clause_type": meta_clause_type,
-        },
-    }
+    return {"status": "ok", "draft_text": draft_text, "meta": {"model": used_model}}
 
 
 @router.post("/api/suggest_edits")

@@ -2,6 +2,8 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Union
 import hashlib
 
+from .doc_type import guess_doc_type, slug_to_display
+
 # Keep schema types for compatibility (DocumentAnalysis return, Clause/Span shapes, etc.)
 try:
     from contract_review_app.core.schemas import (  # type: ignore
@@ -273,6 +275,12 @@ def analyze_document(text: str, document_name: Optional[str] = None, language: O
       - Build SSOT (DocumentAnalysis) with index, analyses, and summary_* from metrics.
     """
     t = text or ""
+    type_slug, type_conf, _, score_map = guess_doc_type(t)
+    dtype = slug_to_display(type_slug)
+    debug_top = [
+        {"type": slug_to_display(s), "score": round(v, 3)}
+        for s, v in sorted(score_map.items(), key=lambda kv: kv[1], reverse=True)[:5]
+    ]
     sections = _sections_via_matcher(t)
     index = _make_index(t, sections)
 
@@ -317,6 +325,17 @@ def analyze_document(text: str, document_name: Optional[str] = None, language: O
             index=index,
             text=t,
         )
+
+    extra_summary = {"type": dtype, "type_confidence": type_conf}
+    if debug_top:
+        extra_summary["debug"] = {"doctype_top": debug_top}
+    try:
+        object.__setattr__(doc, "summary", extra_summary)
+    except Exception:
+        try:
+            doc.summary = extra_summary  # type: ignore[attr-defined]
+        except Exception:
+            pass
     return doc
 
 def synthesize_draft(analysis_or_text: Union[AnalysisOutput, Dict[str, Any], List[Any], str], mode: DraftMode = "friendly") -> str:

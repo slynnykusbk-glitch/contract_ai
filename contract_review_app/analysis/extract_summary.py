@@ -11,20 +11,11 @@ from .summary_schemas import (
     ConditionsVsWarranties,
 )
 
+from contract_review_app.engine.doc_type import guess_doc_type, slug_to_display
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-# Contract type patterns with weights (0-10)
-_TYPE_PATTERNS = [
-    (re.compile(r"\b(?:non-disclosure|confidentiality) agreement\b|\bNDA\b", re.I), "NDA", 10),
-    (re.compile(r"\bdata processing agreement\b|\bDPA\b", re.I), "DPA", 9),
-    (re.compile(r"\bmaster services agreement\b|\bMSA\b", re.I), "MSA", 8),
-    (re.compile(r"\bsoftware as a service\b|\bSaaS\b", re.I), "SaaS", 7),
-    (re.compile(r"\bsupply agreement\b|\bsupply contract\b", re.I), "Supply", 6),
-    (re.compile(r"\bservices agreement\b", re.I), "Services", 5),
-    (re.compile(r"\blicen[cs]e\b", re.I), "License", 4),
-]
 
 _ROLE_RE = re.compile(
     r"\((?:the\s+)?(Disclosing Party|Receiving Party|Seller|Buyer|Licensor|Licensee)\)",
@@ -67,24 +58,6 @@ _WARR_RE = re.compile(r"[^.]*warrant[^.]*", re.I)
 
 
 _CURRENCY_MAP = {"£": "GBP", "$": "USD", "€": "EUR"}
-
-
-# ---------------------------------------------------------------------------
-
-
-def _classify(text: str, hints: List[str]) -> tuple[str, float]:
-    best_type = "unknown"
-    best_weight = 0
-    for pat, typ, weight in _TYPE_PATTERNS:
-        m = pat.search(text)
-        if m:
-            hints.append(m.group(0))
-            if weight > best_weight:
-                best_type, best_weight = typ, weight
-    confidence = best_weight / 10 if best_weight else 0.0
-    return best_type, round(confidence, 2)
-
-
 def _extract_parties(text: str, hints: List[str]) -> List[Party]:
     parties: List[Party] = []
     m = _BETWEEN_RE.search(text)
@@ -194,6 +167,19 @@ def _extract_cw(text: str, hints: List[str]) -> ConditionsVsWarranties:
     )
 
 
+def _extract_subject(text: str) -> Optional[dict]:
+    sections = ["purpose", "scope", "services", "background", "recitals"]
+    for sec in sections:
+        pattern = re.compile(rf"^\s*{sec}\b[\s:]*\n(.{{0,400}})", re.I | re.M)
+        m = pattern.search(text)
+        if m:
+            content = m.group(1).strip()
+            sentences = re.split(r"(?<=[.!?])\s+", content)
+            raw = " ".join(sentences[:2]).strip()
+            return {"title": sec.title(), "raw": raw}
+    return None
+
+
 def _first_currency(text: str) -> Optional[str]:
     m = _CURRENCY_FIRST_RE.search(text)
     if not m:
@@ -210,7 +196,9 @@ def extract_document_snapshot(text: str) -> DocumentSnapshot:
     text = text or ""
     hints: List[str] = []
 
-    doc_type, confidence = _classify(text, hints)
+    slug, confidence, evidence, _ = guess_doc_type(text)
+    doc_type = slug_to_display(slug)
+    hints.extend(evidence[:5])
     parties = _extract_parties(text, hints)
     dates = _extract_dates(text, hints)
     term = _extract_term(text, hints)
@@ -244,4 +232,10 @@ def extract_document_snapshot(text: str) -> DocumentSnapshot:
         hints=hints,
         rules_count=rules_count,
     )
+    subject = _extract_subject(text)
+    if subject:
+        try:
+            object.__setattr__(snapshot, "subject", subject)
+        except Exception:
+            pass
     return snapshot

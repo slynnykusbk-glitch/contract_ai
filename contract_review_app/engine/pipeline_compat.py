@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import Any, Dict, List, Tuple
 
+from .doc_type import guess_doc_type, slug_to_display
+
 # Public API:
 #   to_panel_shape(ssot) -> (analysis:dict, results:dict, clauses:list[dict])
 
@@ -154,10 +156,31 @@ def to_panel_shape(ssot: dict | Any) -> Tuple[dict, dict, list[dict]]:
     """
     doc = _dump(ssot or {})
     analyses_raw = _get_list(doc, "analyses")
-    analyses = [ _dump(a) for a in analyses_raw ]
+    analyses = [_dump(a) for a in analyses_raw]
 
     head = _headline(analyses)
     analysis = _build_analysis(head, doc)
+
+    doc_summary = _get(doc, "summary", {}) or {}
+    if "type" not in doc_summary:
+        slug, conf, _, score_map = guess_doc_type(str(_get(doc, "text", "")))
+        dtype = slug_to_display(slug)
+        debug_top = [
+            {"type": slug_to_display(s), "score": round(v, 3)}
+            for s, v in sorted(score_map.items(), key=lambda kv: kv[1], reverse=True)[:5]
+        ]
+        doc_summary = {"type": dtype, "type_confidence": conf}
+        if debug_top:
+            doc_summary["debug"] = {"doctype_top": debug_top}
+
     results = _build_results(analyses)
+    if doc_summary:
+        results.setdefault("summary", {})
+        results["summary"]["type"] = doc_summary.get("type")
+        results["summary"]["type_confidence"] = doc_summary.get("type_confidence")
+        if doc_summary.get("debug"):
+            results["summary"]["debug"] = doc_summary["debug"]
+        doc["summary"] = {**doc_summary}
+
     clauses = _build_clauses(doc)
     return analysis, results, clauses

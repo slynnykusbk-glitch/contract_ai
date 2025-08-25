@@ -184,7 +184,7 @@
       x.setRequestHeader("x-panel-build", BUILD);
       x.setRequestHeader("x-manifest-src", _manifestSrc());
       x.setRequestHeader("x-cid", window.__CLIENT_CID__ || "");
-      x.setRequestHeader("x-schema-version", "1.0");
+      x.setRequestHeader("x-schema-version", "1.2");
       if (payload != null) x.setRequestHeader("Content-Type", "application/json");
       // pass-through custom headers (e.g., x-idempotency-key)
       if (opts.headers && typeof opts.headers === "object") {
@@ -505,14 +505,13 @@ function renderDocSnapshot(info) {
     if (!info) { els.docSnap.innerHTML = ""; els.docSnap.classList.add("hidden"); return; }
     var html = '<div class="flex" style="justify-content:space-between;align-items:center">';
     html += '<strong>Document Snapshot</strong>';
-    var ct = info.contract_type || {};
-    if (ct.confidence != null) html += '<span class="pill">' + Math.round(ct.confidence * 100) + '%</span>';
+    if (CAI_STORE.status.schemaVersion) html += '<span class="muted">v' + esc(CAI_STORE.status.schemaVersion) + '</span>';
     html += '</div>';
-    html += '<div class="kv"><strong>Type:</strong><span>' + esc(ct.type || ct.label || '—') + '</span></div>';
+    html += '<div class="kv"><strong>Type:</strong><span>' + esc(info.type || '—') + '</span></div>';
     if (Array.isArray(info.parties) && info.parties.length) {
-      html += '<div style="margin-top:6px"><strong>Parties</strong><table><tr><th>Name</th><th>Role</th></tr>';
+      html += '<div style="margin-top:6px"><strong>Parties</strong><table><tr><th>Role</th><th>Name</th></tr>';
       info.parties.forEach(function(p){
-        html += '<tr><td>' + esc(p.name || '—') + '</td><td>' + esc(p.role || '—') + '</td></tr>';
+        html += '<tr><td>' + esc(p.role || '—') + '</td><td>' + esc(p.name || '—') + '</td></tr>';
       });
       html += '</table></div>';
     }
@@ -521,6 +520,7 @@ function renderDocSnapshot(info) {
       html += '<div class="kv"><strong>Dated:</strong><span>' + esc(info.dates.dated || '—') + '</span></div>';
       html += '<div class="kv"><strong>Effective:</strong><span>' + esc(info.dates.effective || '—') + '</span></div>';
       html += '<div class="kv"><strong>Commencement:</strong><span>' + esc(info.dates.commencement || '—') + '</span></div>';
+      html += '<div class="kv"><strong>Signatures:</strong><span>' + (info.signatures && info.signatures.length ? info.signatures.length : 0) + '</span></div>';
       html += '</div>';
     }
     if (info.term) {
@@ -528,26 +528,24 @@ function renderDocSnapshot(info) {
       html += '<div class="kv"><strong>Mode:</strong><span>' + esc(info.term.mode || '—') + '</span></div>';
       html += '<div class="kv"><strong>Start:</strong><span>' + esc(info.term.start || '—') + '</span></div>';
       html += '<div class="kv"><strong>End:</strong><span>' + esc(info.term.end || '—') + '</span></div>';
+      html += '<div class="kv"><strong>Notice:</strong><span>' + esc(info.term.notice || '—') + '</span></div>';
       html += '</div>';
     }
     if (info.governing_law) {
       html += '<div class="kv" style="margin-top:6px"><strong>Governing law:</strong><span>' + esc(info.governing_law) + '</span></div>';
     }
+    if (info.jurisdiction) {
+      html += '<div class="kv"><strong>Jurisdiction:</strong><span>' + esc(info.jurisdiction) + '</span></div>';
+    }
     var liab = info.liability || {};
     var cap = liab.has_cap ? (liab.cap_value != null ? String(liab.cap_value) + (liab.currency || '') : 'yes') : 'no';
     html += '<div class="kv" style="margin-top:6px"><strong>Liability cap:</strong><span>' + esc(cap) + '</span></div>';
-    var carve = Array.isArray(info.carveouts) && info.carveouts.length ? info.carveouts.join(', ') : '—';
+    var carve = (info.carveouts && Array.isArray(info.carveouts.list) && info.carveouts.list.length) ? info.carveouts.list.join(', ') : '—';
     html += '<div class="kv"><strong>Carve-outs:</strong><span>' + esc(carve) + '</span></div>';
     var cw = info.conditions_vs_warranties || {};
-    var conds = Array.isArray(cw.conditions) ? cw.conditions : [];
-    var warrs = Array.isArray(cw.warranties) ? cw.warranties : [];
-    if (conds.length || warrs.length) {
-      html += '<div style="margin-top:6px"><strong>Conditions vs Warranties</strong>';
-      html += '<div class="muted">Conditions: ' + conds.length + ', Warranties: ' + warrs.length + '</div>';
-      if (conds.length) html += '<div class="muted">C: ' + esc(conds[0].snippet || conds[0]) + '</div>';
-      if (warrs.length) html += '<div class="muted">W: ' + esc(warrs[0].snippet || warrs[0]) + '</div>';
-      html += '</div>';
-    }
+    html += '<div class="kv"><strong>Conditions vs Warranties:</strong><span>' +
+      'C:' + (cw.has_conditions ? 'yes' : 'no') + ' / W:' + (cw.has_warranties ? 'yes' : 'no') + '</span></div>';
+    html += '<div class="btn-row" style="margin-top:6px"><button id="docSnapCopy">Copy JSON</button><button id="docSnapInsert">Insert result into Word</button></div>';
     html += '<div class="toggle" id="docSnapToggle">Show raw JSON</div><pre id="docSnapRaw" style="display:none"></pre>';
     els.docSnap.innerHTML = html;
     els.docSnap.classList.remove('hidden');
@@ -556,6 +554,14 @@ function renderDocSnapshot(info) {
     if (tog && raw) {
       try { raw.textContent = JSON.stringify(info, null, 2); } catch (_) { raw.textContent = ''; }
       tog.addEventListener('click', function(){ var s = raw.style.display; raw.style.display = (s === 'none' || !s) ? 'block' : 'none'; });
+    }
+    var cpy = document.getElementById('docSnapCopy');
+    if (cpy) {
+      cpy.addEventListener('click', function(){ try { navigator.clipboard.writeText(JSON.stringify(info, null, 2)); } catch (_) {} });
+    }
+    var ins = document.getElementById('docSnapInsert');
+    if (ins && window.Office && Office.context && Office.context.document) {
+      ins.addEventListener('click', function(){ try { Office.context.document.setSelectedDataAsync(JSON.stringify(info)); } catch (_) {} });
     }
   }
 

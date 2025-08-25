@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-
 from contract_review_app.api.app import app, SCHEMA_VERSION
 
 client = TestClient(app)
@@ -19,17 +18,18 @@ def test_snapshot_positive():
     data = resp.json()
     assert data["status"] == "ok"
     summary = data["summary"]
-    assert summary["contract_type"]["type"].lower() in {"nda", "confidentiality"} or any(
-        "confidential" in h.lower() for h in summary["contract_type"].get("hints", [])
+    assert summary["type"].lower() in {"nda", "confidentiality"} or any(
+        "confidential" in h.lower() for h in summary.get("hints", [])
     )
     assert len(summary["parties"]) >= 2
     assert summary["dates"].get("dated")
     assert summary["term"]["mode"] in {"fixed", "auto_renew"}
-    assert "England and Wales" in (summary["law_jurisdiction"].get("law") or "")
+    assert "England and Wales" in (summary.get("governing_law") or "")
+    assert "England and Wales" in (summary.get("jurisdiction") or "")
     liability = summary["liability"]
     assert liability["has_cap"] is True
     assert liability.get("cap_value") is not None
-    carveouts = [c.lower() for c in liability.get("carveouts", [])]
+    carveouts = [c.lower() for c in summary["carveouts"].get("list", [])]
     assert any(c in carveouts for c in ["confidentiality", "fraud"])
     assert resp.headers.get("x-schema-version") == SCHEMA_VERSION
 
@@ -41,5 +41,5 @@ def test_snapshot_negative():
     data = resp.json()
     assert data["status"] == "ok"
     summary = data["summary"]
-    assert summary["contract_type"]["type"] == "unknown"
+    assert summary["type"] == "unknown"
     assert summary["parties"] == []

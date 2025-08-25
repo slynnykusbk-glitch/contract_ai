@@ -12,7 +12,7 @@
   "results": {},
   "clauses": [],
   "document": {
-    "schema_version": "1.1",
+    "schema_version": "1.2",
     "document_name": "contract.docx",
     "summary_score": 78,
     "summary_risk": "medium",

@@ -94,6 +94,10 @@
     .sug-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
     .sug-title{font-weight:600}
     .sug-meta{font-size:12px;color:var(--muted)}
+    .hidden{display:none}
+    #doc-snapshot table{width:100%;border-collapse:collapse;margin-top:6px}
+    #doc-snapshot th,#doc-snapshot td{border-bottom:1px solid var(--border);padding:4px 6px;text-align:left;font-size:12px}
+    #doc-snapshot th{color:var(--muted);font-weight:600}
     code{color:var(--outline)}
   </style>
 
@@ -133,6 +137,8 @@
       </span>
     </div>
   </div>
+
+  <div id="doc-snapshot" class="row card hidden"></div>
 
   <div id="doctorPanel" class="row card" style="display:none">
     <div class="muted" style="margin-bottom:6px">Doctor</div>
@@ -175,7 +181,7 @@
       <button id="btnAnalyzeDoc" class="btn-grey">Analyze (doc)</button>
       <button id="btnAnnotate" class="btn2">Annotate</button>
       <button id="btnQARecheck" class="btn-grey">QA Recheck</button>
-      <button id="btnClearAnnots" class="btn-grey">Clear Annotations</button>
+      <button id="btnClearAnnots" class="btn-grey" title="Select text in Word before applying edits.">Clear Annotations</button>
       <span class="pill right" id="qaDeltaBadge" title="QA deltas">Δ: —</span>
     </div>
     <div id="qaResiduals" class="row" style="display:none">
@@ -251,7 +257,7 @@
     <textarea id="draftBox" placeholder="Will be filled from analysis.proposed_text if provided…"></textarea>
     <div class="row flex" style="margin-top:8px">
       <button id="btnPreview" class="btn-grey" disabled>Preview diff</button>
-      <button id="btnApply" class="btn" disabled>Apply (tracked + comment)</button>
+      <button id="btnApply" class="btn" disabled title="Select text in Word before applying edits.">Apply (tracked + comment)</button>
       <button id="acceptAllBtn" class="btn-grey" disabled>Accept all</button>
       <button id="rejectAllBtn" class="btn-grey" disabled>Reject all</button>
     </div>

@@ -401,7 +401,6 @@ async def run_suggest_edits(inp: "SuggestIn") -> Dict[str, Any]:
             suggestions.append(_norm_suggestion(s))
 
     if not suggestions:
-        # deterministic fallback: append a newline for readability
         msg = "Append a newline for readability"
         suggestions.append(
             {
@@ -413,7 +412,7 @@ async def run_suggest_edits(inp: "SuggestIn") -> Dict[str, Any]:
                 "reason": "Formatting improvement (fallback)",
             }
         )
-    return {"suggestions": suggestions}
+    return suggestions
 
 
 async def run_qa_recheck(inp: "QARecheckIn") -> Dict[str, Any]:

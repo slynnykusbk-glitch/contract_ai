@@ -1,4 +1,3 @@
-```python
 from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Union
 import hashlib
@@ -394,50 +393,52 @@ def synthesize_draft(analysis_or_text: Union[AnalysisOutput, Dict[str, Any], Lis
 
     return "\n".join(body_parts).strip()
 
-def suggest_edits(text: str, clause_id: Optional[str], mode: str = "friendly", **kwargs) -> List[Dict[str, Any]]:
+def suggest_edits(text: str, clause_id: Optional[str] = None, mode: str = "friendly", **kwargs) -> Dict[str, Any]:
     """
     Deterministic suggestions. Accepts kwargs['clause_type'].
     Builds suggestions with normalized 'range': {'start','length'}.
     """
     doc = analyze_document(text or "")
+    clause_type = kwargs.get("clause_type")
     target: Optional[Clause] = None
+    a = None
 
     if clause_id:
-        target = next((c for c in (doc.index.clauses or []) if str(getattr(c, "id", c.get("id"))) == str(clause_id)), None)
-    else:
-        clause_type = kwargs.get("clause_type")
-        if clause_type:
-            target = next((c for c in (doc.index.clauses or []) if str(getattr(c, "type", c.get("type", ""))) == str(clause_type)), None)
+        target = next((c for c in (doc.index.clauses or []) if str(_safe_get(c, "id")) == str(clause_id)), None)
+        if target and not clause_type:
+            clause_type = _safe_get(target, "type")
+    if clause_type and a is None:
+        a = next((ai for ai in (doc.analyses or []) if str(_safe_get(ai, "clause_type")) == str(clause_type)), None)
+        if target is None:
+            target = next((c for c in (doc.index.clauses or []) if str(_safe_get(c, "type")) == str(clause_type)), None)
 
-    if not target:
-        # fallback to first clause if nothing specified
-        if doc.index.clauses:
-            target = doc.index.clauses[0]
-        else:
-            # pathological case: no clauses
-            return [{
-                "suggestion_id": "sg-000",
-                "clause_id": None,
-                "clause_type": kwargs.get("clause_type") or "unknown",
-                "action": "append",
-                "proposed_text": "Add clear obligations and standard carve-outs.",
-                "message": "Add clear obligations and standard carve-outs.",
-                "reason": "Fallback: no clause segmentation available.",
-                "range": {"start": max(0, len(text or "")), "length": 0},
-                "span": {"start": max(0, len(text or "")), "end": max(0, len(text or ""))},
-            }]
+    if target is None and doc.index.clauses:
+        target = doc.index.clauses[0]
+    if target is None:
+        return [{
+            "suggestion_id": "sg-000",
+            "clause_id": None,
+            "clause_type": clause_type or "unknown",
+            "action": "append",
+            "proposed_text": "Add clear obligations and standard carve-outs.",
+            "message": "Add clear obligations and standard carve-outs.",
+            "reason": "Fallback: no clause segmentation available.",
+            "range": {"start": max(0, len(text or "")), "length": 0},
+            "span": {"start": max(0, len(text or "")), "end": max(0, len(text or ""))},
+        }]
+    draft_mode = mode if mode in ("friendly", "standard", "strict") else "friendly"
+    draft = synthesize_draft(a or _safe_get(target, "text", default=""), draft_mode)
 
-    # find matching analysis
-    a = next((ai for ai in (doc.analyses or []) if (getattr(ai, "clause_type", ai.get("clause_type", "")) == getattr(target, "type", target.get("type", "")))), None)
-    draft = synthesize_draft(a or getattr(target, "text", target.get("text", "")), DraftMode(mode) if mode in ("friendly", "standard", "strict") else "friendly")  # type: ignore[arg-type]
+    sp = _safe_get(target, "span", default={})
+    start = int(_safe_get(sp, "start", default=0))
+    length = int(_safe_get(sp, "length", default=_safe_get(sp, "end", default=0)) or 0)
 
-    start = int(getattr(target.span, "start", target["span"]["start"] if isinstance(target, dict) else 0))
-    length = int(getattr(target.span, "length", target["span"]["length"] if isinstance(target, dict) else 0))
-
+    tid = _safe_get(target, "id")
+    ttype = _safe_get(target, "type")
     card = {
-        "suggestion_id": f"sg-{getattr(target, 'id', target.get('id'))}-001",
-        "clause_id": getattr(target, "id", target.get("id")),
-        "clause_type": getattr(target, "type", target.get("type")),
+        "suggestion_id": f"sg-{tid}-001",
+        "clause_id": tid,
+        "clause_type": ttype,
         "action": "replace" if (mode == "strict") else "append",
         "proposed_text": draft,
         "message": draft,
@@ -445,7 +446,6 @@ def suggest_edits(text: str, clause_id: Optional[str], mode: str = "friendly", *
         "sources": [],
         "range": {"start": start, "length": max(0, length)},
         "span": {"start": start, "end": start + max(0, length)},
-        "hash": getattr(target, "id", target.get("id")),
+        "hash": tid,
     }
-    return [card]
-```
+    return {"suggestions": [card]}

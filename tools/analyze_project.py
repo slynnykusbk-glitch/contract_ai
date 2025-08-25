@@ -1,390 +1,596 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+"""Offline repository analyzer for contract_ai (v2).
+Generates JSON and HTML reports summarising backend, LLM, rule engine
+and Word add‑in readiness. Designed for one‑click execution via PowerShell.
 """
-Project offline analyzer for `contract_ai`.
-Stdlib-only. Produces JSON + HTML reports under ./reports.
-Safe to run without internet and without running servers.
-"""
-
 from __future__ import annotations
-import os, sys, re, ast, json, argparse, html, textwrap
+
+import argparse
+import ast
+import asyncio
+import datetime as _dt
+import html
+import json
+import os
+import re
 from pathlib import Path
-from typing import Dict, List, Tuple, Set, Any
-import datetime
+from typing import Any, Dict, List, Optional, Set
 import xml.etree.ElementTree as ET
 
-ROOT = Path(__file__).resolve().parents[1]  # points to ./contract_ai
-PROJECT = ROOT
+try:  # optional dependency
+    import yaml  # type: ignore
+except Exception:  # pragma: no cover
+    yaml = None
 
-# ------------------------- helpers -------------------------
+# ---------------------------------------------------------------------------
+# constants
+# ---------------------------------------------------------------------------
+IGNORE_DIRS = {
+    ".git",
+    ".github",
+    ".idea",
+    ".vscode",
+    "venv",
+    ".venv",
+    "env",
+    "node_modules",
+    "dist",
+    "build",
+    ".cache",
+    "__pycache__",
+}
+IGNORE_SUFFIXES = {".pyc", ".map"}
+INCLUDE_DIRS = {"contract_review_app", "word_addin_dev", "tools"}
+INCLUDE_ROOT_FILES = {
+    "contract_ai_doctor.py",
+    "serve_https_panel.py",
+    "gen_dev_certs.py",
+    "run_analysis.ps1",
+}
+REQUIRED_EXPOSE_HEADERS = {"x-cid", "x-cache", "x-schema-version", "x-latency-ms"}
+ENV_PATTERNS = [
+    "OPENAI_API_KEY",
+    "OPENAI_BASE",
+    "ANTHROPIC_API_KEY",
+    "OPENROUTER_API_KEY",
+    "AI_PROVIDER",
+]
 
-def read_text_safe(p: Path, max_bytes: int = 2_000_000) -> str:
+# ---------------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------------
+
+def utc_timestamp() -> str:
+    return _dt.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+
+def rel(path: Path, root: Path) -> str:
     try:
-        data = p.read_bytes()
-        if len(data) > max_bytes:
-            return data[:max_bytes].decode("utf-8", "ignore")
-        return data.decode("utf-8", "ignore")
+        return str(path.relative_to(root))
     except Exception:
-        return ""
+        return str(path)
 
-def find_files(mask: str) -> List[Path]:
-    return list(PROJECT.glob(mask))
+def is_ignored(path: Path) -> bool:
+    if any(part in IGNORE_DIRS for part in path.parts):
+        return True
+    if path.suffix in IGNORE_SUFFIXES:
+        return True
+    return False
 
-def rel(p: Path) -> str:
-    try:
-        return str(p.relative_to(PROJECT))
-    except Exception:
-        return str(p)
-
-def ast_parse_safe(code: str, filename: str) -> ast.AST | None:
-    try:
-        return ast.parse(code, filename=filename)
-    except Exception:
-        return None
-
-def extract_imports(tree: ast.AST) -> List[str]:
-    mods = []
-    for n in ast.walk(tree):
-        if isinstance(n, ast.Import):
-            for a in n.names:
-                mods.append(a.name)
-        elif isinstance(n, ast.ImportFrom):
-            if n.module:
-                mods.append(n.module)
-    return mods
-
-def find_fastapi_endpoints(code: str) -> Dict[str, Any]:
-    # heuristic static scan: decorators like @app.get("/path"), @app.post('/x')
-    endpoints = []
-    cors = {"present": False, "allow_origins": None, "expose_headers": None}
-    # CORS config
-    cors_present = re.search(r"CORSMiddleware", code)
-    if cors_present:
-        cors["present"] = True
-        # allow_origins
-        m = re.search(r"allow_origins\s*=\s*(\[[^\]]*\]|\"[^\"]*\"|'[^']*')", code)
-        cors["allow_origins"] = m.group(1) if m else None
-        # expose_headers
-        m = re.search(r"expose_headers\s*=\s*(\[[^\]]*\]|\"[^\"]*\"|'[^']*')", code)
-        cors["expose_headers"] = m.group(1) if m else None
-
-    # endpoints
-    for m in re.finditer(r"@(?P<app>[A-Za-z_][\w]*)\.(get|post|put|patch|delete)\s*\(\s*(?P<path>r?['\"][^'\"]+['\"]).*?\)", code):
-        endpoints.append({"decorator": m.group(0)[:120], "path": m.group("path"), "app_name": m.group("app")})
-    return {"cors": cors, "endpoints": endpoints}
-
-
-def map_endpoint_tests(endpoints: List[Dict[str, Any]]) -> Dict[str, List[str]]:
-    tests_dir = PROJECT / "contract_review_app" / "tests"
-    test_files = list(tests_dir.rglob("*.py"))
-    mapping: Dict[str, List[str]] = {}
-    for ep in endpoints:
-        path = ep.get("path", "").strip("'\"")
-        hits = []
-        if not path:
+def iter_included_files(root: Path) -> List[Path]:
+    files: List[Path] = []
+    for d in INCLUDE_DIRS:
+        p = root / d
+        if not p.exists():
             continue
-        for tf in test_files:
-            t = read_text_safe(tf)
-            if path in t:
-                hits.append(rel(tf))
-        mapping[path] = hits
-    return mapping
+        for f in p.rglob("*"):
+            if f.is_file() and not is_ignored(f):
+                files.append(f)
+    for name in INCLUDE_ROOT_FILES:
+        f = root / name
+        if f.exists() and f.is_file():
+            files.append(f)
+    return files
+
+# ---------------------------------------------------------------------------
+# backend analysis
+# ---------------------------------------------------------------------------
+
+def _extract_string(node: ast.AST) -> Optional[str]:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
 
 
-def map_frontend_calls() -> Dict[str, List[str]]:
-    endpoints = ["/api/analyze", "/api/summary", "/api/gpt/draft", "/api/qa-recheck"]
-    files = list(PROJECT.rglob("*.tsx")) + list(PROJECT.rglob("*.js"))
-    mapping: Dict[str, List[str]] = {}
-    for p in files:
-        text = read_text_safe(p)
-        hits = [ep for ep in endpoints if ep in text]
-        if hits:
-            mapping[rel(p)] = hits
-    return mapping
-
-
-def summary_fields_vs_ui() -> Dict[str, Any]:
-    fields = [
-        "type",
-        "parties",
-        "dates",
-        "signatures",
-        "term",
-        "governing_law",
-        "jurisdiction",
-        "liability",
-        "carveouts",
-        "conditions_vs_warranties",
-        "hints",
-    ]
-    ui_code = read_text_safe(PROJECT / "word_addin_dev" / "taskpane.bundle.js")
-    present = [f for f in fields if re.search(rf"\b{re.escape(f)}\b", ui_code)]
-    missing = [f for f in fields if f not in present]
-    return {"present": present, "missing": missing}
-
-def list_rule_modules() -> Dict[str, Any]:
-    base = PROJECT / "contract_review_app" / "legal_rules"
-    rules_dir = base / "rules"
-    py_files = list(rules_dir.glob("*.py"))
-    yaml_files = list(rules_dir.glob("*.yml")) + list(rules_dir.glob("*.yaml"))
-    duplicate_registry = (rules_dir / "registry.py").exists()
-    # scan for forbidden import string across project
-    offending = []
-    for p in PROJECT.rglob("*.py"):
-        t = read_text_safe(p)
-        if re.search(r"legal_rules\.rules\.registry", t):
-            offending.append(rel(p))
-    return {
-        "rules_dir": rel(rules_dir),
-        "py_count": len(py_files),
-        "yaml_count": len(yaml_files),
-        "duplicate_registry_py": duplicate_registry,
-        "offending_imports": offending,
-        "py_list": [rel(x) for x in py_files][:50],
-        "yaml_list": [rel(x) for x in yaml_files][:50],
+def analyze_cors(app_path: Path) -> Dict[str, Any]:
+    cors: Dict[str, Any] = {
+        "allow_origins": [],
+        "allow_credentials": None,
+        "allow_methods": None,
+        "allow_headers": None,
+        "expose_headers": [],
     }
-
-def analyze_manifest() -> Dict[str, Any]:
-    manifest = PROJECT / "word_addin_dev" / "manifest.xml"
-    if not manifest.exists():
-        return {"present": False}
     try:
-        tree = ET.parse(str(manifest))
-        root = tree.getroot()
-        ns = {"m": root.tag.split("}")[0].strip("{")}
-        app_id = root.find(".//m:Id", ns)
-        src = root.find(".//m:SourceLocation", ns)
-        appdomains = [e.text for e in root.findall(".//m:AppDomain", ns)]
-        default_url = src.attrib.get("{http://schemas.microsoft.com/office/mailappversionoverrides/1.0}DefaultValue") if src is not None else None
-        # many manifests use DefaultValue attribute; fall back to text
-        source_location = default_url or (src.text if src is not None else None)
-        return {
-            "present": True,
-            "id": app_id.text if app_id is not None else None,
-            "source_location": source_location,
-            "app_domains": appdomains,
-            "path": rel(manifest),
-        }
-    except Exception as e:
-        return {"present": True, "error": str(e), "path": rel(manifest)}
+        text = app_path.read_text(encoding="utf-8", errors="ignore").lstrip("\ufeff")
+        tree = ast.parse(text)
+    except Exception:
+        return cors
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "CORSMiddleware":
+            for kw in node.keywords:
+                if kw.arg in cors:
+                    val = kw.value
+                    if isinstance(val, (ast.List, ast.Tuple)):
+                        cors[kw.arg] = [_extract_string(e) for e in val.elts if _extract_string(e)]
+                    else:
+                        s = _extract_string(val)
+                        if s:
+                            cors[kw.arg] = [s]
+        elif (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.attr == "add_middleware"
+        ):
+            if node.args and isinstance(node.args[0], ast.Name) and node.args[0].id == "CORSMiddleware":
+                for kw in node.keywords:
+                    if kw.arg in cors:
+                        val = kw.value
+                        if isinstance(val, (ast.List, ast.Tuple)):
+                            cors[kw.arg] = [_extract_string(e) for e in val.elts if _extract_string(e)]
+                        else:
+                            s = _extract_string(val)
+                            if s:
+                                cors[kw.arg] = [s]
+    return cors
 
-def analyze_panel() -> Dict[str, Any]:
-    out = {}
-    # serve_https_panel.py rewrites
-    serve = PROJECT / "word_addin_dev" / "serve_https_panel.py"
-    out["serve_https_panel_py"] = {"present": serve.exists(), "path": rel(serve)}
-    if serve.exists():
-        t = read_text_safe(serve)
-        rewrites = bool(re.search(r"/app/build-.*taskpane\.html", t)) and bool(re.search(r"/app/build-.*taskpane\.bundle\.js", t))
-        out["serve_https_panel_py"]["has_rewrites"] = rewrites
-    # static assets
-    t_html = PROJECT / "taskpane.html"
-    b_js = PROJECT / "taskpane.bundle.js"
-    out["taskpane_html"] = {"present": t_html.exists(), "path": rel(t_html)}
-    out["taskpane_bundle_js"] = {"present": b_js.exists(), "path": rel(b_js)}
-    # certs
-    certs = PROJECT / "word_addin_dev" / "certs"
-    out["certs_dir"] = {"present": certs.exists(), "files": [rel(x) for x in certs.glob("*")]}
-    return out
 
-def import_graph() -> Dict[str, Any]:
-    graph: Dict[str, Set[str]] = {}
-    missing: Dict[str, List[str]] = {}
-    py_files = list(PROJECT.rglob("*.py"))
-    for p in py_files:
-        modname = rel(p)
-        code = read_text_safe(p)
-        tree = ast_parse_safe(code, modname)
-        deps: Set[str] = set()
-        if tree:
-            for m in extract_imports(tree):
-                deps.add(m)
-        graph[modname] = deps
-        # mark possibly project-internal misses
-        local_refs = [d for d in deps if d.startswith("contract_review_app") or d.startswith("word_addin_dev")]
-        for d in local_refs:
-            # try map to file existence heuristic
-            parts = d.split(".")
-            candidate = PROJECT.joinpath(*parts)  # module dir
-            if not (candidate.with_suffix(".py").exists() or candidate.exists()):
-                missing.setdefault(modname, []).append(d)
-    # cycles (simple DFS on file->file is noisy); we just flag heavy importers
-    heavy = sorted(graph.items(), key=lambda kv: len(kv[1]), reverse=True)[:20]
-    return {"graph": {k: sorted(v) for k, v in graph.items()}, "heavy_importers": [{"file": k, "count": len(v)} for k, v in heavy], "missing_locals": missing}
+def analyze_endpoints(api_dir: Path) -> List[Dict[str, Any]]:
+    endpoints: List[Dict[str, Any]] = []
+    for file in api_dir.glob("*.py"):
+        try:
+            text = file.read_text(encoding="utf-8", errors="ignore").lstrip("\ufeff")
+            tree = ast.parse(text)
+        except Exception:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                for dec in node.decorator_list:
+                    if isinstance(dec, ast.Call) and isinstance(dec.func, ast.Attribute):
+                        method = dec.func.attr.upper()
+                        if method not in {"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"}:
+                            continue
+                        path = None
+                        if dec.args:
+                            path = _extract_string(dec.args[0])
+                        if path:
+                            endpoints.append(
+                                {
+                                    "method": method,
+                                    "path": path,
+                                    "file": str(file),
+                                    "lineno": node.lineno,
+                                }
+                            )
+    return endpoints
 
-def analyze_fastapi() -> Dict[str, Any]:
-    app_files = []
-    cors_info = []
-    endpoints = []
-    for p in PROJECT.rglob("*.py"):
-        code = read_text_safe(p)
-        if "FastAPI(" in code:  # candidate
-            app_files.append(rel(p))
-        info = find_fastapi_endpoints(code)
-        if info["cors"]["present"]:
-            cors_info.append({"file": rel(p), **info["cors"]})
-        if info["endpoints"]:
-            for e in info["endpoints"]:
-                e["file"] = rel(p)
-                endpoints.append(e)
-    return {"app_files": app_files, "cors": cors_info, "endpoints": endpoints}
+
+def analyze_health(api_dir: Path, no_import: bool) -> Dict[str, Any]:
+    result: Dict[str, Any] = {"keys": []}
+    health_func = None
+    health_module = api_dir / "app.py"
+    if no_import:
+        # static scan
+        try:
+            text = health_module.read_text(encoding="utf-8", errors="ignore").lstrip("\ufeff")
+            tree = ast.parse(text)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef) and node.name == "health":
+                    if isinstance(node.body[-1], ast.Return) and isinstance(node.body[-1].value, ast.Dict):
+                        keys = []
+                        for k in node.body[-1].value.keys:
+                            s = _extract_string(k)
+                            if s:
+                                keys.append(s)
+                        result["keys"] = keys
+        except Exception:
+            pass
+        return result
+    try:
+        sys.path.insert(0, str(api_dir.parent.parent))
+        from contract_review_app.api.app import app  # type: ignore
+    except Exception:
+        return result
+    for route in getattr(app, "routes", []):  # type: ignore
+        if getattr(route, "path", "") == "/health":
+            health_func = route.endpoint
+            break
+    if health_func is None:
+        return result
+    try:
+        if asyncio.iscoroutinefunction(health_func):
+            resp = asyncio.run(health_func())
+        else:
+            resp = health_func()
+        if isinstance(resp, dict):
+            result["keys"] = list(resp.keys())
+    except Exception:
+        pass
+    return result
+
+
+def analyze_backend(root: Path, no_import: bool) -> Dict[str, Any]:
+    api_dir = root / "contract_review_app" / "api"
+    app_py = api_dir / "app.py"
+    cors = analyze_cors(app_py) if app_py.exists() else {}
+    endpoints = analyze_endpoints(api_dir)
+    health = analyze_health(api_dir, no_import)
+    return {"cors": cors, "endpoints": endpoints, "health": health}
+
+# ---------------------------------------------------------------------------
+# LLM analysis
+# ---------------------------------------------------------------------------
 
 def analyze_env() -> Dict[str, Any]:
-    keys = [k for k in os.environ.keys() if re.search(r"(OPENAI|ANTHROPIC|AZURE|OPENROUTER|LLM|MODEL|GPT)", k, re.I)]
-    return {"interesting_env": {k: os.environ.get(k, "") for k in keys}}
+    env: Dict[str, Any] = {}
+    for k in ENV_PATTERNS:
+        env[k] = os.getenv(k)
+    for k in list(os.environ.keys()):
+        if k.startswith("AZURE_OPENAI_") or k.startswith("MODEL") or k.startswith("LLM_"):
+            env[k] = os.getenv(k)
+    for secret in ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY"]:
+        if secret in env:
+            env[secret] = bool(env[secret])
+    return env
 
-def summarize_findings(report: Dict[str, Any]) -> Dict[str, Any]:
-    issues = []
 
-    # Rules
-    r = report["rules"]
-    if r["py_count"] + r["yaml_count"] == 0:
-        issues.append({"severity":"fail","area":"rules","msg":"No rules found in legal_rules/rules"})
-    if r["duplicate_registry_py"]:
-        issues.append({"severity":"warn","area":"rules","msg":"Duplicate rules/registry.py present (may shadow root registry)"})
-    if r["offending_imports"]:
-        issues.append({"severity":"fail","area":"rules","msg":"Found imports of legal_rules.rules.registry","detail":r["offending_imports"]})
+def analyze_llm(root: Path, endpoints: List[Dict[str, Any]]) -> Dict[str, Any]:
+    env = analyze_env()
+    api_dir = root / "contract_review_app" / "api"
+    files = list(api_dir.glob("*.py"))
+    providers: Set[str] = set()
+    has_stub = False
+    for f in files:
+        try:
+            tree = ast.parse(f.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                s = node.value.lower()
+                for p in ["openai", "anthropic", "azure", "openrouter"]:
+                    if p in s:
+                        providers.add(p)
+            if isinstance(node, ast.Assign):
+                if any(isinstance(t, ast.Name) and t.id == "draft_text" for t in node.targets):
+                    if isinstance(node.value, ast.Constant) and node.value.value == "":
+                        has_stub = True
+            if isinstance(node, ast.Return):
+                if isinstance(node.value, ast.Constant) and node.value.value == "":
+                    has_stub = True
+    draft_endpoint = any(ep["path"] == "/api/gpt/draft" for ep in endpoints)
+    return {
+        "env": env,
+        "code": {
+            "providers_detected": sorted(providers),
+            "has_stub_draft": has_stub,
+            "has_draft_endpoint": draft_endpoint,
+        },
+    }
 
-    # CORS
-    cors = report["fastapi"]["cors"]
-    if cors:
-        # check for expose headers
-        has_expose = any(c.get("expose_headers") for c in cors)
-        if not has_expose:
-            issues.append({"severity":"warn","area":"backend","msg":"CORSMiddleware present but expose_headers not found"})
-    else:
-        issues.append({"severity":"warn","area":"backend","msg":"FastAPI app found but no CORSMiddleware detected"})
+# ---------------------------------------------------------------------------
+# Rule engine analysis
+# ---------------------------------------------------------------------------
 
-    # Manifest / panel
-    man = report["manifest"]
-    if not man.get("present"):
-        issues.append({"severity":"fail","area":"addin","msg":"word_addin_dev/manifest.xml not found"})
-    else:
-        src = man.get("source_location")
-        if not src:
-            issues.append({"severity":"warn","area":"addin","msg":"Manifest has no SourceLocation(DefaultValue)"})
-        else:
-            if not re.search(r"https://(127\.0\.0\.1|localhost):3000", src or ""):
-                issues.append({"severity":"warn","area":"addin","msg":f"Manifest SourceLocation looks non-dev: {src}"})
-    panel = report["panel"]
-    if not panel["taskpane_html"]["present"]:
-        issues.append({"severity":"warn","area":"panel","msg":"taskpane.html not found at repo root"})
-    if not panel["taskpane_bundle_js"]["present"]:
-        issues.append({"severity":"warn","area":"panel","msg":"taskpane.bundle.js not found at repo root"})
-    if panel["serve_https_panel_py"]["present"] and not panel["serve_https_panel_py"].get("has_rewrites"):
-        issues.append({"severity":"warn","area":"panel","msg":"serve_https_panel.py has no rewrite rules for /app/build-*"})
-    # Env
-    if not report["env"]["interesting_env"]:
-        issues.append({"severity":"info","area":"llm","msg":"No LLM-related env variables detected (OK for rule-only mode)"})
+def analyze_python_rules(root: Path, no_import: bool) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+    python: Dict[str, Any] = {"count": 0, "names": []}
+    fail: Optional[Dict[str, Any]] = None
+    if no_import:
+        return python, None
+    try:
+        import sys
+        sys.path.insert(0, str(root))
+        from contract_review_app.legal_rules import registry as rules_registry  # type: ignore
+        try:
+            rules = rules_registry.discover_rules(cache=True)  # type: ignore
+        except TypeError:  # older signature
+            rules = rules_registry.discover_rules()  # type: ignore
+        python["count"] = len(rules)
+        python["names"] = [getattr(r, "name", str(r)) for r in rules][:100]
+    except Exception as exc:  # pragma: no cover
+        fail = {"message": str(exc)}
+    return python, fail
 
-    return {"issues": issues}
 
-def render_html(report: Dict[str, Any]) -> str:
-    def badge(sv): 
-        return {"fail":"#dc2626","warn":"#d97706","ok":"#16a34a","info":"#2563eb"}.get(sv,"#6b7280")
-    issues = report["summary"]["issues"]
-    rows = []
-    for it in issues:
-        color = badge(it["severity"])
-        detail = html.escape(json.dumps(it.get("detail", ""), ensure_ascii=False))
-        rows.append(f"<tr><td><span style='background:{color};color:white;padding:2px 6px;border-radius:6px'>{it['severity'].upper()}</span></td><td>{html.escape(it['area'])}</td><td>{html.escape(it['msg'])}</td><td><code>{detail}</code></td></tr>")
-    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    return f"""<!doctype html><html><head><meta charset="utf-8"><title>contract_ai — offline analysis</title>
-<style>body{{font-family:system-ui,Segoe UI,Roboto,sans-serif;padding:24px}} h2{{margin-top:28px}} table{{border-collapse:collapse;width:100%}} td,th{{border:1px solid #ddd;padding:8px;vertical-align:top}} code{{font-family:ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap}}</style>
+def validate_yaml_rule(data: Any) -> bool:
+    if not isinstance(data, list):
+        return False
+    for rule in data:
+        if not isinstance(rule, dict):
+            return False
+        for field in ["id", "title", "severity"]:
+            if field not in rule:
+                return False
+        if not any(k in rule for k in ["patterns", "match", "extract", "advice"]):
+            return False
+    return True
+
+
+def analyze_yaml_rules(root: Path) -> Dict[str, Any]:
+    packs: List[Dict[str, Any]] = []
+    packs_dir = root / "contract_review_app" / "legal_rules" / "policy_packs"
+    for f in packs_dir.rglob("*.yml"):
+        packs.append(_analyze_yaml_pack(root, f))
+    for f in packs_dir.rglob("*.yaml"):
+        packs.append(_analyze_yaml_pack(root, f))
+    return {"packs": packs}
+
+
+def _analyze_yaml_pack(root: Path, f: Path) -> Dict[str, Any]:
+    info = {"file": rel(f, root), "rules": 0, "valid": False}
+    if yaml is None:
+        return info
+    try:
+        data = yaml.safe_load(f.read_text(encoding="utf-8"))
+        info["rules"] = len(data) if isinstance(data, list) else 0
+        info["valid"] = validate_yaml_rule(data)
+    except Exception:
+        pass
+    return info
+
+
+def find_namespace_conflicts(root: Path) -> List[Dict[str, Any]]:
+    conflicts: List[Dict[str, Any]] = []
+    for f in iter_included_files(root):
+        if "tools" in f.parts:
+            continue
+        if f.suffix != ".py":
+            continue
+        text = f.read_text(encoding="utf-8", errors="ignore")
+        for i, line in enumerate(text.splitlines(), 1):
+            if "legal_rules.rules.registry" in line:
+                conflicts.append({"file": rel(f, root), "lineno": i, "line": line.strip()})
+    return conflicts
+
+
+def analyze_rules(root: Path, no_import: bool) -> Dict[str, Any]:
+    python_rules, fail = analyze_python_rules(root, no_import)
+    yaml_rules = analyze_yaml_rules(root)
+    conflicts = find_namespace_conflicts(root)
+    result = {"python": python_rules, "yaml": yaml_rules, "namespace_conflicts": conflicts}
+    if fail:
+        result["python_fail"] = fail
+    return result
+
+# ---------------------------------------------------------------------------
+# Word Add‑in analysis
+# ---------------------------------------------------------------------------
+
+def analyze_manifest(root: Path) -> Dict[str, Any]:
+    manifest_path = root / "word_addin_dev" / "manifest.xml"
+    info = {"sourceLocation": None, "host": [], "permissions": None}
+    if not manifest_path.exists():
+        return info
+    try:
+        tree = ET.parse(manifest_path)
+        root_el = tree.getroot()
+        ns = {"o": root_el.tag.split("}")[0].strip("{")}
+        sl = root_el.find(".//o:DefaultSettings/o:SourceLocation", ns)
+        if sl is not None:
+            info["sourceLocation"] = sl.get("DefaultValue")
+        info["host"] = [h.get("Name") for h in root_el.findall(".//o:Host", ns) if h.get("Name")]
+        perm = root_el.find(".//o:Permissions", ns)
+        if perm is not None and perm.text:
+            info["permissions"] = perm.text.strip()
+    except Exception:
+        pass
+    return info
+
+
+def analyze_panel(root: Path) -> Dict[str, Any]:
+    panel_dir = root / "word_addin_dev"
+    files = {
+        "taskpane.html": (panel_dir / "taskpane.html").exists(),
+        "taskpane.bundle.js": (panel_dir / "taskpane.bundle.js").exists(),
+        "panel_selftest.html": (panel_dir / "panel_selftest.html").exists(),
+    }
+    serve_py = root / "serve_https_panel.py"
+    base_url = None
+    if serve_py.exists():
+        text = serve_py.read_text(encoding="utf-8", errors="ignore")
+        m = re.search(r"https?://[^'\"\n]+", text)
+        if m:
+            base_url = m.group(0)
+    certs_dir = panel_dir / "certs"
+    certs = {
+        "localhost.pem": (certs_dir / "localhost.pem").exists(),
+        "localhost-key.pem": (certs_dir / "localhost-key.pem").exists(),
+    }
+    return {"panel_files": files, "base_url": base_url, "certs": certs}
+
+# ---------------------------------------------------------------------------
+# Inventory
+# ---------------------------------------------------------------------------
+
+def analyze_inventory(root: Path) -> Dict[str, Any]:
+    files = iter_included_files(root)
+    total = len(files)
+    py = sum(1 for f in files if f.suffix == ".py")
+    js = sum(1 for f in files if f.suffix in {".js", ".ts", ".tsx"})
+    return {
+        "counts": {"total_files": total, "py": py, "js": js},
+        "ignored": sorted(list(IGNORE_DIRS))
+    }
+
+# ---------------------------------------------------------------------------
+# Reporting helpers
+# ---------------------------------------------------------------------------
+
+def collect_summary(backend: Dict[str, Any], llm: Dict[str, Any], rules: Dict[str, Any], addin: Dict[str, Any]) -> List[Dict[str, Any]]:
+    summary: List[Dict[str, Any]] = []
+    expose = set(backend.get("cors", {}).get("expose_headers") or [])
+    if not expose or not REQUIRED_EXPOSE_HEADERS.issubset({e.lower() for e in expose}):
+        summary.append({
+            "severity": "FAIL",
+            "area": "backend",
+            "message": "CORS expose_headers missing required values",
+            "detail": list(expose),
+        })
+    if addin.get("manifest", {}).get("sourceLocation") in (None, ""):
+        summary.append({
+            "severity": "FAIL",
+            "area": "addin",
+            "message": "manifest.xml SourceLocation DefaultValue missing",
+            "detail": [],
+            "files": ["word_addin_dev/manifest.xml"],
+        })
+    if rules.get("namespace_conflicts"):
+        summary.append({
+            "severity": "FAIL",
+            "area": "rules",
+            "message": "Imports of legal_rules.rules.registry found",
+            "detail": rules["namespace_conflicts"],
+        })
+    if rules.get("python_fail"):
+        summary.append({
+            "severity": "FAIL",
+            "area": "rules",
+            "message": "discover_rules() failed",
+            "detail": rules.get("python_fail"),
+        })
+    if llm["code"].get("has_stub_draft"):
+        summary.append({
+            "severity": "FAIL",
+            "area": "llm",
+            "message": "Found empty draft text stub",
+            "detail": [],
+        })
+    # WARN conditions
+    env = llm.get("env", {})
+    draft_ep = llm["code"].get("has_draft_endpoint")
+    if draft_ep and not any(env.get(k) for k in env):
+        summary.append({
+            "severity": "WARN",
+            "area": "llm",
+            "message": "LLM not configured (rule-only mode)",
+            "detail": [],
+        })
+    panel_files = addin.get("panel", {}).get("panel_files", {})
+    if panel_files and not panel_files.get("taskpane.html", False):
+        summary.append({
+            "severity": "WARN",
+            "area": "panel",
+            "message": "taskpane.html missing",
+            "detail": [],
+        })
+    if panel_files and not panel_files.get("taskpane.bundle.js", False):
+        summary.append({
+            "severity": "WARN",
+            "area": "panel",
+            "message": "taskpane.bundle.js missing",
+            "detail": [],
+        })
+    certs = addin.get("panel", {}).get("certs", {})
+    if certs and (not certs.get("localhost.pem") or not certs.get("localhost-key.pem")):
+        summary.append({
+            "severity": "WARN",
+            "area": "panel",
+            "message": "Development HTTPS certs missing",
+            "detail": [],
+        })
+    # INFO
+    if llm["code"].get("providers_detected"):
+        summary.append({
+            "severity": "INFO",
+            "area": "llm",
+            "message": "Providers detected",
+            "detail": llm["code"]["providers_detected"],
+        })
+    if rules.get("python", {}).get("count", 0) > 0:
+        summary.append({
+            "severity": "INFO",
+            "area": "rules",
+            "message": f"python rules: {rules['python']['count']}",
+            "detail": rules['python']['names'],
+        })
+    if rules.get("yaml", {}).get("packs"):
+        summary.append({
+            "severity": "INFO",
+            "area": "rules",
+            "message": "yaml policy packs analysed",
+            "detail": rules['yaml']['packs'],
+        })
+    return summary
+
+
+def render_html(data: Dict[str, Any]) -> str:
+    ts = _dt.datetime.utcnow().isoformat()
+    summary_rows = []
+    for item in data["summary"]:
+        color = {
+            "FAIL": "#dc2626",
+            "WARN": "#d97706",
+            "INFO": "#2563eb",
+        }.get(item["severity"], "#16a34a")
+        summary_rows.append(
+            f"<tr><td><span style='background:{color};color:white;padding:2px 6px;border-radius:6px'>{item['severity']}</span></td>"
+            f"<td>{html.escape(item['area'])}</td><td>{html.escape(item['message'])}</td>"
+            f"<td><code>{html.escape(json.dumps(item.get('detail', ''), ensure_ascii=False))}</code></td></tr>"
+        )
+    summary_html = "".join(summary_rows) or "<tr><td colspan=4>OK</td></tr>"
+    return f"""<!doctype html><html><head><meta charset='utf-8'><title>contract_ai analysis</title>
+<style>body{{font-family:Arial,Helvetica,sans-serif;padding:24px}}table{{border-collapse:collapse;width:100%}}td,th{{border:1px solid #ddd;padding:6px}}</style>
 </head><body>
-<h1>contract_ai — Offline Analysis</h1>
+<h1>contract_ai Offline Analysis</h1>
 <p>Generated: {ts}</p>
-
-<h2>Summary</h2>
-<table><tr><th>Severity</th><th>Area</th><th>Message</th><th>Detail</th></tr>
-{''.join(rows) if rows else '<tr><td colspan=4>OK — no major issues detected.</td></tr>'}
-</table>
-
-<h2>FastAPI</h2>
-<pre>{html.escape(json.dumps(report["fastapi"], indent=2, ensure_ascii=False))}</pre>
-
-<h2>Endpoint Tests</h2>
-<pre>{html.escape(json.dumps(report.get("endpoint_tests", {}), indent=2, ensure_ascii=False))}</pre>
-
-<h2>Frontend Calls</h2>
-<pre>{html.escape(json.dumps(report.get("frontend_calls", {}), indent=2, ensure_ascii=False))}</pre>
-
-<h2>Summary schema vs UI</h2>
-<pre>{html.escape(json.dumps(report.get("summary_ui", {}), indent=2, ensure_ascii=False))}</pre>
-
-<h2>Rules</h2>
-<pre>{html.escape(json.dumps(report["rules"], indent=2, ensure_ascii=False))}</pre>
-
-<h2>Word Add-in</h2>
-<pre>{html.escape(json.dumps(report["manifest"], indent=2, ensure_ascii=False))}</pre>
-<pre>{html.escape(json.dumps(report["panel"], indent=2, ensure_ascii=False))}</pre>
-
-<h2>Import Graph (top heavy importers)</h2>
-<pre>{html.escape(json.dumps(report["imports"]["heavy_importers"], indent=2, ensure_ascii=False))}</pre>
-
-<h2>Interesting ENV</h2>
-<pre>{html.escape(json.dumps(report["env"], indent=2, ensure_ascii=False))}</pre>
-
-<h2>Inventory</h2>
-<pre>{html.escape(json.dumps(report["inventory"], indent=2, ensure_ascii=False))}</pre>
-
+<h2 id='summary'>Summary</h2>
+<table><tr><th>Severity</th><th>Area</th><th>Message</th><th>Detail</th></tr>{summary_html}</table>
+<h2 id='backend'>Backend</h2><pre>{html.escape(json.dumps(data['backend'], indent=2, ensure_ascii=False))}</pre>
+<h2 id='llm'>LLM</h2><pre>{html.escape(json.dumps(data['llm'], indent=2, ensure_ascii=False))}</pre>
+<h2 id='rules'>Rules</h2><pre>{html.escape(json.dumps(data['rules'], indent=2, ensure_ascii=False))}</pre>
+<h2 id='addin'>Add-in</h2><pre>{html.escape(json.dumps(data['addin'], indent=2, ensure_ascii=False))}</pre>
+<h2 id='inventory'>Inventory</h2><pre>{html.escape(json.dumps(data['inventory'], indent=2, ensure_ascii=False))}</pre>
+<h2 id='reproduce'>How to reproduce checks</h2><pre>python tools/analyze_project.py --project-root .</pre>
 </body></html>"""
 
-def inventory() -> Dict[str, Any]:
-    # summarize file types and key paths
-    files = [p for p in PROJECT.rglob("*") if p.is_file()]
-    by_ext: Dict[str, int] = {}
-    for f in files:
-        by_ext.setdefault(f.suffix.lower(), 0)
-        by_ext[f.suffix.lower()] += 1
-    key_paths = {
-        "app_py": [rel(p) for p in PROJECT.rglob("app.py")],
-        "orchestrator_py": [rel(p) for p in PROJECT.rglob("orchestrator.py")],
-        "manifest_xml": rel(PROJECT / "word_addin_dev" / "manifest.xml"),
-        "serve_https_panel_py": rel(PROJECT / "word_addin_dev" / "serve_https_panel.py"),
-        "certs_dir": rel(PROJECT / "word_addin_dev" / "certs"),
-        "legal_rules_dir": rel(PROJECT / "contract_review_app" / "legal_rules"),
-        "rules_dir": rel(PROJECT / "contract_review_app" / "legal_rules" / "rules"),
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="contract_ai repository analyzer")
+    parser.add_argument("--project-root", required=True)
+    parser.add_argument("--out", default=None)
+    parser.add_argument("--no-import", action="store_true")
+    parser.add_argument("--verbose", action="store_true")
+    args = parser.parse_args()
+
+    root = Path(args.project_root).resolve()
+    out_dir = Path(args.out) if args.out else root / "tools" / "reports" / utc_timestamp()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    backend = analyze_backend(root, args.no_import)
+    llm = analyze_llm(root, backend.get("endpoints", []))
+    rules = analyze_rules(root, args.no_import)
+    manifest = analyze_manifest(root)
+    panel = analyze_panel(root)
+    addin = {"manifest": manifest, "panel": panel}
+    inventory = analyze_inventory(root)
+    summary = collect_summary(backend, llm, rules, addin)
+    data = {
+        "summary": summary,
+        "backend": backend,
+        "llm": llm,
+        "rules": rules,
+        "addin": addin,
+        "inventory": inventory,
     }
-    return {"total_files": len(files), "by_ext": by_ext, "key_paths": key_paths}
-
-def main():
-    ap = argparse.ArgumentParser(description="Offline analyzer for contract_ai")
-    ap.add_argument("--project-root", default=str(PROJECT), help="Path to project root (default: script/../)")
-    ap.add_argument("--out", default=str(PROJECT / "reports"), help="Output directory for reports")
-    ap.add_argument("--html", default=None, help="Path to output HTML file")
-    args = ap.parse_args()
-
-    outdir = Path(args.out)
-    if args.html:
-        html_path = Path(args.html)
-        outdir = html_path.parent
-    else:
-        html_path = outdir / "analysis.html"
-    outdir.mkdir(parents=True, exist_ok=True)
-    json_path = outdir / "analysis.json"
-
-    report: Dict[str, Any] = {}
-    report["project_root"] = str(PROJECT)
-    report["inventory"] = inventory()
-    report["imports"] = import_graph()
-    report["fastapi"] = analyze_fastapi()
-    report["endpoint_tests"] = map_endpoint_tests(report["fastapi"].get("endpoints", []))
-    report["frontend_calls"] = map_frontend_calls()
-    report["summary_ui"] = summary_fields_vs_ui()
-    report["rules"] = list_rule_modules()
-    report["manifest"] = analyze_manifest()
-    report["panel"] = analyze_panel()
-    report["env"] = analyze_env()
-    report["summary"] = summarize_findings(report)
-
-    # write JSON
-    json_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-
-    # write HTML
-    html_path.write_text(render_html(report), encoding="utf-8")
-
-    print(f"[OK] Report written:\n  JSON: {json_path}\n  HTML: {html_path}")
+    json_path = out_dir / "analysis.json"
+    html_path = out_dir / "analysis.html"
+    json_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    html_path.write_text(render_html(data), encoding="utf-8")
+    if args.verbose:
+        print(f"JSON report: {json_path}\nHTML report: {html_path}")
+    has_fail = any(item["severity"] == "FAIL" for item in summary)
+    return 2 if has_fail else 0
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

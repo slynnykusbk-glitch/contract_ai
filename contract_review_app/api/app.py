@@ -381,14 +381,34 @@ async def _maybe_await(func, *args, **kwargs):
     return res
 
 
-def _fallback_suggest_minimal(text: str, clause_id: str, mode: str, top_k: int) -> List[Dict[str, Any]]:
+def _fallback_suggest_minimal(
+    text: str,
+    clause_id: str,
+    mode: str,
+    top_k: int,
+    clause_type: Optional[str] = None,
+    policy_profile: str = "friendly",
+) -> List[Dict[str, Any]]:
     start = 0
     length = min(len(text), 12) if len(text) > 0 else 0
-    proposed = "Please clarify obligations." if mode == "strict" else "Consider adding a clear notice period."
+    if (clause_type or "").lower() == "confidentiality":
+        try:
+            from contract_review_app.policy import get_policy
+
+            pol = get_policy(policy_profile)
+            years = int(pol.get("survival_years_min") or 0)
+            if years > 0:
+                proposed = f"Confidentiality obligations survive for at least {years} years."
+            else:
+                proposed = "Confidentiality obligations survive indefinitely for trade secrets."
+        except Exception:
+            proposed = "Consider adding a clear notice period."
+    else:
+        proposed = "Please clarify obligations." if mode == "strict" else "Consider adding a clear notice period."
     return [{
         "suggestion_id": f"{clause_id}:1",
         "clause_id": clause_id,
-        "clause_type": "unknown",
+        "clause_type": clause_type or "unknown",
         "action": "replace" if mode == "strict" else "append",
         "proposed_text": proposed,
         "reason": "rule-fallback",
@@ -492,6 +512,11 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
         return _problem_response(413, "Payload too large", "Request body exceeds limits")
     except Exception:
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
+
+    if isinstance(payload, dict):
+        q_prof = request.query_params.get("policy_profile")
+        if q_prof and "policy_profile" not in payload:
+            payload["policy_profile"] = q_prof
 
     try:
         model = AnalyzeIn(**payload) if isinstance(payload, dict) else AnalyzeIn(text="")
@@ -637,6 +662,11 @@ async def api_suggest_edits(request: Request, response: Response, x_cid: Optiona
     except Exception:
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
+    if isinstance(payload, dict):
+        q_prof = request.query_params.get("policy_profile")
+        if q_prof and "policy_profile" not in payload:
+            payload["policy_profile"] = q_prof
+
     if isinstance(payload, dict) and 'top_k' in payload:
         try:
             payload['top_k'] = max(1, min(10, int(payload.get('top_k') or 1)))
@@ -666,6 +696,7 @@ async def api_suggest_edits(request: Request, response: Response, x_cid: Optiona
                     model.clause_id,
                     getattr(model, "clause_type", None),
                     (model.mode or "friendly"),
+                    (model.policy_profile or "friendly"),
                     int(getattr(model, "top_k", 1) or 1),
                 ),
                 timeout=DRAFT_TIMEOUT_SEC,
@@ -683,6 +714,8 @@ async def api_suggest_edits(request: Request, response: Response, x_cid: Optiona
             (model.clause_id or ""),
             model.mode or "friendly",
             int(getattr(model, "top_k", 1) or 1),
+            getattr(model, "clause_type", None),
+            model.policy_profile or "friendly",
         )
 
     # Robust normalization loop (handles non-dict items safely)

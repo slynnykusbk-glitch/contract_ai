@@ -1,0 +1,12 @@
+friendly:
+  survival_years_min: 3
+  liability_cap: "2x fees"
+  insurance_limit: 1000000
+firm:
+  survival_years_min: 5
+  liability_cap: "1x fees"
+  insurance_limit: 2000000
+hard:
+  survival_years_min: 0  # 0 means indefinite for trade secrets
+  liability_cap: "uncapped"
+  insurance_limit: 5000000

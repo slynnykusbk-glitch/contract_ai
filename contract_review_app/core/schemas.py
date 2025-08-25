@@ -141,6 +141,7 @@ class AnalyzeIn(AppBaseModel):
 
     # policy & switches
     policy: Dict[str, Any] = Field(default_factory=dict)
+    policy_profile: str = "friendly"
     return_legacy: bool = True     # keep analysis/results/clauses
     return_ssot: bool = True       # include document-level SSOT
 
@@ -257,6 +258,7 @@ class Finding(AppBaseModel):
     tags: List[str] = Field(default_factory=list)
     # Legacy support:
     legal_basis: List[str] = Field(default_factory=list)
+    suggest_text: Dict[str, Any] = Field(default_factory=dict)
 
     # Back-compat accessor: some rules may read .severity
     @property
@@ -863,6 +865,7 @@ class SuggestIn(AppBaseModel):
     clause_type: Optional[str] = None
     text: str
     mode: DraftMode = "friendly"
+    policy_profile: str = "friendly"
     top_k: int = Field(default=3, ge=1, le=10)
 
     @model_validator(mode="after")

@@ -1,4 +1,3 @@
-```python
 from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Union
 import hashlib
@@ -162,10 +161,19 @@ def _rules_evaluate(text: str, sections: List[Dict[str, Any]]) -> Tuple[List[Dic
 
 def _to_finding_model(f: Dict[str, Any]) -> Any:
     sp = _norm_span(f.get("span", {}))
+    payload = {
+        "code": f.get("code"),
+        "message": f.get("message"),
+        "severity": f.get("severity"),
+        "span": sp,
+    }
+    if "suggest_text" in f:
+        payload["suggest_text"] = f.get("suggest_text")
     try:
-        return Finding(**{"code": f.get("code"), "message": f.get("message"), "severity": f.get("severity"), "span": sp})  # type: ignore
+        return Finding(**payload)  # type: ignore
     except Exception:
-        return {"code": f.get("code"), "message": f.get("message"), "severity": f.get("severity"), "span": {"start": sp.start, "length": sp.length}}
+        payload["span"] = {"start": sp.start, "length": sp.length}
+        return payload
 
 def _to_analysis_model(a: Dict[str, Any], clause_id: Optional[str], clause_text: str) -> Any:
     risk_level = str(a.get("risk_level") or "medium")
@@ -320,7 +328,11 @@ def analyze_document(text: str, document_name: Optional[str] = None, language: O
         )
     return doc
 
-def synthesize_draft(analysis_or_text: Union[AnalysisOutput, Dict[str, Any], List[Any], str], mode: DraftMode = "friendly") -> str:
+def synthesize_draft(
+    analysis_or_text: Union[AnalysisOutput, Dict[str, Any], List[Any], str],
+    mode: DraftMode = "friendly",
+    policy_profile: str = "friendly",
+) -> str:
     """
     Deterministic draft synthesis.
     If a list of analyses is provided, generate a bullet list grouped by clause_type.
@@ -375,8 +387,13 @@ def synthesize_draft(analysis_or_text: Union[AnalysisOutput, Dict[str, Any], Lis
     else:
         base_text = str(analysis_or_text)
 
+    from contract_review_app.policy.suggest import pick_suggest_text
+
     bullets: List[str] = []
     for f in (findings or [])[:5]:
+        sugg = pick_suggest_text(getattr(f, "suggest_text", None) or (f.get("suggest_text") if isinstance(f, dict) else {}), policy_profile)
+        if sugg:
+            return sugg
         msg = getattr(f, "message", None) or (f.get("message") if isinstance(f, dict) else "")
         code = getattr(f, "code", None) or (f.get("code") if isinstance(f, dict) else "")
         if msg:
@@ -394,9 +411,17 @@ def synthesize_draft(analysis_or_text: Union[AnalysisOutput, Dict[str, Any], Lis
 
     return "\n".join(body_parts).strip()
 
-def suggest_edits(text: str, clause_id: Optional[str], mode: str = "friendly", **kwargs) -> List[Dict[str, Any]]:
+def suggest_edits(
+    text: str,
+    clause_id: Optional[str],
+    clause_type: Optional[str] = None,
+    mode: str = "friendly",
+    policy_profile: str = "friendly",
+    top_k: int = 1,
+    **kwargs,
+) -> List[Dict[str, Any]]:
     """
-    Deterministic suggestions. Accepts kwargs['clause_type'].
+    Deterministic suggestions. Clause may be selected via clause_id or clause_type.
     Builds suggestions with normalized 'range': {'start','length'}.
     """
     doc = analyze_document(text or "")
@@ -404,21 +429,24 @@ def suggest_edits(text: str, clause_id: Optional[str], mode: str = "friendly", *
 
     if clause_id:
         target = next((c for c in (doc.index.clauses or []) if str(getattr(c, "id", c.get("id"))) == str(clause_id)), None)
-    else:
-        clause_type = kwargs.get("clause_type")
-        if clause_type:
-            target = next((c for c in (doc.index.clauses or []) if str(getattr(c, "type", c.get("type", ""))) == str(clause_type)), None)
-
+    elif clause_type:
+        target = next((c for c in (doc.index.clauses or []) if str(getattr(c, "type", c.get("type", ""))) == str(clause_type)), None)
+    
     if not target:
-        # fallback to first clause if nothing specified
-        if doc.index.clauses:
+        # fallback to provided clause_type or first clause
+        if clause_type:
+            try:
+                target = Clause(id="c000", type=clause_type, text=text or "", span=Span(start=0, length=len(text or "")))
+            except Exception:
+                target = {"id": "c000", "type": clause_type, "text": text or "", "span": {"start": 0, "length": len(text or "")}}
+        elif doc.index.clauses:
             target = doc.index.clauses[0]
         else:
             # pathological case: no clauses
             return [{
                 "suggestion_id": "sg-000",
                 "clause_id": None,
-                "clause_type": kwargs.get("clause_type") or "unknown",
+                "clause_type": clause_type or "unknown",
                 "action": "append",
                 "proposed_text": "Add clear obligations and standard carve-outs.",
                 "message": "Add clear obligations and standard carve-outs.",
@@ -428,8 +456,34 @@ def suggest_edits(text: str, clause_id: Optional[str], mode: str = "friendly", *
             }]
 
     # find matching analysis
-    a = next((ai for ai in (doc.analyses or []) if (getattr(ai, "clause_type", ai.get("clause_type", "")) == getattr(target, "type", target.get("type", "")))), None)
-    draft = synthesize_draft(a or getattr(target, "text", target.get("text", "")), DraftMode(mode) if mode in ("friendly", "standard", "strict") else "friendly")  # type: ignore[arg-type]
+    a = next(
+        (
+            ai
+            for ai in (doc.analyses or [])
+            if (getattr(ai, "clause_type", ai.get("clause_type", "")) == getattr(target, "type", target.get("type", "")))
+        ),
+        None,
+    )
+    draft = synthesize_draft(
+        a or getattr(target, "text", target.get("text", "")),
+        DraftMode(mode) if mode in ("friendly", "standard", "strict") else "friendly",  # type: ignore[arg-type]
+        policy_profile,
+    )
+
+    # Override for policy-driven confidentiality survival periods
+    ct = getattr(target, "type", target.get("type")) if target else None
+    if str(ct).lower() == "confidentiality":
+        try:
+            from contract_review_app.policy import get_policy
+
+            pol = get_policy(policy_profile)
+            years = int(pol.get("survival_years_min") or 0)
+            if years > 0:
+                draft = f"Confidentiality obligations survive for at least {years} years."
+            else:
+                draft = "Confidentiality obligations survive indefinitely for trade secrets."
+        except Exception:
+            pass
 
     start = int(getattr(target.span, "start", target["span"]["start"] if isinstance(target, dict) else 0))
     length = int(getattr(target.span, "length", target["span"]["length"] if isinstance(target, dict) else 0))
@@ -448,4 +502,3 @@ def suggest_edits(text: str, clause_id: Optional[str], mode: str = "friendly", *
         "hash": getattr(target, "id", target.get("id")),
     }
     return [card]
-```

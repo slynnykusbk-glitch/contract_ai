@@ -55,6 +55,8 @@
     <textarea id="testText" placeholder="Sample text" style="flex:1; min-height:60px;">Hello world</textarea>
   </div>
 
+  <div class="row" id="llmInfo">LLM: <span id="llmProv">—</span> / <span id="llmModel">—</span> / <span id="llmMode">—</span> <span id="llmBadge" class="badge" style="display:none;background:#facc15;color:#000;">MOCK</span></div>
+
     <div class="card">
       <h3>Tests</h3>
       <div class="btns" style="margin-bottom:8px;">
@@ -140,7 +142,7 @@
       try { el.textContent = JSON.stringify(obj, null, 2); }
       catch { el.textContent = String(obj); }
     }
-    function setStatusRow(rowId, {code, xcid, xcache, xschema, latencyMs, ok}){
+    function setStatusRow(rowId, {code, xcid, xcache, xschema, latencyMs, ok, error_code, detail}){
       const tr = document.getElementById(rowId);
       const cells = tr.getElementsByTagName('td');
       const latencyText = (latencyMs != null ? `${latencyMs} ms` : (xcid ? "" : ""));
@@ -149,7 +151,12 @@
       cells[3].textContent = xcache ?? "";
       cells[4].textContent = xschema ?? "";
       cells[5].textContent = latencyText;
-      cells[6].innerHTML = ok ? '<span class="ok">ok</span>' : '<span class="err">error</span>';
+      if (ok) {
+        cells[6].innerHTML = '<span class="ok">ok</span>';
+      } else {
+        const msg = error_code ? `${error_code}${detail ? ': ' + detail : ''}` : 'error';
+        cells[6].innerHTML = `<span class="err">${msg}</span>`;
+      }
     }
 
     async function callEndpoint({name, method, path, body, dynamicPathFn}) {
@@ -174,9 +181,12 @@
       setCidLabels();
       try{ json = await resp.json(); }catch{ json = {}; }
       const ok = resp.ok && json && (json.status === "ok");
+      const error_code = json && json.status === "error" ? (json.error_code || "") : "";
+      const detail = json && json.status === "error" ? (json.detail || "") : "";
       return {
         url, code: resp.status, body: json,
-        xcid: hdrCid, xcache: hdrCache, xschema: hdrSchema, latencyMs, ok
+        xcid: hdrCid, xcache: hdrCache, xschema: hdrSchema, latencyMs, ok,
+        error_code, detail
       };
     }
 
@@ -212,6 +222,12 @@
       });
       setStatusRow("row-draft", r);
       setJSON("resp", r.body);
+      const meta = r.body && r.body.meta ? r.body.meta : {};
+      document.getElementById("llmProv").textContent = meta.provider || "—";
+      document.getElementById("llmModel").textContent = meta.model || "—";
+      document.getElementById("llmMode").textContent = meta.mode || "—";
+      const badge = document.getElementById("llmBadge");
+      if (meta.mode === "mock") { badge.style.display = "inline-block"; } else { badge.style.display = "none"; }
       return r;
     }
     async function testSuggest(){

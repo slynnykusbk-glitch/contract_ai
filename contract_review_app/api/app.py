@@ -18,6 +18,12 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from contract_review_app.api.calloff_validator import validate_calloff
+from contract_review_app.gpt.service import (
+    LLMService,
+    ProviderTimeoutError,
+    ProviderUnavailableError,
+)
+from contract_review_app.gpt.config import load_llm_config
 
 # SSOT DTO imports
 from contract_review_app.core.schemas import (
@@ -123,6 +129,9 @@ _LLM_KEY_ENV_VARS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LLM_API_KEY")
 def _has_llm_keys() -> bool:
     return any(os.getenv(k) for k in _LLM_KEY_ENV_VARS)
 
+LLM_CONFIG = load_llm_config()
+LLM_SERVICE = LLMService(LLM_CONFIG)
+
 # --------------------------------------------------------------------
 # App / Router
 # --------------------------------------------------------------------
@@ -135,7 +144,16 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["x-cid", "x-cache", "x-schema-version", "x-latency-ms"],
+    expose_headers=[
+        "x-cid",
+        "x-cache",
+        "x-schema-version",
+        "x-latency-ms",
+        "x-provider",
+        "x-model",
+        "x-llm-mode",
+        "x-usage-total",
+    ],
 )
 
 # ---- Trace middleware and store ------------------------------------
@@ -286,6 +304,16 @@ def _set_std_headers(
     resp.headers["x-cache"] = xcache
     if latency_ms is not None:
         resp.headers["x-latency-ms"] = str(latency_ms)
+
+
+def _set_llm_headers(resp: Response, meta: Dict[str, Any]) -> None:
+    resp.headers["x-provider"] = meta.get("provider", "")
+    resp.headers["x-model"] = meta.get("model", "")
+    resp.headers["x-llm-mode"] = meta.get("mode", "")
+    usage = meta.get("usage") or {}
+    total = usage.get("total_tokens") if isinstance(usage, dict) else None
+    if total is not None:
+        resp.headers["x-usage-total"] = str(total)
 
 
 def _problem_json(status: int, title: str, detail: str, type_: str = "about:blank") -> Dict[str, Any]:
@@ -513,6 +541,12 @@ async def health(response: Response) -> dict:
         "status": "ok",
         "schema": SCHEMA_VERSION,
         "rules_count": _discover_rules_count(),
+        "llm": {
+            "provider": LLM_CONFIG.provider,
+            "model": LLM_CONFIG.model_draft,
+            "mode": LLM_CONFIG.mode,
+            "timeout_s": LLM_CONFIG.timeout_s,
+        },
     }
 
 
@@ -735,63 +769,45 @@ async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[st
     t0 = _now_ms()
     _set_schema_headers(response)
     try:
-        body = await _read_body_guarded(request)
-        payload = json.loads(body.decode("utf-8")) if body else {}
-    except HTTPException:
-        return _problem_response(413, "Payload too large", "Request body exceeds limits")
+        payload = await request.json()
     except Exception:
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
-    model = DraftIn(**payload) if isinstance(payload, dict) else DraftIn()
-    cid = x_cid or _sha256_hex(str(t0) + (model.text or "")[:128])
+    text = (payload or {}).get("text", "")
+    clause_type = (payload or {}).get("clause_type")
+    cid = x_cid or _sha256_hex(str(t0) + text[:128])
 
-    if not _has_llm_keys():
-        draft_text = (
-            "This clause sets the governing law to England and Wales. "
-            "Confirm if consistent with parties’ policy."
-        )
-        _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return {"status": "ok", "draft_text": draft_text, "meta": {"model": "rulebased"}}
-
-    used_model = getattr(model, "model", None) or "rulebased"
-    draft_text: str = ""
-
+    meta = LLM_CONFIG.meta()
+    if not text.strip():
+        resp = JSONResponse(status_code=422, content={"status": "error", "error_code": "bad_input", "detail": "text is empty", "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
+    if not LLM_CONFIG.valid:
+        detail = f"{LLM_CONFIG.provider}: missing {' '.join(LLM_CONFIG.missing)}".strip()
+        resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": detail, "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
     try:
-        if run_gpt_draft is not None:
-            dr = await asyncio.wait_for(
-                _maybe_await(run_gpt_draft, model),
-                timeout=DRAFT_TIMEOUT_SEC,
-            )
-        elif pipeline and hasattr(pipeline, "synthesize_draft"):
-            doc: Dict[str, Any]
-            if model.analysis:
-                doc = model.analysis if isinstance(model.analysis, dict) else _as_dict(model.analysis)
-            elif run_analyze is not None:
-                ana_in = AnalyzeIn(text=model.text or "")
-                legacy = await asyncio.wait_for(_maybe_await(run_analyze, ana_in), timeout=ANALYZE_TIMEOUT_SEC)
-                doc = legacy.get("document") or {}
-            else:
-                doc = {}
-            dr = await asyncio.wait_for(
-                _maybe_await(pipeline.synthesize_draft, doc, mode=(model.mode or "friendly")),
-                timeout=DRAFT_TIMEOUT_SEC,
-            )
-        else:
-            dr = {"text": ""}
+        result = LLM_SERVICE.generate_draft(text, clause_type, LLM_CONFIG.max_tokens, LLM_CONFIG.temperature, LLM_CONFIG.timeout_s)
+    except ProviderTimeoutError as ex:
+        meta = {**meta}
+        resp = JSONResponse(status_code=503, content={"status": "error", "error_code": "provider_timeout", "detail": str(ex), "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
+    except ProviderUnavailableError as ex:
+        meta = {**meta}
+        resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": ex.detail, "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
 
-        if isinstance(dr, str):
-            draft_text = dr
-        elif isinstance(dr, dict):
-            draft_text = str(dr.get("text") or "")
-            used_model = dr.get("model") or used_model
-        else:
-            draft_text = str(getattr(dr, "text", "") or "")
-            used_model = getattr(dr, "model", used_model)  # type: ignore[attr-defined]
-    except Exception:
-        draft_text = draft_text or "No draft available due to an internal error."
-
+    meta = result.meta
+    _set_llm_headers(response, meta)
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    return {"status": "ok", "draft_text": draft_text, "meta": {"model": used_model}}
+    return {"status": "ok", "draft_text": result.text, "meta": meta}
 
 
 @router.post("/api/suggest_edits")
@@ -799,61 +815,42 @@ async def api_suggest_edits(request: Request, response: Response, x_cid: Optiona
     t0 = _now_ms()
     _set_schema_headers(response)
     try:
-        body = await _read_body_guarded(request)
-        payload = json.loads(body.decode("utf-8")) if body else {}
-    except HTTPException:
-        return _problem_response(413, "Payload too large", "Request body exceeds limits")
+        payload = await request.json()
     except Exception:
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
-    if isinstance(payload, dict) and "top_k" in payload:
-        try:
-            payload["top_k"] = max(1, min(10, int(payload.get("top_k") or 1)))
-        except Exception:
-            payload["top_k"] = 1
+    text = (payload or {}).get("text", "")
+    risk_level = (payload or {}).get("risk_level", "low")
+    cid = x_cid or _sha256_hex(str(t0) + text[:128])
+    meta = LLM_CONFIG.meta()
+    if not text.strip():
+        resp = JSONResponse(status_code=422, content={"status": "error", "error_code": "bad_input", "detail": "text is empty", "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
+    if not LLM_CONFIG.valid:
+        detail = f"{LLM_CONFIG.provider}: missing {' '.join(LLM_CONFIG.missing)}".strip()
+        resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": detail, "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
     try:
-        model = SuggestIn(**payload)
-    except Exception as ex:
-        return _problem_response(422, "Validation error", str(ex))
+        result = LLM_SERVICE.suggest_edits(text, risk_level, LLM_CONFIG.timeout_s)
+    except ProviderTimeoutError as ex:
+        resp = JSONResponse(status_code=503, content={"status": "error", "error_code": "provider_timeout", "detail": str(ex), "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
+    except ProviderUnavailableError as ex:
+        resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": ex.detail, "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
 
-    cid = x_cid or _sha256_hex(str(t0) + model.text[:128])
-
-    try:
-        findings = rules_loader.match_text(model.text or "") if rules_loader else []
-    except Exception:
-        findings = []
-
-    edits = build_edits(model.text, model.clause_type or "", findings, model.mode or "friendly")
-
-    norm: List[Dict[str, Any]] = []
-    for e in edits or []:
-        if hasattr(e, "model_dump"):
-            try:
-                e_dict = e.model_dump()
-            except Exception:
-                e_dict = {}
-        elif isinstance(e, dict):
-            e_dict = dict(e)
-        else:
-            e_dict = {}
-
-        r = e_dict.get("range") or {}
-        start = int(r.get("start") or 0) if isinstance(r, dict) else 0
-        if isinstance(r, dict) and "length" in r:
-            length = int(r.get("length") or 0)
-        elif isinstance(r, dict) and "end" in r:
-            length = max(0, int(r.get("end") or 0) - start)
-        else:
-            length = 0
-        if start < 0:
-            start = 0
-        if length < 0:
-            length = 0
-        e_dict["range"] = {"start": start, "length": length}
-        norm.append(e_dict)
-
+    meta = result.meta
+    _set_llm_headers(response, meta)
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    return {"status": "ok", "edits": norm}
+    return {"status": "ok", "suggestions": result.items, "meta": meta}
 
 
 @router.post("/api/qa-recheck")
@@ -861,96 +858,42 @@ async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[s
     t0 = _now_ms()
     _set_schema_headers(response)
     try:
-        body = await _read_body_guarded(request)
-        payload = json.loads(body.decode("utf-8")) if body else {}
-    except HTTPException:
-        return _problem_response(413, "Payload too large", "Request body exceeds limits")
+        payload = await request.json()
     except Exception:
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
+    text = (payload or {}).get("text", "")
+    rules = (payload or {}).get("rules", {})
+    cid = x_cid or _sha256_hex(str(t0) + text[:128])
+    meta = LLM_CONFIG.meta()
+    if not text.strip():
+        resp = JSONResponse(status_code=422, content={"status": "error", "error_code": "bad_input", "detail": "text is empty", "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
+    if not LLM_CONFIG.valid:
+        detail = f"{LLM_CONFIG.provider}: missing {' '.join(LLM_CONFIG.missing)}".strip()
+        resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": detail, "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
     try:
-        model = QARecheckIn(**payload)
-    except Exception as ex:
-        return _problem_response(422, "Validation error", str(ex))
+        result = LLM_SERVICE.qa_recheck(text, rules, LLM_CONFIG.timeout_s)
+    except ProviderTimeoutError as ex:
+        resp = JSONResponse(status_code=503, content={"status": "error", "error_code": "provider_timeout", "detail": str(ex), "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
+    except ProviderUnavailableError as ex:
+        resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": ex.detail, "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
 
-    cid = x_cid or _sha256_hex(str(t0) + model.text[:128])
-
-    result: Dict[str, Any]
-    if run_qa_recheck is not None:
-        try:
-            result = await asyncio.wait_for(_maybe_await(run_qa_recheck, model), timeout=QA_TIMEOUT_SEC)
-            if not isinstance(result, dict):
-                result = _as_dict(result)
-            if "issues" not in result and "residual_risks" in result:
-                result["issues"] = result.get("residual_risks", [])
-        except asyncio.TimeoutError:
-            return _problem_response(504, "Timeout", "QA Recheck timed out")
-        except Exception:
-            if run_analyze is not None:
-                try:
-                    before = await asyncio.wait_for(_maybe_await(run_analyze, AnalyzeIn(text=model.text)), timeout=ANALYZE_TIMEOUT_SEC)
-                    patched_text = _safe_apply_patches(model.text, model.applied_changes or [])
-                    after = await asyncio.wait_for(_maybe_await(run_analyze, AnalyzeIn(text=patched_text)), timeout=ANALYZE_TIMEOUT_SEC)
-                    issues = _top3_residuals(after)
-                    result = {
-                        "risk_delta": _safe_delta_risk(before, after),
-                        "score_delta": _safe_delta_score(before, after),
-                        "status_from": _safe_doc_status(before),
-                        "status_to": _safe_doc_status(after),
-                        "residual_risks": issues,
-                        "issues": issues,
-                    }
-                except Exception as ex2:
-                    return _problem_response(500, "QA Recheck failed", f"{ex2}")
-            else:
-                _ = _safe_apply_patches(model.text, model.applied_changes or [])
-                result = {
-                    "risk_delta": 0,
-                    "score_delta": 0,
-                    "status_from": "OK",
-                    "status_to": "OK",
-                    "residual_risks": [],
-                    "issues": [],
-                }
-    else:
-        if run_analyze is not None:
-            try:
-                before = await asyncio.wait_for(_maybe_await(run_analyze, AnalyzeIn(text=model.text)), timeout=ANALYZE_TIMEOUT_SEC)
-                patched_text = _safe_apply_patches(model.text, model.applied_changes or [])
-                after = await asyncio.wait_for(_maybe_await(run_analyze, AnalyzeIn(text=patched_text)), timeout=ANALYZE_TIMEOUT_SEC)
-                issues = _top3_residuals(after)
-                result = {
-                    "risk_delta": _safe_delta_risk(before, after),
-                    "score_delta": _safe_delta_score(before, after),
-                    "status_from": _safe_doc_status(before),
-                    "status_to": _safe_doc_status(after),
-                    "residual_risks": issues,
-                    "issues": issues,
-                }
-            except Exception as ex2:
-                return _problem_response(500, "QA Recheck failed", f"{ex2}")
-        else:
-            _ = _safe_apply_patches(model.text, model.applied_changes or [])
-            result = {
-                "risk_delta": 0,
-                "score_delta": 0,
-                "status_from": "OK",
-                "status_to": "OK",
-                "residual_risks": [],
-                "issues": [],
-            }
-
+    meta = result.meta
+    _set_llm_headers(response, meta)
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    issues = result.get("issues")
-    if issues is None:
-        issues = result.get("residual_risks", [])
-    payload = {"status": "ok", "issues": issues, **result, "deltas": {
-        "score_delta": result.get("score_delta", 0),
-        "risk_delta": result.get("risk_delta", 0),
-        "status_from": result.get("status_from", "OK"),
-        "status_to": result.get("status_to", "OK"),
-    }}
-    return payload
+    return {"status": "ok", "qa": result.items, "meta": meta}
 
 
 @router.post("/api/calloff/validate")

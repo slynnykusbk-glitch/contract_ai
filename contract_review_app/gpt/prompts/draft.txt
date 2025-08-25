@@ -1,0 +1,3 @@
+Draft a {clause_type} clause in {jurisdiction} law using a {style} tone. Ensure UK-English, keep facts as provided, avoid hallucinations. Use short bullet points only when appropriate.
+
+{text}

@@ -1,0 +1,7 @@
+Check the clause against the provided rules context and respond with a JSON array of objects {id, status (ok|warn|fail), note}.
+
+Rules:
+{rules}
+
+Clause:
+{text}

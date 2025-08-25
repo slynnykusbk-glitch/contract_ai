@@ -158,6 +158,16 @@
     if (CAI_STORE.status.latencyMs != null) txt(els.latencyBadge, CAI_STORE.status.latencyMs + " ms");
   }
 
+  function applyMeta(meta){
+    if(!meta) return;
+    txt(els.providerBadge, meta.provider || "—");
+    txt(els.modelBadge, meta.model || "—");
+    txt(els.modeBadge, meta.mode || "—");
+    if (els.mockModeBadge) {
+      els.mockModeBadge.style.display = meta.mode === "mock" ? "inline-block" : "none";
+    }
+  }
+
   // Unified network wrapper (per passport)
   async function callEndpoint(opts) {
     opts = opts || {};
@@ -750,12 +760,18 @@ function renderDocSnapshot(info) {
     try {
       var input = analysis ? { analysis: analysis, mode: "friendly" } : { text: text, mode: "friendly" };
       var r = await apiGptDraft(input);
-      if (!r.ok) { status("Draft HTTP " + r.status); return; }
       var env = (r.json && (r.json.data || r.json)) || {};
+      if (!r.ok || env.status !== "ok") {
+        var msg = env && env.detail ? env.detail : ("HTTP " + r.status);
+        status("✖ Draft error: " + msg);
+        applyMeta(env.meta || {});
+        return;
+      }
       var draft = String(env.draft_text || env.draft || "");
       setVal(els.draft, draft);
       window.LAST_DRAFT = draft;
       enableDraftApply(!!draft);
+      applyMeta(env.meta || {});
       status(draft ? "Draft OK" : "Draft empty");
     } catch (e) { status("✖ Draft error: " + (e && e.message ? e.message : e)); }
   }
@@ -771,11 +787,17 @@ function renderDocSnapshot(info) {
     status("Suggesting edits…");
     try {
       var r = await apiSuggestEdits({ text: full, clause: clauseId, mode: mode, top_k: 3 });
-      if (!r.ok) { status("Suggest HTTP " + r.status); return; }
       var payload = r.json || {};
+      if (!r.ok || payload.status !== "ok") {
+        var msg = payload && payload.detail ? payload.detail : ("HTTP " + r.status);
+        status("✖ Suggest error: " + msg);
+        applyMeta(payload.meta || {});
+        return;
+      }
       var list = (payload.data && payload.data.suggestions) || payload.suggestions || [];
       renderSuggestions(list);
       try { window.CAI_renderSuggestions(list); } catch (_) {}
+      applyMeta(payload.meta || {});
       status("Suggest OK (" + list.length + ")");
     } catch (e) { status("✖ Suggest error: " + (e && e.message ? e.message : e)); }
   }
@@ -842,8 +864,13 @@ function renderDocSnapshot(info) {
     status("QA recheck…");
     try {
       var r = await apiQARecheck(full, []);
-      if (!r.ok) { status("QA HTTP " + r.status); return; }
       var payload = r.json || {};
+      if (!r.ok || payload.status !== "ok") {
+        var msg = payload && payload.detail ? payload.detail : ("HTTP " + r.status);
+        status("✖ QA error: " + msg);
+        applyMeta(payload.meta || {});
+        return;
+      }
       var env = (payload && (payload.data || payload)) || {};
       var d = (env && (env.deltas || env)) || {};
       var scoreDelta = d.score_delta || 0;
@@ -865,6 +892,7 @@ function renderDocSnapshot(info) {
       } else {
         els.qaResiduals.style.display = "none";
       }
+      applyMeta(payload.meta || {});
       status("QA OK");
     } catch (e) { status("✖ QA error: " + (e && e.message ? e.message : e)); }
   }
@@ -882,6 +910,10 @@ function renderDocSnapshot(info) {
     els.xcacheBadge = $("xcacheBadge");
     els.latencyBadge = $("latencyBadge");
     els.schemaBadge = $("schemaBadge");
+    els.providerBadge = $("providerBadge");
+    els.modelBadge = $("modelBadge");
+    els.modeBadge = $("modeBadge");
+    els.mockModeBadge = $("mockModeBadge");
     els.doctorToggle = $("doctorToggle");
     els.doctorPanel = $("doctorPanel");
     els.docSnap = $("doc-snapshot");

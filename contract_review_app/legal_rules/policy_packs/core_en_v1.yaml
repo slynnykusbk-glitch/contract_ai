@@ -1,3 +1,8 @@
+carve_out_whitelist:
+  - fraud
+  - gross negligence
+  - wilful misconduct
+
 rules:
   - id: governing_law_basic
     clause_type: governing_law
@@ -11,3 +16,46 @@ rules:
       firm: "This Agreement shall be governed by the laws of England and Wales."
       hard: "Governing law: England and Wales."
 
+  - id: liability_cap_placeholders
+    clause_type: liability
+    severity: high
+    patterns:
+      - '(?i)liability[^\n]*\[●\]'
+      - '(?i)liability[^\n]*\b0\b'
+    advice: "Fill in liability cap values; placeholders or zeros not allowed."
+
+  - id: pollution_cap_value_present
+    clause_type: pollution_cap
+    severity: medium
+    patterns:
+      - '(?i)pollution[^\n]*(?:£|\$|€)\s?\d{1,3}(?:,\d{3})*(?:\.\d+)?'
+    advice: "Specify pollution cap monetary values."
+
+  - id: property_damage_cap_value_present
+    clause_type: property_damage_cap
+    severity: medium
+    patterns:
+      - '(?i)property damage[^\n]*(?:£|\$|€)\s?\d{1,3}(?:,\d{3})*(?:\.\d+)?'
+    advice: "Specify property damage cap monetary values."
+
+  - id: insurance_additional_insureds_required
+    clause_type: insurance
+    severity: medium
+    patterns:
+      - '(?i)additional insureds?'
+    advice: "Insurance schedule must require additional insureds."
+
+  - id: failure_to_comply_termination
+    clause_type: insurance
+    severity: medium
+    patterns:
+      - '(?i)failure to comply[^\n]*termination'
+    advice: "Include termination clause for failure to comply with insurance requirements."
+
+  - id: payment_terms_vat_present
+    clause_type: payment_terms
+    severity: low
+    patterns:
+      - '(?i)vat'
+      - '(?i)value added tax'
+    advice: "Mention VAT in payment terms."

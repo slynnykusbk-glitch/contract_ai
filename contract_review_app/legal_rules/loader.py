@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 import yaml
 
@@ -11,6 +11,11 @@ import yaml
 # Load and compile rules on import
 # ---------------------------------------------------------------------------
 _RULES: List[Dict[str, Any]] = []
+_CARVE_OUT_WHITELIST: Set[str] = set()
+
+# Precompiled helper regexes used by rules and tests
+MONEY_RE = re.compile(r'(?:£|\$|€)\s?\d{1,3}(?:,\d{3})*(?:\.\d+)?')
+PERCENT_RE = re.compile(r'\b\d+(?:\.\d+)?%')
 
 
 def _load_rules() -> None:
@@ -22,6 +27,10 @@ def _load_rules() -> None:
             data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         except Exception:
             continue
+        # load optional carve-out whitelist
+        for item in data.get("carve_out_whitelist", []) or []:
+            if isinstance(item, str):
+                _CARVE_OUT_WHITELIST.add(item.lower())
         for raw in data.get("rules") or []:
             pats = [re.compile(p) for p in raw.get("patterns", [])]
             _RULES.append(
@@ -60,6 +69,16 @@ def discover_rules() -> List[Dict[str, Any]]:
 def rules_count() -> int:
     """Return the number of loaded rules."""
     return len(_RULES)
+
+
+def carveouts_valid(text: str) -> bool:
+    """Return True if comma/and separated items are all whitelisted."""
+    if not text:
+        return False
+    items = [i.strip().lower() for i in re.split(r",|and", text) if i.strip()]
+    if not items:
+        return False
+    return all(i in _CARVE_OUT_WHITELIST for i in items)
 
 
 def match_text(text: str) -> List[Dict[str, Any]]:

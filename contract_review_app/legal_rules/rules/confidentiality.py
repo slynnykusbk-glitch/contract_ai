@@ -60,7 +60,7 @@ def _risk_from_findings(findings: List[Finding]) -> str:
 
 def _status_from_findings(findings: List[Finding]) -> str:
     levels = [getattr(f, "severity_level", None) or "minor" for f in findings]
-    if any(l == "critical" for l in levels):
+    if any(level == "critical" for level in levels):
         return "FAIL"
     if findings:
         return "WARN"

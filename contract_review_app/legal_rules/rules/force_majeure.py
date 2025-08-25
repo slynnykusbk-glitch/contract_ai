@@ -14,8 +14,10 @@ def analyze(inp: AnalysisInput) -> AnalysisOutput:
     else:
         # Notice requirement
         if not re.search(r"\bnotice\b", text, flags=re.I):
-            s,l = find_span(text, r"force majeure")
-            findings.append(mk_finding("FM-NOTICE", "No notice obligation during force majeure", "medium", s, l))
+            start, length = find_span(text, r"force majeure")
+            findings.append(
+                mk_finding("FM-NOTICE", "No notice obligation during force majeure", "medium", start, length)
+            )
         # Mitigation duty
         if not re.search(r"\bmitigat(e|ion)\b", text, flags=re.I):
             findings.append(mk_finding("FM-MITIG", "No duty to mitigate effects of force majeure", "low"))

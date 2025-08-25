@@ -20,7 +20,15 @@ def analyze(inp: AnalysisInput) -> AnalysisOutput:
 
     # “Confidential Information” consistency example
     if re.search(r"confidential information", text, flags=re.I) and not re.search(r"means|shall mean|is defined as", text, flags=re.I):
-        s,l = re.search(r"confidential information", text, flags=re.I).span()
-        findings.append(mk_finding("DEF-CI-DEF", "Confidential Information mentioned but not clearly defined", "high", s, l))
+        start, end = re.search(r"confidential information", text, flags=re.I).span()
+        findings.append(
+            mk_finding(
+                "DEF-CI-DEF",
+                "Confidential Information mentioned but not clearly defined",
+                "high",
+                start,
+                end,
+            )
+        )
 
     return make_output(rule_name, inp, findings, "Definitions", "Definitions")

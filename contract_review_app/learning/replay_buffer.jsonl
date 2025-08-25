@@ -199,10 +199,13 @@ def _sanitize_event(evt: dict) -> dict:
     # limit span size fields
     span = e.get("span") or {}
     try:
-        s = int(span.get("start", 0)); l = int(span.get("length", 0))
-        if s < 0: s = 0
-        if l < 0: l = 0
-        e["span"] = {"start": s, "length": l}
+        start = int(span.get("start", 0))
+        length = int(span.get("length", 0))
+        if start < 0:
+            start = 0
+        if length < 0:
+            length = 0
+        e["span"] = {"start": start, "length": length}
     except Exception:
         e["span"] = {"start": 0, "length": 0}
     return e

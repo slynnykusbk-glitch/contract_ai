@@ -222,14 +222,14 @@ def _safe_get(obj, key, *alts, default=None):
 
 def _span_start_len(obj) -> Tuple[int, int]:
     sp = _safe_get(obj, "span", default=None)
-    s = int(_safe_get(sp, "start", default=0))
-    l = _safe_get(sp, "length", default=None)
-    if l is None:
-        e = int(_safe_get(sp, "end", default=s))
-        l = max(0, e - s)
+    start = int(_safe_get(sp, "start", default=0))
+    length = _safe_get(sp, "length", default=None)
+    if length is None:
+        end = int(_safe_get(sp, "end", default=start))
+        length = max(0, end - start)
     else:
-        l = int(l or 0)
-    return s, l
+        length = int(length or 0)
+    return start, length
 
 def _map_clause_id_for_analysis(analysis: Dict[str, Any], index: DocIndex) -> Tuple[Optional[str], str]:
     a_span = _norm_span(_safe_get(analysis, "span", default={}))

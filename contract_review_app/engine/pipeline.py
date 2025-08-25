@@ -223,13 +223,13 @@ def _safe_get(obj, key, *alts, default=None):
 def _span_start_len(obj) -> Tuple[int, int]:
     sp = _safe_get(obj, "span", default=None)
     s = int(_safe_get(sp, "start", default=0))
-    l = _safe_get(sp, "length", default=None)
-    if l is None:
+    length = _safe_get(sp, "length", default=None)
+    if length is None:
         e = int(_safe_get(sp, "end", default=s))
-        l = max(0, e - s)
+        length = max(0, e - s)
     else:
-        l = int(l or 0)
-    return s, l
+        length = int(length or 0)
+    return s, length
 
 def _map_clause_id_for_analysis(analysis: Dict[str, Any], index: DocIndex) -> Tuple[Optional[str], str]:
     a_span = _norm_span(_safe_get(analysis, "span", default={}))
@@ -242,8 +242,8 @@ def _map_clause_id_for_analysis(analysis: Dict[str, Any], index: DocIndex) -> Tu
             return clause_id, clause_text
     # Second: contained within
     for c in (index.clauses or []):
-        cs, cl = _span_start_len(c)
-        if int(a_span.start) >= int(cs) and int(a_span.start) < int(cs) + int(cl):
+        cs, length = _span_start_len(c)
+        if int(a_span.start) >= int(cs) and int(a_span.start) < int(cs) + int(length):
             clause_id   = _safe_get(c, "id", "clause_id", "uuid", default=None)
             clause_text = _safe_get(c, "text", "content", "raw_text", default="")
             return clause_id, clause_text

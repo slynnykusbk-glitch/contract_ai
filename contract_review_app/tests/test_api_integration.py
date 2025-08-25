@@ -1,6 +1,6 @@
 import json
 from fastapi.testclient import TestClient
-from contract_review_app.api.app import app
+from contract_review_app.api.app import app, SCHEMA_VERSION
 
 client = TestClient(app)
 
@@ -8,7 +8,11 @@ client = TestClient(app)
 def test_health():
     r = client.get("/health")
     assert r.status_code == 200
-    assert isinstance(r.json().get("rules_count"), int)
+    data = r.json()
+    assert data.get("status") == "ok"
+    assert data.get("schema") == SCHEMA_VERSION
+    assert isinstance(data.get("rules_count"), int)
+    assert r.headers.get("x-schema-version") == SCHEMA_VERSION
 
 def test_analyze_envelope_and_keys():
     r = client.post("/api/analyze", data=json.dumps({"text": "Some clause text."}))

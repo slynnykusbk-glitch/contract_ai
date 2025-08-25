@@ -23,7 +23,10 @@ def test_health_shape():
     r = client.get("/health")
     assert r.status_code == 200
     data = r.json()
+    assert data.get("status") == "ok"
+    assert data.get("schema") == SCHEMA_VERSION
     assert isinstance(data.get("rules_count"), int)
+    assert r.headers.get("x-schema-version") == SCHEMA_VERSION
 
 
 def test_analyze_idempotent_cache_hit_on_second_call():

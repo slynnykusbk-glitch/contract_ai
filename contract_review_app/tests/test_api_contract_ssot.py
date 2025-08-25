@@ -1,6 +1,6 @@
 import json
 from fastapi.testclient import TestClient
-from contract_review_app.api.app import app
+from contract_review_app.api.app import app, SCHEMA_VERSION
 
 client = TestClient(app)
 
@@ -54,4 +54,4 @@ def test_analyze_cache_idempotency_headers():
     r2 = client.post("/api/analyze", data=json.dumps(body))
     assert r2.status_code == 200
     assert r2.headers.get("x-cache").lower() == "hit"
-    assert r1.headers.get("x-schema-version") == r2.headers.get("x-schema-version") == "1.0"
+    assert r1.headers.get("x-schema-version") == r2.headers.get("x-schema-version") == SCHEMA_VERSION

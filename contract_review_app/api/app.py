@@ -75,7 +75,7 @@ except Exception:  # pragma: no cover
 # --------------------------------------------------------------------
 # Config
 # --------------------------------------------------------------------
-SCHEMA_VERSION = os.getenv("CONTRACT_AI_SCHEMA_VERSION", "1.0")
+SCHEMA_VERSION = os.getenv("CONTRACT_AI_SCHEMA_VERSION", "1.1")
 ANALYZE_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_ANALYZE_TIMEOUT_SEC", "25"))
 QA_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_QA_TIMEOUT_SEC", "20"))
 DRAFT_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_DRAFT_TIMEOUT_SEC", "25"))
@@ -266,6 +266,13 @@ def _as_dict(model_or_obj: Any) -> Dict[str, Any]:
     return {"value": model_or_obj}
 
 
+def _set_schema_headers(response: Response) -> None:
+    try:
+        response.headers["x-schema-version"] = SCHEMA_VERSION
+    except Exception:
+        pass
+
+
 def _set_std_headers(
     resp: Response,
     *,
@@ -274,9 +281,9 @@ def _set_std_headers(
     schema: str,
     latency_ms: Optional[int] = None,
 ) -> None:
+    _set_schema_headers(resp)
     resp.headers["x-cid"] = cid
     resp.headers["x-cache"] = xcache
-    resp.headers["x-schema-version"] = schema
     if latency_ms is not None:
         resp.headers["x-latency-ms"] = str(latency_ms)
 
@@ -286,11 +293,13 @@ def _problem_json(status: int, title: str, detail: str, type_: str = "about:blan
 
 
 def _problem_response(status: int, title: str, detail: str) -> JSONResponse:
-    return JSONResponse(
+    resp = JSONResponse(
         status_code=status,
         media_type="application/problem+json",
         content=_problem_json(status, title, detail),
     )
+    _set_schema_headers(resp)
+    return resp
 
 
 async def _read_body_guarded(request: Request) -> bytes:
@@ -497,19 +506,26 @@ def _top3_residuals(after: Dict[str, Any]) -> List[Dict[str, Any]]:
 # Routes
 # --------------------------------------------------------------------
 @router.get("/health")
-async def health() -> dict:
-    """Minimal health endpoint returning only rule count."""
-    return {"rules_count": _discover_rules_count()}
+async def health(response: Response) -> dict:
+    """Health endpoint with schema version and rule count."""
+    _set_schema_headers(response)
+    return {
+        "status": "ok",
+        "schema": SCHEMA_VERSION,
+        "rules_count": _discover_rules_count(),
+    }
 
 
 @router.get("/api/trace/{cid}")
 async def api_trace(cid: str, response: Response):
+    _set_schema_headers(response)
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
     return {"status": "ok", "cid": cid, "events": _TRACE.get(cid, [])}
 
 
 @router.get("/api/trace")
 async def api_trace_index(response: Response):
+    _set_schema_headers(response)
     _set_std_headers(response, cid="trace-index", xcache="miss", schema=SCHEMA_VERSION)
     return {"status": "ok", "cids": list(_TRACE.keys())}
 
@@ -517,6 +533,7 @@ async def api_trace_index(response: Response):
 @router.post("/api/analyze")
 async def api_analyze(request: Request, response: Response, x_cid: Optional[str] = Header(None)):
     t0 = _now_ms()
+    _set_schema_headers(response)
     try:
         body = await _read_body_guarded(request)
         payload = json.loads(body.decode("utf-8")) if body else {}
@@ -620,6 +637,7 @@ def _empty_snapshot() -> Dict[str, Any]:
 
 @router.get("/api/summary")
 async def api_summary_get(response: Response, mode: Optional[str] = None):
+    _set_schema_headers(response)
     summary = _empty_snapshot()
     _set_std_headers(response, cid="summary:get", xcache="miss", schema=SCHEMA_VERSION)
     return {
@@ -638,6 +656,7 @@ async def api_summary_post(
     mode: Optional[str] = None,
 ):
     t0 = _now_ms()
+    _set_schema_headers(response)
     try:
         body = await _read_body_guarded(request)
         payload = json.loads(body.decode("utf-8")) if body else {}
@@ -674,6 +693,7 @@ async def api_summary_post(
 # compatibility aliases at root level
 @router.get("/summary")
 async def summary_get_alias(response: Response, mode: Optional[str] = None):
+    _set_schema_headers(response)
     return await api_summary_get(response, mode)
 
 
@@ -681,12 +701,14 @@ async def summary_get_alias(response: Response, mode: Optional[str] = None):
 async def summary_post_alias(
     request: Request, response: Response, x_cid: Optional[str] = Header(None), mode: Optional[str] = None
 ):
+    _set_schema_headers(response)
     return await api_summary_post(request, response, x_cid, mode)
 
 
 @router.post("/api/gpt/draft")
 async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[str] = Header(None)):
     t0 = _now_ms()
+    _set_schema_headers(response)
     try:
         body = await _read_body_guarded(request)
         payload = json.loads(body.decode("utf-8")) if body else {}
@@ -750,6 +772,7 @@ async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[st
 @router.post("/api/suggest_edits")
 async def api_suggest_edits(request: Request, response: Response, x_cid: Optional[str] = Header(None)):
     t0 = _now_ms()
+    _set_schema_headers(response)
     try:
         body = await _read_body_guarded(request)
         payload = json.loads(body.decode("utf-8")) if body else {}
@@ -811,6 +834,7 @@ async def api_suggest_edits(request: Request, response: Response, x_cid: Optiona
 @router.post("/api/qa-recheck")
 async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[str] = Header(None)):
     t0 = _now_ms()
+    _set_schema_headers(response)
     try:
         body = await _read_body_guarded(request)
         payload = json.loads(body.decode("utf-8")) if body else {}
@@ -909,6 +933,7 @@ async def api_calloff_validate(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
     t0 = _now_ms()
+    _set_schema_headers(response)
     try:
         body = await _read_body_guarded(request)
         payload = json.loads(body.decode("utf-8")) if body else {}
@@ -940,6 +965,7 @@ async def api_learning_log(body: Any = Body(...)) -> Response:
     except Exception:
         pass
     resp = Response(status_code=204)
+    _set_schema_headers(resp)
     _set_std_headers(
         resp,
         cid="learning/log",
@@ -953,6 +979,7 @@ async def api_learning_log(body: Any = Body(...)) -> Response:
 @router.post("/api/learning/update")
 async def api_learning_update(response: Response, body: LearningUpdateIn):
     t0 = _now_ms()
+    _set_schema_headers(response)
     _set_std_headers(response, cid="learning/update", xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
     return {"status": "ok", "updated": True, "force": bool(body.force)}
 

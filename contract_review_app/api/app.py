@@ -31,6 +31,17 @@ from contract_review_app.core.schemas import (
 
 from contract_review_app.suggest import build_edits
 
+# Snapshot extraction heuristics
+from contract_review_app.analysis.extract import (
+    classify_contract,
+    extract_parties,
+    extract_dates,
+    extract_term,
+    extract_law_jurisdiction,
+    extract_liability,
+    extract_conditions_warranties,
+)
+
 # Orchestrator / Engine imports
 try:
     from contract_review_app.api.orchestrator import (  # type: ignore
@@ -584,8 +595,48 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
     return envelope
 
 
+# --------------------------------------------------------------------
+# Document summary endpoint
+# --------------------------------------------------------------------
+
+
+def _empty_snapshot() -> Dict[str, Any]:
+    return {
+        "contract_type": {"type": "unknown", "confidence": 0.0, "hints": []},
+        "parties": [],
+        "dates": {"dated": None, "effective": None, "commencement": None, "signatures": []},
+        "term": {"mode": "unknown", "start": None, "end": None, "renew_notice_days": None},
+        "law_jurisdiction": {"law": None, "jurisdiction": None, "exclusive": None},
+        "liability": {
+            "has_cap": False,
+            "cap_value": None,
+            "currency": None,
+            "has_carveouts": False,
+            "carveouts": [],
+        },
+        "conditions_vs_warranties": {"conditions": [], "warranties": []},
+    }
+
+
+@router.get("/api/summary")
+async def api_summary_get(response: Response, mode: Optional[str] = None):
+    summary = _empty_snapshot()
+    _set_std_headers(response, cid="summary:get", xcache="miss", schema=SCHEMA_VERSION)
+    return {
+        "status": "ok",
+        "summary": summary,
+        "meta": {"rules_count": _discover_rules_count()},
+        "schema_version": SCHEMA_VERSION,
+    }
+
+
 @router.post("/api/summary")
-async def api_summary(request: Request, response: Response, x_cid: Optional[str] = Header(None)):
+async def api_summary_post(
+    request: Request,
+    response: Response,
+    x_cid: Optional[str] = Header(None),
+    mode: Optional[str] = None,
+):
     t0 = _now_ms()
     try:
         body = await _read_body_guarded(request)
@@ -595,64 +646,42 @@ async def api_summary(request: Request, response: Response, x_cid: Optional[str]
     except Exception:
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
-    try:
-        model = AnalyzeIn(**payload) if isinstance(payload, dict) else AnalyzeIn(text="")
-    except Exception as ex:
-        return _problem_response(422, "Validation error", str(ex))
-
-    cid = x_cid or _sha256_hex(str(t0) + model.text[:128])
-
-    local_run_analyze = run_analyze
-    if local_run_analyze is None:
-        try:
-            from contract_review_app.api import orchestrator as _orch  # type: ignore
-            local_run_analyze = getattr(_orch, "run_analyze", None)
-        except Exception:
-            local_run_analyze = None
-
-    if local_run_analyze is None:
-        total_weight = 0
-        top_risks: List[Dict[str, Any]] = []
-    else:
-        try:
-            legacy = await asyncio.wait_for(_maybe_await(local_run_analyze, model), timeout=ANALYZE_TIMEOUT_SEC)
-        except asyncio.TimeoutError:
-            return _problem_response(504, "Timeout", "Analysis timed out")
-
-        results = legacy.get("results") if isinstance(legacy, dict) else {}
-        buckets: Dict[Tuple[str, str], Dict[str, Any]] = {}
-        total_weight = 0
-        for ctype, res in (results or {}).items():
-            for f in res.get("findings") or []:
-                sev = str(f.get("severity_level") or f.get("severity") or "medium").lower()
-                advice = str(f.get("message") or "")
-                key = (ctype, sev)
-                entry = buckets.get(key)
-                if entry is None:
-                    entry = {"clause_type": ctype, "severity": sev, "advice": advice, "count": 0}
-                    buckets[key] = entry
-                entry["count"] += 1
-                total_weight += RISK_WEIGHTS.get(sev, RISK_WEIGHTS["medium"])
-        top_risks = sorted(
-            buckets.values(),
-            key=lambda r: RISK_WEIGHTS.get(r["severity"], 0) * r["count"],
-            reverse=True,
-        )[:5]
-
-    score = min(100, total_weight)
-    missing_ex = _missing_exhibits(model.text)
-    placeholders = _count_placeholders(model.text)
+    text = str(payload.get("text") or "")
+    cid = x_cid or _sha256_hex(str(t0) + text[:128])
 
     summary = {
-        "status": "ok",
-        "score": score,
-        "top_risks": top_risks,
-        "missing_exhibits": missing_ex,
-        "placeholders": placeholders,
+        "contract_type": classify_contract(text),
+        "parties": extract_parties(text),
+        "dates": extract_dates(text),
+        "term": extract_term(text),
+        "law_jurisdiction": extract_law_jurisdiction(text),
+        "liability": extract_liability(text),
+        "conditions_vs_warranties": extract_conditions_warranties(text),
     }
 
-    _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    return summary
+    envelope = {
+        "status": "ok",
+        "summary": summary,
+        "meta": {"rules_count": _discover_rules_count()},
+        "schema_version": SCHEMA_VERSION,
+    }
+    _set_std_headers(
+        response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0
+    )
+    return envelope
+
+
+# compatibility aliases at root level
+@router.get("/summary")
+async def summary_get_alias(response: Response, mode: Optional[str] = None):
+    return await api_summary_get(response, mode)
+
+
+@router.post("/summary")
+async def summary_post_alias(
+    request: Request, response: Response, x_cid: Optional[str] = Header(None), mode: Optional[str] = None
+):
+    return await api_summary_post(request, response, x_cid, mode)
 
 
 @router.post("/api/gpt/draft")

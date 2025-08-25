@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from contract_review_app.api.calloff_validator import validate_calloff
 
 # SSOT DTO imports
 from contract_review_app.core.schemas import (
@@ -872,6 +873,31 @@ async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[s
         "status_to": result.get("status_to", "OK"),
     }}
     return payload
+
+
+@router.post("/api/calloff/validate")
+async def api_calloff_validate(
+    request: Request, response: Response, x_cid: Optional[str] = Header(None)
+):
+    t0 = _now_ms()
+    try:
+        body = await _read_body_guarded(request)
+        payload = json.loads(body.decode("utf-8")) if body else {}
+    except HTTPException:
+        return _problem_response(413, "Payload too large", "Request body exceeds limits")
+    except Exception:
+        return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
+
+    cid = x_cid or _sha256_hex(str(t0) + json.dumps(payload, sort_keys=True)[:128])
+    issues = validate_calloff(payload if isinstance(payload, dict) else {})
+    _set_std_headers(
+        response,
+        cid=cid,
+        xcache="miss",
+        schema=SCHEMA_VERSION,
+        latency_ms=_now_ms() - t0,
+    )
+    return {"status": "ok", "issues": issues}
 
 
 @router.post("/api/learning/log", status_code=204)

@@ -11,3 +11,67 @@ rules:
       firm: "This Agreement shall be governed by the laws of England and Wales."
       hard: "Governing law: England and Wales."
 
+  - id: anti_bribery_ba2010
+    clause_type: compliance
+    severity: high
+    patterns:
+      - "(?i)bribery act 2010"
+      - "(?i)adequate procedures"
+      - "(?i)audit"
+      - "(?i)termination"
+    advice: "Include Bribery Act 2010 anti-bribery clause with adequate procedures, audit rights, and termination for breach."
+    suggest_text:
+      friendly: "Each party shall maintain adequate procedures to prevent bribery and comply with the Bribery Act 2010."
+      firm: "The parties shall comply with the UK Bribery Act 2010, maintain adequate procedures, permit audit, and allow termination for breach."
+      hard: "Comply with the Bribery Act 2010; maintain adequate procedures; audit and termination rights apply."
+
+  - id: sanctions_screening
+    clause_type: compliance
+    severity: high
+    patterns:
+      - "(?i)sanctions? (?:laws?|regulations?) of (?:the )?(?:uk|united kingdom|eu|us)"
+      - "(?i)sanctioned party"
+    advice: "Address UK, EU, and US sanctions compliance and allow termination if a sanctioned party is involved."
+    suggest_text:
+      friendly: "The parties will screen counterparties against UK, EU, and US sanctions lists and may terminate if a sanctioned party is identified."
+      firm: "Each party shall comply with UK, EU, and US sanctions laws and may terminate this Agreement if performance involves a sanctioned party."
+      hard: "Comply with UK/EU/US sanctions; no sanctioned party performance; termination rights apply."
+
+  - id: modern_slavery_statement
+    clause_type: compliance
+    severity: high
+    patterns:
+      - "(?i)modern slavery act"
+      - "(?i)slavery statement"
+    advice: "Reference the Modern Slavery Act and require an annual statement where applicable."
+    suggest_text:
+      friendly: "Supplier shall comply with the Modern Slavery Act and publish an annual slavery and human trafficking statement if required."
+      firm: "The Supplier must comply with the Modern Slavery Act 2015 and issue an annual slavery statement where applicable."
+      hard: "Comply with the Modern Slavery Act and publish a yearly slavery statement if legally required."
+
+  - id: data_protection_uk_gdpr
+    clause_type: compliance
+    severity: high
+    patterns:
+      - "(?i)uk gdpr"
+      - "(?i)data protection act 2018"
+      - "(?i)72 hours"
+      - "(?i)standard contractual clauses"
+    advice: "Clarify processor/controller roles, reference the Data Protection Act 2018, notify breaches within 72 hours, and use SCCs for transfers."
+    suggest_text:
+      friendly: "The parties shall comply with the UK GDPR and Data Protection Act 2018, notify each other of breaches within 72 hours, and use Standard Contractual Clauses for overseas transfers."
+      firm: "Each party shall comply with UK GDPR and the Data Protection Act 2018; breaches must be notified within 72 hours and transfers rely on Standard Contractual Clauses."
+      hard: "UK GDPR compliance: Data Protection Act 2018 reference, 72-hour breach notice, SCCs for transfers."
+
+  - id: export_control_reiterated
+    clause_type: compliance
+    severity: high
+    patterns:
+      - "(?i)hmrc"
+      - "(?i)dual[- ]use"
+      - "(?i)export control"
+    advice: "Reiterate UK export control compliance tying obligations to HMRC and dual-use regulations."
+    suggest_text:
+      friendly: "The goods are subject to UK export control; parties will comply with HMRC requirements including dual-use controls."
+      firm: "Each party shall comply with UK export control laws, including HMRC oversight and dual-use restrictions."
+      hard: "Comply with HMRC export controls and dual-use regulations."

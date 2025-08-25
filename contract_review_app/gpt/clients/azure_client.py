@@ -3,15 +3,21 @@ from __future__ import annotations
 import requests
 
 from ..config import LLMConfig
-from ..interfaces import (
+
     BaseClient,
     DraftResult,
     QAResult,
     SuggestResult,
     ProviderTimeoutError,
-    ProviderAuthError,
-    ProviderConfigError,
+
 )
+
+
+class ProviderUnavailableError(Exception):
+    def __init__(self, provider: str, detail: str):
+        super().__init__(detail)
+        self.provider = provider
+        self.detail = detail
 
 
 class AzureClient(BaseClient):

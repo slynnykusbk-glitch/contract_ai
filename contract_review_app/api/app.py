@@ -39,15 +39,8 @@ from contract_review_app.core.schemas import (
 from contract_review_app.suggest import build_edits
 
 # Snapshot extraction heuristics
-from contract_review_app.analysis.extract import (
-    classify_contract,
-    extract_parties,
-    extract_dates,
-    extract_term,
-    extract_law_jurisdiction,
-    extract_liability,
-    extract_conditions_warranties,
-)
+# Snapshot extraction heuristics
+from contract_review_app.analysis.extract_summary import extract_document_snapshot
 
 # Orchestrator / Engine imports
 try:
@@ -82,7 +75,7 @@ except Exception:  # pragma: no cover
 # --------------------------------------------------------------------
 # Config
 # --------------------------------------------------------------------
-SCHEMA_VERSION = os.getenv("CONTRACT_AI_SCHEMA_VERSION", "1.2")
+SCHEMA_VERSION = os.getenv("CONTRACT_AI_SCHEMA_VERSION", "1.3")
 ANALYZE_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_ANALYZE_TIMEOUT_SEC", "25"))
 QA_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_QA_TIMEOUT_SEC", "20"))
 DRAFT_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_DRAFT_TIMEOUT_SEC", "25"))
@@ -652,33 +645,13 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
 # --------------------------------------------------------------------
 
 
-def _empty_snapshot() -> Dict[str, Any]:
-    return {
-        "type": "unknown",
-        "parties": [],
-        "dates": {"dated": None, "effective": None, "commencement": None},
-        "signatures": [],
-        "term": {"mode": None, "start": None, "end": None, "notice": None},
-        "governing_law": None,
-        "jurisdiction": None,
-        "liability": {"has_cap": False, "cap_value": None, "currency": None},
-        "carveouts": {"has_carveouts": False, "list": []},
-        "conditions_vs_warranties": {"has_conditions": False, "has_warranties": False},
-        "hints": [],
-    }
-
-
 @router.get("/api/summary")
 async def api_summary_get(response: Response, mode: Optional[str] = None):
     _set_schema_headers(response)
-    summary = _empty_snapshot()
+    snap = extract_document_snapshot("")
+    snap.rules_count = _discover_rules_count()
     _set_std_headers(response, cid="summary:get", xcache="miss", schema=SCHEMA_VERSION)
-    return {
-        "status": "ok",
-        "summary": summary,
-        "meta": {"rules_count": _discover_rules_count()},
-        "schema_version": SCHEMA_VERSION,
-    }
+    return {"status": "ok", "summary": snap.model_dump()}
 
 
 @router.post("/api/summary")
@@ -701,49 +674,10 @@ async def api_summary_post(
     text = str(payload.get("text") or "")
     cid = x_cid or _sha256_hex(str(t0) + text[:128])
 
-    ctype = classify_contract(text)
-    parties_raw = extract_parties(text)
-    dates = extract_dates(text)
-    term_raw = extract_term(text)
-    lawjur = extract_law_jurisdiction(text)
-    liab = extract_liability(text)
-    cw = extract_conditions_warranties(text)
+    snap = extract_document_snapshot(text)
+    snap.rules_count = _discover_rules_count()
 
-    summary = {
-        "type": ctype.get("type"),
-        "parties": [{"role": p.get("role"), "name": p.get("name")} for p in parties_raw],
-        "dates": {k: dates.get(k) for k in ("dated", "effective", "commencement")},
-        "signatures": dates.get("signatures", []),
-        "term": {
-            "mode": term_raw.get("mode"),
-            "start": term_raw.get("start"),
-            "end": term_raw.get("end"),
-            "notice": term_raw.get("renew_notice_days"),
-        },
-        "governing_law": lawjur.get("law"),
-        "jurisdiction": lawjur.get("jurisdiction"),
-        "liability": {
-            "has_cap": liab.get("has_cap"),
-            "cap_value": liab.get("cap_value"),
-            "currency": liab.get("currency"),
-        },
-        "carveouts": {
-            "has_carveouts": liab.get("has_carveouts"),
-            "list": liab.get("carveouts"),
-        },
-        "conditions_vs_warranties": {
-            "has_conditions": bool(cw.get("conditions")),
-            "has_warranties": bool(cw.get("warranties")),
-        },
-        "hints": ctype.get("hints", []),
-    }
-
-    envelope = {
-        "status": "ok",
-        "summary": summary,
-        "meta": {"rules_count": _discover_rules_count()},
-        "schema_version": SCHEMA_VERSION,
-    }
+    envelope = {"status": "ok", "summary": snap.model_dump()}
     _set_std_headers(
         response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0
     )

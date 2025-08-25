@@ -1,6 +1,5 @@
-from __future__ import annotations
-
-from ..interfaces import BaseClient, DraftResult, SuggestResult, QAResult, ProviderTimeoutError
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 
 class MockClient(BaseClient):

@@ -62,7 +62,9 @@ def _mk_finding(code: str, message: str, severity: str, match_span: Optional[Tup
     else:
         s, e = match_span
         span = _span_dict(s, max(0, e - s))
-    return {"code": code, "message": message, "severity": severity, "span": span}
+    sev_map = {"low": "minor", "medium": "major", "high": "critical"}
+    sev = sev_map.get(str(severity).lower(), str(severity))
+    return {"code": code, "message": message, "severity": sev, "span": span}
 
 def _mk_analysis(clause_type: str, title: str, span: Dict[str, int], status: str, risk_level: str, score: int, findings: List[Dict[str, Any]]) -> Dict[str, Any]:
     return {
@@ -143,6 +145,74 @@ def _check_anti_bribery(text: str, sections: List[Dict[str, Any]]) -> Dict[str, 
 
     return _mk_analysis(clause_type, title or "Anti-Bribery", span, status, risk, score, findings)
 
+def _check_exhibit_L_present(text: str, sections: List[Dict[str, Any]]) -> Dict[str, Any]:
+    clause_type = "exhibits_L_present"
+    span = _span_dict(0, 0)
+    has_exh_l = re.search(r"\bExhibit\s*L\b", text or "", re.IGNORECASE) is not None
+    findings: List[Dict[str, Any]] = []
+    if has_exh_l:
+        status, risk, score = "OK", "low", 5
+    else:
+        status, risk, score = "FAIL", "high", -40
+        findings.append(
+            _mk_finding(
+                "EXHIBIT-L-MISSING",
+                "Exhibit L (Information Systems Access and Data Security) not referenced.",
+                "high",
+                None,
+                span,
+            )
+        )
+    return _mk_analysis(clause_type, "Exhibit L", span, status, risk, score, findings)
+
+def _check_exhibit_M_present(text: str, sections: List[Dict[str, Any]]) -> Dict[str, Any]:
+    clause_type = "exhibits_M_present"
+    span = _span_dict(0, 0)
+    has_exh_m = re.search(r"\bExhibit\s*M\b", text or "", re.IGNORECASE) is not None
+    findings: List[Dict[str, Any]] = []
+    if has_exh_m:
+        status, risk, score = "OK", "low", 5
+    else:
+        status, risk, score = "FAIL", "high", -40
+        findings.append(
+            _mk_finding(
+                "EXHIBIT-M-MISSING",
+                "Exhibit M (Data Protection) not referenced.",
+                "high",
+                None,
+                span,
+            )
+        )
+    return _mk_analysis(clause_type, "Exhibit M", span, status, risk, score, findings)
+
+def _check_information_security(text: str, sections: List[Dict[str, Any]]) -> Dict[str, Any]:
+    clause_type = "information_security"
+    title, span = _sec_for_clause(
+        sections,
+        ["information_security", "confidentiality", "information_systems"],
+        [r"information systems? access", r"data security", r"company systems"],
+    )
+    ctx = _ctx(text, span)
+    has_access = re.search(r"information systems? access|company systems|data security", ctx, re.IGNORECASE) is not None
+    has_exh_l = re.search(r"\bExhibit\s*L\b", ctx, re.IGNORECASE) is not None
+    findings: List[Dict[str, Any]] = []
+    if has_access and has_exh_l:
+        status, risk, score = "OK", "low", 8
+    elif has_access and not has_exh_l:
+        status, risk, score = "FAIL", "high", -40
+        findings.append(
+            _mk_finding(
+                "IS-EXHIBIT-L-MISSING",
+                "Information Systems access detected but Exhibit L reference missing.",
+                "high",
+                None,
+                span,
+            )
+        )
+    else:
+        status, risk, score = "OK", "low", 5
+    return _mk_analysis(clause_type, title or "Information Security", span, status, risk, score, findings)
+
 def _check_data_protection(text: str, sections: List[Dict[str, Any]]) -> Dict[str, Any]:
     clause_type = "data_protection"
     title, span = _sec_for_clause(
@@ -151,18 +221,34 @@ def _check_data_protection(text: str, sections: List[Dict[str, Any]]) -> Dict[st
         [r"\bdata protection\b", r"\bGDPR\b", r"\bUK GDPR\b", r"\bExhibit\s*M\b"]
     )
     ctx = _ctx(text, span)
-    ok = any([
-        re.search(r"\bGDPR\b", ctx, re.IGNORECASE),
-        re.search(r"\bUK GDPR\b", ctx, re.IGNORECASE),
-        re.search(r"\bData Protection Act\s*2018\b", ctx, re.IGNORECASE),
-        re.search(r"\bExhibit\s*M\b", ctx, re.IGNORECASE),
-    ])
+    has_pd = re.search(r"personal data|GDPR|Data Protection Act\s*2018", ctx, re.IGNORECASE) is not None
+    has_exh_m = re.search(r"\bExhibit\s*M\b", ctx, re.IGNORECASE) is not None
+    ok = has_pd and has_exh_m
     findings: List[Dict[str, Any]] = []
     if ok:
         status, risk, score = "OK", "low", 10
+    elif has_pd and not has_exh_m:
+        status, risk, score = "FAIL", "high", -40
+        findings.append(
+            _mk_finding(
+                "DP-EXHIBIT-MISSING",
+                "Personal data detected but Exhibit M reference missing. Insert reference to Exhibit M – Data Protection.",
+                "high",
+                None,
+                span,
+            )
+        )
     else:
         status, risk, score = "WARN", "medium", -15
-        findings.append(_mk_finding("DP-REF-MISSING", "No explicit GDPR/UK GDPR or Data Protection reference detected.", "medium", None, span))
+        findings.append(
+            _mk_finding(
+                "DP-REF-MISSING",
+                "No explicit GDPR/UK GDPR or Data Protection reference detected.",
+                "medium",
+                None,
+                span,
+            )
+        )
     return _mk_analysis(clause_type, title or "Data Protection", span, status, risk, score, findings)
 
 def _check_export_control(text: str, sections: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -367,6 +453,9 @@ def evaluate(text: str, sections: List[Dict[str, Any]]) -> Tuple[List[Dict[str, 
     # Order is deterministic and matches typical priority in UK O&G MSA reviews
     analyses.append(_check_limitation_of_liability(text, sections))
     analyses.append(_check_anti_bribery(text, sections))
+    analyses.append(_check_exhibit_L_present(text, sections))
+    analyses.append(_check_exhibit_M_present(text, sections))
+    analyses.append(_check_information_security(text, sections))
     analyses.append(_check_data_protection(text, sections))
     analyses.append(_check_export_control(text, sections))
     analyses.append(_check_insurance(text, sections))

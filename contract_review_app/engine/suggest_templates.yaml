@@ -1,0 +1,48 @@
+confidentiality_survival_term_min_3y:
+  suggest_text:
+    friendly: "Confidentiality obligations shall survive for at least three (3) years after termination or expiry."
+  note: "Survival term should be no less than three years to protect post-termination disclosures."
+notices_formal_service:
+  suggest_text:
+    friendly: "All notices must be in writing and delivered by registered mail or courier to the addresses stated herein."
+  note: "Formal service methods reduce disputes over whether notice was properly given."
+assignment_consent_exceptions:
+  suggest_text:
+    friendly: "Neither party may assign this Agreement without consent except to affiliates or successors."
+  note: "Allows routine corporate reorganisations without requiring consent."
+subcontracting_control_flowdown:
+  suggest_text:
+    friendly: "Supplier remains responsible for subcontractors and shall flow down all obligations of this Agreement."
+  note: "Ensures subcontractors are controlled and bound by equivalent terms."
+ip_ownership_licenseback:
+  suggest_text:
+    friendly: "All intellectual property created under this Agreement belongs to Customer; Supplier receives a limited licence back to use it."
+  note: "Clarifies ownership while permitting necessary internal use."
+force_majeure_exclusions:
+  suggest_text:
+    friendly: "Force Majeure shall not excuse payment obligations or failures caused by labour disputes."
+  note: "Standard exclusions prevent abuse of the Force Majeure clause."
+warranties_goods_services:
+  suggest_text:
+    friendly: "Supplier warrants that goods and services will conform to specifications and be performed with reasonable skill and care."
+  note: "Provides baseline assurance on quality and performance."
+ip_infringement_indemnity:
+  suggest_text:
+    friendly: "Supplier shall indemnify and defend Customer against third-party claims that the Deliverables infringe intellectual property rights."
+  note: "Shifts IP infringement risk to the provider of the Deliverables."
+limitation_of_liability_cap_and_carveouts:
+  suggest_text:
+    friendly: "Total liability is capped at the fees paid, except for fraud, death or personal injury."
+  note: "Sets a monetary cap while preserving key carve-outs."
+data_protection_link_exhibit_M:
+  suggest_text:
+    friendly: "The parties' data protection obligations are set out in Exhibit M, incorporated by reference."
+  note: "Links to detailed data protection terms without repeating them."
+info_security_link_exhibit_L:
+  suggest_text:
+    friendly: "Information security requirements are detailed in Exhibit L, which forms part of this Agreement."
+  note: "References a separate schedule for technical security standards."
+termination_for_convenience_no_anticipatory_profit:
+  suggest_text:
+    friendly: "Either party may terminate for convenience on 30 days' notice without liability for anticipated profits."
+  note: "Avoids claims for profits that would have been earned after termination."

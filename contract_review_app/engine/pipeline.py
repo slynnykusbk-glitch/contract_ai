@@ -1,4 +1,3 @@
-```python
 from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Union
 import hashlib
@@ -66,6 +65,12 @@ try:
     from contract_review_app.engine import matcher as _matcher  # type: ignore
 except Exception:
     _matcher = None
+
+# Clause-type specific suggest templates
+try:
+    from contract_review_app.engine import suggest as _suggest  # type: ignore
+except Exception:
+    _suggest = None
 
 try:
     from contract_review_app.legal_rules.rules import oilgas_master_agreement as _uk_og_msa  # type: ignore
@@ -399,13 +404,19 @@ def suggest_edits(text: str, clause_id: Optional[str], mode: str = "friendly", *
     Deterministic suggestions. Accepts kwargs['clause_type'].
     Builds suggestions with normalized 'range': {'start','length'}.
     """
+    clause_type = kwargs.get("clause_type")
+
+    # If we have explicit templates for the clause type, return them early
+    if clause_type and _suggest is not None and _suggest.has_template(clause_type):
+        findings = kwargs.get("findings")
+        return _suggest.suggest_for_clause(text or "", clause_type, profile=mode, findings=findings)
+
     doc = analyze_document(text or "")
     target: Optional[Clause] = None
 
     if clause_id:
         target = next((c for c in (doc.index.clauses or []) if str(getattr(c, "id", c.get("id"))) == str(clause_id)), None)
     else:
-        clause_type = kwargs.get("clause_type")
         if clause_type:
             target = next((c for c in (doc.index.clauses or []) if str(getattr(c, "type", c.get("type", ""))) == str(clause_type)), None)
 
@@ -448,4 +459,3 @@ def suggest_edits(text: str, clause_id: Optional[str], mode: str = "friendly", *
         "hash": getattr(target, "id", target.get("id")),
     }
     return [card]
-```

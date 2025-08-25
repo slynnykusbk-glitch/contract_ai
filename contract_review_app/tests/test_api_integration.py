@@ -36,8 +36,8 @@ def test_suggest_edits_smoke():
     j = r.json()
     assert j["status"] == "ok"
     # normalized range
-    if j.get("suggestions"):
-        rng = j["suggestions"][0].get("range", {})
+    if j.get("edits"):
+        rng = j["edits"][0].get("range", {})
         assert {"start", "length"}.issubset(rng.keys())
 
 def test_qa_recheck_smoke_flattened():

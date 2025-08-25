@@ -45,7 +45,7 @@ def test_suggest_response_is_compatible_with_SuggestOut():
     assert r.status_code == 200
     j = r.json()
     assert j["status"] == "ok"
-    payload = {"suggestions": j.get("suggestions", []), "model": j.get("model", "rule-based"),
+    payload = {"suggestions": j.get("edits", []), "model": j.get("model", "rule-based"),
                "elapsed_ms": j.get("elapsed_ms"), "metadata": j.get("metadata", {})}
     _ = SuggestOut(**payload)
 

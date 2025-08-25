@@ -63,10 +63,10 @@ def test_suggest_edits_normalization_and_bounds():
     assert r.status_code == 200
     out = r.json()
     assert out["status"] == "ok"
-    suggestions = out.get("suggestions") or []
-    assert isinstance(suggestions, list) and len(suggestions) >= 1
+    edits = out.get("edits") or []
+    assert isinstance(edits, list)
 
-    for s in suggestions:
+    for s in edits:
         # robust normalized range
         assert isinstance(s.get("range"), dict)
         assert "start" in s["range"] and "length" in s["range"]

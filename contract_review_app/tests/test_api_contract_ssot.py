@@ -15,9 +15,9 @@ def test_suggest_in_accepts_clause_type_xor_and_normalizes_range():
     assert r.status_code == 200
     j = r.json()
     assert j["status"] == "ok"
-    assert isinstance(j.get("suggestions", []), list)
-    if j["suggestions"]:
-        s0 = j["suggestions"][0]
+    assert isinstance(j.get("edits", []), list)
+    if j["edits"]:
+        s0 = j["edits"][0]
         assert "range" in s0 and "start" in s0["range"] and "length" in s0["range"]
 
 def test_suggest_in_legacy_clause_id_still_works():

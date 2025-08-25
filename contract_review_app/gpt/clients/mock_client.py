@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..service import BaseClient, DraftResult, SuggestResult, QAResult, ProviderTimeoutError
+from ..interfaces import BaseClient, DraftResult, SuggestResult, QAResult, ProviderTimeoutError
 
 
 class MockClient(BaseClient):
@@ -13,9 +13,12 @@ class MockClient(BaseClient):
         if timeout and timeout < 0.05:
             raise ProviderTimeoutError(self.provider, timeout)
 
-    def generate_draft(self, prompt: str, max_tokens: int, temperature: float, timeout: float) -> DraftResult:
+    def draft(self, prompt: str, max_tokens: int, temperature: float, timeout: float) -> DraftResult:
         self._check_timeout(timeout)
-        text = "[MOCK DRAFT] " + (prompt[: max_tokens] or "placeholder")
+        snippet = prompt[: max_tokens].strip() if prompt else ""
+        if not snippet:
+            snippet = "example"
+        text = f"[MOCK DRAFT] {snippet}"
         return DraftResult(text=text, meta={"provider": self.provider, "model": self.model, "mode": self.mode})
 
     def suggest_edits(self, prompt: str, timeout: float) -> SuggestResult:

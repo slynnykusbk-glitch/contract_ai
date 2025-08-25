@@ -20,23 +20,14 @@ from pydantic import BaseModel
 from contract_review_app.api.calloff_validator import validate_calloff
 from contract_review_app.gpt.service import (
     LLMService,
-    ProviderTimeoutError,
+    load_llm_config,
     ProviderAuthError,
+    ProviderTimeoutError,
     ProviderConfigError,
 )
-from contract_review_app.gpt.config import load_llm_config
 
 # SSOT DTO imports
-from contract_review_app.core.schemas import (
-    AnalyzeIn,
-    DraftIn,
-    SuggestIn,
-    SuggestOut,
-    TextPatch,
-    QARecheckIn,
-)
-
-from contract_review_app.suggest import build_edits
+from contract_review_app.core.schemas import AnalyzeIn
 
 # Snapshot extraction heuristics
 # Snapshot extraction heuristics
@@ -45,13 +36,11 @@ from contract_review_app.analysis.extract_summary import extract_document_snapsh
 # Orchestrator / Engine imports
 try:
     from contract_review_app.api.orchestrator import (  # type: ignore
-        run_analyze,
         run_qa_recheck,
         run_gpt_draft,
         run_suggest_edits,
     )
 except Exception:  # pragma: no cover
-    run_analyze = None  # type: ignore
     run_qa_recheck = None  # type: ignore
     run_gpt_draft = None  # type: ignore
     run_suggest_edits = None  # type: ignore
@@ -125,6 +114,18 @@ def _has_llm_keys() -> bool:
 
 LLM_CONFIG = load_llm_config()
 LLM_SERVICE = LLMService(LLM_CONFIG)
+
+
+def _analyze_document(text: str) -> dict:
+    """
+    Thin wrapper used by API and tests (monkeypatched in tests).
+    Default implementation: rule-based analysis via legal_rules.analyze().
+    """
+    from contract_review_app.core.schemas import AnalysisInput
+    from contract_review_app.legal_rules.legal_rules import analyze as run_rules
+
+    inp = AnalysisInput(text=text)
+    return run_rules(inp)
 
 # --------------------------------------------------------------------
 # App / Router
@@ -584,60 +585,15 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
         _set_std_headers(response, cid=cid, xcache="hit", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
         return cached
 
-    # Attempt to use orchestrator; if unavailable, return minimal SSOT envelope and cache it.
-    local_run_analyze = run_analyze
-    if local_run_analyze is None:
-        try:
-            from contract_review_app.api import orchestrator as _orch  # type: ignore
-            local_run_analyze = getattr(_orch, "run_analyze", None)
-        except Exception:
-            local_run_analyze = None
+    result = _analyze_document(model.text or "")
+    if hasattr(result, "model_dump"):
+        result = result.model_dump()
 
-    if local_run_analyze is None:
-        findings = rules_loader.match_text(model.text or "") if rules_loader else []
-        envelope = {
-            "status": "ok",
-            "analysis": {
-                "status": "OK",
-                "clause_type": "general",
-                "risk_level": "medium",
-                "score": 0,
-                "findings": findings,
-            },
-            "results": {},
-            "clauses": [],
-            "document": {"text": model.text or ""},
-            "schema_version": SCHEMA_VERSION,
-            "meta": {"rules_count": _discover_rules_count()},
-        }
-        async with _cache_lock:
-            IDEMPOTENT_CACHE.put(key, envelope)
-        _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return envelope
-
-    try:
-        legacy = await asyncio.wait_for(_maybe_await(local_run_analyze, model), timeout=ANALYZE_TIMEOUT_SEC)
-    except asyncio.TimeoutError:
-        return _problem_response(504, "Timeout", "Analysis timed out")
-
-    envelope = {
-        "status": "ok",
-        "analysis": legacy.get("analysis") if isinstance(legacy, dict) else None,
-        "results": legacy.get("results") if isinstance(legacy, dict) else {},
-        "clauses": legacy.get("clauses") if isinstance(legacy, dict) else [],
-        "document": legacy.get("document") if isinstance(legacy, dict) else {},
-        "schema_version": SCHEMA_VERSION,
-        "meta": {"rules_count": _discover_rules_count()},
-    }
-    if isinstance(legacy, dict):
-        analysis = legacy.get("analysis")
-        if isinstance(analysis, dict) and "clause_type" not in analysis:
-            analysis["clause_type"] = "general"
     async with _cache_lock:
-        IDEMPOTENT_CACHE.put(key, envelope)
+        IDEMPOTENT_CACHE.put(key, result)
 
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    return envelope
+    return result
 
 
 # --------------------------------------------------------------------
@@ -707,6 +663,34 @@ async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[st
         payload = await request.json()
     except Exception:
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
+    if run_gpt_draft:
+        cid = x_cid or _sha256_hex(str(t0) + json.dumps(payload or {}, sort_keys=True)[:128])
+        try:
+            result = await _maybe_await(run_gpt_draft, payload)
+        except ProviderTimeoutError as ex:
+            meta = {}
+            resp = JSONResponse(status_code=503, content={"status": "error", "error_code": "provider_timeout", "detail": str(ex), "meta": meta})
+            _set_llm_headers(resp, meta)
+            _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+            return resp
+        except ProviderAuthError as ex:
+            meta = {}
+            resp = JSONResponse(status_code=401, content={"status": "error", "error_code": "provider_auth", "detail": ex.detail, "meta": meta})
+            _set_llm_headers(resp, meta)
+            _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+            return resp
+        except ProviderConfigError as ex:
+            meta = {}
+            resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": ex.detail, "meta": meta})
+            _set_llm_headers(resp, meta)
+            _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+            return resp
+
+        meta = result.get("meta", {"model": result.get("model")})
+        meta.setdefault("model", result.get("model"))
+        _set_llm_headers(response, meta)
+        _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return {"status": "ok", "draft_text": result.get("text", ""), "meta": meta}
 
     text = (payload or {}).get("text", "")
     clause_type = (payload or {}).get("clause_type")

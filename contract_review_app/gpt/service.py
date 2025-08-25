@@ -7,11 +7,13 @@ from .config import LLMConfig, load_llm_config
 from .interfaces import (
     BaseClient,
     DraftResult,
-    QAResult,
     SuggestResult,
+    QAResult,
+    ProviderError,
     ProviderTimeoutError,
-    ProviderConfigError,
+    ProviderUnavailableError,
     ProviderAuthError,
+    ProviderConfigError,
 )
 from .clients.mock_client import MockClient
 
@@ -38,7 +40,6 @@ class LLMService:
         self.client: BaseClient = get_client(self.cfg.provider, self.cfg)
 
     # prompt loading helpers
-
     def _read_prompt(self, name: str) -> str:
         import pkgutil
 
@@ -97,12 +98,16 @@ def create_llm_service() -> LLMService:
 __all__ = [
     "LLMService",
     "load_llm_config",
+    "get_client",
     "create_llm_service",
+    # re-exports for convenience
     "BaseClient",
     "DraftResult",
-    "QAResult",
     "SuggestResult",
+    "QAResult",
+    "ProviderError",
     "ProviderTimeoutError",
-    "ProviderConfigError",
+    "ProviderUnavailableError",
     "ProviderAuthError",
+    "ProviderConfigError",
 ]

@@ -40,7 +40,6 @@ class LLMService:
         self.client: BaseClient = get_client(self.cfg.provider, self.cfg)
 
     # prompt loading helpers
-
     def _read_prompt(self, name: str) -> str:
         import pkgutil
 
@@ -101,7 +100,11 @@ __all__ = [
     "load_llm_config",
     "get_client",
     "create_llm_service",
-    # re-exports:
+    # re-exports for convenience
+    "BaseClient",
+    "DraftResult",
+    "SuggestResult",
+    "QAResult",
     "ProviderError",
     "ProviderTimeoutError",
     "ProviderUnavailableError",

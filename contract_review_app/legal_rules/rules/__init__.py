@@ -1,20 +1,19 @@
-"""Rule registry export shim.
+# contract_review_app/legal_rules/rules/__init__.py
+"""
+Light-weight re-export for the shared rules registry.
 
-Provides a stable ``registry`` object regardless of how the actual
-registry is named inside :mod:`contract_review_app.legal_rules.registry`.
+This module exposes the dictionary of rule handlers under the familiar
+name ``registry`` so legacy imports like:
+
+    from contract_review_app.legal_rules.rules import registry
+
+continue to work.
 """
 
-# Try to import the root registry module.  This may expose either
-# ``RULES_REGISTRY`` or ``registry``.
-try:
-    from .. import registry as _r  # type: ignore
-except Exception:  # pragma: no cover - import errors not fatal
-    _r = None  # type: ignore
+from __future__ import annotations
 
-if _r is not None:
-    registry = getattr(_r, "RULES_REGISTRY", getattr(_r, "registry", {}))
-else:  # fallback to empty dict when nothing is available
-    registry = {}
+# The canonical registry lives in `contract_review_app.legal_rules.registry`.
+# Re-export it under the name `registry`.
+from ..registry import RULES_REGISTRY as registry  # noqa: F401
 
 __all__ = ["registry"]
-

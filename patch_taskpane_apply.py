@@ -80,7 +80,8 @@ def find_func_bounds(src: str, name: str):
         return None
     # знайти першу '{' після сигнатури
     brace = src.find("{", start)
-    if brace < 0: return None
+    if brace < 0:
+        return None
     i = brace
     n = len(src)
     depth = 0

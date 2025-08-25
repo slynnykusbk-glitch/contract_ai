@@ -1,5 +1,10 @@
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from ..interfaces import (
+    BaseClient,
+    DraftResult,
+    SuggestResult,
+    QAResult,
+    ProviderTimeoutError,
+)
 
 
 class MockClient(BaseClient):

@@ -4,7 +4,15 @@ from string import Formatter
 from typing import Any, Dict, Optional, Set
 
 from .config import LLMConfig, load_llm_config
-from .interfaces import BaseClient, DraftResult, QAResult, SuggestResult
+from .interfaces import (
+    BaseClient,
+    DraftResult,
+    SuggestResult,
+    QAResult,
+    ProviderAuthError,
+    ProviderTimeoutError,
+    ProviderConfigError,
+)
 from .clients.mock_client import MockClient
 
 
@@ -84,3 +92,16 @@ class LLMService:
 def create_llm_service() -> LLMService:
     cfg = load_llm_config()
     return LLMService(cfg)
+
+
+__all__ = [
+    "LLMService",
+    "load_llm_config",
+    "BaseClient",
+    "DraftResult",
+    "SuggestResult",
+    "QAResult",
+    "ProviderAuthError",
+    "ProviderTimeoutError",
+    "ProviderConfigError",
+]

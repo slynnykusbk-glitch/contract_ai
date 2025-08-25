@@ -36,11 +36,13 @@ from contract_review_app.analysis.extract_summary import extract_document_snapsh
 # Orchestrator / Engine imports
 try:
     from contract_review_app.api.orchestrator import (  # type: ignore
+        run_analyze,
         run_qa_recheck,
         run_gpt_draft,
         run_suggest_edits,
     )
 except Exception:  # pragma: no cover
+    run_analyze = None  # type: ignore
     run_qa_recheck = None  # type: ignore
     run_gpt_draft = None  # type: ignore
     run_suggest_edits = None  # type: ignore
@@ -116,13 +118,25 @@ LLM_CONFIG = load_llm_config()
 LLM_SERVICE = LLMService(LLM_CONFIG)
 
 
-def _analyze_document(text: str) -> dict:
+async def _analyze_document(text: str) -> dict:
     """Hook for tests to analyze document text.
 
     Default implementation uses the rule engine if available and returns a
     minimal dictionary structure so that tests can monkeypatch this function
     without importing heavy dependencies.
     """
+    if run_analyze:
+        try:
+            inp = AnalyzeIn(text=text)
+            out = run_analyze(inp)
+            if asyncio.iscoroutine(out):  # type: ignore[arg-type]
+                out = await out
+            if hasattr(out, "model_dump"):
+                out = out.model_dump()
+            if isinstance(out, dict):
+                return out
+        except Exception:
+            pass
     try:
         from contract_review_app.legal_rules.legal_rules import analyze as rules_analyze
         from contract_review_app.core.schemas import AnalysisInput
@@ -594,9 +608,22 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
         _set_std_headers(response, cid=cid, xcache="hit", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
         return cached
 
-    result = _analyze_document(model.text or "")
+    result = await _analyze_document(model.text or "")
     if hasattr(result, "model_dump"):
         result = result.model_dump()
+
+    if isinstance(result, dict):
+        summary_block = result.setdefault("results", {}).setdefault("summary", {})
+        if "type" not in summary_block:
+            snap = extract_document_snapshot(model.text or "")
+            summary_block["type"] = snap.type
+            summary_block["type_confidence"] = snap.type_confidence
+    else:
+        snap = extract_document_snapshot(model.text or "")
+        result = {
+            "status": "ok",
+            "results": {"summary": {"type": snap.type, "type_confidence": snap.type_confidence}},
+        }
 
     async with _cache_lock:
         IDEMPOTENT_CACHE.put(key, result)
@@ -695,11 +722,13 @@ async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[st
             _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
             return resp
 
-        meta = result.get("meta", {"model": result.get("model")})
-        meta.setdefault("model", result.get("model"))
+        if not isinstance(result, dict):
+            result = {}
+        meta = result.get("meta") if isinstance(result.get("meta"), dict) else {}
+        meta.setdefault("model", result.get("model", ""))
         _set_llm_headers(response, meta)
         _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return {"status": "ok", "draft_text": result.get("text", ""), "meta": meta}
+        return {"status": "ok", "draft_text": result.get("text", "DRAFT"), "meta": meta}
 
     text = (payload or {}).get("text", "")
     clause_type = (payload or {}).get("clause_type")

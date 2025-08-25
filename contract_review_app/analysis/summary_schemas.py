@@ -37,7 +37,7 @@ class ConditionsVsWarranties(AppBaseModel):
 
 
 class DocumentSnapshot(AppBaseModel):
-    type: Literal["NDA", "MSA", "DPA", "SaaS", "Supply", "Services", "License", "unknown"] = "unknown"
+    type: str = "unknown"
     type_confidence: float = 0.0
     parties: List[Party] = Field(default_factory=list)
     dates: Dict[str, Optional[str]] = Field(default_factory=dict)

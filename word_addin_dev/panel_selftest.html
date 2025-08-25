@@ -59,6 +59,7 @@
         <button id="btnDraft">POST /api/gpt/draft</button>
         <button id="btnSuggest">POST /api/suggest_edits</button>
         <button id="btnQA">POST /api/qa-recheck</button>
+        <button id="btnCalloff">POST /api/calloff/validate</button>
         <button id="btnTrace">GET /api/trace/{cid}</button>
       </div>
       <div class="small">CID used for requests: <span id="cidLbl" class="mono pill"></span></div>
@@ -82,6 +83,7 @@
             <tr id="row-draft"><td>POST /api/gpt/draft</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             <tr id="row-suggest"><td>POST /api/suggest_edits</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             <tr id="row-qa"><td>POST /api/qa-recheck</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr id="row-calloff"><td>POST /api/calloff/validate</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             <tr id="row-trace"><td>GET /api/trace/{cid}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
           </tbody>
         </table>
@@ -215,6 +217,19 @@
       setJSON("resp", r.body);
       return r;
     }
+    async function testCalloff(){
+      const r = await callEndpoint({
+        name:"calloff", method:"POST", path:"/api/calloff/validate",
+        body:{ description:"[●]" }
+      });
+      setStatusRow("row-calloff", r);
+      const issues = (r.body && r.body.issues) ? r.body.issues.length : 0;
+      const tr = document.getElementById("row-calloff");
+      const cells = tr.getElementsByTagName('td');
+      cells[6].innerHTML = r.ok ? `<span class="ok">ok / issues ${issues}</span>` : '<span class="err">error</span>';
+      setJSON("resp", r.body);
+      return r;
+    }
     async function testTrace(){
       const cid = lastCid || clientCid || "cid-dummy";
       const r = await callEndpoint({
@@ -228,7 +243,7 @@
 
     async function runAll(){
       // reset table rows
-      for (const id of ["row-health","row-analyze","row-draft","row-suggest","row-qa","row-trace"]) {
+      for (const id of ["row-health","row-analyze","row-draft","row-suggest","row-qa","row-calloff","row-trace"]) {
         setStatusRow(id, {code:"",xcid:"",xcache:"",xschema:"",latencyMs:null,ok:false});
       }
       document.getElementById("resp").textContent = "";
@@ -241,6 +256,7 @@
       await testDraft();
       await testSuggest();
       await testQA();
+      await testCalloff();
       await testTrace();
     }
 
@@ -252,6 +268,7 @@
     document.getElementById("btnDraft").addEventListener("click", testDraft);
     document.getElementById("btnSuggest").addEventListener("click", testSuggest);
     document.getElementById("btnQA").addEventListener("click", testQA);
+    document.getElementById("btnCalloff").addEventListener("click", testCalloff);
     document.getElementById("btnTrace").addEventListener("click", testTrace);
 
     // Load defaults on first paint

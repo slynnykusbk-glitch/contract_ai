@@ -46,7 +46,8 @@ def _rotate_if_needed(rotation_mb: int) -> None:
                 with open(REPLAY_FILE, "rb") as src, gzip.open(dst, "wb", compresslevel=6) as gz:
                     while True:
                         chunk = src.read(1 << 20)
-                        if not chunk: break
+                        if not chunk:
+                            break
                         gz.write(chunk)
                 open(REPLAY_FILE, "w").close()
     except Exception:

@@ -88,6 +88,17 @@ for _o in (
 
 _LLM_KEY_ENV_VARS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LLM_API_KEY")
 
+_QUOTE_MAP = str.maketrans({
+    "’": "'",
+    "‘": "'",
+    "“": '"',
+    "”": '"',
+})
+
+
+def _normalize_quotes(text: str) -> str:
+    return text.translate(_QUOTE_MAP)
+
 
 def _has_llm_keys() -> bool:
     return any(os.getenv(k) for k in _LLM_KEY_ENV_VARS)
@@ -585,7 +596,7 @@ async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[st
         _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
         return {"status": "ok", "draft_text": draft_text, "meta": {"model": "rulebased"}}
 
-    used_model = getattr(model, "model", None) or "rulebased"
+    used_model = "rulebased"
     draft_text: str = ""
 
     try:
@@ -615,12 +626,17 @@ async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[st
             draft_text = dr
         elif isinstance(dr, dict):
             draft_text = str(dr.get("text") or "")
-            used_model = dr.get("model") or used_model
+            used_model = dr.get("model") or "rulebased"
         else:
             draft_text = str(getattr(dr, "text", "") or "")
-            used_model = getattr(dr, "model", used_model)  # type: ignore[attr-defined]
+            used_model = getattr(dr, "model", None) or "rulebased"
     except Exception:
         draft_text = draft_text or "No draft available due to an internal error."
+
+    if used_model == "rule-based":
+        used_model = "rulebased"
+    if used_model == "rulebased":
+        draft_text = _normalize_quotes(draft_text)
 
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
     return {"status": "ok", "draft_text": draft_text, "meta": {"model": used_model}}

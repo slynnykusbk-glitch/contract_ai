@@ -4,10 +4,11 @@ from contract_review_app.api.app import app
 
 client = TestClient(app)
 
+
 def test_health():
     r = client.get("/health")
     assert r.status_code == 200
-    assert r.json().get("status") == "ok"
+    assert isinstance(r.json().get("rules_count"), int)
 
 def test_analyze_envelope_and_keys():
     r = client.post("/api/analyze", data=json.dumps({"text": "Some clause text."}))

@@ -73,6 +73,55 @@ def find_fastapi_endpoints(code: str) -> Dict[str, Any]:
         endpoints.append({"decorator": m.group(0)[:120], "path": m.group("path"), "app_name": m.group("app")})
     return {"cors": cors, "endpoints": endpoints}
 
+
+def map_endpoint_tests(endpoints: List[Dict[str, Any]]) -> Dict[str, List[str]]:
+    tests_dir = PROJECT / "contract_review_app" / "tests"
+    test_files = list(tests_dir.rglob("*.py"))
+    mapping: Dict[str, List[str]] = {}
+    for ep in endpoints:
+        path = ep.get("path", "").strip("'\"")
+        hits = []
+        if not path:
+            continue
+        for tf in test_files:
+            t = read_text_safe(tf)
+            if path in t:
+                hits.append(rel(tf))
+        mapping[path] = hits
+    return mapping
+
+
+def map_frontend_calls() -> Dict[str, List[str]]:
+    endpoints = ["/api/analyze", "/api/summary", "/api/gpt/draft", "/api/qa-recheck"]
+    files = list(PROJECT.rglob("*.tsx")) + list(PROJECT.rglob("*.js"))
+    mapping: Dict[str, List[str]] = {}
+    for p in files:
+        text = read_text_safe(p)
+        hits = [ep for ep in endpoints if ep in text]
+        if hits:
+            mapping[rel(p)] = hits
+    return mapping
+
+
+def summary_fields_vs_ui() -> Dict[str, Any]:
+    fields = [
+        "type",
+        "parties",
+        "dates",
+        "signatures",
+        "term",
+        "governing_law",
+        "jurisdiction",
+        "liability",
+        "carveouts",
+        "conditions_vs_warranties",
+        "hints",
+    ]
+    ui_code = read_text_safe(PROJECT / "word_addin_dev" / "taskpane.bundle.js")
+    present = [f for f in fields if re.search(rf"\b{re.escape(f)}\b", ui_code)]
+    missing = [f for f in fields if f not in present]
+    return {"present": present, "missing": missing}
+
 def list_rule_modules() -> Dict[str, Any]:
     base = PROJECT / "contract_review_app" / "legal_rules"
     rules_dir = base / "rules"
@@ -254,6 +303,15 @@ def render_html(report: Dict[str, Any]) -> str:
 <h2>FastAPI</h2>
 <pre>{html.escape(json.dumps(report["fastapi"], indent=2, ensure_ascii=False))}</pre>
 
+<h2>Endpoint Tests</h2>
+<pre>{html.escape(json.dumps(report.get("endpoint_tests", {}), indent=2, ensure_ascii=False))}</pre>
+
+<h2>Frontend Calls</h2>
+<pre>{html.escape(json.dumps(report.get("frontend_calls", {}), indent=2, ensure_ascii=False))}</pre>
+
+<h2>Summary schema vs UI</h2>
+<pre>{html.escape(json.dumps(report.get("summary_ui", {}), indent=2, ensure_ascii=False))}</pre>
+
 <h2>Rules</h2>
 <pre>{html.escape(json.dumps(report["rules"], indent=2, ensure_ascii=False))}</pre>
 
@@ -294,15 +352,26 @@ def main():
     ap = argparse.ArgumentParser(description="Offline analyzer for contract_ai")
     ap.add_argument("--project-root", default=str(PROJECT), help="Path to project root (default: script/../)")
     ap.add_argument("--out", default=str(PROJECT / "reports"), help="Output directory for reports")
+    ap.add_argument("--html", default=None, help="Path to output HTML file")
     args = ap.parse_args()
 
-    outdir = Path(args.out); outdir.mkdir(parents=True, exist_ok=True)
+    outdir = Path(args.out)
+    if args.html:
+        html_path = Path(args.html)
+        outdir = html_path.parent
+    else:
+        html_path = outdir / "analysis.html"
+    outdir.mkdir(parents=True, exist_ok=True)
+    json_path = outdir / "analysis.json"
 
     report: Dict[str, Any] = {}
     report["project_root"] = str(PROJECT)
     report["inventory"] = inventory()
     report["imports"] = import_graph()
     report["fastapi"] = analyze_fastapi()
+    report["endpoint_tests"] = map_endpoint_tests(report["fastapi"].get("endpoints", []))
+    report["frontend_calls"] = map_frontend_calls()
+    report["summary_ui"] = summary_fields_vs_ui()
     report["rules"] = list_rule_modules()
     report["manifest"] = analyze_manifest()
     report["panel"] = analyze_panel()
@@ -310,11 +379,9 @@ def main():
     report["summary"] = summarize_findings(report)
 
     # write JSON
-    json_path = outdir / "analysis.json"
     json_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
 
     # write HTML
-    html_path = outdir / "analysis.html"
     html_path.write_text(render_html(report), encoding="utf-8")
 
     print(f"[OK] Report written:\n  JSON: {json_path}\n  HTML: {html_path}")

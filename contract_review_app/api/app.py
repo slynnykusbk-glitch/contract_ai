@@ -75,7 +75,7 @@ except Exception:  # pragma: no cover
 # --------------------------------------------------------------------
 # Config
 # --------------------------------------------------------------------
-SCHEMA_VERSION = os.getenv("CONTRACT_AI_SCHEMA_VERSION", "1.1")
+SCHEMA_VERSION = os.getenv("CONTRACT_AI_SCHEMA_VERSION", "1.2")
 ANALYZE_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_ANALYZE_TIMEOUT_SEC", "25"))
 QA_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_QA_TIMEOUT_SEC", "20"))
 DRAFT_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_DRAFT_TIMEOUT_SEC", "25"))
@@ -619,19 +619,17 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
 
 def _empty_snapshot() -> Dict[str, Any]:
     return {
-        "contract_type": {"type": "unknown", "confidence": 0.0, "hints": []},
+        "type": "unknown",
         "parties": [],
-        "dates": {"dated": None, "effective": None, "commencement": None, "signatures": []},
-        "term": {"mode": "unknown", "start": None, "end": None, "renew_notice_days": None},
-        "law_jurisdiction": {"law": None, "jurisdiction": None, "exclusive": None},
-        "liability": {
-            "has_cap": False,
-            "cap_value": None,
-            "currency": None,
-            "has_carveouts": False,
-            "carveouts": [],
-        },
-        "conditions_vs_warranties": {"conditions": [], "warranties": []},
+        "dates": {"dated": None, "effective": None, "commencement": None},
+        "signatures": [],
+        "term": {"mode": None, "start": None, "end": None, "notice": None},
+        "governing_law": None,
+        "jurisdiction": None,
+        "liability": {"has_cap": False, "cap_value": None, "currency": None},
+        "carveouts": {"has_carveouts": False, "list": []},
+        "conditions_vs_warranties": {"has_conditions": False, "has_warranties": False},
+        "hints": [],
     }
 
 
@@ -668,14 +666,41 @@ async def api_summary_post(
     text = str(payload.get("text") or "")
     cid = x_cid or _sha256_hex(str(t0) + text[:128])
 
+    ctype = classify_contract(text)
+    parties_raw = extract_parties(text)
+    dates = extract_dates(text)
+    term_raw = extract_term(text)
+    lawjur = extract_law_jurisdiction(text)
+    liab = extract_liability(text)
+    cw = extract_conditions_warranties(text)
+
     summary = {
-        "contract_type": classify_contract(text),
-        "parties": extract_parties(text),
-        "dates": extract_dates(text),
-        "term": extract_term(text),
-        "law_jurisdiction": extract_law_jurisdiction(text),
-        "liability": extract_liability(text),
-        "conditions_vs_warranties": extract_conditions_warranties(text),
+        "type": ctype.get("type"),
+        "parties": [{"role": p.get("role"), "name": p.get("name")} for p in parties_raw],
+        "dates": {k: dates.get(k) for k in ("dated", "effective", "commencement")},
+        "signatures": dates.get("signatures", []),
+        "term": {
+            "mode": term_raw.get("mode"),
+            "start": term_raw.get("start"),
+            "end": term_raw.get("end"),
+            "notice": term_raw.get("renew_notice_days"),
+        },
+        "governing_law": lawjur.get("law"),
+        "jurisdiction": lawjur.get("jurisdiction"),
+        "liability": {
+            "has_cap": liab.get("has_cap"),
+            "cap_value": liab.get("cap_value"),
+            "currency": liab.get("currency"),
+        },
+        "carveouts": {
+            "has_carveouts": liab.get("has_carveouts"),
+            "list": liab.get("carveouts"),
+        },
+        "conditions_vs_warranties": {
+            "has_conditions": bool(cw.get("conditions")),
+            "has_warranties": bool(cw.get("warranties")),
+        },
+        "hints": ctype.get("hints", []),
     }
 
     envelope = {

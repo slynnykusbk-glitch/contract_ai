@@ -194,7 +194,7 @@
       x.setRequestHeader("x-panel-build", BUILD);
       x.setRequestHeader("x-manifest-src", _manifestSrc());
       x.setRequestHeader("x-cid", window.__CLIENT_CID__ || "");
-      x.setRequestHeader("x-schema-version", "1.2");
+      x.setRequestHeader("x-schema-version", "1.3");
       if (payload != null) x.setRequestHeader("Content-Type", "application/json");
       // pass-through custom headers (e.g., x-idempotency-key)
       if (opts.headers && typeof opts.headers === "object") {
@@ -517,7 +517,8 @@ function renderDocSnapshot(info) {
     html += '<strong>Document Snapshot</strong>';
     if (CAI_STORE.status.schemaVersion) html += '<span class="muted">v' + esc(CAI_STORE.status.schemaVersion) + '</span>';
     html += '</div>';
-    html += '<div class="kv"><strong>Type:</strong><span>' + esc(info.type || '—') + '</span></div>';
+    var tc = (info.type_confidence != null) ? ' (' + Math.round(info.type_confidence * 100) + '%)' : '';
+    html += '<div class="kv"><strong>Type:</strong><span>' + esc(info.type || '—') + tc + '</span></div>';
     if (Array.isArray(info.parties) && info.parties.length) {
       html += '<div style="margin-top:6px"><strong>Parties</strong><table><tr><th>Role</th><th>Name</th></tr>';
       info.parties.forEach(function(p){
@@ -538,7 +539,7 @@ function renderDocSnapshot(info) {
       html += '<div class="kv"><strong>Mode:</strong><span>' + esc(info.term.mode || '—') + '</span></div>';
       html += '<div class="kv"><strong>Start:</strong><span>' + esc(info.term.start || '—') + '</span></div>';
       html += '<div class="kv"><strong>End:</strong><span>' + esc(info.term.end || '—') + '</span></div>';
-      html += '<div class="kv"><strong>Notice:</strong><span>' + esc(info.term.notice || '—') + '</span></div>';
+      html += '<div class="kv"><strong>Notice:</strong><span>' + esc(info.term.renew_notice || '—') + '</span></div>';
       html += '</div>';
     }
     if (info.governing_law) {
@@ -548,13 +549,20 @@ function renderDocSnapshot(info) {
       html += '<div class="kv"><strong>Jurisdiction:</strong><span>' + esc(info.jurisdiction) + '</span></div>';
     }
     var liab = info.liability || {};
-    var cap = liab.has_cap ? (liab.cap_value != null ? String(liab.cap_value) + (liab.currency || '') : 'yes') : 'no';
+    var cap = liab.has_cap ? (liab.cap_value != null ? String(liab.cap_value) + (liab.cap_currency || '') : 'yes') : 'No cap';
     html += '<div class="kv" style="margin-top:6px"><strong>Liability cap:</strong><span>' + esc(cap) + '</span></div>';
-    var carve = (info.carveouts && Array.isArray(info.carveouts.list) && info.carveouts.list.length) ? info.carveouts.list.join(', ') : '—';
-    html += '<div class="kv"><strong>Carve-outs:</strong><span>' + esc(carve) + '</span></div>';
+    var excl = info.exclusivity == null ? '—' : (info.exclusivity ? 'exclusive' : 'non-exclusive');
+    html += '<div class="kv"><strong>Exclusivity:</strong><span>' + esc(excl) + '</span></div>';
+    var carveCount = (info.carveouts && Array.isArray(info.carveouts.carveouts)) ? info.carveouts.carveouts.length : 0;
+    html += '<div class="kv"><strong>Carve-outs:</strong><span>' + carveCount + '</span></div>';
     var cw = info.conditions_vs_warranties || {};
     html += '<div class="kv"><strong>Conditions vs Warranties:</strong><span>' +
       'C:' + (cw.has_conditions ? 'yes' : 'no') + ' / W:' + (cw.has_warranties ? 'yes' : 'no') + '</span></div>';
+    if (info.hints && info.hints.length) {
+      html += '<div class="toggle" id="docSnapEv">Show evidence</div><ul id="docSnapHints" style="display:none;margin:6px 0 0 0">';
+      info.hints.forEach(function(h){ html += '<li>' + esc(h) + '</li>'; });
+      html += '</ul>';
+    }
     html += '<div class="btn-row" style="margin-top:6px"><button id="docSnapCopy">Copy JSON</button><button id="docSnapInsert">Insert result into Word</button></div>';
     html += '<div class="toggle" id="docSnapToggle">Show raw JSON</div><pre id="docSnapRaw" style="display:none"></pre>';
     els.docSnap.innerHTML = html;
@@ -564,6 +572,11 @@ function renderDocSnapshot(info) {
     if (tog && raw) {
       try { raw.textContent = JSON.stringify(info, null, 2); } catch (_) { raw.textContent = ''; }
       tog.addEventListener('click', function(){ var s = raw.style.display; raw.style.display = (s === 'none' || !s) ? 'block' : 'none'; });
+    }
+    var ev = document.getElementById('docSnapEv');
+    var evList = document.getElementById('docSnapHints');
+    if (ev && evList) {
+      ev.addEventListener('click', function(){ var s = evList.style.display; evList.style.display = (s === 'none' || !s) ? 'block' : 'none'; });
     }
     var cpy = document.getElementById('docSnapCopy');
     if (cpy) {

@@ -4,6 +4,56 @@ from typing import Any, Dict, Optional, Set
 from string import Formatter
 
 from .config import LLMConfig, load_llm_config
+ codex/implement-document-snapshot-api-and-ui
+from .clients.mock_client import MockClient
+
+
+class ProviderUnavailableError(Exception):
+    def __init__(self, provider: str, detail: str):
+        super().__init__(detail)
+        self.provider = provider
+        self.detail = detail
+
+
+class ProviderTimeoutError(Exception):
+    def __init__(self, provider: str, timeout: float):
+        super().__init__(f"{provider} timeout {timeout}s")
+        self.provider = provider
+        self.timeout = timeout
+
+
+@dataclass
+class DraftResult:
+    text: str
+    meta: Dict[str, Any]
+
+
+@dataclass
+class SuggestResult:
+    items: List[Dict[str, Any]]
+    meta: Dict[str, Any]
+
+
+@dataclass
+class QAResult:
+    items: List[Dict[str, Any]]
+    meta: Dict[str, Any]
+
+
+class BaseClient:
+    provider: str
+    model: str
+    mode: str
+
+    def generate_draft(self, prompt: str, max_tokens: int, temperature: float, timeout: float) -> DraftResult:
+        raise NotImplementedError
+
+    def suggest_edits(self, prompt: str, timeout: float) -> SuggestResult:
+        raise NotImplementedError
+
+    def qa_recheck(self, prompt: str, timeout: float) -> QAResult:
+        raise NotImplementedError
+
 from .interfaces import (
     BaseClient,
     DraftResult,
@@ -32,9 +82,41 @@ def get_client(provider: str, cfg: LLMConfig) -> BaseClient:
     return MockClient(cfg.model_draft)
 
 
+_ALLOWED_PROMPT_FIELDS = {"text", "rules"}
+
+
+def _safe_format_prompt(tpl: str, **kw) -> str:
+    fmt = string.Formatter()
+    fields = {name for _, name, _, _ in fmt.parse(tpl) if name}
+    unknown = fields - _ALLOWED_PROMPT_FIELDS
+    if unknown:
+        err = ValueError("qa_prompt_invalid: unknown placeholders" )
+        setattr(err, "unknown_placeholders", sorted(unknown))
+        raise err
+    return tpl.format(**kw)
+
 class LLMService:
     def __init__(self, cfg: Optional[LLMConfig] = None):
         self.cfg = cfg or load_llm_config()
+ codex/implement-document-snapshot-api-and-ui
+        self.client: BaseClient
+        if self.cfg.provider == "openai" and self.cfg.valid:
+            from .clients.openai_client import OpenAIClient  # type: ignore
+            self.client = OpenAIClient(self.cfg)
+        elif self.cfg.provider == "azure" and self.cfg.valid:
+            from .clients.azure_client import AzureClient  # type: ignore
+            self.client = AzureClient(self.cfg)
+        elif self.cfg.provider == "anthropic" and self.cfg.valid:
+            from .clients.anthropic_client import AnthropicClient  # type: ignore
+            self.client = AnthropicClient(self.cfg)
+        elif self.cfg.provider == "openrouter" and self.cfg.valid:
+            from .clients.openrouter_client import OpenRouterClient  # type: ignore
+            self.client = OpenRouterClient(self.cfg)
+        else:
+            self.client = MockClient(self.cfg.model_draft)
+
+    # prompt loading helpers
+
         self.client: BaseClient = get_client(self.cfg.provider, self.cfg)
 
     def _read_prompt(self, name: str) -> str:

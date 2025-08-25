@@ -56,6 +56,7 @@
     e.value = (v == null ? "" : String(v));
   }
   function txt(e, v) { if (e) e.textContent = (v == null ? "" : String(v)); }
+  function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>]/g, function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";}); }
   function en(e, on) { if (e) e.disabled = !on; }
   function log(s) {
     try {
@@ -265,6 +266,24 @@
   // Back-compat wrapper (old signature)
   async function apiAnalyze_legacy(text) { return apiAnalyze({ text: text }); }
 
+  async function apiSummary(text) {
+    text = text || "";
+    var norm = normalizeText(text);
+    var idem = await sha256Hex(norm + "|summary");
+    try {
+      return await callEndpoint({
+        method: "POST",
+        path: "/api/summary",
+        body: { text: text },
+        timeoutMs: 20000,
+        headers: { "x-idempotency-key": idem }
+      });
+    } catch (e) {
+      status("✖ Summary error: " + (e && e.message ? e.message : e));
+      return { ok: false, status: 0, json: null, headers: {} };
+    }
+  }
+
   async function apiGptDraft(opts) {
     opts = opts || {};
     var body = {};
@@ -417,6 +436,7 @@
     if (els.findingsList) els.findingsList.innerHTML = "";
     if (els.recsList) els.recsList.innerHTML = "";
     if (els.rawJson) { els.rawJson.textContent = ""; els.rawJson.style.display = "none"; }
+    if (els.docSnap) { els.docSnap.innerHTML = ""; els.docSnap.classList.add("hidden"); }
   }
 
   function renderAnalysis(analysis) {
@@ -478,6 +498,66 @@
     if (els.rawJson) {
       try { els.rawJson.textContent = JSON.stringify(analysis, null, 2); } catch (_) { els.rawJson.textContent = "Unable to stringify analysis."; }
     }
+  }
+
+  function renderDocSnapshot(info) {
+    if (!els.docSnap) return;
+    if (!info) { els.docSnap.innerHTML = ""; els.docSnap.classList.add("hidden"); return; }
+    var html = "";
+    var ct = info.contract_type || {};
+    if (ct.label) {
+      var conf = ct.confidence != null ? " (" + Math.round(ct.confidence * 100) + "%)" : "";
+      html += '<div class="kv"><strong>Contract Type:</strong><span>' + esc(ct.label) + conf + '</span></div>';
+    }
+    if (Array.isArray(info.parties) && info.parties.length) {
+      html += '<div style="margin-top:6px"><strong>Parties</strong><table><tr><th>Name</th><th>Company No.</th><th>Address</th></tr>';
+      info.parties.forEach(function(p){
+        html += '<tr><td>' + esc(p.name || '—') + '</td><td>' + esc(p.company_no || p.company_number || '—') + '</td><td>' + esc((p.address_snippet || p.address || '').slice(0,80)) + '</td></tr>';
+      });
+      html += '</table></div>';
+    }
+    if (info.dates) {
+      html += '<div class="grid" style="margin-top:6px">';
+      html += '<div class="kv"><strong>Dated:</strong><span>' + esc(info.dates.dated || '—') + '</span></div>';
+      html += '<div class="kv"><strong>Effective:</strong><span>' + esc(info.dates.effective || '—') + '</span></div>';
+      html += '<div class="kv"><strong>Commencement:</strong><span>' + esc(info.dates.commencement || '—') + '</span></div>';
+      html += '</div>';
+    }
+    if (info.term) {
+      html += '<div class="grid" style="margin-top:6px">';
+      html += '<div class="kv"><strong>Term:</strong><span>' + esc(info.term.mode || '—') + '</span></div>';
+      html += '<div class="kv"><strong>Start:</strong><span>' + esc(info.term.start || '—') + '</span></div>';
+      html += '<div class="kv"><strong>End:</strong><span>' + esc(info.term.end || '—') + '</span></div>';
+      html += '<div class="kv"><strong>Notice:</strong><span>' + esc(info.term.notice || '—') + '</span></div>';
+      html += '</div>';
+    }
+    if (info.law_jurisdiction) {
+      html += '<div class="grid" style="margin-top:6px">';
+      html += '<div class="kv"><strong>Law:</strong><span>' + esc(info.law_jurisdiction.law || '—') + '</span></div>';
+      var jur = (info.law_jurisdiction.jurisdiction || '—') + (info.law_jurisdiction.exclusive ? ' (exclusive)' : '');
+      html += '<div class="kv"><strong>Jurisdiction:</strong><span>' + esc(jur) + '</span></div>';
+      html += '</div>';
+    }
+    if (info.liability) {
+      var cap = info.liability.has_cap ? (info.liability.cap_value != null ? String(info.liability.cap_value) + (info.liability.currency || '') : 'yes') : 'no';
+      var carve = Array.isArray(info.liability.carveouts) && info.liability.carveouts.length ? info.liability.carveouts.join(', ') : '—';
+      html += '<div class="grid" style="margin-top:6px">';
+      html += '<div class="kv"><strong>Liability cap:</strong><span>' + esc(cap) + '</span></div>';
+      html += '<div class="kv"><strong>Carveouts:</strong><span>' + esc(carve) + '</span></div>';
+      html += '</div>';
+    }
+    var cw = info.conditions_vs_warranties || {};
+    var conds = Array.isArray(cw.conditions) ? cw.conditions : [];
+    var warrs = Array.isArray(cw.warranties) ? cw.warranties : [];
+    if (conds.length || warrs.length) {
+      html += '<div style="margin-top:6px"><strong>Conditions vs Warranties</strong>';
+      html += '<div class="muted">Conditions: ' + conds.length + ', Warranties: ' + warrs.length + '</div>';
+      if (conds.length) html += '<div class="muted">C: ' + esc(conds[0].snippet || conds[0]) + '</div>';
+      if (warrs.length) html += '<div class="muted">W: ' + esc(warrs[0].snippet || warrs[0]) + '</div>';
+      html += '</div>';
+    }
+    els.docSnap.innerHTML = html;
+    els.docSnap.classList.remove('hidden');
   }
 
   function fillClauseSelect(envelope) {
@@ -626,6 +706,13 @@
     status("Analyzing…");
     clearResults();
     try {
+      var s = await apiSummary(text);
+      if (s && s.ok) {
+        var senv = (s.json && (s.json.data || s.json)) || {};
+        renderDocSnapshot(senv);
+      } else {
+        status("⚠️ Summary " + (s ? ("HTTP " + s.status) : "failed"));
+      }
       var r = await apiAnalyze({ text: text });
       if (!r.ok) { status("Analyze HTTP " + r.status); return; }
       var payload = r.json || {};
@@ -788,6 +875,7 @@
     els.schemaBadge = $("schemaBadge");
     els.doctorToggle = $("doctorToggle");
     els.doctorPanel = $("doctorPanel");
+    els.docSnap = $("doc-snapshot");
     els.doctorReqList = $("doctorReqList");
     els.doctorCid = $("doctorCid");
     els.doctorLatency = $("doctorLatency");

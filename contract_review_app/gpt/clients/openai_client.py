@@ -3,13 +3,14 @@ from __future__ import annotations
 import requests
 
 from ..config import LLMConfig
-from ..service import (
+from ..interfaces import (
     BaseClient,
     DraftResult,
     QAResult,
     SuggestResult,
     ProviderTimeoutError,
-    ProviderUnavailableError,
+    ProviderAuthError,
+    ProviderConfigError,
 )
 
 
@@ -31,11 +32,13 @@ class OpenAIClient(BaseClient):
             )
         except requests.Timeout:
             raise ProviderTimeoutError(self.provider, timeout)
+        if r.status_code in (401, 403):
+            raise ProviderAuthError(self.provider, r.text)
         if r.status_code >= 400:
-            raise ProviderUnavailableError(self.provider, r.text)
+            raise ProviderConfigError(self.provider, r.text)
         return r.json()
 
-    def generate_draft(self, prompt: str, max_tokens: int, temperature: float, timeout: float) -> DraftResult:
+    def draft(self, prompt: str, max_tokens: int, temperature: float, timeout: float) -> DraftResult:
         data = self._post(
             {
                 "model": self.model,

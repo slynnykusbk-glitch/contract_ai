@@ -14,6 +14,12 @@ try:
 except Exception:
     _loader = None  # type: ignore
 
+# Optional integrity checks (cross-references/definitions)
+try:
+    from contract_review_app.legal_rules import integrity as _integrity  # type: ignore
+except Exception:  # pragma: no cover
+    _integrity = None  # type: ignore
+
 # --- Safe engine import with fallback ---
 try:
     from contract_review_app.engine import pipeline as _engine  # type: ignore
@@ -330,6 +336,15 @@ async def run_analyze(inp: "AnalyzeIn") -> Dict[str, Any]:
     results = _ensure_results_keys(results)
     if _loader is not None:
         analysis["findings"] = _loader.match_text(text)
+    else:
+        analysis.setdefault("findings", [])
+
+    # Augment with integrity checks
+    if _integrity is not None:
+        try:
+            analysis["findings"].extend(_integrity.run(text))
+        except Exception:
+            pass
     return {"analysis": analysis, "results": results, "clauses": clauses, "document": doc}
 
 

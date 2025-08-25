@@ -1,0 +1,673 @@
+rules:
+- id: confidentiality_survival_term_min_3y
+  clause_type: confidentiality
+  severity: high
+  intent: Ensure confidentiality survives at least 3 years after termination.
+  triggers:
+    any:
+    - (?i)confidential.*survive.*(?:3|three|[4-9]|[1-9]\d)\s*years
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Ensure confidentiality survives at least 3 years after termination.
+    firm: Ensure confidentiality survives at least 3 years after termination.
+    hard: Ensure confidentiality survives at least 3 years after termination.
+  edits: []
+  examples:
+    positive:
+    - Confidentiality obligations survive for 3 years after termination.
+    negative:
+    - Confidentiality obligations survive for 1 year after termination.
+- id: confidentiality_exceptions
+  clause_type: confidentiality
+  severity: medium
+  intent: Permit standard confidentiality exceptions.
+  triggers:
+    any:
+    - (?i)(already known|independently developed|legally compelled|injunctive relief)
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Permit standard confidentiality exceptions.
+    firm: Permit standard confidentiality exceptions.
+    hard: Permit standard confidentiality exceptions.
+  edits: []
+  examples:
+    positive:
+    - Information already known, independently developed or legally compelled may
+      be disclosed and injunctive relief is available.
+    negative:
+    - No exceptions to confidentiality obligations are permitted.
+- id: audit_rights_scope_retention
+  clause_type: audit
+  severity: medium
+  intent: Provide audit rights with notice and record retention.
+  triggers:
+    any:
+    - (?i)audit.*books
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Provide audit rights with notice and record retention.
+    firm: Provide audit rights with notice and record retention.
+    hard: Provide audit rights with notice and record retention.
+  edits: []
+  examples:
+    positive:
+    - Company may audit Supplier's books on five business days' notice and records
+      must be kept for seven years.
+    negative:
+    - Supplier has no obligation to provide audit access to its books.
+- id: notices_formal_service
+  clause_type: notices
+  severity: medium
+  intent: Specify formal notice methods and effectiveness.
+  triggers:
+    any:
+    - (?i)notices? may be served by
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Specify formal notice methods and effectiveness.
+    firm: Specify formal notice methods and effectiveness.
+    hard: Specify formal notice methods and effectiveness.
+  edits: []
+  examples:
+    positive:
+    - Notices may be served by post, courier or email/PDF to the named addresses and
+      are effective on delivery.
+    negative:
+    - Parties will communicate informally without any notice procedure.
+- id: assignment_consent_exceptions
+  clause_type: assignment
+  severity: medium
+  intent: Allow intra-group assignments and change of control with notice.
+  triggers:
+    any:
+    - (?i)assign
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Allow intra-group assignments and change of control with notice.
+    firm: Allow intra-group assignments and change of control with notice.
+    hard: Allow intra-group assignments and change of control with notice.
+  edits: []
+  examples:
+    positive:
+    - Supplier may assign to an Affiliate or upon change of control with notice and
+      consent not unreasonably withheld.
+    negative:
+    - No assignments are permitted under any circumstances.
+- id: subcontracting_control_flowdown
+  clause_type: subcontracting
+  severity: medium
+  intent: Control subcontracting and require flow-down obligations.
+  triggers:
+    any:
+    - (?i)subcontract
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Control subcontracting and require flow-down obligations.
+    firm: Control subcontracting and require flow-down obligations.
+    hard: Control subcontracting and require flow-down obligations.
+  edits: []
+  examples:
+    positive:
+    - Supplier may not subcontract without prior consent, remains liable and shall
+      flow down obligations to approved subcontractors.
+    negative:
+    - Supplier may freely subcontract all work without any conditions.
+- id: ip_ownership_licenseback
+  clause_type: intellectual_property
+  severity: medium
+  intent: Confirm Company owns Foreground IP with license back for performance.
+  triggers:
+    any:
+    - (?i)foreground ip
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Confirm Company owns Foreground IP with license back for performance.
+    firm: Confirm Company owns Foreground IP with license back for performance.
+    hard: Confirm Company owns Foreground IP with license back for performance.
+  edits: []
+  examples:
+    positive:
+    - All Foreground IP shall belong to Company; Supplier retains its Background IP
+      with a license-back only to perform the Services.
+    negative:
+    - Supplier retains ownership of all IP developed under this Agreement without
+      any license back to Company.
+- id: title_and_risk_transfer
+  clause_type: delivery
+  severity: medium
+  intent: Set title and risk transfer points and prohibit retention of title.
+  triggers:
+    any:
+    - (?i)title passes
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Set title and risk transfer points and prohibit retention of title.
+    firm: Set title and risk transfer points and prohibit retention of title.
+    hard: Set title and risk transfer points and prohibit retention of title.
+  edits: []
+  examples:
+    positive:
+    - Title transfers on acceptance and risk passes on delivery at the Delivery Point;
+      Supplier may not retain title.
+    negative:
+    - Supplier retains title until full payment is received.
+- id: force_majeure_exclusions
+  clause_type: force_majeure
+  severity: medium
+  intent: Clarify force majeure exclusions and mitigation duties.
+  triggers:
+    any:
+    - (?i)force majeure
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Clarify force majeure exclusions and mitigation duties.
+    firm: Clarify force majeure exclusions and mitigation duties.
+    hard: Clarify force majeure exclusions and mitigation duties.
+  edits: []
+  examples:
+    positive:
+    - Force majeure does not excuse payment obligations or strikes by Supplier's workforce
+      and parties must mitigate with termination after 60 days.
+    negative:
+    - Any event whatsoever excuses all obligations without mitigation or termination
+      rights.
+- id: warranties_goods_services
+  clause_type: warranty
+  severity: medium
+  intent: Provide goods and services warranties with remedies.
+  triggers:
+    any:
+    - (?i)warrant
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Provide goods and services warranties with remedies.
+    firm: Provide goods and services warranties with remedies.
+    hard: Provide goods and services warranties with remedies.
+  edits: []
+  examples:
+    positive:
+    - Supplier warrants goods are new, fit for purpose and services are performed
+      in a professional and workmanlike manner for 12 months with obligation to replace
+      defects.
+    negative:
+    - Goods are provided as-is without any warranties or remedies.
+- id: ip_infringement_indemnity
+  clause_type: indemnity
+  severity: medium
+  intent: Require IP infringement defence and remedies with carve-outs.
+  triggers:
+    any:
+    - (?i)infringement
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Require IP infringement defence and remedies with carve-outs.
+    firm: Require IP infringement defence and remedies with carve-outs.
+    hard: Require IP infringement defence and remedies with carve-outs.
+  edits: []
+  examples:
+    positive:
+    - Supplier shall defend and indemnify the Company against IP infringement claims
+      and replace or modify infringing items subject to customary carve-outs.
+    negative:
+    - Company assumes all responsibility for IP infringement without any remedy.
+- id: limitation_of_liability_cap_and_carveouts
+  clause_type: liability
+  severity: medium
+  intent: Ensure liability cap with carve-outs for critical matters.
+  triggers:
+    any:
+    - (?i)liability is (?:limited|capped)
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Ensure liability cap with carve-outs for critical matters.
+    firm: Ensure liability cap with carve-outs for critical matters.
+    hard: Ensure liability cap with carve-outs for critical matters.
+  edits: []
+  examples:
+    positive:
+    - Supplier's liability is capped but carve-outs apply for HSE, Taxes, IP, Insurance,
+      Confidentiality and Data/IS exhibits.
+    negative:
+    - Supplier has unlimited liability without any cap or carve-outs.
+- id: hse_duty_stop_work
+  clause_type: hse
+  severity: medium
+  intent: Provide stop-work authority referencing LSR and offshore appendix.
+  triggers:
+    any:
+    - (?i)stop[- ]work
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Provide stop-work authority referencing LSR and offshore appendix.
+    firm: Provide stop-work authority referencing LSR and offshore appendix.
+    hard: Provide stop-work authority referencing LSR and offshore appendix.
+  edits: []
+  examples:
+    positive:
+    - Company retains LSR stop-work authority and references the offshore appendix.
+    negative:
+    - No right exists to stop work for safety reasons.
+- id: insurance_schedule_basics
+  clause_type: insurance
+  severity: medium
+  intent: Require additional insureds and certificates; non-compliance leads to termination.
+  triggers:
+    any:
+    - (?i)additional insured
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Require additional insureds and certificates; non-compliance leads to
+      termination.
+    firm: Require additional insureds and certificates; non-compliance leads to termination.
+    hard: Require additional insureds and certificates; non-compliance leads to termination.
+  edits: []
+  examples:
+    positive:
+    - Supplier shall name Company as additional insured, provide certificates upon
+      request and failure to comply allows termination.
+    negative:
+    - Supplier need not provide any insurance information.
+- id: export_control_hmrc
+  clause_type: export_control
+  severity: medium
+  intent: Address HMRC compliance and indemnity for failures.
+  triggers:
+    any:
+    - (?i)(hmrc|export control)
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Address HMRC compliance and indemnity for failures.
+    firm: Address HMRC compliance and indemnity for failures.
+    hard: Address HMRC compliance and indemnity for failures.
+  edits: []
+  examples:
+    positive:
+    - Supplier shall comply with HMRC export control requirements and indemnify the
+      Company for any failures.
+    negative:
+    - Export control obligations are ignored entirely.
+- id: third_party_rights
+  clause_type: third_party_rights
+  severity: medium
+  intent: Limit rights under Contracts (Rights of Third Parties) Act 1999 and permit
+    variation without consent.
+  triggers:
+    any:
+    - Contracts \(Rights of Third Parties\) Act 1999
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Limit rights under Contracts (Rights of Third Parties) Act 1999 and
+      permit variation without consent.
+    firm: Limit rights under Contracts (Rights of Third Parties) Act 1999 and permit
+      variation without consent.
+    hard: Limit rights under Contracts (Rights of Third Parties) Act 1999 and permit
+      variation without consent.
+  edits: []
+  examples:
+    positive:
+    - The Contracts (Rights of Third Parties) Act 1999 does not apply except for the
+      listed beneficiaries who may be varied without consent.
+    negative:
+    - All third parties may enforce any term of this Agreement.
+- id: pricing_invoicing_vat
+  clause_type: payment
+  severity: medium
+  intent: Require valid VAT invoices, set-off and dispute withholding with payment
+    terms.
+  triggers:
+    any:
+    - (?i)vat invoice
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Require valid VAT invoices, set-off and dispute withholding with payment
+      terms.
+    firm: Require valid VAT invoices, set-off and dispute withholding with payment
+      terms.
+    hard: Require valid VAT invoices, set-off and dispute withholding with payment
+      terms.
+  edits: []
+  examples:
+    positive:
+    - Supplier shall issue a valid VAT invoice and Company may set-off or withhold
+      disputed amounts with payment due within 30 days.
+    negative:
+    - Payment is due on presentation without any VAT invoice requirements.
+- id: variation_change_control
+  clause_type: change_control
+  severity: medium
+  intent: Establish a Variation Order or Change Control process.
+  triggers:
+    any:
+    - (?i)(change control|variation order)
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Establish a Variation Order or Change Control process.
+    firm: Establish a Variation Order or Change Control process.
+    hard: Establish a Variation Order or Change Control process.
+  edits: []
+  examples:
+    positive:
+    - Any amendments must follow the Change Control procedure and be documented in
+      a Variation Order.
+    negative:
+    - Parties may change the scope informally without documentation.
+- id: data_protection_link_exhibit_M
+  clause_type: data_protection
+  severity: medium
+  intent: Reference Exhibit M for processor obligations and breach notice.
+  triggers:
+    any:
+    - (?i)exhibit m
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Reference Exhibit M for processor obligations and breach notice.
+    firm: Reference Exhibit M for processor obligations and breach notice.
+    hard: Reference Exhibit M for processor obligations and breach notice.
+  edits: []
+  examples:
+    positive:
+    - Supplier shall notify any data breach within 72 hours and comply with processor
+      obligations as set out in Exhibit M.
+    negative:
+    - Data protection obligations are not addressed in this Agreement.
+- id: info_security_link_exhibit_L
+  clause_type: information_security
+  severity: medium
+  intent: Reference Exhibit L for information security obligations.
+  triggers:
+    any:
+    - (?i)exhibit l
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Reference Exhibit L for information security obligations.
+    firm: Reference Exhibit L for information security obligations.
+    hard: Reference Exhibit L for information security obligations.
+  edits: []
+  examples:
+    positive:
+    - Supplier shall maintain information security, report incidents and allow audits
+      as detailed in Exhibit L.
+    negative:
+    - No information security obligations are imposed on the Supplier.
+- id: pollution_property_damage_caps_present
+  clause_type: liability
+  severity: medium
+  intent: Ensure pollution and property damage caps include numeric values.
+  triggers:
+    any:
+    - (?i)(pollution|property damage).*(\d)
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Ensure pollution and property damage caps include numeric values.
+    firm: Ensure pollution and property damage caps include numeric values.
+    hard: Ensure pollution and property damage caps include numeric values.
+  edits: []
+  examples:
+    positive:
+    - Pollution liability is capped at GBP 5,000,000 and property damage at GBP 2,000,000.
+    negative:
+    - Pollution liability cap is TBD.
+- id: delivery_acceptance
+  clause_type: delivery
+  severity: medium
+  intent: Provide acceptance tests and rejection rights with remedies.
+  triggers:
+    any:
+    - (?i)acceptance test
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Provide acceptance tests and rejection rights with remedies.
+    firm: Provide acceptance tests and rejection rights with remedies.
+    hard: Provide acceptance tests and rejection rights with remedies.
+  edits: []
+  examples:
+    positive:
+    - Goods are subject to acceptance tests and may be rejected with remedies required
+      for any failures.
+    negative:
+    - Goods are deemed accepted without any testing or remedies.
+- id: anti_assignment_by_supplier
+  clause_type: assignment
+  severity: medium
+  intent: Prohibit assignment by Supplier except as permitted.
+  triggers:
+    any:
+    - (?i)supplier shall not assign
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Prohibit assignment by Supplier except as permitted.
+    firm: Prohibit assignment by Supplier except as permitted.
+    hard: Prohibit assignment by Supplier except as permitted.
+  edits: []
+  examples:
+    positive:
+    - Supplier shall not assign this Agreement without prior written consent except
+      for permitted transfers.
+    negative:
+    - Supplier may assign freely without any consent.
+- id: governing_law_e_wales_cisg_excluded
+  clause_type: governing_law
+  severity: medium
+  intent: State governing law of England and Wales and exclude the UN CISG.
+  triggers:
+    any:
+    - (?i)laws of england and wales
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: State governing law of England and Wales and exclude the UN CISG.
+    firm: State governing law of England and Wales and exclude the UN CISG.
+    hard: State governing law of England and Wales and exclude the UN CISG.
+  edits: []
+  examples:
+    positive:
+    - This Agreement is governed by the laws of England and Wales and the UN CISG
+      is excluded.
+    negative:
+    - Governing law is unspecified and CISG applies by default.
+- id: dispute_resolution_escalation_and_jurisdiction
+  clause_type: dispute_resolution
+  severity: medium
+  intent: Include pre-litigation steps and exclusive jurisdiction with process agent
+    if outside UK.
+  triggers:
+    any:
+    - (?i)exclusive jurisdiction
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Include pre-litigation steps and exclusive jurisdiction with process
+      agent if outside UK.
+    firm: Include pre-litigation steps and exclusive jurisdiction with process agent
+      if outside UK.
+    hard: Include pre-litigation steps and exclusive jurisdiction with process agent
+      if outside UK.
+  edits: []
+  examples:
+    positive:
+    - Disputes shall follow escalation and are subject to the exclusive jurisdiction
+      of England and Wales with a process agent if a party is outside the UK.
+    negative:
+    - Disputes may be brought in any court worldwide without any escalation.
+- id: payment_net_days_and_dispute
+  clause_type: payment
+  severity: medium
+  intent: Require net payment terms and address disputes and late interest.
+  triggers:
+    any:
+    - (?i)net (?:30|45)
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Require net payment terms and address disputes and late interest.
+    firm: Require net payment terms and address disputes and late interest.
+    hard: Require net payment terms and address disputes and late interest.
+  edits: []
+  examples:
+    positive:
+    - Payment is due net 30 days and the Company may withhold disputed sums with interest
+      on late payment.
+    negative:
+    - Payment is due immediately without any rights to dispute or interest.
+- id: confidentiality_marking_and_return
+  clause_type: confidentiality
+  severity: medium
+  intent: Require marking confidential information and return or destruction on termination.
+  triggers:
+    any:
+    - (?i)marked confidential|return or destroy
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Require marking confidential information and return or destruction on
+      termination.
+    firm: Require marking confidential information and return or destruction on termination.
+    hard: Require marking confidential information and return or destruction on termination.
+  edits: []
+  examples:
+    positive:
+    - All information marked confidential must be returned or destroyed on termination.
+    negative:
+    - Confidential information need not be marked or returned at any time.
+- id: termination_for_convenience_no_anticipatory_profit
+  clause_type: termination
+  severity: medium
+  intent: Allow termination for convenience without anticipatory profit.
+  triggers:
+    any:
+    - (?i)terminate for convenience
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Allow termination for convenience without anticipatory profit.
+    firm: Allow termination for convenience without anticipatory profit.
+    hard: Allow termination for convenience without anticipatory profit.
+  edits: []
+  examples:
+    positive:
+    - Company may terminate for convenience and Supplier shall refund mobilisation
+      costs with no entitlement to lost profits.
+    negative:
+    - Supplier is entitled to lost profits upon termination for convenience.
+- id: termination_for_cause_step_in
+  clause_type: termination
+  severity: medium
+  intent: Permit termination for serious breach with step-in rights.
+  triggers:
+    any:
+    - (?i)step[- ]in rights
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Permit termination for serious breach with step-in rights.
+    firm: Permit termination for serious breach with step-in rights.
+    hard: Permit termination for serious breach with step-in rights.
+  edits: []
+  examples:
+    positive:
+    - For serious breach Company may terminate and exercise step-in rights to perform
+      the work.
+    negative:
+    - No termination rights or step-in rights are granted for any breach.
+- id: placeholder_police
+  clause_type: placeholder
+  severity: high
+  intent: Remove placeholders before execution.
+  triggers:
+    any:
+    - "\\[\\s*\u25CF\\s*\\]|\\[DELETE AS APPROPRIATE\\]|\\bTBC\\b"
+  checks:
+    must_include: []
+    must_exclude: []
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: Remove placeholders before execution.
+    firm: Remove placeholders before execution.
+    hard: Remove placeholders before execution.
+  edits: []
+  examples:
+    positive:
+    - "Payment date [\u25CF] is a placeholder and must be completed."
+    negative:
+    - The clause contains no placeholders.

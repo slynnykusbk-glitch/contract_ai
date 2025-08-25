@@ -7,6 +7,10 @@ from typing import Any, Dict, List
 
 import yaml
 
+_PLACEHOLDER_RE = re.compile(
+    r"\[\s*●\s*\]|\[DELETE AS APPROPRIATE\]|\bTBC\b", re.IGNORECASE
+)
+
 # ---------------------------------------------------------------------------
 # Load and compile rules on import
 # ---------------------------------------------------------------------------
@@ -23,14 +27,26 @@ def _load_rules() -> None:
         except Exception:
             continue
         for raw in data.get("rules") or []:
-            pats = [re.compile(p) for p in raw.get("patterns", [])]
+            pats: List[re.Pattern] = []
+            triggers = (raw.get("triggers") or {}).get("any", [])
+            for p in triggers:
+                try:
+                    pats.append(re.compile(p, re.IGNORECASE | re.MULTILINE | re.DOTALL))
+                except re.error:
+                    continue
+            for p in raw.get("patterns", []):
+                try:
+                    pats.append(re.compile(p))
+                except re.error:
+                    continue
             _RULES.append(
                 {
                     "id": raw.get("id"),
                     "clause_type": raw.get("clause_type"),
                     "severity": raw.get("severity"),
                     "patterns": pats,
-                    "advice": raw.get("advice"),
+                    "advice": raw.get("intent") or raw.get("advice"),
+                    "placeholders_forbidden": bool(raw.get("placeholders_forbidden")),
                 }
             )
 
@@ -70,16 +86,18 @@ def match_text(text: str) -> List[Dict[str, Any]]:
     for r in _RULES:
         for pat in r.get("patterns", []):
             for m in pat.finditer(text):
-                findings.append(
-                    {
-                        "rule_id": r.get("id"),
-                        "clause_type": r.get("clause_type"),
-                        "severity": r.get("severity"),
-                        "start": m.start(),
-                        "end": m.end(),
-                        "snippet": text[m.start() : m.end()],
-                        "advice": r.get("advice"),
-                    }
-                )
+                snippet = text[m.start() : m.end()]
+                finding: Dict[str, Any] = {
+                    "rule_id": r.get("id"),
+                    "clause_type": r.get("clause_type"),
+                    "severity": r.get("severity"),
+                    "start": m.start(),
+                    "end": m.end(),
+                    "snippet": snippet,
+                    "advice": r.get("advice"),
+                }
+                if r.get("placeholders_forbidden") and _PLACEHOLDER_RE.search(snippet):
+                    finding["placeholder"] = True
+                findings.append(finding)
     return findings
 

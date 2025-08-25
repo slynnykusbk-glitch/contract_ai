@@ -33,7 +33,15 @@ def load_rule_packs(packs: Optional[List[str]] = None) -> None:
             data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         except Exception:
             continue
-        for raw in data.get("rules") or []:
+
+        if isinstance(data, dict):
+            rules_iter = data.get("rules") or []
+        elif isinstance(data, list):
+            rules_iter = data
+        else:
+            rules_iter = []
+
+        for raw in rules_iter:
             if "patterns" in raw:  # legacy schema
                 _RULES.append(
                     {

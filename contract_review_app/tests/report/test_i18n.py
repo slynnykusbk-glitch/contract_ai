@@ -73,32 +73,3 @@ def test_all_used_keys_exist_in_some_locale():
 
     for k in keys:
         assert (k in EN) or (k in UK), f"Missing i18n key: {k}"
-
-
-def test_all_used_keys_exist_in_some_locale():
-    # мінімальна перевірка: ключі, які ми точно використовуємо в шаблонах RG1-5
-    keys = [
-        "report.title",
-        "report.subtitle",
-        "summary.overview",
-        "summary.total",
-        "summary.ok",
-        "summary.warn",
-        "summary.fail",
-        "summary.note",
-        "toc.title",
-        "clause.type",
-        "clause.score",
-        "clause.risk_level",
-        "clause.severity",
-        "clause.issues",
-        "clause.recommendations",
-        "clause.law_refs",
-        "clause.back_to_original",
-        "footer.app_name",
-    ]
-    from contract_review_app.report.messages_en import MESSAGES as EN
-    from contract_review_app.report.messages_uk import MESSAGES as UK
-
-    for k in keys:
-        assert (k in EN) or (k in UK), f"Missing i18n key: {k}"

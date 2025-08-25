@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import dataclasses
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
+import string
 
 from .config import LLMConfig, load_llm_config
+ codex/implement-document-snapshot-api-and-ui
 from .clients.mock_client import MockClient
 
 
@@ -54,10 +54,51 @@ class BaseClient:
     def qa_recheck(self, prompt: str, timeout: float) -> QAResult:
         raise NotImplementedError
 
+from .interfaces import (
+    BaseClient,
+    DraftResult,
+    SuggestResult,
+    QAResult,
+    ProviderTimeoutError,
+    ProviderAuthError,
+    ProviderConfigError,
+)
+
+
+def get_client(provider: str, cfg: LLMConfig) -> BaseClient:
+    if provider == "openai" and cfg.valid:
+        from .clients.openai_client import OpenAIClient
+        return OpenAIClient(cfg)
+    if provider == "azure" and cfg.valid:
+        from .clients.azure_client import AzureClient
+        return AzureClient(cfg)
+    if provider == "anthropic" and cfg.valid:
+        from .clients.anthropic_client import AnthropicClient
+        return AnthropicClient(cfg)
+    if provider == "openrouter" and cfg.valid:
+        from .clients.openrouter_client import OpenRouterClient
+        return OpenRouterClient(cfg)
+    from .clients.mock_client import MockClient
+    return MockClient(cfg.model_draft)
+
+
+_ALLOWED_PROMPT_FIELDS = {"text", "rules"}
+
+
+def _safe_format_prompt(tpl: str, **kw) -> str:
+    fmt = string.Formatter()
+    fields = {name for _, name, _, _ in fmt.parse(tpl) if name}
+    unknown = fields - _ALLOWED_PROMPT_FIELDS
+    if unknown:
+        err = ValueError("qa_prompt_invalid: unknown placeholders" )
+        setattr(err, "unknown_placeholders", sorted(unknown))
+        raise err
+    return tpl.format(**kw)
 
 class LLMService:
     def __init__(self, cfg: Optional[LLMConfig] = None):
         self.cfg = cfg or load_llm_config()
+ codex/implement-document-snapshot-api-and-ui
         self.client: BaseClient
         if self.cfg.provider == "openai" and self.cfg.valid:
             from .clients.openai_client import OpenAIClient  # type: ignore
@@ -75,6 +116,9 @@ class LLMService:
             self.client = MockClient(self.cfg.model_draft)
 
     # prompt loading helpers
+
+        self.client: BaseClient = get_client(self.cfg.provider, self.cfg)
+
     def _read_prompt(self, name: str) -> str:
         import pkgutil
 
@@ -83,7 +127,7 @@ class LLMService:
             return ""
         return data.decode("utf-8")
 
-    def generate_draft(
+    def draft(
         self,
         text: str,
         clause_type: Optional[str],
@@ -101,17 +145,17 @@ class LLMService:
         max_t = max_tokens or self.cfg.max_tokens
         temp = temperature if temperature is not None else self.cfg.temperature
         to = timeout or self.cfg.timeout_s
-        return self.client.generate_draft(prompt, max_t, temp, to)
+        return self.client.draft(prompt, max_t, temp, to)
 
-    def suggest_edits(self, text: str, risk_level: str, timeout: Optional[float] = None) -> SuggestResult:
+    def suggest(self, text: str, risk_level: str, timeout: Optional[float] = None) -> SuggestResult:
         prompt_tpl = self._read_prompt("suggest")
         prompt = prompt_tpl.format(text=text, risk=risk_level)
         to = timeout or self.cfg.timeout_s
         return self.client.suggest_edits(prompt, to)
 
-    def qa_recheck(self, text: str, rules_context: Dict[str, Any], timeout: Optional[float] = None) -> QAResult:
+    def qa(self, text: str, rules_context: Dict[str, Any], timeout: Optional[float] = None) -> QAResult:
         prompt_tpl = self._read_prompt("qa")
-        prompt = prompt_tpl.format(text=text, rules=rules_context)
+        prompt = _safe_format_prompt(prompt_tpl, text=text, rules=rules_context)
         to = timeout or self.cfg.timeout_s
         return self.client.qa_recheck(prompt, to)
 

@@ -21,7 +21,8 @@ from contract_review_app.api.calloff_validator import validate_calloff
 from contract_review_app.gpt.service import (
     LLMService,
     ProviderTimeoutError,
-    ProviderUnavailableError,
+    ProviderAuthError,
+    ProviderConfigError,
 )
 from contract_review_app.gpt.config import load_llm_config
 
@@ -724,14 +725,20 @@ async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[st
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
         return resp
     try:
-        result = LLM_SERVICE.generate_draft(text, clause_type, LLM_CONFIG.max_tokens, LLM_CONFIG.temperature, LLM_CONFIG.timeout_s)
+        result = LLM_SERVICE.draft(text, clause_type, LLM_CONFIG.max_tokens, LLM_CONFIG.temperature, LLM_CONFIG.timeout_s)
     except ProviderTimeoutError as ex:
         meta = {**meta}
         resp = JSONResponse(status_code=503, content={"status": "error", "error_code": "provider_timeout", "detail": str(ex), "meta": meta})
         _set_llm_headers(resp, meta)
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
         return resp
-    except ProviderUnavailableError as ex:
+    except ProviderAuthError as ex:
+        meta = {**meta}
+        resp = JSONResponse(status_code=401, content={"status": "error", "error_code": "provider_auth", "detail": ex.detail, "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
+    except ProviderConfigError as ex:
         meta = {**meta}
         resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": ex.detail, "meta": meta})
         _set_llm_headers(resp, meta)
@@ -769,13 +776,18 @@ async def api_suggest_edits(request: Request, response: Response, x_cid: Optiona
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
         return resp
     try:
-        result = LLM_SERVICE.suggest_edits(text, risk_level, LLM_CONFIG.timeout_s)
+        result = LLM_SERVICE.suggest(text, risk_level, LLM_CONFIG.timeout_s)
     except ProviderTimeoutError as ex:
         resp = JSONResponse(status_code=503, content={"status": "error", "error_code": "provider_timeout", "detail": str(ex), "meta": meta})
         _set_llm_headers(resp, meta)
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
         return resp
-    except ProviderUnavailableError as ex:
+    except ProviderAuthError as ex:
+        resp = JSONResponse(status_code=401, content={"status": "error", "error_code": "provider_auth", "detail": ex.detail, "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
+    except ProviderConfigError as ex:
         resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": ex.detail, "meta": meta})
         _set_llm_headers(resp, meta)
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
@@ -812,14 +824,25 @@ async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[s
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
         return resp
     try:
-        result = LLM_SERVICE.qa_recheck(text, rules, LLM_CONFIG.timeout_s)
+        result = LLM_SERVICE.qa(text, rules, LLM_CONFIG.timeout_s)
     except ProviderTimeoutError as ex:
         resp = JSONResponse(status_code=503, content={"status": "error", "error_code": "provider_timeout", "detail": str(ex), "meta": meta})
         _set_llm_headers(resp, meta)
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
         return resp
-    except ProviderUnavailableError as ex:
+    except ProviderAuthError as ex:
+        resp = JSONResponse(status_code=401, content={"status": "error", "error_code": "provider_auth", "detail": ex.detail, "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
+    except ProviderConfigError as ex:
         resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": ex.detail, "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
+    except ValueError as ex:
+        _trace_push(cid, {"qa_prompt_debug": True, "unknown_placeholders": getattr(ex, "unknown_placeholders", [])})
+        resp = JSONResponse(status_code=500, content={"status": "error", "error_code": "qa_prompt_invalid", "detail": str(ex), "meta": meta})
         _set_llm_headers(resp, meta)
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
         return resp
@@ -912,3 +935,17 @@ async def panel_version():
 
 panel_app.mount("/", StaticFiles(directory="word_addin_dev", html=True), name="panel-static")
 app.mount("/panel", panel_app)
+
+
+# --------------------------------------------------------------------
+# Panel self-test cases
+# --------------------------------------------------------------------
+PANEL_SELFTEST = [
+    {
+        "name": "qa-recheck",
+        "method": "POST",
+        "path": "/api/qa-recheck",
+        "body": {"text": "Hello", "rules": {"R1": "Sample rule"}},
+        "expect": {"http": 200, "issues": []},
+    }
+]

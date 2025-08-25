@@ -2,46 +2,6 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 
-class ProviderTimeoutError(Exception):
-    def __init__(self, provider: str, timeout: float):
-        super().__init__(f"{provider} timeout {timeout}s")
-        self.provider = provider
-        self.timeout = timeout
-
-
-@dataclass
-class DraftResult:
-    text: str
-    meta: Dict[str, Any]
-
-
-@dataclass
-class SuggestResult:
-    items: List[Dict[str, Any]]
-    meta: Dict[str, Any]
-
-
-@dataclass
-class QAResult:
-    items: List[Dict[str, Any]]
-    meta: Dict[str, Any]
-
-
-class BaseClient:
-    provider: str
-    model: str
-    mode: str
-
-    def generate_draft(self, prompt: str, max_tokens: int, temperature: float, timeout: float) -> DraftResult:
-        raise NotImplementedError
-
-    def suggest_edits(self, prompt: str, timeout: float) -> SuggestResult:
-        raise NotImplementedError
-
-    def qa_recheck(self, prompt: str, timeout: float) -> QAResult:
-        raise NotImplementedError
-
-
 class MockClient(BaseClient):
     def __init__(self, model: str):
         self.provider = "mock"
@@ -52,9 +12,12 @@ class MockClient(BaseClient):
         if timeout and timeout < 0.05:
             raise ProviderTimeoutError(self.provider, timeout)
 
-    def generate_draft(self, prompt: str, max_tokens: int, temperature: float, timeout: float) -> DraftResult:
+    def draft(self, prompt: str, max_tokens: int, temperature: float, timeout: float) -> DraftResult:
         self._check_timeout(timeout)
-        text = "[MOCK DRAFT] " + (prompt[: max_tokens] or "placeholder")
+        snippet = prompt[: max_tokens].strip() if prompt else ""
+        if not snippet:
+            snippet = "example"
+        text = f"[MOCK DRAFT] {snippet}"
         return DraftResult(text=text, meta={"provider": self.provider, "model": self.model, "mode": self.mode})
 
     def suggest_edits(self, prompt: str, timeout: float) -> SuggestResult:

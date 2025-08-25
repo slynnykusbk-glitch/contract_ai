@@ -3,12 +3,13 @@ from __future__ import annotations
 import requests
 
 from ..config import LLMConfig
-from .mock_client import (
+
     BaseClient,
     DraftResult,
     QAResult,
     SuggestResult,
     ProviderTimeoutError,
+
 )
 
 
@@ -36,11 +37,13 @@ class AzureClient(BaseClient):
             r = requests.post(url, json=payload, headers=headers, timeout=timeout)
         except requests.Timeout:
             raise ProviderTimeoutError(self.provider, timeout)
+        if r.status_code in (401, 403):
+            raise ProviderAuthError(self.provider, r.text)
         if r.status_code >= 400:
-            raise ProviderUnavailableError(self.provider, r.text)
+            raise ProviderConfigError(self.provider, r.text)
         return r.json()
 
-    def generate_draft(self, prompt: str, max_tokens: int, temperature: float, timeout: float) -> DraftResult:
+    def draft(self, prompt: str, max_tokens: int, temperature: float, timeout: float) -> DraftResult:
         data = self._post(
             {
                 "model": self.model,

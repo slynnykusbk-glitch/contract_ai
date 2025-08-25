@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
+import string
 
 from .config import LLMConfig, load_llm_config
 from .interfaces import (
@@ -29,6 +30,20 @@ def get_client(provider: str, cfg: LLMConfig) -> BaseClient:
         return OpenRouterClient(cfg)
     from .clients.mock_client import MockClient
     return MockClient(cfg.model_draft)
+
+
+_ALLOWED_PROMPT_FIELDS = {"text", "rules"}
+
+
+def _safe_format_prompt(tpl: str, **kw) -> str:
+    fmt = string.Formatter()
+    fields = {name for _, name, _, _ in fmt.parse(tpl) if name}
+    unknown = fields - _ALLOWED_PROMPT_FIELDS
+    if unknown:
+        err = ValueError("qa_prompt_invalid: unknown placeholders" )
+        setattr(err, "unknown_placeholders", sorted(unknown))
+        raise err
+    return tpl.format(**kw)
 
 
 class LLMService:
@@ -72,7 +87,7 @@ class LLMService:
 
     def qa(self, text: str, rules_context: Dict[str, Any], timeout: Optional[float] = None) -> QAResult:
         prompt_tpl = self._read_prompt("qa")
-        prompt = prompt_tpl.format(text=text, rules=rules_context)
+        prompt = _safe_format_prompt(prompt_tpl, text=text, rules=rules_context)
         to = timeout or self.cfg.timeout_s
         return self.client.qa_recheck(prompt, to)
 

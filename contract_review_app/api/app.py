@@ -906,6 +906,12 @@ async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[s
         _set_llm_headers(resp, meta)
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
         return resp
+    except ValueError as ex:
+        _trace_push(cid, {"qa_prompt_debug": True, "unknown_placeholders": getattr(ex, "unknown_placeholders", [])})
+        resp = JSONResponse(status_code=500, content={"status": "error", "error_code": "qa_prompt_invalid", "detail": str(ex), "meta": meta})
+        _set_llm_headers(resp, meta)
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return resp
 
     meta = result.meta
     _set_llm_headers(response, meta)
@@ -995,3 +1001,17 @@ async def panel_version():
 
 panel_app.mount("/", StaticFiles(directory="word_addin_dev", html=True), name="panel-static")
 app.mount("/panel", panel_app)
+
+
+# --------------------------------------------------------------------
+# Panel self-test cases
+# --------------------------------------------------------------------
+PANEL_SELFTEST = [
+    {
+        "name": "qa-recheck",
+        "method": "POST",
+        "path": "/api/qa-recheck",
+        "body": {"text": "Hello", "rules": {"R1": "Sample rule"}},
+        "expect": {"http": 200, "issues": []},
+    }
+]

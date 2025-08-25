@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import time
+import re
 from collections import OrderedDict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -69,6 +70,22 @@ DRAFT_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_DRAFT_TIMEOUT_SEC", "25"))
 MAX_CONCURRENCY = int(os.getenv("CONTRACT_AI_MAX_CONCURRENCY", "4"))
 MAX_BODY_BYTES = int(os.getenv("CONTRACT_AI_MAX_BODY_BYTES", str(2_500_000)))
 CACHE_SIZE = int(os.getenv("CONTRACT_AI_CACHE_SIZE", "128"))
+
+# weighted risk scoring (configurable)
+RISK_WEIGHTS = {
+    "critical": int(os.getenv("CONTRACT_AI_WEIGHT_CRITICAL", "10")),
+    "high": int(os.getenv("CONTRACT_AI_WEIGHT_HIGH", "7")),
+    "medium": int(os.getenv("CONTRACT_AI_WEIGHT_MEDIUM", "4")),
+    "low": int(os.getenv("CONTRACT_AI_WEIGHT_LOW", "1")),
+}
+
+REQUIRED_EXHIBITS = {
+    e.strip().upper()
+    for e in os.getenv("CONTRACT_AI_REQUIRED_EXHIBITS", "M").split(",")
+    if e.strip()
+}
+_PLACEHOLDER_RE = re.compile(r"(\[[^\]]+\]|\bTBD\b|\bTO BE DETERMINED\b)", re.IGNORECASE)
+_EXHIBIT_RE = re.compile(r"exhibit\s+([A-Z])", re.IGNORECASE)
 
 LEARNING_LOG_PATH = Path(__file__).resolve().parents[2] / "var" / "learning_logs.jsonl"
 
@@ -272,6 +289,15 @@ async def _read_body_guarded(request: Request) -> bytes:
     if len(body) > MAX_BODY_BYTES:
         raise HTTPException(status_code=413, detail="Payload too large")
     return body
+
+
+def _count_placeholders(text: str) -> int:
+    return len(_PLACEHOLDER_RE.findall(text or ""))
+
+
+def _missing_exhibits(text: str) -> List[str]:
+    found = {m.upper() for m in _EXHIBIT_RE.findall(text or "")}
+    return [e for e in sorted(REQUIRED_EXHIBITS) if e not in found]
 
 
 def _coerce_patch_dict(obj: Any) -> Dict[str, Any]:
@@ -555,6 +581,77 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
 
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
     return envelope
+
+
+@router.post("/api/summary")
+async def api_summary(request: Request, response: Response, x_cid: Optional[str] = Header(None)):
+    t0 = _now_ms()
+    try:
+        body = await _read_body_guarded(request)
+        payload = json.loads(body.decode("utf-8")) if body else {}
+    except HTTPException:
+        return _problem_response(413, "Payload too large", "Request body exceeds limits")
+    except Exception:
+        return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
+
+    try:
+        model = AnalyzeIn(**payload) if isinstance(payload, dict) else AnalyzeIn(text="")
+    except Exception as ex:
+        return _problem_response(422, "Validation error", str(ex))
+
+    cid = x_cid or _sha256_hex(str(t0) + model.text[:128])
+
+    local_run_analyze = run_analyze
+    if local_run_analyze is None:
+        try:
+            from contract_review_app.api import orchestrator as _orch  # type: ignore
+            local_run_analyze = getattr(_orch, "run_analyze", None)
+        except Exception:
+            local_run_analyze = None
+
+    if local_run_analyze is None:
+        total_weight = 0
+        top_risks: List[Dict[str, Any]] = []
+    else:
+        try:
+            legacy = await asyncio.wait_for(_maybe_await(local_run_analyze, model), timeout=ANALYZE_TIMEOUT_SEC)
+        except asyncio.TimeoutError:
+            return _problem_response(504, "Timeout", "Analysis timed out")
+
+        results = legacy.get("results") if isinstance(legacy, dict) else {}
+        buckets: Dict[Tuple[str, str], Dict[str, Any]] = {}
+        total_weight = 0
+        for ctype, res in (results or {}).items():
+            for f in res.get("findings") or []:
+                sev = str(f.get("severity_level") or f.get("severity") or "medium").lower()
+                advice = str(f.get("message") or "")
+                key = (ctype, sev)
+                entry = buckets.get(key)
+                if entry is None:
+                    entry = {"clause_type": ctype, "severity": sev, "advice": advice, "count": 0}
+                    buckets[key] = entry
+                entry["count"] += 1
+                total_weight += RISK_WEIGHTS.get(sev, RISK_WEIGHTS["medium"])
+        top_risks = sorted(
+            buckets.values(),
+            key=lambda r: RISK_WEIGHTS.get(r["severity"], 0) * r["count"],
+            reverse=True,
+        )[:5]
+
+    score = min(100, total_weight)
+    missing_ex = _missing_exhibits(model.text)
+    placeholders = _count_placeholders(model.text)
+
+    summary = {
+        "status": "ok",
+        "score": score,
+        "top_risks": top_risks,
+        "missing_exhibits": missing_ex,
+        "placeholders": placeholders,
+    }
+
+    _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+    return summary
 
 
 @router.post("/api/gpt/draft")

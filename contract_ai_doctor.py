@@ -19,7 +19,9 @@ try:
 except Exception:
     requests = None
 
-OK = "PASS"; WARN = "WARN"; FAIL = "FAIL"
+OK = "PASS"
+WARN = "WARN"
+FAIL = "FAIL"
 
 @dataclass
 class Check:
@@ -152,7 +154,8 @@ def _to_dict(obj):
                 return getattr(obj, m)()
             except Exception:
                 pass
-    if isinstance(obj, dict): return obj
+    if isinstance(obj, dict):
+        return obj
     try:
         return dict(obj)
     except Exception:
@@ -217,7 +220,14 @@ def main():
     if args.manifest and os.path.exists(args.manifest):
         m = parse_manifest(Path(args.manifest))
         status = OK if m["ok"] and (args.front is None or str(m["source_location"]).startswith(args.front)) else WARN if m["ok"] else FAIL
-        add(report, "FRONT", status, "Manifest SourceLocation", f"url={m['source_location']} cache_bust={'yes' if m['cache_bust'] else 'no'} hosts={','.join(m['hosts'])}", m)
+        add(
+            report,
+            "FRONT",
+            status,
+            "Manifest SourceLocation",
+            f"url={m['source_location']} cache_bust={'yes' if m['cache_bust'] else 'no'} hosts={','.join(m['hosts'])}",
+            m,
+        )
     else:
         add(report, "FRONT", WARN, "Manifest", "Path not provided or not found. (--manifest)")
 
@@ -226,7 +236,15 @@ def main():
         need = [k for k,v in tp.get("containers",{}).items() if not v]
         has = tp.get("has_render_fn", False)
         st = OK if tp["exists"] and not need and has else FAIL if not tp["exists"] else WARN
-        add(report, "FRONT", st, "Taskpane files", f"exists={tp['exists']} containers-missing={need} render_fn={'ok' if has else 'absent'} backend_hint={tp.get('backend_hint')}", tp)
+        add(
+            report,
+            "FRONT",
+            st,
+            "Taskpane files",
+            f"exists={tp['exists']} containers-missing={need} "
+            f"render_fn={'ok' if has else 'absent'} backend_hint={tp.get('backend_hint')}",
+            tp,
+        )
     else:
         add(report, "FRONT", FAIL, "Taskpane files", f"Missing {args.webroot}\\taskpane.html or ...bundle.js")
 
@@ -267,9 +285,28 @@ def main():
             # invariants
             if not (j.get("findings") or (j.get("analysis",{}).get("findings")) or (j.get("results"))):
                 inv.append("empty-findings")
-            if j.get("clause_type") not in (None, "confidentiality","definitions","termination","indemnity","governing_law","jurisdiction","force_majeure","unknown"):
+            allowed_types = (
+                None,
+                "confidentiality",
+                "definitions",
+                "termination",
+                "indemnity",
+                "governing_law",
+                "jurisdiction",
+                "force_majeure",
+                "unknown",
+            )
+            if j.get("clause_type") not in allowed_types:
                 inv.append("bad-clause-type")
-        add(report, "API", OK if ok and not inv else FAIL, "POST /api/analyze", f"http={sc} inv={','.join(inv) if inv else 'ok'} {err}", {"keys": list(j.keys())[:12] if j else []}, ms)
+        add(
+            report,
+            "API",
+            OK if ok and not inv else FAIL,
+            "POST /api/analyze",
+            f"http={sc} inv={','.join(inv) if inv else 'ok'} {err}",
+            {"keys": list(j.keys())[:12] if j else []},
+            ms,
+        )
 
         # try server-side trace if available
         if requests:
@@ -349,7 +386,10 @@ def main():
     md.append("- If **NET/CORS** warns → check CORSMiddleware allow_origins for http/https localhost:3000.")
     md.append("- If **API invariants** fail → shape mismatch: ensure /api/analyze returns findings/recommendations.")
     md.append("- If **RULES run** fails for a rule → examine that module's `analyze()` and return dict/Pydantic with `.model_dump()`.")
-    md.append("- If **FRONT/Taskpane** fails → ensure `taskpane.html` has containers (resClauseType, findingsList, recsList, rawJson) and JS has `renderAnalysis()`.")
+    md.append(
+        "- If **FRONT/Taskpane** fails → ensure `taskpane.html` has containers "
+        "(resClauseType, findingsList, recsList, rawJson) and JS has `renderAnalysis()`."
+    )
     md.append("- Use **CID** header (`x-cid`) in panel fetch and GET `/api/trace/{cid}` for server-side trace (if middleware present).")
 
     with open(md_path, "w", encoding="utf-8") as f:

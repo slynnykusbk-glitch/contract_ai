@@ -19,7 +19,9 @@ try:
 except Exception:
     requests = None
 
-OK = "PASS"; WARN = "WARN"; FAIL = "FAIL"
+OK = "PASS"
+WARN = "WARN"
+FAIL = "FAIL"
 
 @dataclass
 class Check:
@@ -152,7 +154,8 @@ def _to_dict(obj):
                 return getattr(obj, m)()
             except Exception:
                 pass
-    if isinstance(obj, dict): return obj
+    if isinstance(obj, dict):
+        return obj
     try:
         return dict(obj)
     except Exception:

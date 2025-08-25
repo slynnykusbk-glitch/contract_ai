@@ -1,5 +1,4 @@
-```python
-# legal_rules.py — dispatcher/normalizers + registry helpers (fixed)
+"""legal_rules.py — dispatcher/normalizers + registry helpers (fixed)."""
 from __future__ import annotations
 from typing import Any, Dict, List, Union, Iterable
 
@@ -15,11 +14,20 @@ try:
         Suggestion,
     )
 except Exception:
-    class AnalysisInput(dict): pass
-    class AnalysisOutput(dict): pass
-    class Finding(dict): pass
-    class Diagnostic(dict): pass
-    class Suggestion(dict): pass
+    class AnalysisInput(dict):
+        pass
+
+    class AnalysisOutput(dict):
+        pass
+
+    class Finding(dict):
+        pass
+
+    class Diagnostic(dict):
+        pass
+
+    class Suggestion(dict):
+        pass
 
 def list_rule_names() -> List[str]:
     """
@@ -56,44 +64,72 @@ def _coerce_severity(val: Any) -> str:
     return s2 if s2 in _ALLOWED_SEVERITIES else "minor"
 
 def _normalize_findings(raw: Union[None, List[Any]]) -> List[Finding]:
-    if not raw: return []
+    if not raw:
+        return []
     out: List[Finding] = []
     for it in raw:
         try:
             if isinstance(it, Finding):
-                sev = _coerce_severity(getattr(it, "severity", getattr(it, "severity_level", None)))
-                out.append(Finding(
-                    code=getattr(it, "code", ""), message=getattr(it, "message", ""),
-                    severity=sev, evidence=getattr(it, "evidence", None),
-                    span=getattr(it, "span", None), citations=getattr(it, "citations", []),
-                    tags=getattr(it, "tags", []), legal_basis=getattr(it, "legal_basis", []),
-                ))
+                sev = _coerce_severity(
+                    getattr(it, "severity", getattr(it, "severity_level", None))
+                )
+                out.append(
+                    Finding(
+                        code=getattr(it, "code", ""),
+                        message=getattr(it, "message", ""),
+                        severity=sev,
+                        evidence=getattr(it, "evidence", None),
+                        span=getattr(it, "span", None),
+                        citations=getattr(it, "citations", []),
+                        tags=getattr(it, "tags", []),
+                        legal_basis=getattr(it, "legal_basis", []),
+                    )
+                )
             elif isinstance(it, dict):
-                d = dict(it); d["severity"] = _coerce_severity(d.get("severity", d.get("severity_level")))
+                d = dict(it)
+                d["severity"] = _coerce_severity(
+                    d.get("severity", d.get("severity_level"))
+                )
                 out.append(Finding(**d))
             else:
-                out.append(Finding(code="GEN", message=str(it), severity="minor"))
+                out.append(
+                    Finding(code="GEN", message=str(it), severity="minor")
+                )
         except Exception:
-            out.append(Finding(code="GEN_ERR", message=str(it), severity="minor"))
+            out.append(
+                Finding(code="GEN_ERR", message=str(it), severity="minor")
+            )
     return out
 
 def _normalize_diagnostics(raw: Union[None, List[Any]]) -> List[Diagnostic]:
-    if not raw: return []
+    if not raw:
+        return []
     out: List[Diagnostic] = []
     for item in raw:
         if isinstance(item, Diagnostic):
             out.append(item)
         elif isinstance(item, str):
-            out.append(Diagnostic(rule="ENGINE", message=item, severity="info"))
+            out.append(
+                Diagnostic(rule="ENGINE", message=item, severity="info")
+            )
         elif isinstance(item, dict):
-            out.append(Diagnostic(rule=str(item.get("rule","ENGINE")), message=str(item.get("message","")),
-                                  severity=item.get("severity","info"), legal_basis=item.get("legal_basis",[])))
+            out.append(
+                Diagnostic(
+                    rule=str(item.get("rule", "ENGINE")),
+                    message=str(item.get("message", "")),
+                    severity=item.get("severity", "info"),
+                    legal_basis=item.get("legal_basis", []),
+                )
+            )
         else:
-            out.append(Diagnostic(rule="ENGINE", message=str(item), severity="info"))
+            out.append(
+                Diagnostic(rule="ENGINE", message=str(item), severity="info")
+            )
     return out
 
 def _normalize_suggestions(raw: Union[None, List[Any]]) -> List[Suggestion]:
-    if not raw: return []
+    if not raw:
+        return []
     out: List[Suggestion] = []
     for item in raw:
         if isinstance(item, Suggestion):
@@ -109,9 +145,12 @@ def _normalize_suggestions(raw: Union[None, List[Any]]) -> List[Suggestion]:
 
 def _map_status(val: str) -> str:
     v = (val or "").strip().upper()
-    if v in {"✅","OK","PASS"}: return "OK"
-    if v in {"⚠️","WARN","WARNING"}: return "WARN"
-    if v in {"❌","FAIL","ERROR"}: return "FAIL"
+    if v in {"✅", "OK", "PASS"}:
+        return "OK"
+    if v in {"⚠️", "WARN", "WARNING"}:
+        return "WARN"
+    if v in {"❌", "FAIL", "ERROR"}:
+        return "FAIL"
     return "WARN"
 
 def default_checker(input_data: AnalysisInput) -> AnalysisOutput:
@@ -153,12 +192,16 @@ def analyze(input_data: AnalysisInput) -> AnalysisOutput:
             rule_trace = result.get("trace", [])
             trace_final = trace + (rule_trace if isinstance(rule_trace, list) else [])
             recs = result.get("recommendations", [])
-            if isinstance(recs, str): recs = [recs]
-            elif not isinstance(recs, list): recs = []
+            if isinstance(recs, str):
+                recs = [recs]
+            elif not isinstance(recs, list):
+                recs = []
             legacy_rec = result.get("recommendation")
-            if isinstance(legacy_rec, str) and legacy_rec: recs.append(legacy_rec)
+            if isinstance(legacy_rec, str) and legacy_rec:
+                recs.append(legacy_rec)
             citations = result.get("citations") or []
-            if isinstance(citations, str): citations = [citations]
+            if isinstance(citations, str):
+                citations = [citations]
             findings_norm = _normalize_findings(result.get("findings", []))
             return AnalysisOutput(
                 clause_type=clause_type_norm,
@@ -196,5 +239,9 @@ def analyze(input_data: AnalysisInput) -> AnalysisOutput:
     result.trace = trace + result.trace
     return result
 
-__all__ = ["list_rule_names","normalize_clause_type","default_checker","analyze"]
-```
+__all__ = [
+    "list_rule_names",
+    "normalize_clause_type",
+    "default_checker",
+    "analyze",
+]

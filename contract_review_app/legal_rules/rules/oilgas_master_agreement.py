@@ -13,8 +13,10 @@ def _risk_to_ord(s: str) -> int:
     return _RISK_ORD.get((s or "medium").lower(), 1)
 
 def _ord_to_risk(i: int) -> str:
-    if i < 0: i = 0
-    if i >= len(_ORD_RISK): i = len(_ORD_RISK) - 1
+    if i < 0:
+        i = 0
+    if i >= len(_ORD_RISK):
+        i = len(_ORD_RISK) - 1
     return _ORD_RISK[i]
 
 def _clamp(v: int, lo: int, hi: int) -> int:
@@ -411,10 +413,14 @@ def _check_call_off(text: str, sections: List[Dict[str, Any]]) -> Dict[str, Any]
     else:
         status, risk, score = "WARN", "medium", -10
         missing_msgs = []
-        if not has_nonexclusive: missing_msgs.append("non-exclusive")
-        if not has_calloff: missing_msgs.append("call-off")
-        if not has_separate: missing_msgs.append("separate contracts")
-        if not has_precedence: missing_msgs.append("order of precedence")
+        if not has_nonexclusive:
+            missing_msgs.append("non-exclusive")
+        if not has_calloff:
+            missing_msgs.append("call-off")
+        if not has_separate:
+            missing_msgs.append("separate contracts")
+        if not has_precedence:
+            missing_msgs.append("order of precedence")
         findings.append(_mk_finding("CO-MISSING-ELEMS", f"Missing elements: {', '.join(missing_msgs)}.", "medium", None, span))
     return _mk_analysis(clause_type, title or "Call-Off / Ordering", span, status, risk, score, findings)
 

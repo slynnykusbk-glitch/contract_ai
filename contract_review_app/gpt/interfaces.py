@@ -44,6 +44,11 @@ class ProviderConfigError(ProviderError):
     pass
 
 
+class ProviderUnavailableError(ProviderError):
+    """Raised when a provider is temporarily unavailable."""
+    pass
+
+
 class BaseClient(ABC):
     provider: str
     model: str

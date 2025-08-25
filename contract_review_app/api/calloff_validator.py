@@ -1,8 +1,9 @@
-from __future__ import annotations
 """Simple rule-based validator for Call-Off details."""
 
-from typing import Any, Dict, List
+from __future__ import annotations
+
 import re
+from typing import Any, Dict, List
 
 REQUIRED_FIELDS = {
     "term": "Term",

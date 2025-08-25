@@ -7,11 +7,11 @@ from .config import LLMConfig, load_llm_config
 from .interfaces import (
     BaseClient,
     DraftResult,
-    SuggestResult,
     QAResult,
-    ProviderAuthError,
+    SuggestResult,
     ProviderTimeoutError,
     ProviderConfigError,
+    ProviderAuthError,
 )
 from .clients.mock_client import MockClient
 
@@ -97,11 +97,12 @@ def create_llm_service() -> LLMService:
 __all__ = [
     "LLMService",
     "load_llm_config",
+    "create_llm_service",
     "BaseClient",
     "DraftResult",
-    "SuggestResult",
     "QAResult",
-    "ProviderAuthError",
+    "SuggestResult",
     "ProviderTimeoutError",
     "ProviderConfigError",
+    "ProviderAuthError",
 ]

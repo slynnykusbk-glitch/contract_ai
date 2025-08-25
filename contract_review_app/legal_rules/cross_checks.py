@@ -117,8 +117,22 @@ def _parse_jur(text: str) -> Optional[str]:
 _NOTICE_RX = re.compile(r"\b(?:\d{1,3})\s*(?:calendar\s+)?days?\b.*\bnotice\b", re.IGNORECASE | re.DOTALL)
 _CURE_RX = re.compile(r"\b(cure|remedy)\s+period\b", re.IGNORECASE)
 _FOR_CONVENIENCE_RX = re.compile(r"\btermination\s+for\s+convenience\b|\bfor\s+convenience\b", re.IGNORECASE)
-_SURVIVE_RX = re.compile(r"\bthe\s+following\s+provisions\s+shall\s+survive\b|\bshall\s+survive\s+termination\b", re.IGNORECASE)
-_SURVIVAL_ITEM_RX = re.compile(r"\b(confidentiality|limitation\s+of\s+liability|liability\s+cap|indemnity|intellectual\s+property|governing\s+law|jurisdiction)\b", re.IGNORECASE)
+_SURVIVE_RX = re.compile(
+    r"\bthe\s+following\s+provisions\s+shall\s+survive\b|\bshall\s+survive\s+termination\b",
+    re.IGNORECASE,
+)
+_SURVIVAL_ITEM_RX = re.compile(
+    r"\b(" 
+    r"confidentiality|"
+    r"limitation\s+of\s+liability|"
+    r"liability\s+cap|"
+    r"indemnity|"
+    r"intellectual\s+property|"
+    r"governing\s+law|"
+    r"jurisdiction"
+    r")\b",
+    re.IGNORECASE,
+)
 
 def _has_notice(text: str) -> bool:
     return bool(_NOTICE_RX.search(text or ""))
@@ -229,7 +243,6 @@ def cross_check_clauses(
 
     # ---------- 2) TERM <-> NOTICE / LoL -------------------------------------
     term_refs = _all(outputs, by_type, ["termination", "term_and_termination", "termination_clause"])
-    lol_refs = _all(outputs, by_type, ["limitation_of_liability", "limitation", "liability", "lol"])
 
     for _, o_term in term_refs:
         t = _get_text(o_term)
@@ -256,12 +269,6 @@ def cross_check_clauses(
         survival_seen.extend(items)
     survival_seen = sorted(set(survival_seen))
 
-    critical_survivors = {
-        "confidentiality": "CONF_201",
-        "limitation of liability": "LOL_260",
-        "liability cap": "LOL_260",
-        "indemnity": "INDEM_221",
-    }
     if survival_sources:
         # check missing critical survivors
         missing: List[str] = []

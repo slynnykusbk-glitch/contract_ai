@@ -1,0 +1,491 @@
+rules:
+  - id: governing_law
+    clause_type: governing_law
+    severity: high
+    intent: "Specify governing law of England and Wales and exclude CISG."
+    triggers:
+      any:
+        - "(?i)laws of england and wales"
+    checks:
+      must_include:
+        - "(?i)exclude[s]? the united nations convention"
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "This Agreement is governed by the laws of England and Wales and excludes the CISG."
+      firm: "This Agreement shall be governed by the laws of England and Wales. The CISG is excluded."
+      hard: "Governing law: England and Wales; CISG excluded."
+    edits: []
+    examples:
+      positive:
+        - "This Agreement is governed by the laws of England and Wales and expressly excludes the United Nations Convention on Contracts for the International Sale of Goods."
+      negative:
+        - "This Agreement is governed by the laws of England and Wales."
+
+  - id: dispute_resolution
+    clause_type: dispute_resolution
+    severity: high
+    intent: "Provide pre-litigation steps, English courts jurisdiction, and process agent when outside UK."
+    triggers:
+      any:
+        - "(?i)dispute notice"
+    checks:
+      must_include:
+        - "(?i)exclusive jurisdiction of the courts of england and wales"
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Parties will attempt to resolve disputes within 30 days before litigation in the courts of England and Wales."
+      firm: "Before court proceedings the parties shall meet within 30 days; the courts of England and Wales have exclusive jurisdiction."
+      hard: "Disputes: meet within 30 days; exclusive jurisdiction of England and Wales."
+    edits: []
+    examples:
+      positive:
+        - "Upon a Dispute Notice the parties shall meet within 30 days and the courts of England and Wales shall have exclusive jurisdiction. The Contractor appoints a process agent in London."
+      negative:
+        - "Disputes may be resolved in any competent court."
+
+  - id: termination_cause
+    clause_type: termination
+    severity: medium
+    intent: "Allow termination for cause with mobilisation refund and step-in rights."
+    triggers:
+      any:
+        - "(?i)terminate.*for cause"
+    checks:
+      must_include:
+        - "(?i)mobilisation fees refunded"
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Company may terminate for cause and any mobilisation fees are refunded."
+      firm: "Company may terminate for cause; mobilisation fees shall be refunded."
+      hard: "Terminate for cause; refund mobilisation fees."
+    edits: []
+    examples:
+      positive:
+        - "Company may terminate for cause. On such termination mobilisation fees refunded to Company."
+      negative:
+        - "Company may terminate for cause."
+
+  - id: termination_convenience
+    clause_type: termination
+    severity: medium
+    intent: "Permit termination for convenience without anticipatory profit."
+    triggers:
+      any:
+        - "(?i)terminate.*for convenience"
+    checks:
+      must_include:
+        - "(?i)no anticipatory profit"
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Company may terminate for convenience and pay for work done without anticipatory profit."
+      firm: "Company may terminate for convenience; Contractor is not entitled to anticipatory profit."
+      hard: "Terminate for convenience – no anticipatory profit."
+    edits: []
+    examples:
+      positive:
+        - "Company may terminate for convenience and Contractor shall receive no anticipatory profit."
+      negative:
+        - "Company may terminate for convenience and recover its costs."
+
+  - id: liability_cap
+    clause_type: limitation_of_liability
+    severity: high
+    intent: "Include liability cap with carve-outs and detect placeholders."
+    triggers:
+      any:
+        - "(?i)liability.*cap"
+    checks:
+      must_include:
+        - "(?i)does not apply to (?:hse|taxes|ip|insurance|confidentiality|data)"
+      must_exclude: []
+    placeholders_forbidden: true
+    suggest_text:
+      friendly: "Include a reasonable liability cap with carve‑outs for HSE, Taxes, IP, Insurance, Confidentiality and Data clauses."
+      firm: "Liability is capped except for HSE, Taxes, IP, Insurance, Confidentiality and Data obligations."
+      hard: "Cap liability; exclude HSE, Taxes, IP, Insurance, Confidentiality and Data."
+    edits: []
+    examples:
+      positive:
+        - "The liability cap is £1m and does not apply to HSE, Taxes or IP obligations."
+      negative:
+        - "Liability is limited to £1m."
+
+  - id: insurance_noncompliance
+    clause_type: insurance
+    severity: medium
+    intent: "Require additional insureds and termination for failure to maintain insurance."
+    triggers:
+      any:
+        - "(?i)additional insured"
+    checks:
+      must_include:
+        - "(?i)failure to maintain insurance.*terminate"
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Include Company as additional insured and permit termination for failure to maintain insurance."
+      firm: "Contractor shall name Company as additional insured; failure to maintain insurance allows Company to terminate."
+      hard: "Company additional insured; non-compliance = termination."
+    edits: []
+    examples:
+      positive:
+        - "Contractor shall name Company as an additional insured and failure to maintain insurance shall entitle Company to terminate."
+      negative:
+        - "Contractor shall maintain insurance."
+
+  - id: export_hmrc
+    clause_type: export_control
+    severity: medium
+    intent: "Clarify Exporter/Importer of Record and HMRC compliance."
+    triggers:
+      any:
+        - "(?i)exporter of record"
+    checks:
+      must_include:
+        - "(?i)hmrc"
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Specify the party acting as Exporter/Importer of Record and compliance with HMRC procedures."
+      firm: "Contractor is Exporter of Record and shall comply with all HMRC procedures."
+      hard: "Exporter of Record complies with HMRC."
+    edits: []
+    examples:
+      positive:
+        - "Contractor is the Exporter of Record and shall comply with HMRC procedures."
+      negative:
+        - "Contractor is the Exporter of Record."
+
+  - id: placeholder_police
+    clause_type: placeholders
+    severity: high
+    intent: "Remove drafting placeholders before execution."
+    triggers:
+      any: []
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: true
+    suggest_text:
+      friendly: "Remove any drafting placeholders before signing."
+      firm: "Delete all placeholders such as [●] before execution."
+      hard: "Placeholders prohibited."
+    edits: []
+    examples:
+      positive:
+        - "The price is [●] per unit."
+      negative:
+        - "The price is fixed."
+
+  - id: hse_life_saving
+    clause_type: hse
+    severity: medium
+    intent: "Reference Exhibit E and Life Saving Rules."
+    triggers:
+      any:
+        - "(?i)life saving rules"
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Ensure clause references Exhibit E and Life Saving Rules."
+      firm: "Clause should reference Exhibit E and the Life Saving Rules."
+      hard: "Add Exhibit E Life Saving Rules reference."
+    edits: []
+    examples:
+      positive:
+        - "Contractor shall comply with the Life Saving Rules set out in Exhibit E."
+      negative:
+        - "Contractor shall comply with safety rules."
+
+  - id: warranty
+    clause_type: warranty
+    severity: medium
+    intent: "Workmanlike performance and goods free from defects."
+    triggers:
+      any:
+        - "(?i)warranty"
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Include warranty for professional and workmanlike services."
+      firm: "Contractor warrants work is professional and goods are free from defects."
+      hard: "Add professional warranty."
+    edits: []
+    examples:
+      positive:
+        - "Contractor warrants the services are performed in a professional and workmanlike manner."
+      negative:
+        - "Contractor shall perform the services."
+
+  - id: confidentiality
+    clause_type: confidentiality
+    severity: medium
+    intent: "Include confidentiality obligations."
+    triggers:
+      any:
+        - "(?i)confidential"
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Include mutual confidentiality obligations."
+      firm: "Each party shall keep the other's information confidential."
+      hard: "Add confidentiality clause."
+    edits: []
+    examples:
+      positive:
+        - "Each party shall keep the other's information confidential."
+      negative:
+        - "Information may be shared freely."
+
+  - id: audit
+    clause_type: audit
+    severity: low
+    intent: "Allow Company to audit records."
+    triggers:
+      any:
+        - "(?i)audit"
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Include audit rights."
+      firm: "Company may audit Contractor's records."
+      hard: "Add audit right."
+    edits: []
+    examples:
+      positive:
+        - "Company may audit Contractor's records on reasonable notice."
+      negative:
+        - "No audit will be permitted."
+
+  - id: notices
+    clause_type: notices
+    severity: low
+    intent: "Specify notice procedures."
+    triggers:
+      any:
+        - "(?i)notice[s]? in writing"
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "State formal notice requirements."
+      firm: "Notices must be in writing and sent to the addresses stated."
+      hard: "Add notice clause."
+    edits: []
+    examples:
+      positive:
+        - "Notices must be in writing and delivered to the address set out in the Contract."
+      negative:
+        - "The parties may talk informally."
+
+  - id: assignment
+    clause_type: assignment
+    severity: low
+    intent: "Restrict assignment and novation."
+    triggers:
+      any:
+        - "(?i)assign"
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Include restrictions on assignment."
+      firm: "Contractor may not assign without Company's consent."
+      hard: "Restrict assignment."
+    edits: []
+    examples:
+      positive:
+        - "Contractor shall not assign this Agreement without Company's prior written consent."
+      negative:
+        - "Contractor may assign freely."
+
+  - id: subcontracts
+    clause_type: subcontracts
+    severity: low
+    intent: "Control subcontracting and assignment."
+    triggers:
+      any:
+        - "(?i)subcontract"
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Company should approve subcontracts."
+      firm: "Contractor shall not subcontract without Company's consent."
+      hard: "Control subcontractors."
+    edits: []
+    examples:
+      positive:
+        - "Contractor shall not subcontract any work without prior written consent."
+      negative:
+        - "Contractor may use any subcontractor."
+
+  - id: company_provided_items
+    clause_type: company_items
+    severity: low
+    intent: "Address Company Provided Items and title/risk."
+    triggers:
+      any:
+        - "(?i)company provided items"
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Clarify title and risk for Company Provided Items."
+      firm: "Title to Company Provided Items remains with Company and risk passes on delivery."
+      hard: "Define Company Provided Items ownership."
+    edits: []
+    examples:
+      positive:
+        - "Title to Company Provided Items remains with Company while risk passes on delivery."
+      negative:
+        - "Contractor owns all items supplied by Company."
+
+  - id: risk_structure
+    clause_type: risk
+    severity: medium
+    intent: "Define risk transfer and pollution caps."
+    triggers:
+      any:
+        - "(?i)risk of loss"
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Clarify when risk transfers and any pollution caps."
+      firm: "Risk of loss to goods transfers on delivery; pollution liabilities capped."
+      hard: "Define risk transfer."
+    edits: []
+    examples:
+      positive:
+        - "Risk of loss transfers to Company upon delivery."
+      negative:
+        - "Risk is not mentioned."
+
+  - id: ip_rights
+    clause_type: intellectual_property
+    severity: medium
+    intent: "State IP ownership and licenses."
+    triggers:
+      any:
+        - "(?i)intellectual property"
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Clarify ownership and licence of IP."
+      firm: "Company owns IP developed under the Contract; Contractor grants necessary licences."
+      hard: "Define IP rights."
+    edits: []
+    examples:
+      positive:
+        - "Company owns all intellectual property developed and Contractor grants a licence."
+      negative:
+        - "IP is not addressed."
+
+  - id: pricing_payment
+    clause_type: pricing_payment
+    severity: medium
+    intent: "Include pricing, invoicing and VAT."
+    triggers:
+      any:
+        - "(?i)invoice"
+    checks:
+      must_include:
+        - "(?i)vat"
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "State pricing and invoicing terms including VAT."
+      firm: "Invoices shall detail amounts payable and VAT."
+      hard: "Add pricing and VAT terms."
+    edits: []
+    examples:
+      positive:
+        - "Invoices shall show the price and applicable VAT."
+      negative:
+        - "Invoices shall show the price."
+
+  - id: variations
+    clause_type: variations
+    severity: low
+    intent: "Provide for variation orders."
+    triggers:
+      any:
+        - "(?i)variation order"
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Use a Variation Order process for changes."
+      firm: "Changes shall be made by a written Variation Order."
+      hard: "Add variation clause."
+    edits: []
+    examples:
+      positive:
+        - "Any change shall be documented in a Variation Order."
+      negative:
+        - "Changes can be verbal."
+
+  - id: force_majeure
+    clause_type: force_majeure
+    severity: low
+    intent: "Include force majeure relief."
+    triggers:
+      any:
+        - "(?i)force majeure"
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "Include a force majeure clause."
+      firm: "Neither party is liable for delays due to force majeure."
+      hard: "Add force majeure clause."
+    edits: []
+    examples:
+      positive:
+        - "Neither party shall be liable for delays caused by force majeure events."
+      negative:
+        - "All delays are the Contractor's risk."
+
+  - id: third_party_rights
+    clause_type: third_party_rights
+    severity: low
+    intent: "Limit third party rights and allow variation without consent."
+    triggers:
+      any:
+        - "(?i)third party rights"
+    checks:
+      must_include: []
+      must_exclude: []
+    placeholders_forbidden: false
+    suggest_text:
+      friendly: "State that third parties have no rights except as listed."
+      firm: "No person other than the parties and listed beneficiaries has rights under the Contracts (Rights of Third Parties) Act 1999."
+      hard: "Limit third party rights."
+    edits: []
+    examples:
+      positive:
+        - "No person other than the parties has rights under the Contracts (Rights of Third Parties) Act 1999."
+      negative:
+        - "Third parties may enforce this Agreement."

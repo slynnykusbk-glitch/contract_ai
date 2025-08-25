@@ -4,14 +4,12 @@ from contract_review_app.api.app import app
 
 client = TestClient(app)
 
-def test_health_has_headers_and_envelope():
+
+def test_health_has_rulecount():
     r = client.get("/health")
     assert r.status_code == 200
     j = r.json()
-    assert j.get("status") == "ok"
-    assert r.headers.get("x-schema-version") == "1.0"
-    assert r.headers.get("x-cache") == "miss"
-    # x-cid may be present (e.g., "health") or omitted; both acceptable
+    assert isinstance(j.get("rules_count"), int)
 
 def test_trace_has_headers_and_shape():
     r = client.get("/api/trace/some-cid")

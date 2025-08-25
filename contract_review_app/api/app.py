@@ -459,17 +459,9 @@ def _top3_residuals(after: Dict[str, Any]) -> List[Dict[str, Any]]:
 # Routes
 # --------------------------------------------------------------------
 @router.get("/health")
-async def health(response: Response):
-    t0 = _now_ms()
-    data = {
-        "status": "ok",
-        "schema": SCHEMA_VERSION,
-        "rules_count": _discover_rules_count(),
-        "schema_version": SCHEMA_VERSION,
-        "uptime_hint": "process-alive",
-    }
-    _set_std_headers(response, cid="health", xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    return data
+async def health() -> dict:
+    """Minimal health endpoint returning only rule count."""
+    return {"rules_count": _discover_rules_count()}
 
 
 @router.get("/api/trace/{cid}")

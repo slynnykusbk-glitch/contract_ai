@@ -3,13 +3,14 @@ from __future__ import annotations
 import requests
 
 from ..config import LLMConfig
-
+from ..interfaces import (
     BaseClient,
     DraftResult,
     QAResult,
     SuggestResult,
     ProviderTimeoutError,
-
+    ProviderAuthError,
+    ProviderConfigError,
 )
 
 

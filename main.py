@@ -1,13 +1,15 @@
-# main.py
 from __future__ import annotations
+
+"""Demo entry point for Contract AI rule analysis."""
+
 import logging
 import os
 import sys
 
 from contract_review_app.core.schemas import AnalysisInput
-from contract_review_app.legal_rules.legal_rules import analyze as run_rule  # центральний диспетчер
-from contract_review_app.legal_rules.registry import RULES_REGISTRY
 from contract_review_app.generate_report import generate_report
+from contract_review_app.legal_rules.legal_rules import analyze as run_rule
+from contract_review_app.legal_rules.registry import RULES_REGISTRY
 
 # спробуємо взяти зручний лоадер DOCX, якщо є
 try:

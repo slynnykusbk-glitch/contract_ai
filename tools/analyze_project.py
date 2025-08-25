@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 """Offline repository analyzer for contract_ai (v2).
 Generates JSON and HTML reports summarising backend, LLM, rule engine
 and Word add‑in readiness. Designed for one‑click execution via PowerShell.
 """
-from __future__ import annotations
 
 import argparse
 import ast
@@ -13,9 +14,9 @@ import html
 import json
 import os
 import re
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
-import xml.etree.ElementTree as ET
 
 try:  # optional dependency
     import yaml  # type: ignore

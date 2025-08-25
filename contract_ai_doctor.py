@@ -1,13 +1,22 @@
-
 #!/usr/bin/env python3
-# Contract AI — Doctor v2
-# End-to-end diagnostics across: Front (manifest+taskpane), Network/TLS/CORS, Backend, Pipeline, Rules, Response shape.
-# Outputs markdown+json with a stage-by-stage chain view and suggested fixes.
-
 from __future__ import annotations
 
-import argparse, json, os, re, sys, time, socket, ssl
-from dataclasses import dataclass, asdict
+"""Contract AI — Doctor v2.
+
+End-to-end diagnostics across: Front (manifest+taskpane), Network/TLS/CORS,
+Backend, Pipeline, Rules, Response shape. Outputs markdown+json with a
+stage-by-stage chain view and suggested fixes.
+"""
+
+import argparse
+import json
+import os
+import re
+import socket
+import ssl
+import sys
+import time
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -15,6 +24,7 @@ from typing import Any, Dict, List, Optional, Tuple
 try:
     import requests
     from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
     requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 except Exception:
     requests = None

@@ -375,45 +375,44 @@ async def run_gpt_draft(inp: "DraftIn") -> Dict[str, Any]:
     return _safe_dump(out)
 
 
-async def run_suggest_edits(inp: "SuggestIn") -> Dict[str, Any]:
+async def run_suggest_edits(inp: "SuggestEditsIn") -> Dict[str, Any]:
     text = getattr(inp, "text", "") or ""
-    clause_id = getattr(inp, "clause_id", None)
     clause_type = getattr(inp, "clause_type", None)
-    mode = getattr(inp, "mode", None)
-    req = {"text": text, "clause_id": clause_id, "clause_type": clause_type, "mode": mode}
+    span = getattr(inp, "span", None)
+    req = {"text": text, "clause_type": clause_type, "span": span.model_dump() if hasattr(span, "model_dump") else span}
 
     payload = None
     try:
-        if hasattr(_engine, "suggest_edits"):
-            payload = _engine.suggest_edits(**{k: v for k, v in req.items() if v is not None})  # type: ignore
-        elif hasattr(_engine, "pipeline") and hasattr(_engine.pipeline, "suggest_edits"):  # type: ignore[attr-defined]
-            payload = _engine.pipeline.suggest_edits(**{k: v for k, v in req.items() if v is not None})  # type: ignore[attr-defined]
+        from contract_review_app.engine import suggest as _suggest  # type: ignore
+
+        payload = _suggest.suggest_edits(**{k: v for k, v in req.items() if v is not None})  # type: ignore
     except Exception:
         payload = None
 
-    suggestions: List[Dict[str, Any]] = []
-    if payload is not None:
-        dump = _safe_dump(payload)
-        src_list = dump.get("suggestions")
-        if not isinstance(src_list, list):
-            src_list = dump.get("edits") or dump.get("items") or []
-        for s in (src_list or []):
-            suggestions.append(_norm_suggestion(s))
+    if isinstance(payload, dict):
+        edits: List[Dict[str, Any]] = []
+        for e in payload.get("edits", []):
+            if not isinstance(e, dict):
+                continue
+            r = e.get("range") or {}
+            try:
+                start = int(r.get("start", 0))
+            except Exception:
+                start = 0
+            try:
+                length = int(r.get("length", 0))
+            except Exception:
+                length = 0
+            repl = _safe_dump(e).get("replacement", "")
+            note = _safe_dump(e).get("note", "")
+            edits.append({
+                "range": {"start": max(0, start), "length": max(0, length)},
+                "replacement": "" if repl is None else str(repl),
+                "note": "" if note is None else str(note),
+            })
+        return {"edits": edits, "meta": payload.get("meta", {})}
 
-    if not suggestions:
-        # deterministic fallback: append a newline for readability
-        msg = "Append a newline for readability"
-        suggestions.append(
-            {
-                "message": msg,
-                "action": "append",
-                "range": {"start": max(0, len(text or "")), "length": 0},
-                "clause_id": clause_id,
-                "clause_type": clause_type,
-                "reason": "Formatting improvement (fallback)",
-            }
-        )
-    return {"suggestions": suggestions}
+    return {"edits": [], "meta": {"reason": "engine_unavailable"}}
 
 
 async def run_qa_recheck(inp: "QARecheckIn") -> Dict[str, Any]:

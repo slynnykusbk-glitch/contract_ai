@@ -885,6 +885,33 @@ class SuggestOut(AppBaseModel):
     """
     suggestions: List[Suggestion]
 
+
+class ActionableEdit(TextPatch):
+    """Edit item returned by /api/suggest_edits."""
+    note: Optional[str] = ""
+
+
+class SuggestEditsIn(AppBaseModel):
+    """Request DTO for /api/suggest_edits."""
+    clause_type: Optional[str] = None
+    span: Optional[Span] = None
+    text: str
+
+    @model_validator(mode="after")
+    def _validate_requirements(self):
+        if not isinstance(self.text, str) or self.text.strip() == "":
+            raise ValueError("SuggestEditsIn: 'text' is required and must be non-empty")
+        self.text = self.text.strip()
+        if not (self.clause_type or self.span is not None):
+            raise ValueError("SuggestEditsIn: provide 'clause_type' or 'span'")
+        return self
+
+
+class SuggestEditsOut(AppBaseModel):
+    """Response DTO for /api/suggest_edits."""
+    edits: List[ActionableEdit]
+    meta: Dict[str, Any] = Field(default_factory=dict)
+
 class AppliedChange(AppBaseModel):
     """
     Item describing a change applied to a clause between analyses.

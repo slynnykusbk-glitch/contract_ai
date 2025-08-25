@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from contract_review_app.core.schemas import (
     AnalyzeIn,
     DraftIn,
-    SuggestIn,
+    SuggestEditsIn,
     SuggestOut,
     TextPatch,
     QARecheckIn,
@@ -637,154 +637,50 @@ async def api_suggest_edits(request: Request, response: Response, x_cid: Optiona
     except Exception:
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
-    if isinstance(payload, dict) and 'top_k' in payload:
-        try:
-            payload['top_k'] = max(1, min(10, int(payload.get('top_k') or 1)))
-        except Exception:
-            payload['top_k'] = 1
     try:
-        model = SuggestIn(**payload)
+        model = SuggestEditsIn(**payload)
     except Exception as ex:
         return _problem_response(422, "Validation error", str(ex))
-    cid = x_cid or _sha256_hex(str(t0) + model.text[:128])
 
-    suggestions: List[Dict[str, Any]] = []
+    cid = x_cid or _sha256_hex(str(t0) + model.text[:128])
+    result: Dict[str, Any]
     try:
         if run_suggest_edits is not None:
-            suggestions = await asyncio.wait_for(
-                _maybe_await(
-                    run_suggest_edits,
-                    model,
-                ),
-                timeout=DRAFT_TIMEOUT_SEC,
-            )
+            result = await asyncio.wait_for(_maybe_await(run_suggest_edits, model), timeout=DRAFT_TIMEOUT_SEC)
         elif pipeline and hasattr(pipeline, "suggest_edits"):
-            suggestions = await asyncio.wait_for(
-                _maybe_await(
-                    pipeline.suggest_edits,
-                    model.text,
-                    model.clause_id,
-                    getattr(model, "clause_type", None),
-                    (model.mode or "friendly"),
-                    int(getattr(model, "top_k", 1) or 1),
-                ),
+            result = await asyncio.wait_for(
+                _maybe_await(pipeline.suggest_edits, model.text, getattr(model, "clause_type", None), model.span.model_dump() if model.span else None),
                 timeout=DRAFT_TIMEOUT_SEC,
             )
-            if isinstance(suggestions, dict):
-                suggestions = [suggestions]
         else:
-            suggestions = []
+            result = {"edits": [], "meta": {"reason": "unavailable"}}
     except Exception:
-        suggestions = []
+        result = {"edits": [], "meta": {"reason": "error"}}
 
-    if not suggestions:
-        suggestions = _fallback_suggest_minimal(
-            model.text,
-            (model.clause_id or ""),
-            model.mode or "friendly",
-            int(getattr(model, "top_k", 1) or 1),
-        )
-
-    # Robust normalization loop (handles non-dict items safely)
-    norm: List[Dict[str, Any]] = []
-    for s in suggestions or []:
-        # 1) Coerce to dict
-        if hasattr(s, "model_dump"):
-            try:
-                s_dict = s.model_dump()
-            except Exception:
-                s_dict = {}
-        elif isinstance(s, dict):
-            s_dict = dict(s)
-        elif isinstance(s, str):
-            s_dict = {"message": s}
-        elif isinstance(s, (list, tuple)):
-            try:
-                if len(s) == 1:
-                    s_dict = {"message": str(s[0])}
-                elif len(s) == 2 and not isinstance(s[0], (list, tuple, dict)) and not isinstance(s[1], (list, tuple, dict)):
-                    s_dict = {"message": str(s[0]), "proposed_text": str(s[1])}
-                else:
-                    try:
-                        s_dict = dict(s)  # iterable of pairs
-                    except Exception:
-                        s_dict = {"message": " ".join(map(str, s))}
-            except Exception:
-                s_dict = {"message": str(s)}
-        else:
-            s_dict = {"message": str(s)}
-
-        # 2) Normalize range/span to range{start,length}
-        start = 0
-        length = 0
-        r = s_dict.get("range")
-        sp = s_dict.get("span")
-
-        if isinstance(r, dict):
-            try:
-                start = int(r.get("start") or 0)
-            except Exception:
-                start = 0
-            if "length" in r:
-                try:
-                    length = int(r.get("length") or 0)
-                except Exception:
-                    length = 0
-            else:
-                try:
-                    end = int(r.get("end") or 0)
-                except Exception:
-                    end = start
-                length = max(0, end - start)
-        elif isinstance(sp, dict):
-            try:
-                start = int(sp.get("start") or 0)
-            except Exception:
-                start = 0
-            if "length" in sp:
-                try:
-                    length = int(sp.get("length") or 0)
-                except Exception:
-                    length = 0
-            else:
-                try:
-                    end = int(sp.get("end") or start)
-                except Exception:
-                    end = start
-                length = max(0, end - start)
-        elif isinstance(sp, (list, tuple)) and len(sp) == 2:
-            try:
-                start = int(sp[0] or 0)
-            except Exception:
-                start = 0
-            try:
-                end = int(sp[1] or start)
-            except Exception:
-                end = start
-            length = max(0, end - start)
-
-        if start < 0:
+    edits: List[Dict[str, Any]] = []
+    for e in result.get("edits", []) if isinstance(result, dict) else []:
+        if not isinstance(e, dict):
+            continue
+        r = e.get("range") or {}
+        try:
+            start = int(r.get("start", 0))
+        except Exception:
             start = 0
-        if length < 0:
+        try:
+            length = int(r.get("length", 0))
+        except Exception:
             length = 0
+        repl = e.get("replacement", "")
+        note = e.get("note", "")
+        edits.append({
+            "range": {"start": max(0, start), "length": max(0, length)},
+            "replacement": "" if repl is None else str(repl),
+            "note": "" if note is None else str(note),
+        })
 
-        s_dict["range"] = {"start": start, "length": length}
-
-        # 3) Ensure message
-        msg = s_dict.get("message")
-        if not isinstance(msg, str) or msg == "":
-            msg = s_dict.get("text") or s_dict.get("proposed_text") or s_dict.get("proposed") or ""
-            if not isinstance(msg, str):
-                msg = str(msg)
-            s_dict["message"] = msg
-
-        # 4) Preserve extra keys and append
-        norm.append(s_dict)
-
-    suggestions = norm
-
+    meta = result.get("meta", {}) if isinstance(result, dict) else {}
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    return {"status": "ok", "suggestions": suggestions}
+    return {"status": "ok", "edits": edits, "meta": meta}
 
 
 @router.post("/api/qa-recheck")

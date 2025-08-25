@@ -1,0 +1,55 @@
+governing_law:
+  suggest_text: "This Agreement shall be governed by and construed in accordance with the laws of England and Wales."
+  edits:
+    - action: replace
+      note: "Standard E&W governing law."
+      replacement: "This Agreement shall be governed by and construed in accordance with the laws of England and Wales."
+dispute_resolution:
+  suggest_text: "All disputes shall be resolved amicably. The parties submit to the exclusive jurisdiction of the courts of England and Wales."
+  edits:
+    - action: insert_if_missing
+      note: "Insert exclusive jurisdiction sentence."
+      replacement: "The parties submit to the exclusive jurisdiction of the courts of England and Wales."
+termination_convenience:
+  suggest_text: "Either party may terminate for convenience with 30 days notice. The terminating party shall have no right to anticipatory profits."
+  edits:
+    - action: insert_if_missing
+      note: "Insert 'no anticipatory profit' line."
+      replacement: "The terminating party shall have no right to anticipatory profits."
+liability_cap:
+  suggest_text: "Liability capped at 100. The liability cap shall not apply to claims arising from Health, Safety and Environment, Taxes, Intellectual Property, Insurance, Confidentiality, or Data/Information Security Exhibits."
+  edits:
+    - action: insert_if_missing
+      note: "Insert carve-out list."
+      replacement: "The liability cap shall not apply to claims arising from Health, Safety and Environment, Taxes, Intellectual Property, Insurance, Confidentiality, or Data/Information Security Exhibits."
+insurance_noncompliance:
+  suggest_text: "If the Supplier fails to maintain insurance, the Customer may claim damages. Failure to maintain required insurance gives the other party the right to terminate this Agreement."
+  edits:
+    - action: insert_if_missing
+      note: "Insert termination right sentence."
+      replacement: "Failure to maintain required insurance gives the other party the right to terminate this Agreement."
+export_hmrc:
+  suggest_text: "The Supplier shall comply with export controls. Each party shall ensure an Exporter of Record or Importer of Record is appointed and comply with HMRC procedures."
+  edits:
+    - action: insert_if_missing
+      note: "Insert EoR/IoR and HMRC procedure compliance sentence."
+      replacement: "Each party shall ensure an Exporter of Record or Importer of Record is appointed and comply with HMRC procedures."
+placeholder_police:
+  suggest_text: null
+  edits:
+    - action: replace_pattern
+      note: "Replace placeholder and add comment."
+      pattern: "\\[●\\]"
+      replacement: "<TO BE COMPLETED>"
+notices:
+  suggest_text: "Notices shall be served to the addresses set out in Schedule 1."
+  edits:
+    - action: replace
+      note: "Normalize service addresses block."
+      replacement: "Notices shall be served to the addresses set out in Schedule 1."
+confidentiality:
+  suggest_text: "The parties shall keep information confidential. The confidentiality obligations shall survive for X years."
+  edits:
+    - action: insert_if_missing
+      note: "Add survival period placeholder 'X years'."
+      replacement: "The confidentiality obligations shall survive for X years."

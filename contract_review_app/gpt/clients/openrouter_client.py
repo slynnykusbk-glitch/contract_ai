@@ -3,14 +3,20 @@ from __future__ import annotations
 import requests
 
 from ..config import LLMConfig
-from ..service import (
+from .mock_client import (
     BaseClient,
     DraftResult,
     QAResult,
     SuggestResult,
     ProviderTimeoutError,
-    ProviderUnavailableError,
 )
+
+
+class ProviderUnavailableError(Exception):
+    def __init__(self, provider: str, detail: str):
+        super().__init__(detail)
+        self.provider = provider
+        self.detail = detail
 
 
 class OpenRouterClient(BaseClient):

@@ -6,10 +6,6 @@ from typing import Any, Dict, List, Optional
 
 from .config import LLMConfig, load_llm_config
 from .clients.mock_client import MockClient
-from .clients.openai_client import OpenAIClient
-from .clients.azure_client import AzureClient
-from .clients.anthropic_client import AnthropicClient
-from .clients.openrouter_client import OpenRouterClient
 
 
 class ProviderUnavailableError(Exception):
@@ -64,12 +60,16 @@ class LLMService:
         self.cfg = cfg or load_llm_config()
         self.client: BaseClient
         if self.cfg.provider == "openai" and self.cfg.valid:
+            from .clients.openai_client import OpenAIClient  # type: ignore
             self.client = OpenAIClient(self.cfg)
         elif self.cfg.provider == "azure" and self.cfg.valid:
+            from .clients.azure_client import AzureClient  # type: ignore
             self.client = AzureClient(self.cfg)
         elif self.cfg.provider == "anthropic" and self.cfg.valid:
+            from .clients.anthropic_client import AnthropicClient  # type: ignore
             self.client = AnthropicClient(self.cfg)
         elif self.cfg.provider == "openrouter" and self.cfg.valid:
+            from .clients.openrouter_client import OpenRouterClient  # type: ignore
             self.client = OpenRouterClient(self.cfg)
         else:
             self.client = MockClient(self.cfg.model_draft)

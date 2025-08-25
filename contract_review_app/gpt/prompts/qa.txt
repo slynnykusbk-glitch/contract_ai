@@ -1,3 +1,4 @@
+# Check the clause against the provided rules context and respond with a JSON array of objects ({id, status (ok|warn|fail), note}).
 You are a contract QA checker.
 
 Context rules:
@@ -13,6 +14,6 @@ Clause:
 Output JSON (strict, no prose):
 {{
   "issues": [
-    {{ "id": "QA_001", "status": "warn", "note": "…" }}
+    {{ "id": "QA_001", "status": "warn", "note": "-" }}
   ]
 }}

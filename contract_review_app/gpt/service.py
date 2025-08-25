@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
-import string
+from typing import Any, Dict, Optional, Set
+from string import Formatter
 
 from .config import LLMConfig, load_llm_config
  codex/implement-document-snapshot-api-and-ui
@@ -153,9 +153,18 @@ class LLMService:
         to = timeout or self.cfg.timeout_s
         return self.client.suggest_edits(prompt, to)
 
+    def _safe_format_prompt(self, tpl: str, **kw: Any) -> str:
+        formatter = Formatter()
+        fields: Set[str] = {fname for _, fname, _, _ in formatter.parse(tpl) if fname}
+        allowed = {"text", "rules"}
+        unknown = fields - allowed
+        if unknown:
+            raise ValueError(f"qa_prompt_invalid: unknown placeholders={','.join(sorted(unknown))}")
+        return tpl.format(**{k: kw.get(k, "") for k in allowed})
+
     def qa(self, text: str, rules_context: Dict[str, Any], timeout: Optional[float] = None) -> QAResult:
         prompt_tpl = self._read_prompt("qa")
-        prompt = _safe_format_prompt(prompt_tpl, text=text, rules=rules_context)
+        prompt = self._safe_format_prompt(prompt_tpl, text=text, rules=rules_context)
         to = timeout or self.cfg.timeout_s
         return self.client.qa_recheck(prompt, to)
 

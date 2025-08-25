@@ -1,0 +1,28 @@
+- id: "gl_england_wales"
+  clause_type: "governing_law"
+  severity: high
+  intent: "Ensure governing law is England and Wales and exclude CISG."
+  triggers:
+    any:
+      - "(?i)governing law"
+      - "(?i)laws of england and wales"
+  checks:
+    must_include:
+      - "(?i)laws of england and wales"
+    must_exclude:
+      - "(?i)united nations convention .* international sale of goods"
+  placeholders_forbidden: true
+  suggest_text:
+    friendly: "This Agreement is governed by the laws of England and Wales."
+    firm: "This Agreement shall be governed by the laws of England and Wales."
+    hard: "Governing law: England and Wales."
+  edits:
+    - when: "first_match('governing law')"
+      op: "replace"
+      template: "This Agreement and each Call-Off shall be governed by the laws of England and Wales."
+      note: "Normalize jurisdiction to England & Wales."
+  examples:
+    positive:
+      - "This Agreement shall be governed by the laws of England and Wales."
+    negative:
+      - "Governing law of New York."

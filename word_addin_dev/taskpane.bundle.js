@@ -500,19 +500,19 @@
     }
   }
 
-  function renderDocSnapshot(info) {
+function renderDocSnapshot(info) {
     if (!els.docSnap) return;
     if (!info) { els.docSnap.innerHTML = ""; els.docSnap.classList.add("hidden"); return; }
-    var html = "";
+    var html = '<div class="flex" style="justify-content:space-between;align-items:center">';
+    html += '<strong>Document Snapshot</strong>';
     var ct = info.contract_type || {};
-    if (ct.label) {
-      var conf = ct.confidence != null ? " (" + Math.round(ct.confidence * 100) + "%)" : "";
-      html += '<div class="kv"><strong>Contract Type:</strong><span>' + esc(ct.label) + conf + '</span></div>';
-    }
+    if (ct.confidence != null) html += '<span class="pill">' + Math.round(ct.confidence * 100) + '%</span>';
+    html += '</div>';
+    html += '<div class="kv"><strong>Type:</strong><span>' + esc(ct.type || ct.label || '—') + '</span></div>';
     if (Array.isArray(info.parties) && info.parties.length) {
-      html += '<div style="margin-top:6px"><strong>Parties</strong><table><tr><th>Name</th><th>Company No.</th><th>Address</th></tr>';
+      html += '<div style="margin-top:6px"><strong>Parties</strong><table><tr><th>Name</th><th>Role</th></tr>';
       info.parties.forEach(function(p){
-        html += '<tr><td>' + esc(p.name || '—') + '</td><td>' + esc(p.company_no || p.company_number || '—') + '</td><td>' + esc((p.address_snippet || p.address || '').slice(0,80)) + '</td></tr>';
+        html += '<tr><td>' + esc(p.name || '—') + '</td><td>' + esc(p.role || '—') + '</td></tr>';
       });
       html += '</table></div>';
     }
@@ -525,27 +525,19 @@
     }
     if (info.term) {
       html += '<div class="grid" style="margin-top:6px">';
-      html += '<div class="kv"><strong>Term:</strong><span>' + esc(info.term.mode || '—') + '</span></div>';
+      html += '<div class="kv"><strong>Mode:</strong><span>' + esc(info.term.mode || '—') + '</span></div>';
       html += '<div class="kv"><strong>Start:</strong><span>' + esc(info.term.start || '—') + '</span></div>';
       html += '<div class="kv"><strong>End:</strong><span>' + esc(info.term.end || '—') + '</span></div>';
-      html += '<div class="kv"><strong>Notice:</strong><span>' + esc(info.term.notice || '—') + '</span></div>';
       html += '</div>';
     }
-    if (info.law_jurisdiction) {
-      html += '<div class="grid" style="margin-top:6px">';
-      html += '<div class="kv"><strong>Law:</strong><span>' + esc(info.law_jurisdiction.law || '—') + '</span></div>';
-      var jur = (info.law_jurisdiction.jurisdiction || '—') + (info.law_jurisdiction.exclusive ? ' (exclusive)' : '');
-      html += '<div class="kv"><strong>Jurisdiction:</strong><span>' + esc(jur) + '</span></div>';
-      html += '</div>';
+    if (info.governing_law) {
+      html += '<div class="kv" style="margin-top:6px"><strong>Governing law:</strong><span>' + esc(info.governing_law) + '</span></div>';
     }
-    if (info.liability) {
-      var cap = info.liability.has_cap ? (info.liability.cap_value != null ? String(info.liability.cap_value) + (info.liability.currency || '') : 'yes') : 'no';
-      var carve = Array.isArray(info.liability.carveouts) && info.liability.carveouts.length ? info.liability.carveouts.join(', ') : '—';
-      html += '<div class="grid" style="margin-top:6px">';
-      html += '<div class="kv"><strong>Liability cap:</strong><span>' + esc(cap) + '</span></div>';
-      html += '<div class="kv"><strong>Carveouts:</strong><span>' + esc(carve) + '</span></div>';
-      html += '</div>';
-    }
+    var liab = info.liability || {};
+    var cap = liab.has_cap ? (liab.cap_value != null ? String(liab.cap_value) + (liab.currency || '') : 'yes') : 'no';
+    html += '<div class="kv" style="margin-top:6px"><strong>Liability cap:</strong><span>' + esc(cap) + '</span></div>';
+    var carve = Array.isArray(info.carveouts) && info.carveouts.length ? info.carveouts.join(', ') : '—';
+    html += '<div class="kv"><strong>Carve-outs:</strong><span>' + esc(carve) + '</span></div>';
     var cw = info.conditions_vs_warranties || {};
     var conds = Array.isArray(cw.conditions) ? cw.conditions : [];
     var warrs = Array.isArray(cw.warranties) ? cw.warranties : [];
@@ -556,8 +548,15 @@
       if (warrs.length) html += '<div class="muted">W: ' + esc(warrs[0].snippet || warrs[0]) + '</div>';
       html += '</div>';
     }
+    html += '<div class="toggle" id="docSnapToggle">Show raw JSON</div><pre id="docSnapRaw" style="display:none"></pre>';
     els.docSnap.innerHTML = html;
     els.docSnap.classList.remove('hidden');
+    var tog = document.getElementById('docSnapToggle');
+    var raw = document.getElementById('docSnapRaw');
+    if (tog && raw) {
+      try { raw.textContent = JSON.stringify(info, null, 2); } catch (_) { raw.textContent = ''; }
+      tog.addEventListener('click', function(){ var s = raw.style.display; raw.style.display = (s === 'none' || !s) ? 'block' : 'none'; });
+    }
   }
 
   function fillClauseSelect(envelope) {
@@ -709,9 +708,13 @@
       var s = await apiSummary(text);
       if (s && s.ok) {
         var senv = (s.json && (s.json.data || s.json)) || {};
+        CAI_STORE.analysis.snapshot = senv;
         renderDocSnapshot(senv);
+        status("Summary OK");
       } else {
-        status("⚠️ Summary " + (s ? ("HTTP " + s.status) : "failed"));
+        console.warn("summary failed", s);
+        status("Summary error");
+        renderDocSnapshot(null);
       }
       var r = await apiAnalyze({ text: text });
       if (!r.ok) { status("Analyze HTTP " + r.status); return; }

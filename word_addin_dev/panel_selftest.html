@@ -43,19 +43,24 @@
   <div class="wrap">
     <h1>Contract AI — <span class="muted">Panel Self-Test</span> <span class="badge">Doctor</span></h1>
 
-    <div class="row">
-      <label for="backendInput">Backend URL:</label>
-      <input id="backendInput" type="text" value="http://127.0.0.1:9000" class="mono" />
-      <button id="saveBtn">Save</button>
-      <button id="runAllBtn">Run All</button>
-      <span class="small">Saved in localStorage</span>
-    </div>
+  <div class="row">
+    <label for="backendInput">Backend URL:</label>
+    <input id="backendInput" type="text" value="http://127.0.0.1:9000" class="mono" />
+    <button id="saveBtn">Save</button>
+    <button id="runAllBtn">Run All</button>
+    <span class="small">Saved in localStorage</span>
+  </div>
+
+  <div class="row">
+    <textarea id="testText" placeholder="Sample text" style="flex:1; min-height:60px;">Hello world</textarea>
+  </div>
 
     <div class="card">
       <h3>Tests</h3>
       <div class="btns" style="margin-bottom:8px;">
         <button id="btnHealth">GET /health</button>
         <button id="btnAnalyze">POST /api/analyze</button>
+        <button id="btnSummary">POST /api/summary</button>
         <button id="btnDraft">POST /api/gpt/draft</button>
         <button id="btnSuggest">POST /api/suggest_edits</button>
         <button id="btnQA">POST /api/qa-recheck</button>
@@ -80,6 +85,7 @@
           <tbody>
             <tr id="row-health"><td>GET /health</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             <tr id="row-analyze"><td>POST /api/analyze</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr id="row-summary"><td>POST /api/summary</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             <tr id="row-draft"><td>POST /api/gpt/draft</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             <tr id="row-suggest"><td>POST /api/suggest_edits</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             <tr id="row-qa"><td>POST /api/qa-recheck</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
@@ -181,12 +187,21 @@
       setJSON("resp", r.body);
       return r;
     }
-    async function testAnalyze(){
+  async function testAnalyze(){
       const r = await callEndpoint({
         name:"analyze", method:"POST", path:"/api/analyze",
-        body:{ text:"Hello world" }
+        body:{ text: document.getElementById("testText").value }
       });
       setStatusRow("row-analyze", r);
+      setJSON("resp", r.body);
+      return r;
+    }
+    async function testSummary(){
+      const r = await callEndpoint({
+        name:"summary", method:"POST", path:"/api/summary",
+        body:{ text: document.getElementById("testText").value }
+      });
+      setStatusRow("row-summary", r);
       setJSON("resp", r.body);
       return r;
     }
@@ -243,7 +258,7 @@
 
     async function runAll(){
       // reset table rows
-      for (const id of ["row-health","row-analyze","row-draft","row-suggest","row-qa","row-calloff","row-trace"]) {
+      for (const id of ["row-health","row-analyze","row-summary","row-draft","row-suggest","row-qa","row-calloff","row-trace"]) {
         setStatusRow(id, {code:"",xcid:"",xcache:"",xschema:"",latencyMs:null,ok:false});
       }
       document.getElementById("resp").textContent = "";
@@ -253,6 +268,7 @@
 
       await testHealth();
       await testAnalyze();
+      await testSummary();
       await testDraft();
       await testSuggest();
       await testQA();
@@ -266,6 +282,7 @@
     document.getElementById("btnHealth").addEventListener("click", testHealth);
     document.getElementById("btnAnalyze").addEventListener("click", testAnalyze);
     document.getElementById("btnDraft").addEventListener("click", testDraft);
+    document.getElementById("btnSummary").addEventListener("click", testSummary);
     document.getElementById("btnSuggest").addEventListener("click", testSuggest);
     document.getElementById("btnQA").addEventListener("click", testQA);
     document.getElementById("btnCalloff").addEventListener("click", testCalloff);

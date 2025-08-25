@@ -322,4 +322,4 @@ CLAUSE_PATTERNS: Dict[str, dict] = {
         ],
         "aliases": ["fm", "relief_events"],
     },
-    "confidentialit
+}

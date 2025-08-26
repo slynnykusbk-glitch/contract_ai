@@ -14,4 +14,5 @@ def test_doctor_generates_report(tmp_path, monkeypatch):
     assert "backend" in data and "rules" in data and "env" in data
     eps = {(e.get("method"), e.get("path")) for e in data["backend"].get("endpoints", [])}
     assert ("POST", "/api/analyze") in eps
-    assert data["rules"]["python"]["count"] >= 8
+    assert data["rules"]["python"]["count"] >= 15
+    assert len(data["rules"]["python"]["samples"]) <= 8

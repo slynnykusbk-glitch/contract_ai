@@ -16,6 +16,7 @@ import json
 import os
 import subprocess
 import sys
+import re
 import traceback
 from pathlib import Path
 from typing import Any, Dict, List
@@ -163,6 +164,44 @@ def gather_addin() -> Dict[str, Any]:
     return info
 
 
+def gather_smoke() -> Dict[str, Any]:
+    """Optionally run a small pytest subset and record a summary."""
+    info: Dict[str, Any] = {"enabled": False, "passed": 0, "failed": 0, "skipped": 0}
+    if os.getenv("DOCTOR_SMOKE_ACTIVE") == "1":
+        return info
+    if os.getenv("DOCTOR_RUN_SMOKE") != "1":
+        return info
+    info["enabled"] = True
+    try:
+        env = os.environ.copy()
+        env.pop("DOCTOR_RUN_SMOKE", None)
+        env["DOCTOR_SMOKE_ACTIVE"] = "1"
+        cmd = [sys.executable, "-m", "pytest", "-q", "tests/codex"]
+        res = subprocess.run(cmd, capture_output=True, text=True, check=False, env=env)
+        output = res.stdout + "\n" + res.stderr
+        clean = re.sub(r"\x1b\[[0-9;]*m", "", output)
+        mp = re.search(r"(\d+) passed", clean)
+        mf = re.search(r"(\d+) failed", clean)
+        ms = re.search(r"(\d+) skipped", clean)
+        if mp or mf or ms:
+            if mp:
+                info["passed"] = int(mp.group(1))
+            if mf:
+                info["failed"] = int(mf.group(1))
+            if ms:
+                info["skipped"] = int(ms.group(1))
+        else:
+            progress = re.search(r"([\.FEsx]+)\s*\[", clean)
+            if progress:
+                p = progress.group(1)
+                info["passed"] = p.count(".")
+                info["failed"] = p.count("F") + p.count("E")
+                info["skipped"] = p.count("s")
+    except Exception:
+        info["error"] = traceback.format_exc()
+    return info
+
+
 def gather_inventory() -> Dict[str, Any]:
     counts = {"py": 0, "js": 0}
     for root, dirs, files in os.walk(ROOT):
@@ -185,6 +224,7 @@ def generate_report() -> Dict[str, Any]:
     data["rules"] = gather_rules()
     data["addin"] = gather_addin()
     data["inventory"] = gather_inventory()
+    data["smoke"] = gather_smoke()
     return data
 
 

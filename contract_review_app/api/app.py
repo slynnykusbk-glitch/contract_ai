@@ -126,6 +126,31 @@ def _analyze_document(text: str) -> Dict[str, Any]:
     """
     return {"status": "OK", "findings": [], "summary": {"len": len(text or "")}}
 
+
+def _ensure_legacy_doc_type(summary: dict) -> None:
+    """
+    Guarantee backward-compatible ``summary.doc_type`` shape for older UIs,
+    deriving it from the new flat fields ``summary.type`` and
+    ``summary.type_confidence``. Safe no-op if it's already present.
+    """
+    if not isinstance(summary, dict):
+        return
+    existing = summary.get("doc_type")
+    if isinstance(existing, dict) and isinstance(existing.get("top"), dict) and "type" in existing["top"]:
+        return
+
+    t = summary.get("type")
+    conf = summary.get("type_confidence")
+    if not isinstance(t, str) or not t.strip():
+        return
+
+    score = conf if isinstance(conf, (int, float)) else None
+    summary["doc_type"] = {
+        "top": {"type": t, "score": score},
+        "confidence": score,
+        "candidates": [{"type": t, "score": score}] if t else [],
+    }
+
 # --------------------------------------------------------------------
 # App / Router
 # --------------------------------------------------------------------
@@ -585,6 +610,9 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
         # guaranteed summary on root
         if "document" in cached and isinstance(cached["document"], dict):
             cached["summary"] = cached["document"].get("summary", cached.get("summary", {}))
+        elif "results" in cached and isinstance(cached["results"], dict):
+            cached["summary"] = cached["results"].get("summary", cached.get("summary", {}))
+        _ensure_legacy_doc_type(cached.get("summary"))
         return cached
 
     result = _analyze_document(model.text or "")
@@ -613,6 +641,9 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
     # guaranteed summary on root
     if "document" in result and isinstance(result["document"], dict):
         result["summary"] = result["document"].get("summary", result.get("summary", {}))
+    elif "results" in result and isinstance(result["results"], dict):
+        result["summary"] = result["results"].get("summary", result.get("summary", {}))
+    _ensure_legacy_doc_type(result.get("summary"))
     return result
 
 
@@ -631,6 +662,7 @@ async def api_summary_get(response: Response, mode: Optional[str] = None):
     # guaranteed summary on root
     if "document" in resp and isinstance(resp["document"], dict):
         resp["summary"] = resp["document"].get("summary", resp.get("summary", {}))
+    _ensure_legacy_doc_type(resp.get("summary"))
     return resp
 
 
@@ -664,6 +696,7 @@ async def api_summary_post(
     # guaranteed summary on root
     if "document" in envelope and isinstance(envelope["document"], dict):
         envelope["summary"] = envelope["document"].get("summary", envelope.get("summary", {}))
+    _ensure_legacy_doc_type(envelope.get("summary"))
     return envelope
 
 

@@ -986,7 +986,13 @@ async def panel_version():
     return {"schema_version": "1.0", "build": ts}
 
 
-panel_app.mount("/", StaticFiles(directory="word_addin_dev", html=True), name="panel-static")
+def _panel_static_dir() -> str:
+    base = Path("word_addin_dev/app")
+    builds = sorted([p for p in base.glob("build-*") if p.is_dir()])
+    return str(builds[-1]) if builds else "word_addin_dev"
+
+
+panel_app.mount("/", StaticFiles(directory=_panel_static_dir(), html=True), name="panel-static")
 app.mount("/panel", panel_app)
 
 

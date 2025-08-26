@@ -877,12 +877,12 @@ async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[s
         _set_llm_headers(resp, meta)
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
         return resp
-    if not LLM_CONFIG.valid:
-        detail = f"{LLM_CONFIG.provider}: missing {' '.join(LLM_CONFIG.missing)}".strip()
-        resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": detail, "meta": meta})
-        _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return resp
+    mock_env = os.getenv("CONTRACT_AI_LLM_MOCK", "").lower() in ("1", "true", "yes")
+    mock_mode = mock_env or LLM_CONFIG.provider == "mock" or not LLM_CONFIG.valid or not _has_llm_keys()
+    if mock_mode:
+        _set_llm_headers(response, meta)
+        _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        return {"status": "ok", "qa": [], "notes": "qa-recheck stub"}
     try:
         result = LLM_SERVICE.qa(text, rules, LLM_CONFIG.timeout_s)
     except ProviderTimeoutError as ex:

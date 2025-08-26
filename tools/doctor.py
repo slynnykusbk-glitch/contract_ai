@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 import traceback
+import re
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -175,6 +176,83 @@ def gather_inventory() -> Dict[str, Any]:
     return {"files": counts, "ignored_dirs": sorted(IGNORED_DIRS)}
 
 
+def _has_mypy_config(root: Path) -> bool:
+    config_files = ["mypy.ini", ".mypy.ini", "setup.cfg", "pyproject.toml"]
+    for name in config_files:
+        p = root / name
+        if not p.exists():
+            continue
+        if name == "setup.cfg":
+            try:
+                text = p.read_text(encoding="utf-8")
+            except Exception:
+                continue
+            if "[mypy" in text:
+                return True
+        elif name == "pyproject.toml":
+            try:
+                text = p.read_text(encoding="utf-8")
+            except Exception:
+                continue
+            if "[tool.mypy]" in text:
+                return True
+        else:
+            return True
+    return False
+
+
+def gather_quality() -> Dict[str, Any]:
+    info: Dict[str, Any] = {"ruff": {}, "mypy": {}}
+    try:
+        res = subprocess.run(
+            ["ruff", "check", ".", "--quiet", "--exit-zero", "--statistics"],
+            capture_output=True,
+            text=True,
+            cwd=str(ROOT),
+            check=False,
+        )
+        total = 0
+        for line in res.stdout.splitlines():
+            m = re.match(r"\s*(\d+)", line)
+            if m:
+                total += int(m.group(1))
+        info["ruff"] = {"status": "ok", "issues_total": total}
+    except Exception:
+        info["ruff"] = {
+            "status": "error",
+            "issues_total": None,
+            "error": traceback.format_exc(),
+        }
+
+    if _has_mypy_config(ROOT):
+        try:
+            res = subprocess.run(
+                [
+                    "mypy",
+                    ".",
+                    "--hide-error-context",
+                    "--no-error-summary",
+                ],
+                capture_output=True,
+                text=True,
+                cwd=str(ROOT),
+                check=False,
+            )
+            output = (res.stdout + "\n" + res.stderr).splitlines()
+            errors = sum(1 for line in output if "error:" in line)
+            status = "ok" if res.returncode in (0, 1) else "error"
+            info["mypy"] = {"status": status, "errors_total": errors}
+        except Exception:
+            info["mypy"] = {
+                "status": "error",
+                "errors_total": None,
+                "error": traceback.format_exc(),
+            }
+    else:
+        info["mypy"] = {"status": "skipped", "errors_total": 0}
+    return info
+
+
 def generate_report() -> Dict[str, Any]:
     data: Dict[str, Any] = {}
     data["env"] = gather_env()
@@ -185,6 +263,7 @@ def generate_report() -> Dict[str, Any]:
     data["rules"] = gather_rules()
     data["addin"] = gather_addin()
     data["inventory"] = gather_inventory()
+    data["quality"] = gather_quality()
     return data
 
 

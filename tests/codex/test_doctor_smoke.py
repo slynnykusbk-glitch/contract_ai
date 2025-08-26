@@ -1,4 +1,6 @@
-import json, subprocess, sys, pathlib
+import json
+import subprocess
+import sys
 
 
 def test_doctor_generates_report(tmp_path, monkeypatch):
@@ -12,6 +14,13 @@ def test_doctor_generates_report(tmp_path, monkeypatch):
     assert rc == 0
     data = json.loads((out_dir / "analysis.json").read_text(encoding="utf-8"))
     assert "backend" in data and "rules" in data and "env" in data
-    eps = {(e.get("method"), e.get("path")) for e in data["backend"].get("endpoints", [])}
+    eps = {
+        (e.get("method"), e.get("path"))
+        for e in data["backend"].get("endpoints", [])
+    }
     assert ("POST", "/api/analyze") in eps
     assert data["rules"]["python"]["count"] >= 8
+    quality = data.get("quality", {})
+    assert quality.get("ruff", {}).get("status") == "ok"
+    assert isinstance(quality.get("ruff", {}).get("issues_total"), int)
+    assert quality.get("mypy", {}).get("status") in {"ok", "skipped"}

@@ -175,6 +175,21 @@ def gather_inventory() -> Dict[str, Any]:
     return {"files": counts, "ignored_dirs": sorted(IGNORED_DIRS)}
 
 
+def gather_repo() -> Dict[str, Any]:
+    info: Dict[str, Any] = {}
+    try:
+        files = _run_cmd(["git", "ls-files"]).splitlines()
+        tracked_pyc = [f for f in files if f.endswith(".pyc")]
+        info["tracked_pyc"] = len(tracked_pyc)
+        info["suggestions"] = [
+            "Add __pycache__/ and *.pyc to .gitignore",
+            "To purge cached: git rm -r --cached **/__pycache__ *.pyc && git commit -m 'purge pyc'",
+        ]
+    except Exception:
+        info["error"] = traceback.format_exc()
+    return info
+
+
 def generate_report() -> Dict[str, Any]:
     data: Dict[str, Any] = {}
     data["env"] = gather_env()
@@ -185,6 +200,7 @@ def generate_report() -> Dict[str, Any]:
     data["rules"] = gather_rules()
     data["addin"] = gather_addin()
     data["inventory"] = gather_inventory()
+    data["repo"] = gather_repo()
     return data
 
 

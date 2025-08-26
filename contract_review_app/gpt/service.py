@@ -5,15 +5,15 @@ from typing import Any, Dict, Optional, Set
 
 from .config import LLMConfig, load_llm_config
 from .interfaces import (
-    BaseClient,
-    DraftResult,
-    SuggestResult,
-    QAResult,
     ProviderError,
     ProviderTimeoutError,
     ProviderUnavailableError,
     ProviderAuthError,
     ProviderConfigError,
+    BaseClient,
+    DraftResult,
+    SuggestResult,
+    QAResult,
 )
 from .clients.mock_client import MockClient
 
@@ -98,16 +98,14 @@ def create_llm_service() -> LLMService:
 __all__ = [
     "LLMService",
     "load_llm_config",
-    "get_client",
     "create_llm_service",
-    # re-exports for convenience
-    "BaseClient",
-    "DraftResult",
-    "SuggestResult",
-    "QAResult",
     "ProviderError",
     "ProviderTimeoutError",
     "ProviderUnavailableError",
     "ProviderAuthError",
     "ProviderConfigError",
+    "BaseClient",
+    "DraftResult",
+    "SuggestResult",
+    "QAResult",
 ]

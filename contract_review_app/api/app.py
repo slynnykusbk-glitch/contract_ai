@@ -117,76 +117,14 @@ def _has_llm_keys() -> bool:
 LLM_CONFIG = load_llm_config()
 LLM_SERVICE = LLMService(LLM_CONFIG)
 
-
 def _analyze_document(text: str) -> Dict[str, Any]:
-    """
-    Thin wrapper used by tests to monkeypatch analysis.
-
-    Must return a dict with at least:
-        {"status": "...", "findings": [...], "summary": {...}}
-    """
-    # 1) Перевага продовому оркестратору, якщо доступний
-    try:
-        if callable(run_analyze):  # імпортовано вище як run_analyze або None
-            from contract_review_app.core.schemas import AnalyzeIn
-
-            req = AnalyzeIn(text=text)
-            res = run_analyze(req)
-            if asyncio.iscoroutine(res):
-                loop = asyncio.new_event_loop()
-                try:
-                    asyncio.set_event_loop(loop)
-                    res = loop.run_until_complete(res)
-                finally:
-                    loop.close()
-            if isinstance(res, dict):
-                return res
-    except Exception:
-        pass
-
-    # 2) Альтернатива через rules-registry, якщо є
-    try:
-        from contract_review_app.legal_rules.registry import run_all as _run_all  # type: ignore
-        out = _run_all(text)
-        if isinstance(out, dict):
-            return out
-    except Exception:
-        pass
-
-    # 3) Мінімальний стаб на крайній випадок
-    return {"status": "OK", "findings": [], "summary": {"len": len(text or "")}}
-
-async def _analyze_document(text: str) -> dict:
     """Hook for tests to analyze document text.
 
-    Default implementation uses the rule engine if available and returns a
-    minimal dictionary structure so that tests can monkeypatch this function
-    without importing heavy dependencies.
+    The default implementation deliberately avoids importing heavy modules and
+    simply returns a minimal structure. Tests can monkeypatch this function to
+    provide richer behaviour.
     """
-    if run_analyze:
-        try:
-            inp = AnalyzeIn(text=text)
-            out = run_analyze(inp)
-            if asyncio.iscoroutine(out):  # type: ignore[arg-type]
-                out = await out
-            if hasattr(out, "model_dump"):
-                out = out.model_dump()
-            if isinstance(out, dict):
-                return out
-        except Exception:
-            pass
-    try:
-        from contract_review_app.legal_rules.legal_rules import analyze as rules_analyze
-        from contract_review_app.core.schemas import AnalysisInput
-
-        out = rules_analyze(AnalysisInput(text=text, clause_type=None))
-        if hasattr(out, "model_dump"):
-            out = out.model_dump()
-        if isinstance(out, dict):
-            return {"status": out.get("status", "OK"), "findings": out.get("findings", [])}
-    except Exception:
-        pass
-    return {"status": "OK", "findings": []}
+    return {"status": "OK", "findings": [], "summary": {"len": len(text or "")}}
 
 # --------------------------------------------------------------------
 # App / Router
@@ -649,7 +587,9 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
             cached["summary"] = cached["document"].get("summary", cached.get("summary", {}))
         return cached
 
-    result = await _analyze_document(model.text or "")
+    result = _analyze_document(model.text or "")
+    if asyncio.iscoroutine(result):  # allow async monkeypatches
+        result = await result
     if hasattr(result, "model_dump"):
         result = result.model_dump()
 

@@ -1,9 +1,11 @@
 import json
+import os
 import subprocess
 import sys
+import pytest
 
 
-def test_doctor_generates_report(tmp_path, monkeypatch):
+def _run_doctor(tmp_path, monkeypatch):
     out_dir = tmp_path / "diag"
     out_dir.mkdir()
 
@@ -15,8 +17,11 @@ def test_doctor_generates_report(tmp_path, monkeypatch):
     cmd = [sys.executable, "tools/doctor.py", "--out", str(out_dir), "--json"]
     rc = subprocess.call(cmd)
     assert rc == 0
+    return json.loads((out_dir / "analysis.json").read_text(encoding="utf-8"))
 
-    data = json.loads((out_dir / "analysis.json").read_text(encoding="utf-8"))
+
+def test_doctor_generates_report(tmp_path, monkeypatch):
+    data = _run_doctor(tmp_path, monkeypatch)
 
     # базові секції
     assert "backend" in data and "rules" in data and "env" in data
@@ -29,7 +34,7 @@ def test_doctor_generates_report(tmp_path, monkeypatch):
     assert data["rules"]["python"]["count"] >= 8
     assert len(data["rules"]["python"]["samples"]) <= 8
 
-    # quality gates (ruff+mypy)
+    # quality gates (ruff/mypy)
     quality = data.get("quality", {})
     assert quality.get("ruff", {}).get("status") == "ok"
     assert isinstance(quality.get("ruff", {}).get("issues_total"), int)
@@ -43,3 +48,24 @@ def test_doctor_generates_report(tmp_path, monkeypatch):
     # інваріанти по env
     for key in ["provider", "model", "timeout_s", "node_is_mock"]:
         assert key in data["env"], f"missing LLM {key}"
+
+
+def test_smoke_disabled_by_default(tmp_path, monkeypatch):
+    monkeypatch.delenv("DOCTOR_RUN_SMOKE", raising=False)
+    data = _run_doctor(tmp_path, monkeypatch)
+    smoke = data["smoke"]
+    assert smoke["enabled"] is False
+    assert smoke["passed"] == 0
+    assert smoke["failed"] == 0
+    assert smoke["skipped"] == 0
+
+
+@pytest.mark.skipif(os.getenv("DOCTOR_SMOKE_ACTIVE") == "1", reason="avoid recursion")
+def test_smoke_enabled_runs_tests(tmp_path, monkeypatch):
+    # вмикаємо smoke-режим виконання частини тестів усередині doctor
+    monkeypatch.setenv("DOCTOR_RUN_SMOKE", "1")
+    data = _run_doctor(tmp_path, monkeypatch)
+    smoke = data["smoke"]
+    assert smoke["enabled"] is True
+    assert smoke["failed"] == 0
+    assert smoke["passed"] > 0

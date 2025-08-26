@@ -7,9 +7,6 @@ and recorded in the output so the script itself exits successfully.
 """
 from __future__ import annotations
 
-#!/usr/bin/env python3
-"""Collect a diagnostic snapshot of the project environment."""
-
 import argparse
 import inspect
 import json
@@ -50,7 +47,9 @@ def gather_env() -> Dict[str, Any]:
         "pythonpath": os.getenv("PYTHONPATH", ""),
     }
     try:
-        info["pip_freeze"] = _run_cmd([sys.executable, "-m", "pip", "freeze"]).splitlines()
+        info["pip_freeze"] = _run_cmd(
+            [sys.executable, "-m", "pip", "freeze"]
+        ).splitlines()
     except Exception:
         info["pip_freeze_error"] = traceback.format_exc()
     return info
@@ -62,6 +61,27 @@ def gather_git() -> Dict[str, Any]:
         info["branch"] = _run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"])
         info["head"] = _run_cmd(["git", "rev-parse", "HEAD"])
         info["status"] = _run_cmd(["git", "status", "-sb"])
+    except Exception:
+        info["error"] = traceback.format_exc()
+    return info
+
+
+def gather_precommit() -> Dict[str, Any]:
+    info: Dict[str, Any] = {"config_exists": False, "hooks": []}
+    try:
+        cfg = ROOT / ".pre-commit-config.yaml"
+        if cfg.exists():
+            info["config_exists"] = True
+            import yaml  # type: ignore
+
+            data = yaml.safe_load(cfg.read_text()) or {}
+            hooks: List[str] = []
+            for repo in data.get("repos", []):
+                for hook in repo.get("hooks", []):
+                    hook_id = hook.get("id")
+                    if hook_id:
+                        hooks.append(hook_id)
+            info["hooks"] = hooks
     except Exception:
         info["error"] = traceback.format_exc()
     return info
@@ -86,12 +106,14 @@ def gather_backend() -> Dict[str, Any]:
             except Exception:
                 pass
             for m in methods:
-                info["endpoints"].append({
-                    "method": m,
-                    "path": path,
-                    "file": file,
-                    "lineno": lineno,
-                })
+                info["endpoints"].append(
+                    {
+                        "method": m,
+                        "path": path,
+                        "file": file,
+                        "lineno": lineno,
+                    }
+                )
     except Exception:
         info["error"] = traceback.format_exc()
     return info
@@ -135,7 +157,9 @@ def gather_rules() -> Dict[str, Any]:
         ]
         for alias in aliases_to_check:
             try:
-                info["aliases_present"][alias] = rules_registry.normalize_clause_type(alias)
+                info["aliases_present"][alias] = rules_registry.normalize_clause_type(
+                    alias
+                )
             except Exception:
                 info["aliases_present"][alias] = None
         yaml_dir = ROOT / "contract_review_app" / "legal_rules" / "policy_packs"
@@ -179,6 +203,7 @@ def generate_report() -> Dict[str, Any]:
     data: Dict[str, Any] = {}
     data["env"] = gather_env()
     data["git"] = gather_git()
+    data["precommit"] = gather_precommit()
     backend = gather_backend()
     data["backend"] = backend
     data["llm"] = gather_llm(backend)
@@ -204,7 +229,11 @@ def main(argv: List[str] | None = None) -> int:
             json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
         )
     if args.html:
-        html = "<html><body><pre>" + json.dumps(data, indent=2, ensure_ascii=False) + "</pre></body></html>"
+        html = (
+            "<html><body><pre>"
+            + json.dumps(data, indent=2, ensure_ascii=False)
+            + "</pre></body></html>"
+        )
         (out_dir / "analysis.html").write_text(html, encoding="utf-8")
     return 0
 

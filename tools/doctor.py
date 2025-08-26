@@ -148,16 +148,53 @@ def gather_rules() -> Dict[str, Any]:
 
 
 def gather_addin() -> Dict[str, Any]:
-    info: Dict[str, Any] = {}
+    info: Dict[str, Any] = {
+        "manifest": {"exists": False},
+        "bundle": {"exists": False},
+    }
     try:
-        addin_dir = ROOT / "word_addin_dev"
-        if addin_dir.exists():
-            manifest = next(addin_dir.glob("**/manifest*.xml"), None)
-            taskpane = next(addin_dir.glob("**/taskpane*.*"), None)
-            cert = next(addin_dir.glob("**/*.pem"), None)
-            info["manifest"] = str(manifest.relative_to(ROOT)) if manifest else None
-            info["taskpane"] = str(taskpane.relative_to(ROOT)) if taskpane else None
-            info["cert"] = str(cert.relative_to(ROOT)) if cert else None
+        manifest_path = ROOT / "word_addin_dev" / "manifest.xml"
+        manifest_info: Dict[str, Any] = {"exists": False}
+        if manifest_path.exists():
+            manifest_info["exists"] = True
+            try:
+                import xml.etree.ElementTree as ET
+                tree = ET.parse(manifest_path)
+                root = tree.getroot()
+                ns = {"n": root.tag.split("}")[0].strip("{")}
+                manifest_info["id"] = root.findtext("n:Id", default="", namespaces=ns)
+                manifest_info["version"] = root.findtext("n:Version", default="", namespaces=ns)
+                source = root.find(
+                    "n:DefaultSettings/n:SourceLocation", namespaces=ns
+                )
+                if source is not None:
+                    manifest_info["source"] = source.get("DefaultValue")
+                permissions = root.findtext(
+                    "n:Permissions", default="", namespaces=ns
+                )
+                if permissions:
+                    manifest_info["permissions"] = permissions
+            except Exception:
+                manifest_info["error"] = traceback.format_exc()
+        info["manifest"] = manifest_info
+
+        bundle_info: Dict[str, Any] = {"exists": False}
+        app_dir = ROOT / "word_addin_dev" / "app"
+        if app_dir.exists():
+            bundle_candidates = list(app_dir.glob("build-*/taskpane.bundle.js"))
+            if bundle_candidates:
+                latest = max(bundle_candidates, key=lambda p: p.stat().st_mtime)
+                st = latest.stat()
+                from datetime import datetime, timezone
+
+                bundle_info = {
+                    "exists": True,
+                    "size": st.st_size,
+                    "mtime": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc)
+                    .isoformat()
+                    .replace("+00:00", "Z"),
+                }
+        info["bundle"] = bundle_info
     except Exception:
         info["error"] = traceback.format_exc()
     return info

@@ -30,7 +30,7 @@
 
   <DefaultSettings>
     <!-- dev panel served by serve_https_panel.py -->
-    <SourceLocation DefaultValue="https://localhost:3000/app/build-20250821-2055/taskpane.html"/>
+    <SourceLocation DefaultValue="https://localhost:3000/panel/taskpane.html"/>
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>

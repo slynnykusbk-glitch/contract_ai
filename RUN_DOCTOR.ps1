@@ -2,8 +2,8 @@ Param(
   [string]$BackendUrl   = "https://localhost:9000",
   [string]$FrontUrl     = "https://localhost:3000",
   [string]$ManifestPath = "C:\Users\Ludmila\contract_ai\word_addin_dev\manifest.xml",
-  # 🔹 тут виправлено: taskpane.html лежить у корені word_addin_dev, а не в dist
-  [string]$WebrootPath  = "C:\Users\Ludmila\contract_ai\word_addin_dev",
+  # webroot: latest build under word_addin_dev\app\build-*
+  [string]$WebrootPath  = "",
   [string]$AppPath      = "C:\Users\Ludmila\contract_ai\api\app.py",
   [string]$OutPrefix    = "$PSScriptRoot\report\doctor_report"
 )
@@ -62,6 +62,17 @@ try {
   }
 } catch {
   Write-Warn "Не вдалося перевірити/встановити 'requests'. Продовжую без live API перевірок."
+}
+
+# Resolve latest build as webroot if not provided
+if (-not $WebrootPath) {
+  $buildBase = Join-Path $PSScriptRoot "word_addin_dev\app"
+  $buildDirs = Get-ChildItem $buildBase -Filter 'build-*' -Directory | Sort-Object Name
+  if ($buildDirs) {
+    $WebrootPath = $buildDirs[-1].FullName
+  } else {
+    $WebrootPath = Join-Path $PSScriptRoot "word_addin_dev"
+  }
 }
 
 # Resolve doctor script

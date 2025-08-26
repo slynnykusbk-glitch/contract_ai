@@ -15,5 +15,14 @@ def test_registry_is_exposed_and_aliases():
         "oilgas_master_agreement",
     ]:
         assert k in registry
-    # аліаси працюють
-    assert normalize_clause_type("NDA") == "confidentiality"
+    # аліаси присутні як ключі та нормалізуються
+    for alias, target in [
+        ("nda", "confidentiality"),
+        ("dispute_resolution", "jurisdiction"),
+        ("force_majeur", "force_majeure"),
+        ("ogma", "oilgas_master_agreement"),
+    ]:
+        assert alias in registry
+        assert normalize_clause_type(alias.upper()) == target
+
+    assert len(registry) >= 15

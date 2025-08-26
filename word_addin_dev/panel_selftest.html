@@ -131,13 +131,34 @@
     let lastCid = ""; // from response headers
 
     function pickDocType(summary) {
-      const t = (summary?.type ?? summary?.doc_type ?? {});
-      const top = t?.top ?? {};
-      return {
-        name: top?.type ?? null,
-        confidence: (typeof t?.confidence === 'number') ? t.confidence : null,
-        candidates: Array.isArray(t?.candidates) ? t.candidates : []
-      };
+      summary = summary || {};
+      let list = [];
+      if (Array.isArray(summary.doc_types)) list = summary.doc_types;
+      else if (summary.document && Array.isArray(summary.document.doc_types)) list = summary.document.doc_types;
+      // legacy: summary.doc_type = { top:{type,score}, confidence, candidates[] }
+      if (!list.length && summary.doc_type && (summary.doc_type.top || summary.doc_type.candidates)) {
+        const top = summary.doc_type.top || {};
+        const conf = (typeof summary.doc_type.confidence === 'number')
+          ? summary.doc_type.confidence
+          : (typeof top.score === 'number' ? top.score : null);
+        return { name: top.type || top.name || null, confidence: conf };
+      }
+      let best = null;
+      if (list && list.length) {
+        best = list.reduce((acc, cur) => {
+          const c = typeof cur.confidence === 'number' ? cur.confidence : (typeof cur.score === 'number' ? cur.score : 0);
+          const n = cur.name || cur.type || cur.slug || cur.id || null;
+          if (!acc || c > acc.confidence) return { name: n, confidence: c };
+          return acc;
+        }, null);
+      } else {
+        let n2 = summary.type || (summary.document && summary.document.type) || null;
+        let c2 = summary.type_confidence;
+        if (c2 == null && summary.document && summary.document.type_confidence != null) c2 = summary.document.type_confidence;
+        if (typeof c2 === 'string') { const f = parseFloat(c2); c2 = isNaN(f) ? null : f; }
+        best = { name: n2, confidence: c2 };
+      }
+      return best || { name: null, confidence: null };
     }
 
     function genCid(){ return "cid-" + Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
@@ -248,7 +269,7 @@
         setJSON("resp", r.body);
       }
       const snapEl = document.getElementById("docSnap");
-      const summary = r.body && r.body.summary ? r.body.summary : null;
+      const summary = r.body && (r.body.summary || r.body) || null;
       const docType = pickDocType(summary || {});
       const typeEl = document.querySelector('[data-snap-type]');
       const confEl = document.querySelector('[data-snap-type-confidence]');

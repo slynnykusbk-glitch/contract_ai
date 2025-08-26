@@ -165,32 +165,29 @@ def gather_api() -> Dict[str, Any]:
 
 
 def gather_rules() -> Dict[str, Any]:
+    """Collect statistics about available rule handlers and policy packs."""
     info: Dict[str, Any] = {
-        "python": {"count": 0, "names": []},
-        "aliases_present": {},
+        "python": {"count": 0, "samples": []},
+        "yaml": {"count": 0, "samples": []},
     }
     try:
-        rules_dir = ROOT / "contract_review_app" / "legal_rules" / "rules"
-        names = [p.stem for p in rules_dir.glob("*.py") if p.name != "__init__.py"]
-        info["python"] = {"count": len(names), "names": sorted(names)}
-        from contract_review_app.legal_rules import registry as rules_registry  # type: ignore
+        # The registry re-export includes both canonical rule names and aliases.
+        from contract_review_app.legal_rules.rules import registry  # type: ignore
 
-        aliases_to_check = [
-            "dispute_resolution",
-            "indemnification",
-            "nda",
-            "force_majeur",
-            "ogma",
-        ]
-        for alias in aliases_to_check:
-            try:
-                info["aliases_present"][alias] = rules_registry.normalize_clause_type(alias)
-            except Exception:
-                info["aliases_present"][alias] = None
+        rule_keys = sorted(registry.keys())
+        info["python"] = {"count": len(rule_keys), "samples": rule_keys[:8]}
+
         yaml_dir = ROOT / "contract_review_app" / "legal_rules" / "policy_packs"
-        yaml_files = list(yaml_dir.glob("**/*.yml")) + list(yaml_dir.glob("**/*.yaml"))
-        if yaml_files:
-            info["yaml"] = [str(p.relative_to(ROOT)) for p in yaml_files]
+        if yaml_dir.exists():
+            yaml_files = [
+                p.relative_to(yaml_dir).as_posix()
+                for p in yaml_dir.rglob("*.yml")
+            ] + [
+                p.relative_to(yaml_dir).as_posix()
+                for p in yaml_dir.rglob("*.yaml")
+            ]
+            yaml_files = sorted({*yaml_files})
+            info["yaml"] = {"count": len(yaml_files), "samples": yaml_files[:8]}
     except Exception:
         info["error"] = traceback.format_exc()
     return info

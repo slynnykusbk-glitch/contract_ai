@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 import traceback
+import time
 import re
 from pathlib import Path
 from typing import Any, Dict, List
@@ -210,6 +211,32 @@ def gather_addin() -> Dict[str, Any]:
     return info
 
 
+def _probe_runtime(client: Any, path: str) -> Dict[str, Any]:
+    start = time.perf_counter()
+    resp = client.get(path)
+    ms = (time.perf_counter() - start) * 1000.0
+    return {"status": resp.status_code, "ms": ms}
+
+
+def gather_runtime() -> Dict[str, Any]:
+    info: Dict[str, Any] = {}
+    try:
+        from contract_review_app.api.app import app  # type: ignore
+        from starlette.testclient import TestClient
+
+        client = TestClient(app)
+        for name, path in [("health", "/health"), ("openapi", "/openapi.json")]:
+            try:
+                info[name] = _probe_runtime(client, path)
+            except Exception:
+                info[name] = {"status": None, "error": traceback.format_exc()}
+    except Exception:
+        err = traceback.format_exc()
+        info["health"] = {"status": None, "error": err}
+        info["openapi"] = {"status": None, "error": err}
+    return info
+
+
 def gather_inventory() -> Dict[str, Any]:
     counts = {"py": 0, "js": 0}
     for root, dirs, files in os.walk(ROOT):
@@ -310,6 +337,7 @@ def generate_report() -> Dict[str, Any]:
     data["api"] = gather_api()
     data["rules"] = gather_rules()
     data["addin"] = gather_addin()
+    data["runtime"] = gather_runtime()
     data["inventory"] = gather_inventory()
     data["quality"] = gather_quality()
     return data

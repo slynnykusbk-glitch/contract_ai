@@ -510,20 +510,47 @@
     }
   }
 
-function renderDocSnapshot(info) {
-    if (!els.docSnap) return;
-    if (!info) { els.docSnap.innerHTML = ""; els.docSnap.classList.add("hidden"); return; }
-    var html = '<div class="flex" style="justify-content:space-between;align-items:center">';
-    html += '<strong>Document Snapshot</strong>';
-    if (CAI_STORE.status.schemaVersion) html += '<span class="muted">v' + esc(CAI_STORE.status.schemaVersion) + '</span>';
-    html += '</div>';
-    var tc = (info.type_confidence != null) ? ' (' + Math.round(info.type_confidence * 100) + '%)' : '';
-    html += '<div class="kv"><strong>Type:</strong><span>' + esc(info.type || '—') + tc + '</span></div>';
-    if (Array.isArray(info.parties) && info.parties.length) {
-      html += '<div style="margin-top:6px"><strong>Parties</strong><table><tr><th>Role</th><th>Name</th></tr>';
-      info.parties.forEach(function(p){
-        html += '<tr><td>' + esc(p.role || '—') + '</td><td>' + esc(p.name || '—') + '</td></tr>';
-      });
+  function pickDocType(summary) {
+      summary = summary || {};
+      var list = [];
+      if (Array.isArray(summary.doc_types)) list = summary.doc_types;
+      else if (summary.document && Array.isArray(summary.document.doc_types)) list = summary.document.doc_types;
+      var best = null;
+      if (list && list.length) {
+        best = list.reduce(function (acc, cur) {
+          var c = typeof cur.confidence === 'number' ? cur.confidence : (typeof cur.score === 'number' ? cur.score : 0);
+          var n = cur.name || cur.type || cur.slug || cur.id || null;
+          if (!acc || c > acc.confidence) return { name: n, confidence: c };
+          return acc;
+        }, null);
+      } else {
+        var n2 = summary.type || (summary.document && summary.document.type) || null;
+        var c2 = summary.type_confidence;
+        if (c2 == null && summary.document && summary.document.type_confidence != null) c2 = summary.document.type_confidence;
+        if (typeof c2 === 'string') { var f = parseFloat(c2); c2 = isNaN(f) ? null : f; }
+        best = { name: n2, confidence: c2 };
+      }
+      return best || { name: null, confidence: null };
+    }
+
+  function renderDocSnapshot(info) {
+      if (!els.docSnap) return;
+      if (!info) { els.docSnap.innerHTML = ""; els.docSnap.classList.add("hidden"); return; }
+      var dt = pickDocType(info);
+      var html = '<div class="flex" style="justify-content:space-between;align-items:center">';
+      html += '<strong>Document Snapshot</strong>';
+      if (CAI_STORE.status.schemaVersion) html += '<span class="muted">v' + esc(CAI_STORE.status.schemaVersion) + '</span>';
+      html += '</div>';
+      html += '<div class="grid">';
+      html += '<div class="kv"><strong>Type:</strong><span data-snap-type>' + esc(dt && dt.name ? dt.name : '—') + '</span></div>';
+      var conf = (dt && typeof dt.confidence === "number") ? dt.confidence : '—';
+      html += '<div class="kv"><strong>Confidence:</strong><span data-snap-type-confidence>' + conf + '</span></div>';
+      html += '</div>';
+      if (Array.isArray(info.parties) && info.parties.length) {
+        html += '<div style="margin-top:6px"><strong>Parties</strong><table><tr><th>Role</th><th>Name</th></tr>';
+        info.parties.forEach(function(p){
+          html += '<tr><td>' + esc(p.role || '—') + '</td><td>' + esc(p.name || '—') + '</td></tr>';
+        });
       html += '</table></div>';
     }
     if (info.dates) {

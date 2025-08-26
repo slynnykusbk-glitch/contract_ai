@@ -874,6 +874,13 @@ async def api_suggest_edits(request: Request, response: Response, x_cid: Optiona
 
 @router.post("/api/qa-recheck")
 async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[str] = Header(None)):
+    if os.getenv("AI_PROVIDER", "").lower().startswith("mock"):
+        return JSONResponse({
+            "status": "ok",
+            "issues": [],
+            "analysis": {"ok": True}
+        })
+
     t0 = _now_ms()
     _set_schema_headers(response)
     try:

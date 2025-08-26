@@ -515,6 +515,14 @@
       var list = [];
       if (Array.isArray(summary.doc_types)) list = summary.doc_types;
       else if (summary.document && Array.isArray(summary.document.doc_types)) list = summary.document.doc_types;
+      // legacy: summary.doc_type = { top:{type,score}, confidence, candidates[] }
+      if (!list.length && summary.doc_type && (summary.doc_type.top || summary.doc_type.candidates)) {
+        var top = summary.doc_type.top || {};
+        var conf = (typeof summary.doc_type.confidence === 'number')
+          ? summary.doc_type.confidence
+          : (typeof top.score === 'number' ? top.score : null);
+        return { name: top.type || top.name || null, confidence: conf };
+      }
       var best = null;
       if (list && list.length) {
         best = list.reduce(function (acc, cur) {
@@ -534,6 +542,10 @@
     }
 
   function renderDocSnapshot(info) {
+      // якщо дали обгортку — дістань власне summary
+      if (info && info.summary && !info.type && !info.doc_types && !info.doc_type) {
+        info = info.summary;
+      }
       if (!els.docSnap) return;
       if (!info) { els.docSnap.innerHTML = ""; els.docSnap.classList.add("hidden"); return; }
       var dt = pickDocType(info);
@@ -763,9 +775,11 @@
     try {
       var s = await apiSummary(text);
       if (s && s.ok) {
-        var senv = (s.json && (s.json.data || s.json)) || {};
-        CAI_STORE.analysis.snapshot = senv;
-        renderDocSnapshot(senv);
+      var senv = (s.json && (s.json.data || s.json)) || {};
+      // Тягнем лише summary, якщо він є, інакше — всю відповідь
+      var ssum = senv.summary || senv;
+      CAI_STORE.analysis.snapshot = ssum;
+      renderDocSnapshot(ssum);
         status("Summary OK");
       } else {
         console.warn("summary failed", s);

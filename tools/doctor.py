@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import traceback
+from datetime import datetime
 import time
 import re
 from pathlib import Path
@@ -29,7 +30,38 @@ ENV_VARS = [
 ]
 IGNORED_DIRS = {".git", "node_modules", "__pycache__", ".venv", "dist", "build"}
 
+# ---------- transparent state log ----------
+LOG_ENTRIES = 0
 
+
+def _log_state(path: Path, message: str) -> None:
+    """Append a timestamped message to the state log."""
+    global LOG_ENTRIES
+    timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(f"[{timestamp}] {message}\n")
+    LOG_ENTRIES += 1
+
+
+def _run_with_state(name: str, func, path: Path, *args, **kwargs):
+    """Run *func* logging START/OK/ERR states."""
+    _log_state(path, f"START {name}")
+    try:
+        result = func(*args, **kwargs)
+        extra = ""
+        if name == "llm":
+            provider = os.getenv("LLM_PROVIDER") or "unknown"
+            model = os.getenv("LLM_MODEL") or "unknown"
+            extra = f" provider={provider} model={model}"
+        _log_state(path, f"OK {name}{extra}")
+        return result
+    except Exception as exc:  # pragma: no cover
+        _log_state(path, f"ERR {name} error={exc}")
+        return {"error": traceback.format_exc()}
+
+
+# ---------- helpers & gatherers ----------
 def _run_cmd(cmd: List[str]) -> str:
     try:
         res = subprocess.run(cmd, capture_output=True, text=True, check=False, cwd=str(ROOT))
@@ -102,9 +134,7 @@ def gather_backend() -> Dict[str, Any]:
             except Exception:
                 pass
             for m in methods:
-                info["endpoints"].append(
-                    {"method": m, "path": path, "file": file, "lineno": lineno}
-                )
+                info["endpoints"].append({"method": m, "path": path, "file": file, "lineno": lineno})
     except Exception:
         info["error"] = traceback.format_exc()
     return info
@@ -319,7 +349,6 @@ def gather_quality() -> Dict[str, Any]:
 def gather_smoke() -> Dict[str, Any]:
     """Optionally run a small pytest subset and record a summary."""
     info: Dict[str, Any] = {"enabled": False, "passed": 0, "failed": 0, "skipped": 0}
-    # щоб не запускати себе рекурсивно
     if os.getenv("DOCTOR_SMOKE_ACTIVE") == "1":
         return info
     if os.getenv("DOCTOR_RUN_SMOKE") != "1":
@@ -342,7 +371,6 @@ def gather_smoke() -> Dict[str, Any]:
         if ms:
             info["skipped"] = int(ms.group(1))
         if not (mp or mf or ms):
-            # fallback: за прогрес-рядком
             prog = re.search(r"([\.FEsx]+)\s*\[", clean or "")
             if prog:
                 p = prog.group(1)
@@ -381,23 +409,42 @@ def gather_repo() -> Dict[str, Any]:
     return info
 
 
-def generate_report() -> Dict[str, Any]:
+# ---------- report ----------
+def generate_report(state_log: Path | None = None) -> Dict[str, Any]:
+    """If state_log is provided, wrap all gatherers with START/OK/ERR logging."""
     data: Dict[str, Any] = {}
-    data["env"] = gather_env()
-    data["git"] = gather_git()
-    data["precommit"] = gather_precommit()
-    backend = gather_backend()
-    data["backend"] = backend
-    data["llm"] = gather_llm(backend)
-    data["service"] = gather_service()
-    data["api"] = gather_api()
-    data["rules"] = gather_rules()
-    data["addin"] = gather_addin()
-    data["runtime_checks"] = gather_runtime()
-    data["inventory"] = gather_inventory()
-    data["repo"] = gather_repo()
-    data["quality"] = gather_quality()
-    data["smoke"] = gather_smoke()
+    if state_log is None:
+        data["env"] = gather_env()
+        data["git"] = gather_git()
+        data["precommit"] = gather_precommit()
+        backend = gather_backend()
+        data["backend"] = backend
+        data["llm"] = gather_llm(backend)
+        data["service"] = gather_service()
+        data["api"] = gather_api()
+        data["rules"] = gather_rules()
+        data["addin"] = gather_addin()
+        data["runtime_checks"] = gather_runtime()
+        data["inventory"] = gather_inventory()
+        data["repo"] = gather_repo()
+        data["quality"] = gather_quality()
+        data["smoke"] = gather_smoke()
+    else:
+        data["env"] = _run_with_state("env", gather_env, state_log)
+        data["git"] = _run_with_state("git", gather_git, state_log)
+        data["precommit"] = _run_with_state("precommit", gather_precommit, state_log)
+        backend = _run_with_state("backend", gather_backend, state_log)
+        data["backend"] = backend
+        data["llm"] = _run_with_state("llm", gather_llm, state_log, backend)
+        data["service"] = _run_with_state("service", gather_service, state_log)
+        data["api"] = _run_with_state("api", gather_api, state_log)
+        data["rules"] = _run_with_state("rules", gather_rules, state_log)
+        data["addin"] = _run_with_state("addin", gather_addin, state_log)
+        data["runtime_checks"] = _run_with_state("runtime", gather_runtime, state_log)
+        data["inventory"] = _run_with_state("inventory", gather_inventory, state_log)
+        data["repo"] = _run_with_state("repo", gather_repo, state_log)
+        data["quality"] = _run_with_state("quality", gather_quality, state_log)
+        data["smoke"] = _run_with_state("smoke", gather_smoke, state_log)
     return data
 
 
@@ -410,16 +457,23 @@ def main(argv: List[str] | None = None) -> int:
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    data = generate_report()
+    state_log = out_dir / "state.log"
+
+    global LOG_ENTRIES
+    LOG_ENTRIES = 0
+
+    data = generate_report(state_log)
+
+    try:
+        state_path_str = str(state_log.relative_to(ROOT))
+    except Exception:
+        state_path_str = str(state_log)
+    data["state_log"] = {"path": state_path_str, "entries": LOG_ENTRIES}
 
     if args.json:
         (out_dir / "analysis.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     if args.html:
-        html = (
-            "<html><body><pre>"
-            + json.dumps(data, indent=2, ensure_ascii=False)
-            + "</pre></body></html>"
-        )
+        html = "<html><body><pre>" + json.dumps(data, indent=2, ensure_ascii=False) + "</pre></body></html>"
         (out_dir / "analysis.html").write_text(html, encoding="utf-8")
     return 0
 

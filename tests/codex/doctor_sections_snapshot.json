@@ -1,0 +1,27 @@
+{
+  "git": {
+    "branch": "str",
+    "head": "str",
+    "status": "str"
+  },
+  "llm": {
+    "has_draft_endpoint": "bool",
+    "providers_detected": [
+      "str"
+    ]
+  },
+  "addin": {
+    "cert": "str",
+    "manifest": "str",
+    "taskpane": "str"
+  },
+  "inventory": {
+    "files": {
+      "js": "int",
+      "py": "int"
+    },
+    "ignored_dirs": [
+      "str"
+    ]
+  }
+}

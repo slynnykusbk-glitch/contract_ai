@@ -37,6 +37,8 @@
     .pill{ display:inline-block; padding:2px 6px; border-radius:999px; border:1px solid var(--border2); font-size:12px; }
     .btns { display:flex; flex-wrap:wrap; gap:8px; }
     .small { font-size:12px; color:var(--muted); }
+    .snapshot-row { display:flex; gap:8px; font-size:13px; }
+    .snapshot-row > div:first-child { width:100px; color:var(--muted); }
   </style>
 </head>
 <body>
@@ -105,6 +107,12 @@
 
     <div class="card">
       <h3>Document Snapshot</h3>
+      <div class="snapshot-row">
+        <div>Type:</div><div data-snap-type>—</div>
+      </div>
+      <div class="snapshot-row">
+        <div>Confidence:</div><div data-snap-type-confidence>—</div>
+      </div>
       <div id="docSnap" class="pre"></div>
     </div>
 
@@ -121,6 +129,16 @@
     const LS_KEY = "doctor:backendUrl";
     let clientCid = genCid();
     let lastCid = ""; // from response headers
+
+    function pickDocType(summary) {
+      const t = (summary?.type ?? summary?.doc_type ?? {});
+      const top = t?.top ?? {};
+      return {
+        name: top?.type ?? null,
+        confidence: (typeof t?.confidence === 'number') ? t.confidence : null,
+        candidates: Array.isArray(t?.candidates) ? t.candidates : []
+      };
+    }
 
     function genCid(){ return "cid-" + Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
 
@@ -231,12 +249,15 @@
       }
       const snapEl = document.getElementById("docSnap");
       const summary = r.body && r.body.summary ? r.body.summary : null;
+      const docType = pickDocType(summary || {});
+      const typeEl = document.querySelector('[data-snap-type]');
+      const confEl = document.querySelector('[data-snap-type-confidence]');
+      if (typeEl) typeEl.textContent = docType.name ?? '—';
+      if (confEl) confEl.textContent =
+        docType.confidence != null ? Math.round(docType.confidence * 100) + '%' : '—';
       if (summary) {
-        let t = summary.type || "—";
-        if (summary.type_confidence != null) {
-          t += ` (${Math.round(summary.type_confidence * 100)}%)`;
-        }
-        snapEl.textContent = `Type: ${t}`;
+        try { snapEl.textContent = JSON.stringify(summary, null, 2); }
+        catch { snapEl.textContent = String(summary); }
       } else {
         snapEl.textContent = "";
       }

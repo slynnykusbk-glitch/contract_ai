@@ -161,8 +161,10 @@ def test_qa_recheck_endpoint():
     payload = {"text": "hi", "rules": {"R1": "rule"}}
     r = client.post("/api/qa-recheck", json=payload)
     assert r.status_code == 200
-    items = r.json().get("qa")
-    assert isinstance(items, list)
+    data = r.json()
+    assert data["status"] == "ok"
+    assert data.get("issues") == []
+    assert data.get("analysis", {}).get("ok") is True
 
 
 def test_calloff_validate_endpoint():

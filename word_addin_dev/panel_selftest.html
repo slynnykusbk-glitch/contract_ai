@@ -104,6 +104,11 @@
     </div>
 
     <div class="card">
+      <h3>Document Snapshot</h3>
+      <div id="docSnap" class="pre"></div>
+    </div>
+
+    <div class="card">
       <h3>Trace Payload</h3>
       <div id="trace" class="pre"></div>
     </div>
@@ -224,6 +229,17 @@
       } catch {
         setJSON("resp", r.body);
       }
+      const snapEl = document.getElementById("docSnap");
+      const summary = r.body && r.body.summary ? r.body.summary : null;
+      if (summary) {
+        let t = summary.type || "—";
+        if (summary.type_confidence != null) {
+          t += ` (${Math.round(summary.type_confidence * 100)}%)`;
+        }
+        snapEl.textContent = `Type: ${t}`;
+      } else {
+        snapEl.textContent = "";
+      }
       return r;
     }
     async function testDraft(){
@@ -289,6 +305,7 @@
         setStatusRow(id, {code:"",xcid:"",xcache:"",xschema:"",latencyMs:null,ok:false});
       }
       document.getElementById("resp").textContent = "";
+      document.getElementById("docSnap").textContent = "";
       document.getElementById("trace").textContent = "";
       clientCid = genCid();
       setCidLabels();

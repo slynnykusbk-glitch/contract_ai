@@ -196,7 +196,10 @@ def extract_document_snapshot(text: str) -> DocumentSnapshot:
     text = text or ""
     hints: List[str] = []
 
-    slug, confidence, evidence, _ = guess_doc_type(text)
+    subject = _extract_subject(text)
+    subject_raw = subject.get("raw") if subject else None
+
+    slug, confidence, evidence, _ = guess_doc_type(text, subject_raw)
     doc_type = slug_to_display(slug)
     hints.extend(evidence[:5])
     parties = _extract_parties(text, hints)
@@ -232,7 +235,6 @@ def extract_document_snapshot(text: str) -> DocumentSnapshot:
         hints=hints,
         rules_count=rules_count,
     )
-    subject = _extract_subject(text)
     if subject:
         try:
             object.__setattr__(snapshot, "subject", subject)

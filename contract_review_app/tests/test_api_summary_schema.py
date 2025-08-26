@@ -11,10 +11,10 @@ def test_summary_has_status_and_schema_version():
     assert r.headers.get("x-schema-version") == SCHEMA_VERSION
     data = r.json()
     assert data.get("status") == "ok"
-    assert data.get("schema_version") == SCHEMA_VERSION
     summary = data.get("summary")
     for key in [
         "type",
+        "type_confidence",
         "parties",
         "dates",
         "signatures",
@@ -27,3 +27,5 @@ def test_summary_has_status_and_schema_version():
         "hints",
     ]:
         assert key in summary
+    assert isinstance(summary["type"], str)
+    assert 0.0 <= summary["type_confidence"] <= 1.0

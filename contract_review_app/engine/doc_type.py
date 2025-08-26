@@ -2,12 +2,19 @@ from __future__ import annotations
 
 """Heuristic document type classifier."""
 
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
-from .patterns_doctype import DOC_TYPE_PATTERNS
+from .patterns_doctype import DOC_TYPE_PATTERNS as BASE_DOC_TYPE_PATTERNS
+from .patterns_contract_types import CONTRACT_TYPE_PATTERNS
 
-W_TITLE = 0.4
-W_BODY = 0.6
+DOC_TYPE_PATTERNS: Dict[str, Dict[str, Any]] = {
+    **BASE_DOC_TYPE_PATTERNS,
+    **CONTRACT_TYPE_PATTERNS,
+}
+
+W_TITLE = 0.3
+W_SUBJECT = 0.2
+W_BODY = 0.5
 
 DISPLAY_MAP = {
     "nda": "NDA",
@@ -29,6 +36,9 @@ DISPLAY_MAP = {
     "framework_calloff": "Framework Call-Off",
     "manufacturing": "Manufacturing",
     "maintenance_support": "Maintenance & Support",
+    "agency": "Agency",
+    "franchise": "Franchise",
+    "guarantee": "Guarantee",
 }
 
 
@@ -46,19 +56,21 @@ def _match_keywords(haystack: str, keywords: List[str]) -> Tuple[int, List[str]]
     return cnt, hits
 
 
-def guess_doc_type(text: str) -> Tuple[str, float, List[str], Dict[str, float]]:
+def guess_doc_type(text: str, subject: str | None = None) -> Tuple[str, float, List[str], Dict[str, float]]:
     """Return (slug, confidence, evidence_strings, score_by_type)."""
     t = text or ""
     # normalize text
     lowered = t.lower()
     lines = [ln.strip() for ln in t.splitlines() if ln.strip()]
     title = " ".join(lines[:2]).lower()
+    subj = (subject or "").lower()
 
     score_raw: Dict[str, float] = {}
     evidences: Dict[str, List[str]] = {}
 
     for slug, cfg in DOC_TYPE_PATTERNS.items():
         title_hits, title_ev = _match_keywords(title, cfg.get("title_keywords", []))
+        subject_hits, subject_ev = _match_keywords(subj, cfg.get("title_keywords", []))
         body_hits, body_ev = _match_keywords(lowered, cfg.get("body_keywords", []))
         boost = 0.0
         boost_ev: List[str] = []
@@ -66,7 +78,7 @@ def guess_doc_type(text: str) -> Tuple[str, float, List[str], Dict[str, float]]:
             if phrase.lower() in lowered:
                 boost += float(weight)
                 boost_ev.append(phrase)
-        score = W_TITLE * title_hits + W_BODY * (body_hits + boost)
+        score = W_TITLE * title_hits + W_SUBJECT * subject_hits + W_BODY * (body_hits + boost)
         must_any = cfg.get("must_have_any")
         if must_any and not any(m.lower() in lowered for m in must_any):
             score = 0.0
@@ -74,7 +86,7 @@ def guess_doc_type(text: str) -> Tuple[str, float, List[str], Dict[str, float]]:
         if negative and any(n.lower() in lowered for n in negative):
             score = 0.0
         score_raw[slug] = score
-        evidences[slug] = title_ev + body_ev + boost_ev
+        evidences[slug] = title_ev + subject_ev + body_ev + boost_ev
 
     max_score = max(score_raw.values()) if score_raw else 0.0
     score_by_type: Dict[str, float] = {}

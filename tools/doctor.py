@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 import traceback
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -33,6 +34,36 @@ ENV_VARS = [
     "AI_PROVIDER",
 ]
 IGNORED_DIRS = {".git", "node_modules", "__pycache__", ".venv", "dist", "build"}
+
+
+LOG_ENTRIES = 0
+
+
+def _log_state(path: Path, message: str) -> None:
+    """Append a timestamped message to the state log."""
+    global LOG_ENTRIES
+    timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(f"[{timestamp}] {message}\n")
+    LOG_ENTRIES += 1
+
+
+def _run_with_state(name: str, func, path: Path, *args, **kwargs):
+    """Run *func* logging START/OK/ERR states."""
+    _log_state(path, f"START {name}")
+    try:
+        result = func(*args, **kwargs)
+        extra = ""
+        if name == "llm":
+            provider = os.getenv("LLM_PROVIDER") or "unknown"
+            model = os.getenv("LLM_MODEL") or "unknown"
+            extra = f" provider={provider} model={model}"
+        _log_state(path, f"OK {name}{extra}")
+        return result
+    except Exception as exc:  # pragma: no cover - unexpected
+        _log_state(path, f"ERR {name} error={exc}")
+        return {"error": traceback.format_exc()}
 
 
 def _run_cmd(cmd: List[str]) -> str:
@@ -175,16 +206,26 @@ def gather_inventory() -> Dict[str, Any]:
     return {"files": counts, "ignored_dirs": sorted(IGNORED_DIRS)}
 
 
-def generate_report() -> Dict[str, Any]:
+def generate_report(state_log: Path | None = None) -> Dict[str, Any]:
     data: Dict[str, Any] = {}
-    data["env"] = gather_env()
-    data["git"] = gather_git()
-    backend = gather_backend()
-    data["backend"] = backend
-    data["llm"] = gather_llm(backend)
-    data["rules"] = gather_rules()
-    data["addin"] = gather_addin()
-    data["inventory"] = gather_inventory()
+    if state_log is None:
+        data["env"] = gather_env()
+        data["git"] = gather_git()
+        backend = gather_backend()
+        data["backend"] = backend
+        data["llm"] = gather_llm(backend)
+        data["rules"] = gather_rules()
+        data["addin"] = gather_addin()
+        data["inventory"] = gather_inventory()
+    else:
+        data["env"] = _run_with_state("env", gather_env, state_log)
+        data["git"] = _run_with_state("git", gather_git, state_log)
+        backend = _run_with_state("backend", gather_backend, state_log)
+        data["backend"] = backend
+        data["llm"] = _run_with_state("llm", gather_llm, state_log, backend)
+        data["rules"] = _run_with_state("rules", gather_rules, state_log)
+        data["addin"] = _run_with_state("addin", gather_addin, state_log)
+        data["inventory"] = _run_with_state("inventory", gather_inventory, state_log)
     return data
 
 
@@ -197,7 +238,18 @@ def main(argv: List[str] | None = None) -> int:
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    data = generate_report()
+    state_log = out_dir / "state.log"
+
+    global LOG_ENTRIES
+    LOG_ENTRIES = 0
+
+    data = generate_report(state_log)
+
+    try:
+        state_path_str = str(state_log.relative_to(ROOT))
+    except Exception:
+        state_path_str = str(state_log)
+    data["state_log"] = {"path": state_path_str, "entries": LOG_ENTRIES}
 
     if args.json:
         (out_dir / "analysis.json").write_text(

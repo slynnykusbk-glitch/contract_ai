@@ -15,3 +15,8 @@ def test_doctor_generates_report(tmp_path, monkeypatch):
     eps = {(e.get("method"), e.get("path")) for e in data["backend"].get("endpoints", [])}
     assert ("POST", "/api/analyze") in eps
     assert data["rules"]["python"]["count"] >= 8
+    rt = data.get("runtime", {})
+    assert rt.get("health", {}).get("status") == 200
+    assert rt.get("openapi", {}).get("status") == 200
+    assert rt["health"]["ms"] >= 0
+    assert rt["openapi"]["ms"] >= 0

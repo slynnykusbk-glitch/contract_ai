@@ -100,6 +100,27 @@ def gather_backend() -> Dict[str, Any]:
 def gather_llm(backend: Dict[str, Any]) -> Dict[str, Any]:
     info: Dict[str, Any] = {}
     try:
+        provider = os.getenv("LLM_PROVIDER", "")
+        model = os.getenv("LLM_MODEL", "")
+        timeout_raw = os.getenv("LLM_TIMEOUT", "")
+        try:
+            timeout_s = int(timeout_raw) if timeout_raw else 5
+        except ValueError:
+            timeout_s = 5
+        mode_is_mock = (not provider and not model) or provider == "mock" or model == "mock"
+        if not provider and not model:
+            provider = "mock"
+            model = "mock"
+            timeout_s = 5
+        info.update(
+            {
+                "provider": provider,
+                "model": model,
+                "timeout_s": timeout_s,
+                "mode_is_mock": mode_is_mock,
+            }
+        )
+
         clients_dir = ROOT / "contract_review_app" / "gpt" / "clients"
         providers: List[str] = []
         if clients_dir.exists():

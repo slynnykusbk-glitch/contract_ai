@@ -136,6 +136,34 @@ def gather_llm(backend: Dict[str, Any]) -> Dict[str, Any]:
     return info
 
 
+def gather_service() -> Dict[str, Any]:
+    info: Dict[str, Any] = {"exports": {}}
+    try:
+        import contract_review_app.gpt.service as svc  # type: ignore
+
+        names = [
+            "LLMService",
+            "load_llm_config",
+            "ProviderTimeoutError",
+            "ProviderConfigError",
+        ]
+        info["exports"] = {name: hasattr(svc, name) for name in names}
+    except Exception:
+        info["error"] = traceback.format_exc()
+    return info
+
+
+def gather_api() -> Dict[str, Any]:
+    info: Dict[str, Any] = {}
+    try:
+        import contract_review_app.api.app as app_mod  # type: ignore
+
+        info["has__analyze_document"] = hasattr(app_mod, "_analyze_document")
+    except Exception:
+        info["error"] = traceback.format_exc()
+    return info
+
+
 def gather_rules() -> Dict[str, Any]:
     info: Dict[str, Any] = {
         "python": {"count": 0, "names": []},
@@ -203,6 +231,8 @@ def generate_report() -> Dict[str, Any]:
     backend = gather_backend()
     data["backend"] = backend
     data["llm"] = gather_llm(backend)
+    data["service"] = gather_service()
+    data["api"] = gather_api()
     data["rules"] = gather_rules()
     data["addin"] = gather_addin()
     data["inventory"] = gather_inventory()

@@ -45,11 +45,7 @@ def gather_env() -> Dict[str, Any]:
         "pythonpath": os.getenv("PYTHONPATH", ""),
     }
     try:
-        out = subprocess.run(
-            [sys.executable, "-m", "pip", "freeze"],
-            capture_output=True, text=True, check=False, cwd=str(ROOT)
-        )
-        info["pip_freeze"] = out.stdout.splitlines()
+        info["pip_freeze"] = _run_cmd([sys.executable, "-m", "pip", "freeze"]).splitlines()
     except Exception:
         info["pip_freeze_error"] = traceback.format_exc()
     return info
@@ -61,6 +57,27 @@ def gather_git() -> Dict[str, Any]:
         info["branch"] = _run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"])
         info["head"] = _run_cmd(["git", "rev-parse", "HEAD"])
         info["status"] = _run_cmd(["git", "status", "-sb"])
+    except Exception:
+        info["error"] = traceback.format_exc()
+    return info
+
+
+def gather_precommit() -> Dict[str, Any]:
+    info: Dict[str, Any] = {"config_exists": False, "hooks": []}
+    try:
+        cfg = ROOT / ".pre-commit-config.yaml"
+        if cfg.exists():
+            info["config_exists"] = True
+            import yaml  # type: ignore
+
+            data = yaml.safe_load(cfg.read_text()) or {}
+            hooks: List[str] = []
+            for repo in data.get("repos", []):
+                for hook in repo.get("hooks", []):
+                    hook_id = hook.get("id")
+                    if hook_id:
+                        hooks.append(hook_id)
+            info["hooks"] = hooks
     except Exception:
         info["error"] = traceback.format_exc()
     return info
@@ -85,7 +102,9 @@ def gather_backend() -> Dict[str, Any]:
             except Exception:
                 pass
             for m in methods:
-                info["endpoints"].append({"method": m, "path": path, "file": file, "lineno": lineno})
+                info["endpoints"].append(
+                    {"method": m, "path": path, "file": file, "lineno": lineno}
+                )
     except Exception:
         info["error"] = traceback.format_exc()
     return info
@@ -165,10 +184,7 @@ def gather_rules() -> Dict[str, Any]:
 
 
 def gather_addin() -> Dict[str, Any]:
-    info: Dict[str, Any] = {
-        "manifest": {"exists": False},
-        "bundle": {"exists": False},
-    }
+    info: Dict[str, Any] = {"manifest": {"exists": False}, "bundle": {"exists": False}}
     try:
         manifest_path = ROOT / "word_addin_dev" / "manifest.xml"
         manifest_info: Dict[str, Any] = {"exists": False}
@@ -176,19 +192,16 @@ def gather_addin() -> Dict[str, Any]:
             manifest_info["exists"] = True
             try:
                 import xml.etree.ElementTree as ET
+
                 tree = ET.parse(manifest_path)
                 root = tree.getroot()
                 ns = {"n": root.tag.split("}")[0].strip("{")}
                 manifest_info["id"] = root.findtext("n:Id", default="", namespaces=ns)
                 manifest_info["version"] = root.findtext("n:Version", default="", namespaces=ns)
-                source = root.find(
-                    "n:DefaultSettings/n:SourceLocation", namespaces=ns
-                )
+                source = root.find("n:DefaultSettings/n:SourceLocation", namespaces=ns)
                 if source is not None:
                     manifest_info["source"] = source.get("DefaultValue")
-                permissions = root.findtext(
-                    "n:Permissions", default="", namespaces=ns
-                )
+                permissions = root.findtext("n:Permissions", default="", namespaces=ns)
                 if permissions:
                     manifest_info["permissions"] = permissions
             except Exception:
@@ -207,9 +220,7 @@ def gather_addin() -> Dict[str, Any]:
                 bundle_info = {
                     "exists": True,
                     "size": st.st_size,
-                    "mtime": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc)
-                    .isoformat()
-                    .replace("+00:00", "Z"),
+                    "mtime": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat().replace("+00:00", "Z"),
                 }
         info["bundle"] = bundle_info
     except Exception:
@@ -374,6 +385,7 @@ def generate_report() -> Dict[str, Any]:
     data: Dict[str, Any] = {}
     data["env"] = gather_env()
     data["git"] = gather_git()
+    data["precommit"] = gather_precommit()
     backend = gather_backend()
     data["backend"] = backend
     data["llm"] = gather_llm(backend)
@@ -403,7 +415,11 @@ def main(argv: List[str] | None = None) -> int:
     if args.json:
         (out_dir / "analysis.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     if args.html:
-        html = "<html><body><pre>" + json.dumps(data, indent=2, ensure_ascii=False) + "</pre></body></html>"
+        html = (
+            "<html><body><pre>"
+            + json.dumps(data, indent=2, ensure_ascii=False)
+            + "</pre></body></html>"
+        )
         (out_dir / "analysis.html").write_text(html, encoding="utf-8")
     return 0
 

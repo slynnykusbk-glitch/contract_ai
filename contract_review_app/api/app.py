@@ -644,6 +644,9 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
         cached = IDEMPOTENT_CACHE.get(key)
     if cached is not None:
         _set_std_headers(response, cid=cid, xcache="hit", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        # guaranteed summary on root
+        if "document" in cached and isinstance(cached["document"], dict):
+            cached["summary"] = cached["document"].get("summary", cached.get("summary", {}))
         return cached
 
     result = await _analyze_document(model.text or "")
@@ -667,6 +670,9 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
         IDEMPOTENT_CACHE.put(key, result)
 
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+    # guaranteed summary on root
+    if "document" in result and isinstance(result["document"], dict):
+        result["summary"] = result["document"].get("summary", result.get("summary", {}))
     return result
 
 
@@ -680,8 +686,12 @@ async def api_summary_get(response: Response, mode: Optional[str] = None):
     _set_schema_headers(response)
     snap = extract_document_snapshot("")
     snap.rules_count = _discover_rules_count()
+    resp = {"status": "ok", "summary": snap.model_dump()}
     _set_std_headers(response, cid="summary:get", xcache="miss", schema=SCHEMA_VERSION)
-    return {"status": "ok", "summary": snap.model_dump()}
+    # guaranteed summary on root
+    if "document" in resp and isinstance(resp["document"], dict):
+        resp["summary"] = resp["document"].get("summary", resp.get("summary", {}))
+    return resp
 
 
 @router.post("/api/summary")
@@ -711,6 +721,9 @@ async def api_summary_post(
     _set_std_headers(
         response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0
     )
+    # guaranteed summary on root
+    if "document" in envelope and isinstance(envelope["document"], dict):
+        envelope["summary"] = envelope["document"].get("summary", envelope.get("summary", {}))
     return envelope
 
 

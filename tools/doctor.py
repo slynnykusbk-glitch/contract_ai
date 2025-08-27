@@ -64,7 +64,9 @@ def _run_with_state(name: str, func, path: Path, *args, **kwargs):
 # ---------- helpers & gatherers ----------
 def _run_cmd(cmd: List[str]) -> str:
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, check=False, cwd=str(ROOT))
+        res = subprocess.run(
+            cmd, capture_output=True, text=True, check=False, cwd=str(ROOT)
+        )
         return res.stdout.strip()
     except Exception:
         return traceback.format_exc()
@@ -77,7 +79,9 @@ def gather_env() -> Dict[str, Any]:
         "pythonpath": os.getenv("PYTHONPATH", ""),
     }
     try:
-        info["pip_freeze"] = _run_cmd([sys.executable, "-m", "pip", "freeze"]).splitlines()
+        info["pip_freeze"] = _run_cmd(
+            [sys.executable, "-m", "pip", "freeze"]
+        ).splitlines()
     except Exception:
         info["pip_freeze_error"] = traceback.format_exc()
     return info
@@ -134,7 +138,9 @@ def gather_backend() -> Dict[str, Any]:
             except Exception:
                 pass
             for m in methods:
-                info["endpoints"].append({"method": m, "path": path, "file": file, "lineno": lineno})
+                info["endpoints"].append(
+                    {"method": m, "path": path, "file": file, "lineno": lineno}
+                )
     except Exception:
         info["error"] = traceback.format_exc()
     return info
@@ -151,11 +157,20 @@ def gather_llm(backend: Dict[str, Any]) -> Dict[str, Any]:
         except ValueError:
             timeout_s = 5
 
-        mode_is_mock = (not provider and not model) or provider == "mock" or model == "mock"
+        mode_is_mock = (
+            (not provider and not model) or provider == "mock" or model == "mock"
+        )
         if not provider and not model:
             provider, model, timeout_s = "mock", "mock", 5
 
-        info.update({"provider": provider, "model": model, "timeout_s": timeout_s, "node_is_mock": mode_is_mock})
+        info.update(
+            {
+                "provider": provider,
+                "model": model,
+                "timeout_s": timeout_s,
+                "node_is_mock": mode_is_mock,
+            }
+        )
 
         clients_dir = ROOT / "contract_review_app" / "gpt" / "clients"
         providers: List[str] = []
@@ -177,7 +192,13 @@ def gather_service() -> Dict[str, Any]:
     info: Dict[str, Any] = {"exports": {}}
     try:
         import contract_review_app.gpt.service as svc  # type: ignore
-        names = ["LLMService", "load_llm_config", "ProviderTimeoutError", "ProviderConfigError"]
+
+        names = [
+            "LLMService",
+            "load_llm_config",
+            "ProviderTimeoutError",
+            "ProviderConfigError",
+        ]
         info["exports"] = {name: hasattr(svc, name) for name in names}
     except Exception:
         info["error"] = traceback.format_exc()
@@ -188,6 +209,7 @@ def gather_api() -> Dict[str, Any]:
     info: Dict[str, Any] = {}
     try:
         import contract_review_app.api.app as app_mod  # type: ignore
+
         info["has__analyze_document"] = hasattr(app_mod, "_analyze_document")
     except Exception:
         info["error"] = traceback.format_exc()
@@ -195,17 +217,21 @@ def gather_api() -> Dict[str, Any]:
 
 
 def gather_rules() -> Dict[str, Any]:
-    info: Dict[str, Any] = {"python": {"count": 0, "samples": []}, "yaml": {"count": 0, "samples": []}}
+    info: Dict[str, Any] = {
+        "python": {"count": 0, "samples": []},
+        "yaml": {"count": 0, "samples": []},
+    }
     try:
         from contract_review_app.legal_rules.rules import registry  # type: ignore
+
         keys = sorted(registry.keys())
         info["python"] = {"count": len(keys), "samples": keys[:8]}
 
         yaml_dir = ROOT / "contract_review_app" / "legal_rules" / "policy_packs"
         if yaml_dir.exists():
-            yaml_files = [p.relative_to(yaml_dir).as_posix() for p in yaml_dir.rglob("*.yml")] + [
-                p.relative_to(yaml_dir).as_posix() for p in yaml_dir.rglob("*.yaml")
-            ]
+            yaml_files = [
+                p.relative_to(yaml_dir).as_posix() for p in yaml_dir.rglob("*.yml")
+            ] + [p.relative_to(yaml_dir).as_posix() for p in yaml_dir.rglob("*.yaml")]
             yaml_files = sorted(set(yaml_files))
             info["yaml"] = {"count": len(yaml_files), "samples": yaml_files[:8]}
     except Exception:
@@ -227,7 +253,9 @@ def gather_addin() -> Dict[str, Any]:
                 root = tree.getroot()
                 ns = {"n": root.tag.split("}")[0].strip("{")}
                 manifest_info["id"] = root.findtext("n:Id", default="", namespaces=ns)
-                manifest_info["version"] = root.findtext("n:Version", default="", namespaces=ns)
+                manifest_info["version"] = root.findtext(
+                    "n:Version", default="", namespaces=ns
+                )
                 source = root.find("n:DefaultSettings/n:SourceLocation", namespaces=ns)
                 if source is not None:
                     manifest_info["source"] = source.get("DefaultValue")
@@ -250,7 +278,9 @@ def gather_addin() -> Dict[str, Any]:
                 bundle_info = {
                     "exists": True,
                     "size": st.st_size,
-                    "mtime": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat().replace("+00:00", "Z"),
+                    "mtime": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc)
+                    .isoformat()
+                    .replace("+00:00", "Z"),
                 }
         info["bundle"] = bundle_info
     except Exception:
@@ -309,26 +339,52 @@ def _has_mypy_config(root: Path) -> bool:
 
 def gather_quality() -> Dict[str, Any]:
     info: Dict[str, Any] = {"ruff": {}, "mypy": {}}
+    # --- Ruff: cross-version counting via --statistics ---
     try:
         res = subprocess.run(
-            [sys.executable, "-m", "ruff", "check", str(ROOT), "--format", "json", "--quiet"],
+            [
+                sys.executable,
+                "-m",
+                "ruff",
+                "check",
+                ".",
+                "--quiet",
+                "--exit-zero",
+                "--statistics",
+            ],
             capture_output=True,
             text=True,
             cwd=str(ROOT),
             check=False,
         )
-        if res.returncode not in (0, 1):
-            info["ruff"] = {"status": "error", "issues_total": None, "error": res.stderr.strip()}
-        else:
-            issues = json.loads(res.stdout or "[]")
-            info["ruff"] = {"status": "ok", "issues_total": len(issues)}
+        total = 0
+        for line in (res.stdout or "").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            m = re.match(r"^\s*(\d+)\b", line)
+            if m:
+                total += int(m.group(1))
+        info["ruff"] = {"status": "ok", "issues_total": total}
     except Exception:
-        info["ruff"] = {"status": "error", "issues_total": None, "error": traceback.format_exc()}
+        info["ruff"] = {
+            "status": "error",
+            "issues_total": None,
+            "error": traceback.format_exc(),
+        }
 
+    # --- mypy: only if config exists ---
     if _has_mypy_config(ROOT):
         try:
             res = subprocess.run(
-                [sys.executable, "-m", "mypy", "contract_review_app"],
+                [
+                    sys.executable,
+                    "-m",
+                    "mypy",
+                    "contract_review_app",
+                    "--hide-error-context",
+                    "--no-error-summary",
+                ],
                 capture_output=True,
                 text=True,
                 cwd=str(ROOT),
@@ -340,27 +396,45 @@ def gather_quality() -> Dict[str, Any]:
             status = "ok" if res.returncode in (0, 1) else "error"
             info["mypy"] = {"status": status, "errors_total": total}
         except Exception:
-            info["mypy"] = {"status": "error", "errors_total": None, "error": traceback.format_exc()}
+            info["mypy"] = {
+                "status": "error",
+                "errors_total": None,
+                "error": traceback.format_exc(),
+            }
     else:
         info["mypy"] = {"status": "skipped", "errors_total": 0}
+
     return info
 
 
 def gather_smoke() -> Dict[str, Any]:
-    """Optionally run a small pytest subset and record a summary."""
+    """Optionally run a small pytest subset and record a summary.
+
+    Enabled by default, unless DOCTOR_SMOKE == "0".
+    Recursion guard: DOCTOR_SMOKE_ACTIVE == "1".
+    """
     info: Dict[str, Any] = {"enabled": False, "passed": 0, "failed": 0, "skipped": 0}
+
     if os.getenv("DOCTOR_SMOKE_ACTIVE") == "1":
         return info
-    if os.getenv("DOCTOR_RUN_SMOKE") != "1":
+
+    if os.getenv("DOCTOR_SMOKE", "1") == "0":
         return info
+
     info["enabled"] = True
     try:
         env = os.environ.copy()
-        env.pop("DOCTOR_RUN_SMOKE", None)
         env["DOCTOR_SMOKE_ACTIVE"] = "1"
+        env.pop("DOCTOR_SMOKE", None)
+
         cmd = [sys.executable, "-m", "pytest", "-q", "tests/codex"]
-        res = subprocess.run(cmd, capture_output=True, text=True, check=False, cwd=str(ROOT), env=env)
-        clean = re.sub(r"\x1b\[[0-9;]*m", "", res.stdout + "\n" + res.stderr)
+        res = subprocess.run(
+            cmd, capture_output=True, text=True, check=False, cwd=str(ROOT), env=env
+        )
+        clean = re.sub(
+            r"\x1b\[[0-9;]*m", "", (res.stdout or "") + "\n" + (res.stderr or "")
+        )
+
         mp = re.search(r"(\d+)\s+passed", clean)
         mf = re.search(r"(\d+)\s+failed", clean)
         ms = re.search(r"(\d+)\s+skipped", clean)
@@ -370,6 +444,8 @@ def gather_smoke() -> Dict[str, Any]:
             info["failed"] = int(mf.group(1))
         if ms:
             info["skipped"] = int(ms.group(1))
+
+        # fallback: progress line like ".F.s["
         if not (mp or mf or ms):
             prog = re.search(r"([\.FEsx]+)\s*\[", clean or "")
             if prog:
@@ -379,6 +455,7 @@ def gather_smoke() -> Dict[str, Any]:
                 info["skipped"] = p.count("s")
     except Exception:
         info["error"] = traceback.format_exc()
+
     return info
 
 
@@ -419,7 +496,13 @@ def generate_report(state_log: Path | None = None) -> Dict[str, Any]:
         data["precommit"] = gather_precommit()
         backend = gather_backend()
         data["backend"] = backend
-        data["llm"] = gather_llm(backend)
+        llm = gather_llm(backend)
+        data["llm"] = llm
+
+        # --- Backward-compat: duplicate LLM keys into env ---
+        for k in ("provider", "model", "timeout_s", "node_is_mock"):
+            data["env"][k] = llm.get(k)
+
         data["service"] = gather_service()
         data["api"] = gather_api()
         data["rules"] = gather_rules()
@@ -435,7 +518,13 @@ def generate_report(state_log: Path | None = None) -> Dict[str, Any]:
         data["precommit"] = _run_with_state("precommit", gather_precommit, state_log)
         backend = _run_with_state("backend", gather_backend, state_log)
         data["backend"] = backend
-        data["llm"] = _run_with_state("llm", gather_llm, state_log, backend)
+        llm = _run_with_state("llm", gather_llm, state_log, backend)
+        data["llm"] = llm
+
+        # --- Backward-compat: duplicate LLM keys into env ---
+        for k in ("provider", "model", "timeout_s", "node_is_mock"):
+            data["env"][k] = llm.get(k)
+
         data["service"] = _run_with_state("service", gather_service, state_log)
         data["api"] = _run_with_state("api", gather_api, state_log)
         data["rules"] = _run_with_state("rules", gather_rules, state_log)
@@ -471,9 +560,15 @@ def main(argv: List[str] | None = None) -> int:
     data["state_log"] = {"path": state_path_str, "entries": LOG_ENTRIES}
 
     if args.json:
-        (out_dir / "analysis.json").write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        (out_dir / "analysis.json").write_text(
+            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
     if args.html:
-        html = "<html><body><pre>" + json.dumps(data, indent=2, ensure_ascii=False) + "</pre></body></html>"
+        html = (
+            "<html><body><pre>"
+            + json.dumps(data, indent=2, ensure_ascii=False)
+            + "</pre></body></html>"
+        )
         (out_dir / "analysis.html").write_text(html, encoding="utf-8")
     return 0
 

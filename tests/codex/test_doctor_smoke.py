@@ -27,7 +27,9 @@ def test_doctor_generates_report(tmp_path, monkeypatch):
     assert "backend" in data and "rules" in data and "env" in data
 
     # інвентар ендпоінтів
-    eps = {(e.get("method"), e.get("path")) for e in data["backend"].get("endpoints", [])}
+    eps = {
+        (e.get("method"), e.get("path")) for e in data["backend"].get("endpoints", [])
+    }
     assert ("POST", "/api/analyze") in eps
 
     # summary по rules/registry
@@ -50,22 +52,23 @@ def test_doctor_generates_report(tmp_path, monkeypatch):
         assert key in data["env"], f"missing LLM {key}"
 
 
-def test_smoke_disabled_by_default(tmp_path, monkeypatch):
-    monkeypatch.delenv("DOCTOR_RUN_SMOKE", raising=False)
-    data = _run_doctor(tmp_path, monkeypatch)
-    smoke = data["smoke"]
-    assert smoke["enabled"] is False
-    assert smoke["passed"] == 0
-    assert smoke["failed"] == 0
-    assert smoke["skipped"] == 0
-
-
 @pytest.mark.skipif(os.getenv("DOCTOR_SMOKE_ACTIVE") == "1", reason="avoid recursion")
-def test_smoke_enabled_runs_tests(tmp_path, monkeypatch):
-    # вмикаємо smoke-режим виконання частини тестів усередині doctor
-    monkeypatch.setenv("DOCTOR_RUN_SMOKE", "1")
+def test_smoke_enabled_by_default(tmp_path, monkeypatch):
+    monkeypatch.delenv("DOCTOR_SMOKE", raising=False)
     data = _run_doctor(tmp_path, monkeypatch)
     smoke = data["smoke"]
     assert smoke["enabled"] is True
     assert smoke["failed"] == 0
     assert smoke["passed"] > 0
+
+
+@pytest.mark.skipif(os.getenv("DOCTOR_SMOKE_ACTIVE") == "1", reason="avoid recursion")
+def test_smoke_can_be_disabled(tmp_path, monkeypatch):
+    # вимикаємо smoke-режим
+    monkeypatch.setenv("DOCTOR_SMOKE", "0")
+    data = _run_doctor(tmp_path, monkeypatch)
+    smoke = data["smoke"]
+    assert smoke["enabled"] is False
+    assert smoke["failed"] == 0
+    assert smoke["passed"] == 0
+    assert smoke["skipped"] == 0

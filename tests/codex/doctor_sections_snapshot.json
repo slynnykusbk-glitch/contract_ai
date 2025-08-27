@@ -6,14 +6,27 @@
   },
   "llm": {
     "has_draft_endpoint": "bool",
+    "model": "str",
+    "node_is_mock": "bool",
+    "provider": "str",
     "providers_detected": [
       "str"
-    ]
+    ],
+    "timeout_s": "int"
   },
   "addin": {
-    "cert": "str",
-    "manifest": "str",
-    "taskpane": "str"
+    "bundle": {
+      "exists": "bool",
+      "mtime": "str",
+      "size": "int"
+    },
+    "manifest": {
+      "exists": "bool",
+      "id": "str",
+      "permissions": "str",
+      "source": "str",
+      "version": "str"
+    }
   },
   "inventory": {
     "files": {

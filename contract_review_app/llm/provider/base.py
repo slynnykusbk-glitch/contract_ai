@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any, Dict
 
 
 @dataclass
@@ -18,6 +19,8 @@ class LLMConfig:
 class LLMResult:
     text: str
     provider: str
+    model: str = "mock-legal-v1"
+    usage: Dict[str, Any] = field(default_factory=dict)
 
 
 class LLMProvider:

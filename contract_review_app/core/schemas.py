@@ -182,7 +182,7 @@ class Citation(AppBaseModel):
     url: Optional[AnyUrl] = None
     title: Optional[str] = None
     source: Optional[str] = None
-    link: Optional[AnyUrl] = None
+    link: Optional[str] = None
     score: Optional[float] = None
     evidence_text: Optional[str] = None
 
@@ -194,10 +194,13 @@ class Citation(AppBaseModel):
         try:
             fv = float(v)
         except Exception:
-            raise ValueError("Citation.score must be a float")
-        if fv < 0.0 or fv > 1.0:
-            raise ValueError("Citation.score must be between 0.0 and 1.0")
-        return fv
+            return None
+        return fv if 0.0 <= fv <= 1.0 else None
+
+    @field_validator("link", mode="before")
+    @classmethod
+    def _link_str(cls, v):
+        return None if v is None else str(v)
 
 class CrossRef(AppBaseModel):
     """

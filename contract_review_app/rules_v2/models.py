@@ -23,19 +23,19 @@ class FindingV2(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # identity & grouping
-    id: str
-    pack: str
-    rule_id: str
+    id: str = ""
+    pack: str = ""
+    rule_id: str = ""
 
     # i18n text
     title: Dict[str, str]
-    message: Dict[str, str]
-    explain: Dict[str, str]
-    suggestion: Dict[str, str]
+    message: Dict[str, str] = Field(default_factory=lambda: {"en": ""})
+    explain: Dict[str, str] = Field(default_factory=lambda: {"en": ""})
+    suggestion: Dict[str, str] = Field(default_factory=lambda: {"en": ""})
 
     # classification
-    severity: Literal["High", "Medium", "Low"]
-    category: str
+    severity: Literal["High", "Medium", "Low"] = "Low"
+    category: str = "General"
 
     # evidence & refs
     evidence: List[str] = Field(default_factory=list)
@@ -44,14 +44,28 @@ class FindingV2(BaseModel):
 
     # misc/meta
     meta: Dict[str, Any] = Field(default_factory=dict)
-    version: str
+    version: str = "2.0.0"
     engine_version: str = ENGINE_VERSION
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @field_validator("title", "message", "explain", "suggestion")
     @classmethod
-    def _ensure_en(cls, v: Dict[str, str]) -> Dict[str, str]:
-        # enforce minimal i18n contract: 'en' must be present and non-empty
-        if "en" not in v or not isinstance(v["en"], str) or not v["en"].strip():
+    def _ensure_en(cls, v: Dict[str, str], info) -> Dict[str, str]:
+        if "en" not in v or not isinstance(v["en"], str):
+            raise ValueError("missing 'en' localization")
+        if info.field_name == "title" and not v["en"].strip():
             raise ValueError("missing 'en' localization")
         return v
+
+    def localize(self, prefer: str = "en") -> Dict[str, str]:
+        from .i18n import resolve_locale
+
+        return {
+            "title": resolve_locale(self.title, prefer=prefer),
+            "message": resolve_locale(self.message, prefer=prefer),
+            "explain": resolve_locale(self.explain, prefer=prefer),
+            "suggestion": resolve_locale(self.suggestion, prefer=prefer),
+        }
+
+    def has_locale(self, lang: str) -> bool:
+        return all(lang in d for d in (self.title, self.message, self.explain, self.suggestion))

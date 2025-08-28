@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List
 
-from contract_review_app.rules_v2.i18n import resolve_locale
 from contract_review_app.rules_v2.models import ENGINE_VERSION, FindingV2
 
 
@@ -83,11 +82,12 @@ def adapt_finding_v1_to_v2(v1: Any, *, pack: str, rule_id: str) -> FindingV2:
 
     now = datetime.now(timezone.utc)
 
-    locale = resolve_locale()
+    locale = "en"
     title = {locale: code, "uk": code}
     message = {locale: msg or code, "uk": msg or code}
-    explain = {locale: "", "uk": ""}
-    suggestion = {locale: "", "uk": ""}
+    base_txt = msg or code
+    explain = {locale: base_txt, "uk": base_txt}
+    suggestion = {locale: base_txt, "uk": base_txt}
 
     f2 = FindingV2(
         id=code,

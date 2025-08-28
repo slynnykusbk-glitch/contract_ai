@@ -1,0 +1,25 @@
+codex_mode: strict
+
+blocks:
+  B1: "Citations v1: schema, resolver/normalizer, block tests"
+  B2: "Intake & normalization: multilang/script invariants"
+  B3: "Rule Engine v2: HYBRID/YAML; FindingV2 dataclass"
+  B4: "LLM Orchestrator + GPT-Proxy: deterministic LLMResult; back-compat positional args"
+
+tests:
+  - 'pytest -q contract_review_app/tests/intake --maxfail=1'
+  - 'pytest -q contract_review_app/tests/llm -k "provider or orchestrator or proxy" --maxfail=1'
+  - 'pytest -q contract_review_app/tests/rules_v2 --maxfail=1'
+  - 'pytest -q contract_review_app/tests/test_citations_block1.py --maxfail=1'
+  - 'pytest -q tests/codex/test_citations_doctor.py --maxfail=1'
+
+guardrails:
+  - 'No ruff/black errors; no SyntaxError/NameError.'
+  - 'Deterministic outputs where asserted.'
+  - 'Orchestrator returns LLMResult; supports positional ("Q","C") and kwargs.'
+  - 'Loader supports HYBRID (py+yaml) and safe YAML preprocessing.'
+  - 'FindingV2 is a @dataclass.'
+
+resources:
+  - 'meta/blocks/*.docx'
+  - 'meta/blocks/ACCEPTANCE.yaml'

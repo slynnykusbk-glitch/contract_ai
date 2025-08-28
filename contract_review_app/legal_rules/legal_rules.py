@@ -1,33 +1,50 @@
 """legal_rules.py — dispatcher/normalizers + registry helpers (fixed)."""
+
 from __future__ import annotations
-from typing import Any, Dict, List, Union, Iterable
+from typing import Any, Dict, List, Union, Iterable, TYPE_CHECKING
 
 # ✅ Правильний імпорт реєстру (root)
 from contract_review_app.legal_rules import registry
 
-try:
+if TYPE_CHECKING:
     from contract_review_app.core.schemas import (
         AnalysisInput,
         AnalysisOutput,
         Finding,
         Diagnostic,
         Suggestion,
+        Citation,
     )
-except Exception:
-    class AnalysisInput(dict):
-        pass
+else:  # pragma: no cover
+    try:
+        from contract_review_app.core.schemas import (
+            AnalysisInput,
+            AnalysisOutput,
+            Finding,
+            Diagnostic,
+            Suggestion,
+            Citation,
+        )
+    except Exception:  # pragma: no cover
 
-    class AnalysisOutput(dict):
-        pass
+        class AnalysisInput(dict):
+            pass
 
-    class Finding(dict):
-        pass
+        class AnalysisOutput(dict):
+            pass
 
-    class Diagnostic(dict):
-        pass
+        class Finding(dict):
+            pass
 
-    class Suggestion(dict):
-        pass
+        class Diagnostic(dict):
+            pass
+
+        class Suggestion(dict):
+            pass
+
+        class Citation(dict):
+            pass
+
 
 def list_rule_names() -> List[str]:
     """
@@ -38,6 +55,7 @@ def list_rule_names() -> List[str]:
     except Exception:
         names = []
     return sorted(str(n).strip().lower() for n in names)
+
 
 def normalize_clause_type(val: str, allowed: Iterable[str] | None = None) -> str | None:
     v = (val or "").strip().lower()
@@ -53,15 +71,79 @@ def normalize_clause_type(val: str, allowed: Iterable[str] | None = None) -> str
     pool = set(a.lower() for a in (allowed or list_rule_names()))
     return v if v in pool else None
 
+
 _ALLOWED_SEVERITIES = {"info", "minor", "major", "critical"}
+
 
 def _coerce_severity(val: Any) -> str:
     s = str(val or "").strip().lower()
-    mapping = {"low":"minor","medium":"major","high":"critical",
-               "warn":"minor","warning":"minor","error":"critical","fatal":"critical",
-               "sev1":"critical","sev2":"major","sev3":"minor","sev0":"info"}
+    mapping = {
+        "low": "minor",
+        "medium": "major",
+        "high": "critical",
+        "warn": "minor",
+        "warning": "minor",
+        "error": "critical",
+        "fatal": "critical",
+        "sev1": "critical",
+        "sev2": "major",
+        "sev3": "minor",
+        "sev0": "info",
+    }
     s2 = mapping.get(s, s)
     return s2 if s2 in _ALLOWED_SEVERITIES else "minor"
+
+
+def _coerce_citations(obj: Any) -> List[Citation]:
+    """Normalize citations into a list of Citation objects."""
+    if obj is None:
+        return []
+    items = obj if isinstance(obj, list) else [obj]
+    out: List[Citation] = []
+    for it in items:
+        try:
+            if it is None:
+                continue
+            if isinstance(it, Citation):
+                out.append(it)
+                continue
+            if isinstance(it, str):
+                out.append(Citation(instrument=it, section="", system="UK"))
+                continue
+            if isinstance(it, dict):
+                system = it.get("system", "UK")
+                instrument = (
+                    it.get("instrument") or it.get("title") or it.get("source") or ""
+                )
+                section = it.get("section", "")
+                url = it.get("url") or it.get("link")
+                data: Dict[str, Any] = {
+                    "system": system,
+                    "instrument": str(instrument),
+                    "section": str(section),
+                }
+                if url:
+                    data["url"] = url
+                score = it.get("score")
+                if score is not None:
+                    try:
+                        s = float(score)
+                        if s < 0:
+                            s = 0.0
+                        elif s > 1:
+                            s = 1.0
+                        data["score"] = s
+                    except Exception:
+                        pass
+                evidence_text = it.get("evidence_text")
+                if evidence_text is not None:
+                    data["evidence_text"] = evidence_text
+                out.append(Citation(**data))
+                continue
+        except Exception:
+            continue
+    return out
+
 
 def _normalize_findings(raw: Union[None, List[Any]]) -> List[Finding]:
     if not raw:
@@ -80,7 +162,7 @@ def _normalize_findings(raw: Union[None, List[Any]]) -> List[Finding]:
                         severity=sev,
                         evidence=getattr(it, "evidence", None),
                         span=getattr(it, "span", None),
-                        citations=getattr(it, "citations", []),
+                        citations=_coerce_citations(getattr(it, "citations", [])),
                         tags=getattr(it, "tags", []),
                         legal_basis=getattr(it, "legal_basis", []),
                     )
@@ -90,16 +172,14 @@ def _normalize_findings(raw: Union[None, List[Any]]) -> List[Finding]:
                 d["severity"] = _coerce_severity(
                     d.get("severity", d.get("severity_level"))
                 )
+                d["citations"] = _coerce_citations(d.get("citations"))
                 out.append(Finding(**d))
             else:
-                out.append(
-                    Finding(code="GEN", message=str(it), severity="minor")
-                )
+                out.append(Finding(code="GEN", message=str(it), severity="minor"))
         except Exception:
-            out.append(
-                Finding(code="GEN_ERR", message=str(it), severity="minor")
-            )
+            out.append(Finding(code="GEN_ERR", message=str(it), severity="minor"))
     return out
+
 
 def _normalize_diagnostics(raw: Union[None, List[Any]]) -> List[Diagnostic]:
     if not raw:
@@ -109,9 +189,7 @@ def _normalize_diagnostics(raw: Union[None, List[Any]]) -> List[Diagnostic]:
         if isinstance(item, Diagnostic):
             out.append(item)
         elif isinstance(item, str):
-            out.append(
-                Diagnostic(rule="ENGINE", message=item, severity="info")
-            )
+            out.append(Diagnostic(rule="ENGINE", message=item, severity="info"))
         elif isinstance(item, dict):
             out.append(
                 Diagnostic(
@@ -122,10 +200,9 @@ def _normalize_diagnostics(raw: Union[None, List[Any]]) -> List[Diagnostic]:
                 )
             )
         else:
-            out.append(
-                Diagnostic(rule="ENGINE", message=str(item), severity="info")
-            )
+            out.append(Diagnostic(rule="ENGINE", message=str(item), severity="info"))
     return out
+
 
 def _normalize_suggestions(raw: Union[None, List[Any]]) -> List[Suggestion]:
     if not raw:
@@ -143,6 +220,7 @@ def _normalize_suggestions(raw: Union[None, List[Any]]) -> List[Suggestion]:
             out.append(Suggestion(text=str(item)))
     return out
 
+
 def _map_status(val: str) -> str:
     v = (val or "").strip().upper()
     if v in {"✅", "OK", "PASS"}:
@@ -153,21 +231,35 @@ def _map_status(val: str) -> str:
         return "FAIL"
     return "WARN"
 
+
 def default_checker(input_data: AnalysisInput) -> AnalysisOutput:
-    fallback_findings = _normalize_findings([{
-        "code":"RULE_NOT_IMPLEMENTED",
-        "message":f"No rule implemented for clause type: {getattr(input_data,'clause_type',None)}",
-        "severity":"minor"
-    }])
+    fallback_findings = _normalize_findings(
+        [
+            {
+                "code": "RULE_NOT_IMPLEMENTED",
+                "message": f"No rule implemented for clause type: {getattr(input_data,'clause_type',None)}",
+                "severity": "minor",
+            }
+        ]
+    )
     return AnalysisOutput(
-        clause_type=getattr(input_data,'clause_type',None),
-        text=getattr(input_data,'text',None),
-        status="WARN", findings=fallback_findings,
+        clause_type=getattr(input_data, "clause_type", None),
+        text=getattr(input_data, "text", None),
+        status="WARN",
+        findings=fallback_findings,
         diagnostics=_normalize_diagnostics(["Default rule fallback used."]),
         trace=["Fallback to default_checker()"],
-        clause_name=(getattr(input_data,"metadata",{}) or {}).get("name","") if hasattr(input_data,"metadata") else "",
-        category="Unknown", score=50, risk_level="medium", severity="medium",
+        clause_name=(
+            (getattr(input_data, "metadata", {}) or {}).get("name", "")
+            if hasattr(input_data, "metadata")
+            else ""
+        ),
+        category="Unknown",
+        score=50,
+        risk_level="medium",
+        severity="medium",
     )
+
 
 def analyze(input_data: AnalysisInput) -> AnalysisOutput:
     # 🔄 Гарантовано підвантажити правила перед диспетчеризацією
@@ -199,21 +291,31 @@ def analyze(input_data: AnalysisInput) -> AnalysisOutput:
             legacy_rec = result.get("recommendation")
             if isinstance(legacy_rec, str) and legacy_rec:
                 recs.append(legacy_rec)
-            citations = result.get("citations") or []
-            if isinstance(citations, str):
-                citations = [citations]
+            citations = _coerce_citations(result.get("citations"))
             findings_norm = _normalize_findings(result.get("findings", []))
             return AnalysisOutput(
                 clause_type=clause_type_norm,
-                text=getattr(input_data,"text","") if hasattr(input_data,"text") else "",
-                status=_map_status(result.get("status","WARN")),
-                score=result.get("score",50),
-                risk_level=result.get("risk_level","medium"),
-                severity=result.get("severity","medium"),
-                findings=findings_norm, recommendations=recs, diagnostics=diagnostics,
-                suggestions=suggestions, trace=trace_final, citations=citations,
-                category=result.get("issue_type","general"),
-                clause_name=(input_data.metadata.get("name","") if hasattr(input_data,"metadata") else ""),
+                text=(
+                    getattr(input_data, "text", "")
+                    if hasattr(input_data, "text")
+                    else ""
+                ),
+                status=_map_status(result.get("status", "WARN")),
+                score=result.get("score", 50),
+                risk_level=result.get("risk_level", "medium"),
+                severity=result.get("severity", "medium"),
+                findings=findings_norm,
+                recommendations=recs,
+                diagnostics=diagnostics,
+                suggestions=suggestions,
+                trace=trace_final,
+                citations=citations,
+                category=result.get("issue_type", "general"),
+                clause_name=(
+                    input_data.metadata.get("name", "")
+                    if hasattr(input_data, "metadata")
+                    else ""
+                ),
             )
 
         if isinstance(result, AnalysisOutput):
@@ -224,12 +326,18 @@ def analyze(input_data: AnalysisInput) -> AnalysisOutput:
                 result.findings = _normalize_findings(result.findings)
             except Exception:
                 pass
-            result.trace = trace + (result.trace if hasattr(result,"trace") else [])
+            result.trace = trace + (result.trace if hasattr(result, "trace") else [])
             return result
 
         fb = default_checker(input_data)
         fb.diagnostics = _normalize_diagnostics(
-            [{"rule":"ENGINE","message":f"Unexpected rule result type: {type(result)}","severity":"warning"}]
+            [
+                {
+                    "rule": "ENGINE",
+                    "message": f"Unexpected rule result type: {type(result)}",
+                    "severity": "warning",
+                }
+            ]
         )
         fb.trace = trace + fb.trace
         return fb
@@ -238,6 +346,7 @@ def analyze(input_data: AnalysisInput) -> AnalysisOutput:
     result = default_checker(input_data)
     result.trace = trace + result.trace
     return result
+
 
 __all__ = [
     "list_rule_names",

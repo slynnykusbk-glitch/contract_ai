@@ -180,6 +180,24 @@ class Citation(AppBaseModel):
     instrument: str
     section: str
     url: Optional[AnyUrl] = None
+    title: Optional[str] = None
+    source: Optional[str] = None
+    link: Optional[AnyUrl] = None
+    score: Optional[float] = None
+    evidence_text: Optional[str] = None
+
+    @field_validator("score", mode="before")
+    @classmethod
+    def _validate_score(cls, v):
+        if v is None:
+            return None
+        try:
+            fv = float(v)
+        except Exception:
+            raise ValueError("Citation.score must be a float")
+        if fv < 0.0 or fv > 1.0:
+            raise ValueError("Citation.score must be between 0.0 and 1.0")
+        return fv
 
 class CrossRef(AppBaseModel):
     """
@@ -293,6 +311,11 @@ class Finding(AppBaseModel):
                         instrument=str(it.get("instrument", "")),
                         section=str(it.get("section", "")),
                         url=it.get("url"),
+                        title=it.get("title"),
+                        source=it.get("source"),
+                        link=it.get("link"),
+                        score=it.get("score"),
+                        evidence_text=it.get("evidence_text"),
                     ))
                 else:
                     out.append(Citation(instrument=str(it), section=""))
@@ -305,6 +328,11 @@ class Finding(AppBaseModel):
                 instrument=str(v.get("instrument", "")),
                 section=str(v.get("section", "")),
                 url=v.get("url"),
+                title=v.get("title"),
+                source=v.get("source"),
+                link=v.get("link"),
+                score=v.get("score"),
+                evidence_text=v.get("evidence_text"),
             )]
         return [Citation(instrument=str(v), section="")]
 
@@ -530,6 +558,11 @@ class AnalysisOutput(AppBaseModel):
                         instrument=str(it.get("instrument", "")),
                         section=str(it.get("section", "")),
                         url=it.get("url"),
+                        title=it.get("title"),
+                        source=it.get("source"),
+                        link=it.get("link"),
+                        score=it.get("score"),
+                        evidence_text=it.get("evidence_text"),
                     ))
                 else:
                     out.append(Citation(instrument=str(it), section=""))
@@ -542,6 +575,11 @@ class AnalysisOutput(AppBaseModel):
                 instrument=str(v.get("instrument", "")),
                 section=str(v.get("section", "")),
                 url=v.get("url"),
+                title=v.get("title"),
+                source=v.get("source"),
+                link=v.get("link"),
+                score=v.get("score"),
+                evidence_text=v.get("evidence_text"),
             )]
         return [Citation(instrument=str(v), section="")]
 
@@ -840,6 +878,11 @@ class DraftOut(AppBaseModel):
                         instrument=str(it.get("instrument", "")),
                         section=str(it.get("section", "")),
                         url=it.get("url"),
+                        title=it.get("title"),
+                        source=it.get("source"),
+                        link=it.get("link"),
+                        score=it.get("score"),
+                        evidence_text=it.get("evidence_text"),
                     ))
                 else:
                     out.append(Citation(instrument=str(it), section=""))
@@ -852,6 +895,11 @@ class DraftOut(AppBaseModel):
                 instrument=str(v.get("instrument", "")),
                 section=str(v.get("section", "")),
                 url=v.get("url"),
+                title=v.get("title"),
+                source=v.get("source"),
+                link=v.get("link"),
+                score=v.get("score"),
+                evidence_text=v.get("evidence_text"),
             )]
         return [Citation(instrument=str(v), section="")]
 

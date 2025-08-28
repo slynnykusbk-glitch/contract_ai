@@ -1,28 +1,31 @@
-@codex review
+# @codex review
 
-Please run a strict test-and-fix cycle to fully implement Blocks B1–B4 according to the specs in meta/blocks/*.docx.
+instructions: |
+  Please run a strict test-and-fix cycle to fully implement Blocks B1–B4 according to the specs in meta/blocks/*.docx.
 
-SCOPE
-- B1: Citations v1 — schema, resolver/normalizer, block tests.
-- B2: Language/Script segmentation, normalization, ParsedDocument invariants.
-- B3: LLM Orchestrator + Proxy provider (back-compat positional args), deterministic LLMResult.
-- B4: Rules v2 — dataclass FindingV2 (asdict works), loader YAML/HYBRID, YAML preprocessor (no parse crashes).
+scope:
+  - B1: Citations v1 — schema, resolver/normalizer, block tests.
+  - B2: Language/Script segmentation, normalization, ParsedDocument invariants.
+  - B3: LLM Orchestrator + Proxy provider (back-compat positional args), deterministic LLMResult.
+  - B4: Rules v2 — dataclass FindingV2 (asdict works), loader YAML/HYBRID, YAML preprocessor (no parse crashes).
 
-ACCEPTANCE (all must pass):
-- pytest -q contract_review_app/tests/intake --maxfail=1
-- pytest -q contract_review_app/tests/llm -k "provider or orchestrator or proxy" --maxfail=1
-- pytest -q contract_review_app/tests/rules_v2 --maxfail=1
-- pytest -q contract_review_app/tests/test_citations_block1.py --maxfail=1
-- pytest -q tests/codex/test_citations_doctor.py --maxfail=1
+acceptance:
+  - pytest -q contract_review_app/tests/intake --maxfail=1
+  - pytest -q contract_review_app/tests/llm -k "provider or orchestrator or proxy" --maxfail=1
+  - pytest -q contract_review_app/tests/rules_v2 --maxfail=1
+  - pytest -q contract_review_app/tests/test_citations_block1.py --maxfail=1
+  - pytest -q tests/codex/test_citations_doctor.py --maxfail=1
 
-STYLE/GUARDRAILS
-- No ruff/black errors, no SyntaxError/NameError.
-- Deterministic outputs where asserted.
-- Orchestrator: draft/suggest_edits accept positional ("Q","C") and kwargs; return LLMResult.
-- Rules v2: loader supports HYBRID (python+yaml) and safe YAML preprocessor; FindingV2 is a @dataclass.
+style_guardrails:
+  - No ruff/black errors, no SyntaxError/NameError.
+  - Deterministic outputs where asserted.
+  - Orchestrator: draft/suggest_edits accept positional ("Q","C") and kwargs; return LLMResult.
+  - Rules v2: loader supports HYBRID (python+yaml) and safe YAML preprocessor; FindingV2 is a @dataclass.
 
-RESOURCES
-- Specs: meta/blocks/*.docx
-- Acceptance: meta/blocks/ACCEPTANCE.yaml
+resources:
+  - Specs: meta/blocks/*.docx
+  - Acceptance: meta/blocks/ACCEPTANCE.yaml
 
-Please propose minimal, focused commits and reference failing tests in explanations.
+notes: |
+  Please propose minimal, focused commits and reference failing tests in explanations.
+

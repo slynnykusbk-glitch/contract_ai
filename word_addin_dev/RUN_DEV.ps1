@@ -1,223 +1,68 @@
-```powershell
-# word_addin_dev/RUN_DEV.ps1
-Param(
-  [switch]$OpenTaskpane
+#requires -version 5.1
+[CmdletBinding()]
+param()
+$ErrorActionPreference = "Stop"
+
+# Шляхи незалежно від того, звідки запускаєш
+$root = Split-Path -Parent $PSCommandPath           # ...\word_addin_dev
+$repo = Split-Path -Parent $root                    # ...\contract_ai
+$mf   = Join-Path $root "manifest.xml"
+$cert = Join-Path $root "certs\localhost.pem"
+$key  = Join-Path $root "certs\localhost-key.pem"
+
+Write-Host "Kill Word + clear caches..." -ForegroundColor Cyan
+taskkill /IM WINWORD.EXE /F 2>$null | Out-Null
+Remove-Item "$env:LOCALAPPDATA\Microsoft\Office\16.0\Wef\*" -Recurse -Force -EA SilentlyContinue
+Remove-Item "$env:LOCALAPPDATA\Microsoft\EdgeWebView\User Data\Default\Cache\*" -Recurse -Force -EA SilentlyContinue
+
+Write-Host "Force localhost in manifest..." -ForegroundColor Cyan
+(Get-Content $mf -Raw) -replace '127\.0\.0\.1','localhost' | Set-Content $mf -Encoding UTF8 -NoNewline
+
+Write-Host "Trust dev certificate (user + machine if можна)..." -ForegroundColor Cyan
+Import-Certificate -FilePath $cert -CertStoreLocation Cert:\CurrentUser\Root | Out-Null
+try { Import-Certificate -FilePath $cert -CertStoreLocation Cert:\LocalMachine\Root | Out-Null } catch {}
+
+Write-Host "Ensure Trusted Catalog \\localhost\wef (HKCU)..." -ForegroundColor Cyan
+$catKey = 'HKCU:\Software\Microsoft\Office\16.0\WEF\TrustedCatalogs\8f6f3c9e-8a7c-4d3e-9f6a-000000000001'
+New-Item -Path $catKey -Force | Out-Null
+New-ItemProperty -Path $catKey -Name Id         -Value '8f6f3c9e-8a7c-4d3e-9f6a-000000000001' -PropertyType String -Force | Out-Null
+New-ItemProperty -Path $catKey -Name Url        -Value '\\localhost\wef'                   -PropertyType String -Force | Out-Null
+New-ItemProperty -Path $catKey -Name ShowInMenu -Value 1                                   -PropertyType DWord  -Force | Out-Null
+New-ItemProperty -Path $catKey -Name Type       -Value 2                                   -PropertyType DWord  -Force | Out-Null
+
+# Спроба створити SMB-шару (якщо є права). Якщо ні — просто пропустимо.
+try {
+  $me = "$env:COMPUTERNAME\$env:USERNAME"
+  if (-not (Get-SmbShare -Name wef -ErrorAction SilentlyContinue)) {
+    New-SmbShare -Name wef -Path $root -FullAccess $me -CachingMode None | Out-Null
+  } else {
+    Set-SmbShare -Name wef -Path $root -Force | Out-Null
+  }
+} catch { }
+
+# Python
+$py = Join-Path $repo ".venv\Scripts\python.exe"
+if (-not (Test-Path $py)) { $py = (Get-Command python | Select-Object -First 1 -ExpandProperty Source) }
+
+$env:AI_PROVIDER = "mock"
+
+Write-Host "Start backend on https://localhost:9443 ..." -ForegroundColor Cyan
+Start-Process -WindowStyle Minimized -WorkingDirectory $repo -FilePath $py -ArgumentList @(
+  "-m","uvicorn","contract_review_app.api.app:app",
+  "--host","localhost","--port","9443",
+  "--ssl-certfile", $cert,
+  "--ssl-keyfile" , $key,
+  "--reload"
 )
 
-Set-StrictMode -Version Latest
-$ErrorActionPreference = "Continue"
+Write-Host "Start panel server on https://localhost:3000 ..." -ForegroundColor Cyan
+Start-Process -WindowStyle Minimized -WorkingDirectory $repo -FilePath $py -ArgumentList @(
+  "word_addin_dev\serve_https_panel.py","--host","localhost"
+)
 
-function Write-Info([string]$msg){ Write-Host "[INFO ] $msg" -ForegroundColor Cyan }
-function Write-Warn([string]$msg){ Write-Host "[WARN ] $msg" -ForegroundColor Yellow }
-function Write-Err ([string]$msg){ Write-Host "[ERROR] $msg" -ForegroundColor Red }
+Start-Sleep -Seconds 1
+Write-Host "Open Word..." -ForegroundColor Cyan
+Start-Process winword.exe
 
-# Poll a TCP port until open or timeout (seconds). Returns $true/$false.
-function Wait-Port([string]$h, [int]$p, [int]$sec){
-  $deadline = (Get-Date).AddSeconds($sec)
-  while((Get-Date) -lt $deadline){
-    try{
-      $client = New-Object System.Net.Sockets.TcpClient
-      $iar = $client.BeginConnect($h, $p, $null, $null)
-      if($iar.AsyncWaitHandle.WaitOne(250)){
-        $client.EndConnect($iar) | Out-Null
-        $client.Close()
-        return $true
-      }
-      $client.Close()
-    } catch { Start-Sleep -Milliseconds 250 }
-  }
-  return $false
-}
-
-# Gracefully stop potentially conflicting processes
-function Kill-Prev{
-  Write-Info "Stopping previous Word / WebView / Python processes (if any)..."
-  $names = @("WINWORD","msedgewebview2","python","python3","uvicorn")
-  foreach($n in $names){
-    try{
-      Get-Process -Name $n -ErrorAction SilentlyContinue | ForEach-Object {
-        try { Stop-Process -Id $_.Id -ErrorAction SilentlyContinue } catch {}
-      }
-    } catch {}
-  }
-  Start-Sleep -Seconds 1
-  foreach($n in $names){
-    try{
-      Get-Process -Name $n -ErrorAction SilentlyContinue | ForEach-Object {
-        try { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue } catch {}
-      }
-    } catch {}
-  }
-}
-
-# Clean Office Web Add-ins caches (best-effort)
-function Clean-WEF{
-  Write-Info "Cleaning Office Web Add-ins caches..."
-  $paths = @(
-    Join-Path $env:LOCALAPPDATA "Microsoft\Office\16.0\Wef",
-    Join-Path $env:LOCALAPPDATA "Microsoft\Office\16.0\WebServiceCache",
-    Join-Path $env:LOCALAPPDATA "Microsoft\EdgeWebView"
-  )
-  foreach($p in $paths){
-    try{
-      if(Test-Path $p){
-        # Ensure WebView is not locking files
-        Get-Process -Name "msedgewebview2" -ErrorAction SilentlyContinue | ForEach-Object {
-          try { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue } catch {}
-        }
-        Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue
-      }
-    } catch {
-      Write-Warn "Could not clean: $p"
-    }
-  }
-}
-
-function Start-Backend {
-  param(
-    [string]$CertPath,
-    [string]$KeyPath
-  )
-  Write-Info "Starting TLS backend on https://127.0.0.1:9443 ..."
-  $args = @(
-    "contract_review_app.api.app:app",
-    "--host","127.0.0.1",
-    "--port","9443",
-    "--ssl-certfile",$CertPath,
-    "--ssl-keyfile",$KeyPath
-  )
-  try{
-    $proc = Start-Process -FilePath "uvicorn" -ArgumentList $args -PassThru -WindowStyle Normal
-    return $proc
-  } catch {
-    Write-Err "Failed to start uvicorn. Ensure venv is activated and uvicorn installed."
-    return $null
-  }
-}
-
-function Start-Panel {
-  param(
-    [string]$CertPath,
-    [string]$KeyPath
-  )
-  Write-Info "Starting HTTPS panel on https://127.0.0.1:3000 ..."
-  $args = @(
-    ".\word_addin_dev\serve_https_panel.py",
-    "--cert",$CertPath,
-    "--key",$KeyPath
-  )
-  try{
-    $proc = Start-Process -FilePath "python" -ArgumentList $args -PassThru -WindowStyle Normal
-    return $proc
-  } catch {
-    Write-Err "Failed to start HTTPS panel server."
-    return $null
-  }
-}
-
-function Register-Manifest {
-  param([string]$ManifestPath)
-  $npx = Get-Command npx -ErrorAction SilentlyContinue
-  if(-not $npx){
-    Write-Warn "Node.js / npx not found. Skipping manifest (un)register steps."
-    return
-  }
-  Write-Info "Registering Office Add-in manifest..."
-  try{
-    & npx office-addin-dev-settings unregister $ManifestPath 2>$null | Out-Null
-  } catch { Write-Warn "Unregister returned non-zero (ignored)." }
-  try{
-    & npx office-addin-dev-settings register $ManifestPath | Out-Null
-  } catch { Write-Warn "Register returned non-zero (ignored)." }
-  try{
-    & npx office-addin-dev-settings webview $ManifestPath edge | Out-Null
-  } catch { Write-Warn "Setting webview engine failed (ignored)." }
-}
-
-# ---- Main flow ---------------------------------------------------------------
-
-# Ensure we run from repo root (this script lives in word_addin_dev/)
-try { Set-Location (Resolve-Path (Join-Path $PSScriptRoot "..")) } catch {}
-
-Kill-Prev
-
-# Activate venv (best-effort)
-$venvAct = ".\.venv\Scripts\Activate.ps1"
-if(Test-Path $venvAct){
-  Write-Info "Activating virtualenv..."
-  try { . $venvAct } catch { Write-Warn "Could not activate venv (continuing anyway)." }
-} else {
-  Write-Warn "No .venv found. Ensure dependencies are installed globally or create a venv."
-}
-
-# Generate dev certificates (idempotent)
-try{
-  if(Test-Path ".\word_addin_dev\gen_dev_certs.py"){
-    Write-Info "Ensuring dev certificates exist..."
-    python .\word_addin_dev\gen_dev_certs.py 2>$null | Out-Null
-  }
-} catch { Write-Warn "gen_dev_certs.py failed or missing (continuing)." }
-
-$cert = ".\word_addin_dev\certs\localhost.pem"
-$key  = ".\word_addin_dev\certs\localhost-key.pem"
-
-$backendProc = Start-Backend -CertPath $cert -KeyPath $key
-if(Wait-Port "127.0.0.1" 9443 30){
-  Write-Info "Backend is ready on https://127.0.0.1:9443"
-} else {
-  Write-Warn "Backend port 9443 not ready within timeout."
-}
-
-$panelProc = Start-Panel -CertPath $cert -KeyPath $key
-if(Wait-Port "127.0.0.1" 3000 30){
-  Write-Info "Panel is ready on https://127.0.0.1:3000"
-} else {
-  Write-Warn "Panel port 3000 not ready within timeout."
-}
-
-Clean-WEF
-
-$manifestPath = (Resolve-Path ".\word_addin_dev\manifest.xml").Path
-Register-Manifest -ManifestPath $manifestPath
-
-$ts = [int64](([DateTimeOffset]::UtcNow).ToUnixTimeMilliseconds())
-Write-Host ""
-Write-Host "PANEL : https://127.0.0.1:3000/taskpane.html?v=$ts"
-Write-Host "DOCTOR: https://127.0.0.1:3000/panel_selftest.html?v=$ts"
-Write-Host "BACKEND: https://127.0.0.1:9443/health"
-Write-Host ""
-
-if($OpenTaskpane){
-  $npx = Get-Command npx -ErrorAction SilentlyContinue
-  if($npx){
-    try{
-      & npx office-addin-dev-settings sideload $manifestPath desktop --app word | Out-Null
-      Write-Info "Requested Word sideload."
-    } catch { Write-Warn "Sideload failed (ignored)." }
-  } else {
-    Write-Warn "npx not available; skipping sideload."
-  }
-}
-
-Write-Host "Press Ctrl+C to stop. This window will keep running to host child processes."
-try{
-  if($backendProc -and $panelProc){
-    Wait-Process -Id $backendProc.Id,$panelProc.Id -ErrorAction SilentlyContinue
-  } elseif($backendProc){
-    Wait-Process -Id $backendProc.Id -ErrorAction SilentlyContinue
-  } elseif($panelProc){
-    Wait-Process -Id $panelProc.Id -ErrorAction SilentlyContinue
-  } else {
-    while($true){ Start-Sleep -Seconds 60 }
-  }
-} catch {}
-```
-
-```bat
-:: word_addin_dev/START_DEV.bat
-@echo off
-setlocal
-powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0RUN_DEV.ps1" %*
-endlocal
-
-```
+Write-Host "`nГотово. У Word: Вставка → Мои надстройки → вкладка 'Общая папка' → 'Contract AI — Draft Assistant (Dev)'." -ForegroundColor Green
+Read-Host "Натисни Enter, щоб закрити це вікно"

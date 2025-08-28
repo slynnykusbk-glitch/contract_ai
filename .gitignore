@@ -1,5 +1,42 @@
-﻿.venv/
+﻿# Python
 __pycache__/
 *.pyc
-.env
-var/
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+
+# Virtual env
+.venv/
+venv/
+ENV/
+
+# Tools and caches
+ruff_cache/
+pytest_cache/
+.mypy_cache/
+.cache/
+
+# Reports and logs
+reports/
+report.txt
+report/
+*.log
+
+# Node.js (Word add-in dev)
+node_modules/
+package-lock.json
+
+# Word add-in / Office temp files
+~$*.docx
+*.tmp
+*.bak
+*.lock
+
+# IDE configs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

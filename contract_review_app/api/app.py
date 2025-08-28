@@ -38,14 +38,10 @@ try:
     from contract_review_app.api.orchestrator import (  # type: ignore
         run_analyze,
         run_qa_recheck,
-        run_gpt_draft,
-        run_suggest_edits,
     )
 except Exception:  # pragma: no cover
     run_analyze = None  # type: ignore
     run_qa_recheck = None  # type: ignore
-    run_gpt_draft = None  # type: ignore
-    run_suggest_edits = None  # type: ignore
 
 try:
     from contract_review_app.engine import pipeline  # type: ignore
@@ -87,7 +83,9 @@ REQUIRED_EXHIBITS = {
     for e in os.getenv("CONTRACT_AI_REQUIRED_EXHIBITS", "M").split(",")
     if e.strip()
 }
-_PLACEHOLDER_RE = re.compile(r"(\[[^\]]+\]|\bTBD\b|\bTO BE DETERMINED\b)", re.IGNORECASE)
+_PLACEHOLDER_RE = re.compile(
+    r"(\[[^\]]+\]|\bTBD\b|\bTO BE DETERMINED\b)", re.IGNORECASE
+)
 _EXHIBIT_RE = re.compile(r"exhibit\s+([A-Z])", re.IGNORECASE)
 
 LEARNING_LOG_PATH = Path(__file__).resolve().parents[2] / "var" / "learning_logs.jsonl"
@@ -114,8 +112,10 @@ _LLM_KEY_ENV_VARS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LLM_API_KEY")
 def _has_llm_keys() -> bool:
     return any(os.getenv(k) for k in _LLM_KEY_ENV_VARS)
 
+
 LLM_CONFIG = load_llm_config()
 LLM_SERVICE = LLMService(LLM_CONFIG)
+
 
 def _analyze_document(text: str) -> Dict[str, Any]:
     """Hook for tests to analyze document text.
@@ -136,7 +136,11 @@ def _ensure_legacy_doc_type(summary: dict) -> None:
     if not isinstance(summary, dict):
         return
     existing = summary.get("doc_type")
-    if isinstance(existing, dict) and isinstance(existing.get("top"), dict) and "type" in existing["top"]:
+    if (
+        isinstance(existing, dict)
+        and isinstance(existing.get("top"), dict)
+        and "type" in existing["top"]
+    ):
         return
 
     t = summary.get("type")
@@ -151,11 +155,21 @@ def _ensure_legacy_doc_type(summary: dict) -> None:
         "candidates": [{"type": t, "score": score}] if t else [],
     }
 
+
 # --------------------------------------------------------------------
 # App / Router
 # --------------------------------------------------------------------
 router = APIRouter()
 app = FastAPI(title="Contract Review App API", version="1.0")
+
+if os.getenv("CONTRACTAI_LLM_API", "0") == "1":
+    try:
+        from contract_review_app.llm.api_router import router as llm_router
+
+        app.include_router(llm_router, prefix="/api/gpt")
+    except Exception:
+        # Do not crash application if optional llm stack misconfigured
+        pass
 
 app.add_middleware(
     CORSMiddleware,
@@ -206,33 +220,44 @@ async def _trace_mw(request: Request, call_next):
     try:
         response: Response = await call_next(request)
     except Exception as ex:
-        _trace_push(req_cid or "unknown", {
-            "ts": _now_ms(),
-            "method": request.method,
-            "path": request.url.path,
-            "status": 500,
-            "ms": _now_ms() - t0,
-            "cache": "",
-            "cid": req_cid or "",
-        })
+        _trace_push(
+            req_cid or "unknown",
+            {
+                "ts": _now_ms(),
+                "method": request.method,
+                "path": request.url.path,
+                "status": 500,
+                "ms": _now_ms() - t0,
+                "cache": "",
+                "cid": req_cid or "",
+            },
+        )
         raise ex
     resp_cid = response.headers.get("x-cid", req_cid or "")
     cache = response.headers.get("x-cache", "")
     latency_hdr = response.headers.get("x-latency-ms")
     try:
-        ms = int(latency_hdr) if latency_hdr is not None and latency_hdr.isdigit() else (_now_ms() - t0)
+        ms = (
+            int(latency_hdr)
+            if latency_hdr is not None and latency_hdr.isdigit()
+            else (_now_ms() - t0)
+        )
     except Exception:
         ms = _now_ms() - t0
-    _trace_push(resp_cid or "unknown", {
-        "ts": _now_ms(),
-        "method": request.method,
-        "path": request.url.path,
-        "status": response.status_code,
-        "ms": ms,
-        "cache": cache,
-        "cid": resp_cid,
-    })
+    _trace_push(
+        resp_cid or "unknown",
+        {
+            "ts": _now_ms(),
+            "method": request.method,
+            "path": request.url.path,
+            "status": response.status_code,
+            "ms": ms,
+            "cache": cache,
+            "cid": resp_cid,
+        },
+    )
     return response
+
 
 # --------------------------------------------------------------------
 # Concurrency / Cache
@@ -263,6 +288,7 @@ class _LRUCache(OrderedDict):
 
 IDEMPOTENT_CACHE = _LRUCache(CACHE_SIZE)
 
+
 # --------------------------------------------------------------------
 # Schemas (Pydantic) for learning endpoints
 # --------------------------------------------------------------------
@@ -279,7 +305,9 @@ def _now_ms() -> int:
 
 def _json_dumps_safe(obj: Any) -> str:
     try:
-        return json.dumps(obj, separators=(",", ":"), ensure_ascii=False, sort_keys=True)
+        return json.dumps(
+            obj, separators=(",", ":"), ensure_ascii=False, sort_keys=True
+        )
     except Exception:
         return "{}"
 
@@ -335,7 +363,9 @@ def _set_llm_headers(resp: Response, meta: Dict[str, Any]) -> None:
         resp.headers["x-usage-total"] = str(total)
 
 
-def _problem_json(status: int, title: str, detail: str, type_: str = "about:blank") -> Dict[str, Any]:
+def _problem_json(
+    status: int, title: str, detail: str, type_: str = "about:blank"
+) -> Dict[str, Any]:
     return {"type": type_, "title": title, "status": status, "detail": detail}
 
 
@@ -477,21 +507,29 @@ async def _maybe_await(func, *args, **kwargs):
     return res
 
 
-def _fallback_suggest_minimal(text: str, clause_id: str, mode: str, top_k: int) -> List[Dict[str, Any]]:
+def _fallback_suggest_minimal(
+    text: str, clause_id: str, mode: str, top_k: int
+) -> List[Dict[str, Any]]:
     start = 0
     length = min(len(text), 12) if len(text) > 0 else 0
-    proposed = "Please clarify obligations." if mode == "strict" else "Consider adding a clear notice period."
-    return [{
-        "suggestion_id": f"{clause_id}:1",
-        "clause_id": clause_id,
-        "clause_type": "unknown",
-        "action": "replace" if mode == "strict" else "append",
-        "proposed_text": proposed,
-        "reason": "rule-fallback",
-        "sources": [],
-        "range": {"start": int(start), "length": int(length)},
-        "hash": _sha256_hex((proposed or "")[:256]),
-    }][:max(1, min(top_k or 1, 10))]
+    proposed = (
+        "Please clarify obligations."
+        if mode == "strict"
+        else "Consider adding a clear notice period."
+    )
+    return [
+        {
+            "suggestion_id": f"{clause_id}:1",
+            "clause_id": clause_id,
+            "clause_type": "unknown",
+            "action": "replace" if mode == "strict" else "append",
+            "proposed_text": proposed,
+            "reason": "rule-fallback",
+            "sources": [],
+            "range": {"start": int(start), "length": int(length)},
+            "hash": _sha256_hex((proposed or "")[:256]),
+        }
+    ][: max(1, min(top_k or 1, 10))]
 
 
 def _risk_ord(risk: Optional[str]) -> int:
@@ -541,10 +579,16 @@ def _top3_residuals(after: Dict[str, Any]) -> List[Dict[str, Any]]:
         else:
             code = getattr(f, "code", None)
             msg = getattr(f, "message", None)
-            sev = getattr(f, "severity", None) or getattr(f, "risk", None) or getattr(f, "severity_level", None)
+            sev = (
+                getattr(f, "severity", None)
+                or getattr(f, "risk", None)
+                or getattr(f, "severity_level", None)
+            )
         norm.append({"code": code, "message": msg, "severity": sev})
     findings_sorted = sorted(
-        norm, key=lambda f: sev_rank.get(str(f.get("severity") or "").lower(), -1), reverse=True
+        norm,
+        key=lambda f: sev_rank.get(str(f.get("severity") or "").lower(), -1),
+        reverse=True,
     )
     return findings_sorted[:3]
 
@@ -584,34 +628,52 @@ async def api_trace_index(response: Response):
 
 
 @router.post("/api/analyze")
-async def api_analyze(request: Request, response: Response, x_cid: Optional[str] = Header(None)):
+async def api_analyze(
+    request: Request, response: Response, x_cid: Optional[str] = Header(None)
+):
     t0 = _now_ms()
     _set_schema_headers(response)
     try:
         body = await _read_body_guarded(request)
         payload = json.loads(body.decode("utf-8")) if body else {}
     except HTTPException:
-        return _problem_response(413, "Payload too large", "Request body exceeds limits")
+        return _problem_response(
+            413, "Payload too large", "Request body exceeds limits"
+        )
     except Exception:
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
     try:
-        model = AnalyzeIn(**payload) if isinstance(payload, dict) else AnalyzeIn(text="")
+        model = (
+            AnalyzeIn(**payload) if isinstance(payload, dict) else AnalyzeIn(text="")
+        )
     except Exception as ex:
         return _problem_response(422, "Validation error", str(ex))
 
     cid = x_cid or _sha256_hex(str(t0) + model.text[:128])
-    key = _idempotency_key(model.text or "", getattr(model, "policy_pack", getattr(model, "policy", None)))
+    key = _idempotency_key(
+        model.text or "", getattr(model, "policy_pack", getattr(model, "policy", None))
+    )
 
     async with _cache_lock:
         cached = IDEMPOTENT_CACHE.get(key)
     if cached is not None:
-        _set_std_headers(response, cid=cid, xcache="hit", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        _set_std_headers(
+            response,
+            cid=cid,
+            xcache="hit",
+            schema=SCHEMA_VERSION,
+            latency_ms=_now_ms() - t0,
+        )
         # guaranteed summary on root
         if "document" in cached and isinstance(cached["document"], dict):
-            cached["summary"] = cached["document"].get("summary", cached.get("summary", {}))
+            cached["summary"] = cached["document"].get(
+                "summary", cached.get("summary", {})
+            )
         elif "results" in cached and isinstance(cached["results"], dict):
-            cached["summary"] = cached["results"].get("summary", cached.get("summary", {}))
+            cached["summary"] = cached["results"].get(
+                "summary", cached.get("summary", {})
+            )
         _ensure_legacy_doc_type(cached.get("summary"))
         return cached
 
@@ -631,13 +693,21 @@ async def api_analyze(request: Request, response: Response, x_cid: Optional[str]
         snap = extract_document_snapshot(model.text or "")
         result = {
             "status": "ok",
-            "results": {"summary": {"type": snap.type, "type_confidence": snap.type_confidence}},
+            "results": {
+                "summary": {"type": snap.type, "type_confidence": snap.type_confidence}
+            },
         }
 
     async with _cache_lock:
         IDEMPOTENT_CACHE.put(key, result)
 
-    _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+    _set_std_headers(
+        response,
+        cid=cid,
+        xcache="miss",
+        schema=SCHEMA_VERSION,
+        latency_ms=_now_ms() - t0,
+    )
     # guaranteed summary on root
     if "document" in result and isinstance(result["document"], dict):
         result["summary"] = result["document"].get("summary", result.get("summary", {}))
@@ -679,7 +749,9 @@ async def api_summary_post(
         body = await _read_body_guarded(request)
         payload = json.loads(body.decode("utf-8")) if body else {}
     except HTTPException:
-        return _problem_response(413, "Payload too large", "Request body exceeds limits")
+        return _problem_response(
+            413, "Payload too large", "Request body exceeds limits"
+        )
     except Exception:
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
@@ -691,11 +763,17 @@ async def api_summary_post(
 
     envelope = {"status": "ok", "summary": snap.model_dump()}
     _set_std_headers(
-        response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0
+        response,
+        cid=cid,
+        xcache="miss",
+        schema=SCHEMA_VERSION,
+        latency_ms=_now_ms() - t0,
     )
     # guaranteed summary on root
     if "document" in envelope and isinstance(envelope["document"], dict):
-        envelope["summary"] = envelope["document"].get("summary", envelope.get("summary", {}))
+        envelope["summary"] = envelope["document"].get(
+            "summary", envelope.get("summary", {})
+        )
     _ensure_legacy_doc_type(envelope.get("summary"))
     return envelope
 
@@ -709,150 +787,21 @@ async def summary_get_alias(response: Response, mode: Optional[str] = None):
 
 @router.post("/summary")
 async def summary_post_alias(
-    request: Request, response: Response, x_cid: Optional[str] = Header(None), mode: Optional[str] = None
+    request: Request,
+    response: Response,
+    x_cid: Optional[str] = Header(None),
+    mode: Optional[str] = None,
 ):
     _set_schema_headers(response)
     return await api_summary_post(request, response, x_cid, mode)
 
 
-@router.post("/api/gpt/draft")
-async def api_gpt_draft(request: Request, response: Response, x_cid: Optional[str] = Header(None)):
-    t0 = _now_ms()
-    _set_schema_headers(response)
-    try:
-        payload = await request.json()
-    except Exception:
-        return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
-    if run_gpt_draft:
-        cid = x_cid or _sha256_hex(str(t0) + json.dumps(payload or {}, sort_keys=True)[:128])
-        try:
-            result = await _maybe_await(run_gpt_draft, payload)
-        except ProviderTimeoutError as ex:
-            meta = {}
-            resp = JSONResponse(status_code=503, content={"status": "error", "error_code": "provider_timeout", "detail": str(ex), "meta": meta})
-            _set_llm_headers(resp, meta)
-            _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-            return resp
-        except ProviderAuthError as ex:
-            meta = {}
-            resp = JSONResponse(status_code=401, content={"status": "error", "error_code": "provider_auth", "detail": ex.detail, "meta": meta})
-            _set_llm_headers(resp, meta)
-            _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-            return resp
-        except ProviderConfigError as ex:
-            meta = {}
-            resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": ex.detail, "meta": meta})
-            _set_llm_headers(resp, meta)
-            _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-            return resp
-
-        if not isinstance(result, dict):
-            result = {}
-        meta = result.get("meta") if isinstance(result.get("meta"), dict) else {}
-        meta.setdefault("model", result.get("model", ""))
-        _set_llm_headers(response, meta)
-        _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return {"status": "ok", "draft_text": result.get("text", "DRAFT"), "meta": meta}
-
-    text = (payload or {}).get("text", "")
-    clause_type = (payload or {}).get("clause_type")
-    cid = x_cid or _sha256_hex(str(t0) + text[:128])
-
-    meta = LLM_CONFIG.meta()
-    if not text.strip():
-        resp = JSONResponse(status_code=422, content={"status": "error", "error_code": "bad_input", "detail": "text is empty", "meta": meta})
-        _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return resp
-    if not LLM_CONFIG.valid:
-        detail = f"{LLM_CONFIG.provider}: missing {' '.join(LLM_CONFIG.missing)}".strip()
-        resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": detail, "meta": meta})
-        _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return resp
-    try:
-        result = LLM_SERVICE.draft(text, clause_type, LLM_CONFIG.max_tokens, LLM_CONFIG.temperature, LLM_CONFIG.timeout_s)
-    except ProviderTimeoutError as ex:
-        meta = {**meta}
-        resp = JSONResponse(status_code=503, content={"status": "error", "error_code": "provider_timeout", "detail": str(ex), "meta": meta})
-        _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return resp
-    except ProviderAuthError as ex:
-        meta = {**meta}
-        resp = JSONResponse(status_code=401, content={"status": "error", "error_code": "provider_auth", "detail": ex.detail, "meta": meta})
-        _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return resp
-    except ProviderConfigError as ex:
-        meta = {**meta}
-        resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": ex.detail, "meta": meta})
-        _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return resp
-
-    meta = result.meta
-    _set_llm_headers(response, meta)
-    _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    return {"status": "ok", "draft_text": result.text, "meta": meta}
-
-
-@router.post("/api/suggest_edits")
-async def api_suggest_edits(request: Request, response: Response, x_cid: Optional[str] = Header(None)):
-    t0 = _now_ms()
-    _set_schema_headers(response)
-    try:
-        payload = await request.json()
-    except Exception:
-        return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
-
-    text = (payload or {}).get("text", "")
-    risk_level = (payload or {}).get("risk_level", "low")
-    cid = x_cid or _sha256_hex(str(t0) + text[:128])
-    meta = LLM_CONFIG.meta()
-    if not text.strip():
-        resp = JSONResponse(status_code=422, content={"status": "error", "error_code": "bad_input", "detail": "text is empty", "meta": meta})
-        _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return resp
-    if not LLM_CONFIG.valid:
-        detail = f"{LLM_CONFIG.provider}: missing {' '.join(LLM_CONFIG.missing)}".strip()
-        resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": detail, "meta": meta})
-        _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return resp
-    try:
-        result = LLM_SERVICE.suggest(text, risk_level, LLM_CONFIG.timeout_s)
-    except ProviderTimeoutError as ex:
-        resp = JSONResponse(status_code=503, content={"status": "error", "error_code": "provider_timeout", "detail": str(ex), "meta": meta})
-        _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return resp
-    except ProviderAuthError as ex:
-        resp = JSONResponse(status_code=401, content={"status": "error", "error_code": "provider_auth", "detail": ex.detail, "meta": meta})
-        _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return resp
-    except ProviderConfigError as ex:
-        resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": ex.detail, "meta": meta})
-        _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-        return resp
-
-    meta = result.meta
-    _set_llm_headers(response, meta)
-    _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
-    return {"status": "ok", "suggestions": result.items, "meta": meta}
-
-
 @router.post("/api/qa-recheck")
-async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[str] = Header(None)):
+async def api_qa_recheck(
+    request: Request, response: Response, x_cid: Optional[str] = Header(None)
+):
     if os.getenv("AI_PROVIDER", "").lower().startswith("mock"):
-        return JSONResponse({
-            "status": "ok",
-            "issues": [],
-            "analysis": {"ok": True}
-        })
+        return JSONResponse({"status": "ok", "issues": [], "analysis": {"ok": True}})
 
     t0 = _now_ms()
     _set_schema_headers(response)
@@ -866,43 +815,136 @@ async def api_qa_recheck(request: Request, response: Response, x_cid: Optional[s
     cid = x_cid or _sha256_hex(str(t0) + text[:128])
     meta = LLM_CONFIG.meta()
     if not text.strip():
-        resp = JSONResponse(status_code=422, content={"status": "error", "error_code": "bad_input", "detail": "text is empty", "meta": meta})
+        resp = JSONResponse(
+            status_code=422,
+            content={
+                "status": "error",
+                "error_code": "bad_input",
+                "detail": "text is empty",
+                "meta": meta,
+            },
+        )
         _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        _set_std_headers(
+            resp,
+            cid=cid,
+            xcache="miss",
+            schema=SCHEMA_VERSION,
+            latency_ms=_now_ms() - t0,
+        )
         return resp
     mock_env = os.getenv("CONTRACT_AI_LLM_MOCK", "").lower() in ("1", "true", "yes")
-    mock_mode = mock_env or LLM_CONFIG.provider == "mock" or not LLM_CONFIG.valid or not _has_llm_keys()
+    mock_mode = (
+        mock_env
+        or LLM_CONFIG.provider == "mock"
+        or not LLM_CONFIG.valid
+        or not _has_llm_keys()
+    )
     if mock_mode:
         _set_llm_headers(response, meta)
-        _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        _set_std_headers(
+            response,
+            cid=cid,
+            xcache="miss",
+            schema=SCHEMA_VERSION,
+            latency_ms=_now_ms() - t0,
+        )
         return {"status": "ok", "qa": [], "notes": "qa-recheck stub"}
     try:
         result = LLM_SERVICE.qa(text, rules, LLM_CONFIG.timeout_s)
     except ProviderTimeoutError as ex:
-        resp = JSONResponse(status_code=503, content={"status": "error", "error_code": "provider_timeout", "detail": str(ex), "meta": meta})
+        resp = JSONResponse(
+            status_code=503,
+            content={
+                "status": "error",
+                "error_code": "provider_timeout",
+                "detail": str(ex),
+                "meta": meta,
+            },
+        )
         _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        _set_std_headers(
+            resp,
+            cid=cid,
+            xcache="miss",
+            schema=SCHEMA_VERSION,
+            latency_ms=_now_ms() - t0,
+        )
         return resp
     except ProviderAuthError as ex:
-        resp = JSONResponse(status_code=401, content={"status": "error", "error_code": "provider_auth", "detail": ex.detail, "meta": meta})
+        resp = JSONResponse(
+            status_code=401,
+            content={
+                "status": "error",
+                "error_code": "provider_auth",
+                "detail": ex.detail,
+                "meta": meta,
+            },
+        )
         _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        _set_std_headers(
+            resp,
+            cid=cid,
+            xcache="miss",
+            schema=SCHEMA_VERSION,
+            latency_ms=_now_ms() - t0,
+        )
         return resp
     except ProviderConfigError as ex:
-        resp = JSONResponse(status_code=424, content={"status": "error", "error_code": "llm_unavailable", "detail": ex.detail, "meta": meta})
+        resp = JSONResponse(
+            status_code=424,
+            content={
+                "status": "error",
+                "error_code": "llm_unavailable",
+                "detail": ex.detail,
+                "meta": meta,
+            },
+        )
         _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        _set_std_headers(
+            resp,
+            cid=cid,
+            xcache="miss",
+            schema=SCHEMA_VERSION,
+            latency_ms=_now_ms() - t0,
+        )
         return resp
     except ValueError as ex:
-        _trace_push(cid, {"qa_prompt_debug": True, "unknown_placeholders": getattr(ex, "unknown_placeholders", [])})
-        resp = JSONResponse(status_code=500, content={"status": "error", "error_code": "qa_prompt_invalid", "detail": str(ex), "meta": meta})
+        _trace_push(
+            cid,
+            {
+                "qa_prompt_debug": True,
+                "unknown_placeholders": getattr(ex, "unknown_placeholders", []),
+            },
+        )
+        resp = JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "error_code": "qa_prompt_invalid",
+                "detail": str(ex),
+                "meta": meta,
+            },
+        )
         _set_llm_headers(resp, meta)
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+        _set_std_headers(
+            resp,
+            cid=cid,
+            xcache="miss",
+            schema=SCHEMA_VERSION,
+            latency_ms=_now_ms() - t0,
+        )
         return resp
 
     meta = result.meta
     _set_llm_headers(response, meta)
-    _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+    _set_std_headers(
+        response,
+        cid=cid,
+        xcache="miss",
+        schema=SCHEMA_VERSION,
+        latency_ms=_now_ms() - t0,
+    )
     return {"status": "ok", "qa": result.items, "meta": meta}
 
 
@@ -916,7 +958,9 @@ async def api_calloff_validate(
         body = await _read_body_guarded(request)
         payload = json.loads(body.decode("utf-8")) if body else {}
     except HTTPException:
-        return _problem_response(413, "Payload too large", "Request body exceeds limits")
+        return _problem_response(
+            413, "Payload too large", "Request body exceeds limits"
+        )
     except Exception:
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
@@ -958,7 +1002,13 @@ async def api_learning_log(body: Any = Body(...)) -> Response:
 async def api_learning_update(response: Response, body: LearningUpdateIn):
     t0 = _now_ms()
     _set_schema_headers(response)
-    _set_std_headers(response, cid="learning/update", xcache="miss", schema=SCHEMA_VERSION, latency_ms=_now_ms() - t0)
+    _set_std_headers(
+        response,
+        cid="learning/update",
+        xcache="miss",
+        schema=SCHEMA_VERSION,
+        latency_ms=_now_ms() - t0,
+    )
     return {"status": "ok", "updated": True, "force": bool(body.force)}
 
 
@@ -992,7 +1042,9 @@ def _panel_static_dir() -> str:
     return str(builds[-1]) if builds else "word_addin_dev"
 
 
-panel_app.mount("/", StaticFiles(directory=_panel_static_dir(), html=True), name="panel-static")
+panel_app.mount(
+    "/", StaticFiles(directory=_panel_static_dir(), html=True), name="panel-static"
+)
 app.mount("/panel", panel_app)
 
 

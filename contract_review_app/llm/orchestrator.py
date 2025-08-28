@@ -1,16 +1,29 @@
+# contract_review_app/llm/orchestrator.py
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from .provider import LLMConfig, LLMProvider
+from .provider.base import LLMConfig, LLMProvider
+from .provider.proxy import ProxyProvider
 from .prompt_builder import build_prompt
 from .citation_resolver import make_grounding_pack
 from .verification import verify_output_contains_citations
 
 
 class Orchestrator:
-    def __init__(self, provider: LLMProvider, config: LLMConfig | None = None):
-        self.provider = provider
+    """Deterministic LLM orchestrator:
+    - builds grounding pack from question/context/citations,
+    - renders strict prompt,
+    - calls provider (default: ProxyProvider → mock),
+    - verifies output against evidence and returns status/trace.
+    """
+
+    def __init__(
+        self,
+        provider: Optional[LLMProvider] = None,
+        config: Optional[LLMConfig] = None,
+    ) -> None:
+        self.provider = provider or ProxyProvider()
         self.config = config or LLMConfig()
 
     def draft(

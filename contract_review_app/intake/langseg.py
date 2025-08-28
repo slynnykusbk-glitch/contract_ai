@@ -111,4 +111,34 @@ def segment_lang_script(text: str) -> List[Dict[str, object]]:
             "lang": current_lang,
         }
     )
+
+    # merge Latin + single space + Latin
+    i = 0
+    while i < len(segments) - 2:
+        a, b, c = segments[i : i + 3]
+        if (
+            a["script"] == "Latin"
+            and b["script"] == "Common"
+            and text[b["start"] : b["end"]] == " "
+            and c["script"] == "Latin"
+        ):
+            a["end"] = c["end"]
+            del segments[i + 1 : i + 3]
+            continue
+        i += 1
+
+    # absorb trailing single dot after Latin
+    i = 0
+    while i < len(segments) - 1:
+        a, b = segments[i], segments[i + 1]
+        if (
+            a["script"] == "Latin"
+            and b["script"] == "Common"
+            and text[b["start"] : b["end"]] == "."
+        ):
+            a["end"] = b["end"]
+            del segments[i + 1]
+            continue
+        i += 1
+
     return segments

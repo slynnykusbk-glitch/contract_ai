@@ -12,6 +12,7 @@ def build_prompt(mode: str, grounding: Dict[str, Any]) -> str:
     evidence = grounding.get("evidence") or []
     if evidence:
         lines.append("EVIDENCE:")
+        lines.append("<<EVIDENCE>>")
         for ev in evidence:
             src = ev.get("source", "")
             lines.append(f"> [{ev.get('id')}] {ev.get('text')} ({src})")

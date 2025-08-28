@@ -45,6 +45,14 @@ def eval_cond(expr: str | bool, context: Dict[str, Any]) -> bool:
             return val == m.group(3)
         return val != m.group(3)
 
+    m = re.fullmatch(r"(context\.[^ ]+)\s*(==|!=)\s*(context\.[^ ]+)", expr)
+    if m:
+        left = _get_path(context, m.group(1)[len("context.") :])
+        right = _get_path(context, m.group(3)[len("context.") :])
+        if m.group(2) == "==":
+            return left == right
+        return left != right
+
     if expr.startswith("context."):
         val = _get_path(context, expr[len("context.") :])
         return bool(val)
@@ -84,12 +92,13 @@ class RuleVM:
                     FindingV2(
                         id=self.rule.id,
                         pack=self.rule.pack,
+                        rule_id=self.rule.id,
                         severity=self.rule.severity,
                         category=self.rule.category,
                         title=self.rule.title,
-                        message=self.rule.message,
-                        explain=self.rule.explain,
-                        suggestion=self.rule.suggestion,
+                        message=self.rule.message or {"en": ""},
+                        explain=self.rule.explain or {"en": ""},
+                        suggestion=self.rule.suggestion or {"en": ""},
                         evidence=evidence,
                         citation=citation,
                         flags=flags,

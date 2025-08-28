@@ -46,8 +46,8 @@ def test_discovery_priority() -> None:
         key_map = {(r.pack, r.rule_id): r for r in rules}
         assert key_map[("pk1", "ruleA")].fmt == "yaml"
         assert key_map[("pk1", "ruleB")].fmt == "python"
-        assert key_map[("pk1", "ruleC")].fmt == "hybrid"
-        assert key_map[("pk1", "ruleD")].fmt == "python"
+        assert key_map[("pk1", "ruleC")].fmt == "yaml"
+        assert key_map[("pk1", "ruleD")].fmt == "hybrid"
 
         pairs = [(r.pack, r.rule_id) for r in rules]
         assert pairs == sorted(pairs)

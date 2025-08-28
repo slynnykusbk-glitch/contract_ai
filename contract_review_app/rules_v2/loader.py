@@ -26,39 +26,21 @@ def discover(root: Path) -> List[RuleSource]:
     for (base, pack), files in sorted(file_map.items()):
         yaml_file = files.get("yaml")
         py_file = files.get("py")
-        py_ref = None
-        if yaml_file:
-            raw_yaml = yaml_file.read_text(encoding="utf-8").replace(":{", ": {")
-            try:
-                data = yaml.safe_load(raw_yaml) or {}
-                ref = data.get("python")
-                if isinstance(ref, str) and ref.strip():
-                    py_ref = yaml_file.parent / ref.strip()
-            except Exception:
-                py_ref = None
+
+        # A rule is considered HYBRID when both a Python file and a YAML file
+        # with the same base name exist. We no longer parse YAML during
+        # discovery to avoid errors from malformed documents.
         if py_file and yaml_file:
-            valid_yaml = bool(data and isinstance(data, dict) and data.get("id") and data.get("pack"))
-            if py_ref or valid_yaml:
-                sources.append(
-                    RuleSource(
-                        id=Path(base).name,
-                        pack=pack,
-                        format=RuleFormat.HYBRID,
-                        path=yaml_file,
-                        py_path=py_ref or py_file,
-                        yaml_path=yaml_file,
-                    )
+            sources.append(
+                RuleSource(
+                    id=Path(base).name,
+                    pack=pack,
+                    format=RuleFormat.HYBRID,
+                    path=yaml_file,
+                    py_path=py_file,
+                    yaml_path=yaml_file,
                 )
-            else:
-                sources.append(
-                    RuleSource(
-                        id=Path(base).name,
-                        pack=pack,
-                        format=RuleFormat.PYTHON,
-                        path=py_file,
-                        py_path=py_file,
-                    )
-                )
+            )
         elif py_file:
             sources.append(
                 RuleSource(
@@ -69,15 +51,13 @@ def discover(root: Path) -> List[RuleSource]:
                     py_path=py_file,
                 )
             )
-        else:
-            fmt = RuleFormat.HYBRID if py_ref else RuleFormat.YAML
+        elif yaml_file:
             sources.append(
                 RuleSource(
                     id=Path(base).name,
                     pack=pack,
-                    format=fmt,
+                    format=RuleFormat.YAML,
                     path=yaml_file,
-                    py_path=py_ref,
                     yaml_path=yaml_file,
                 )
             )
@@ -93,13 +73,35 @@ def _load_python(path: Path):
     return module
 
 
+def _coerce_findings(res: Any) -> List[FindingV2]:
+    def _convert(item: Any) -> FindingV2 | None:
+        if isinstance(item, FindingV2):
+            return item
+        if isinstance(item, dict):
+            try:
+                if hasattr(FindingV2, "model_validate"):
+                    return FindingV2.model_validate(item)  # type: ignore[attr-defined]
+                return FindingV2(**item)
+            except Exception:
+                return None
+        return None
+
+    if res is None:
+        return []
+    if isinstance(res, list):
+        return [f for i in res if (f := _convert(i)) is not None]
+    conv = _convert(res)
+    return [conv] if conv is not None else []
+
+
 def execute(source: RuleSource, context: Dict[str, Any]) -> List[FindingV2]:
     if source.format in {RuleFormat.PYTHON, RuleFormat.HYBRID}:
         module = _load_python(source.py_path or source.path)
         fn = getattr(module, "apply", None) or getattr(module, "rule_main", None)
         if not callable(fn):
             return []
-        return fn(context) or []
+        res = fn(context)
+        return _coerce_findings(res)
     if source.format is RuleFormat.YAML:
         raw = source.path.read_text(encoding="utf-8").replace(":{", ": {")
         data = yaml.safe_load(raw)

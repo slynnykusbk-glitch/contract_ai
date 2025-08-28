@@ -10,7 +10,7 @@ SCOPE
 
 ACCEPTANCE (all must pass):
 - pytest -q contract_review_app/tests/intake --maxfail=1
-- pytest -q "contract_review_app/tests/llm -k 'provider or orchestrator or proxy'" --maxfail=1
+- pytest -q contract_review_app/tests/llm -k "provider or orchestrator or proxy" --maxfail=1
 - pytest -q contract_review_app/tests/rules_v2 --maxfail=1
 - pytest -q contract_review_app/tests/test_citations_block1.py --maxfail=1
 - pytest -q tests/codex/test_citations_doctor.py --maxfail=1

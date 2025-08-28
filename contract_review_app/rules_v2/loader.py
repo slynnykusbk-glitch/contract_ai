@@ -113,7 +113,7 @@ def execute(source: RuleSource, context: Dict[str, Any]) -> List[FindingV2]:
 
     if source.format is RuleFormat.YAML:
         raw = source.path.read_text(encoding="utf-8")
-        data = yaml.safe_load(raw)
+        data = yaml.safe_load(_preprocess_yaml(raw))
         rule = RuleYaml.model_validate(data)
         if rule.engine_version != ENGINE_VERSION:
             raise ValueError("engine_version mismatch")

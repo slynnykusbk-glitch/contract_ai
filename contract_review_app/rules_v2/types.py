@@ -1,4 +1,27 @@
-# contract_review_app/rules_v2/types.py
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import Enum
+from pathlib import Path
+from typing import Optional
+
+
+class RuleFormat(str, Enum):
+    PYTHON = "python"
+    YAML = "yaml"
+    HYBRID = "hybrid"
+
+
+@dataclass
+class RuleSource:
+    id: str
+    pack: str
+    format: RuleFormat
+    path: Path
+    py_path: Optional[Path] = None
+    yaml_path: Optional[Path] = None
+
+      # contract_review_app/rules_v2/types.py
 """Typing helpers for rules v2."""
 from __future__ import annotations
 

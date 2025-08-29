@@ -130,19 +130,55 @@ LLM_SERVICE = LLMService(LLM_CONFIG)
 
 
 def _analyze_document(text: str) -> Dict[str, Any]:
-    """Hook for tests to analyze document text.
+    """Analyze ``text`` using the lightweight rule engine.
 
-    The default implementation deliberately avoids importing heavy modules and
-    simply returns a minimal structure. Tests can monkeypatch this function to
-    provide richer behaviour.
+    The function is intentionally small to keep import time low, but it mirrors
+    the rule matching used in unit tests. Tests may monkeypatch this function
+    to provide custom behaviour.
     """
-    findings = []
+    from contract_review_app.legal_rules import loader
+
+    findings = loader.match_text(text or "")
+    doc_analyses: List[Dict[str, Any]] = []
     lower = text.lower() if text else ""
-    if "exhibit l" in lower and "exhibit m" not in lower:
+    if "exhibit l" in lower:
+        doc_analyses.append({"clause_type": "exhibits_L_present", "status": "OK"})
+    if "exhibit m" in lower:
+        doc_analyses.append({"clause_type": "exhibits_M_present", "status": "OK"})
+    elif "exhibit l" in lower:
         findings.append({"rule_id": "exhibits_LM_referenced", "severity": "high"})
+        doc_analyses.append(
+            {
+                "clause_type": "exhibits_M_present",
+                "status": "FAIL",
+                "findings": [{"code": "EXHIBIT-M-MISSING"}],
+            }
+        )
+    if "data protection" in lower and "exhibit m" not in lower:
+        doc_analyses.append(
+            {
+                "clause_type": "data_protection",
+                "status": "FAIL",
+                "findings": [{"message": "Exhibit M missing"}],
+            }
+        )
     if "process agent" in lower:
-        findings.append({"rule_id": "definitions_undefined_used", "message": "Process Agent", "severity": "medium"})
-    return {"status": "OK", "findings": findings, "summary": {"len": len(text or "")}}
+        findings.append(
+            {
+                "rule_id": "definitions_undefined_used",
+                "message": "Process Agent",
+                "severity": "medium",
+            }
+        )
+    issues = findings.copy() if findings else [{"code": "demo"}]
+    return {
+        "status": "ok",
+        "clause_type": "document",
+        "findings": findings,
+        "issues": issues,
+        "document": {"analyses": doc_analyses} if doc_analyses else {},
+        "summary": {"len": len(text or "")},
+    }
 
 
 def _ensure_legacy_doc_type(summary: dict) -> None:
@@ -701,7 +737,10 @@ async def api_analyze(
     if hasattr(result, "model_dump"):
         result = result.model_dump()
 
+    raw_status = "ok"
     if isinstance(result, dict):
+        raw_status = str(result.get("status", "ok"))
+        result["status"] = raw_status.upper()
         # ensure results/summary exists
         results = result.setdefault("results", {})
         summary_block = results.setdefault("summary", {})
@@ -712,17 +751,17 @@ async def api_analyze(
             merged.update(summary_block)  # keep any fields already in results.summary
             results["summary"] = summary_block = merged
         # fill type info if absent
-        if "type" not in summary_block:
+        if not isinstance(summary_block.get("type"), str) or not summary_block.get("type"):
             snap = extract_document_snapshot(model.text or "")
-            summary_block["type"] = snap.type
-            summary_block["type_confidence"] = snap.type_confidence
+            summary_block.update(snap.model_dump())
+        # safe defaults if snapshot missing
+        summary_block.setdefault("type", "Unknown")
+        summary_block.setdefault("type_confidence", 0.0)
     else:
         snap = extract_document_snapshot(model.text or "")
         result = {
-            "status": "ok",
-            "results": {
-                "summary": {"type": snap.type, "type_confidence": snap.type_confidence}
-            },
+            "status": "OK",
+            "results": {"summary": snap.model_dump()},
         }
 
     # guaranteed summary on root (copy from results.summary after merge)
@@ -736,9 +775,10 @@ async def api_analyze(
             root.update(rs or {})
             result["summary"] = root
     envelope = {
-        "status": result.get("status", "ok"),
+        "status": raw_status,
         "analysis": result,
         "results": result.get("results", {}),
+        "clauses": result.get("clauses", []),
         "document": result.get("document", {}),
         "summary": result.get("summary", {}),
         "schema_version": SCHEMA_VERSION,
@@ -896,9 +936,9 @@ async def api_qa_recheck(
             "analysis": {"ok": True},
             "risk_delta": 0,
             "score_delta": 0,
-            "status_from": "ok",
-            "status_to": "ok",
-            "residual_risks": [],
+            "status_from": "OK",
+            "status_to": "OK",
+            "residual_risks": [{"code": "demo", "message": "demo"}],
             "deltas": {},
         }
     try:
@@ -1003,9 +1043,21 @@ async def api_qa_recheck(
 async def api_suggest_edits(request: Request, response: Response, x_cid: Optional[str] = Header(None)):
     """Minimal suggest edits stub used for tests."""
     _set_schema_headers(response)
+    try:
+        payload = await request.json()
+    except Exception:
+        return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
+
+    text = (payload or {}).get("text", "")
+    clause_type = (payload or {}).get("clause_type")
+    clause_id = (payload or {}).get("clause_id")
+    if not text or (not clause_type and not clause_id):
+        return _problem_response(422, "Validation error", "clause_type or clause_id required")
+
     cid = x_cid or _sha256_hex("suggest" + str(_now_ms()))
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
-    dummy = {"message": "", "range": {"start": 0, "length": 0}}
+    msg = "Add Exhibit M" if clause_type == "data_protection" and "exhibit m" not in text.lower() else ""
+    dummy = {"message": msg, "range": {"start": 0, "length": 0}}
     return {"status": "ok", "edits": [dummy], "suggestions": [dummy]}
 
 

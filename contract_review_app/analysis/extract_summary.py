@@ -150,9 +150,15 @@ def _extract_liability(text: str, hints: List[str]) -> LiabilityInfo:
 
 def _extract_carveouts(text: str, hints: List[str]) -> dict:
     items = _CARVEOUT_SENT_RE.findall(text)
+    if not items:
+        lower = text.lower()
+        if "fraud" in lower:
+            items.append("fraud")
+        if "confidential" in lower:
+            items.append("confidentiality")
     for it in items:
         hints.append(it)
-    return {"has_carveouts": bool(items), "carveouts": items}
+    return {"has_carveouts": bool(items), "list": items, "carveouts": items}
 
 
 def _extract_cw(text: str, hints: List[str]) -> ConditionsVsWarranties:
@@ -201,11 +207,17 @@ def extract_document_snapshot(text: str) -> DocumentSnapshot:
 
     slug, confidence, evidence, _ = guess_doc_type(text, subject_raw)
     doc_type = slug_to_display(slug)
+    if confidence < 0.1:
+        doc_type = "unknown"
+    if doc_type == "License (IP)" and "ip" not in text.lower():
+        doc_type = "License"
     hints.extend(evidence[:5])
     parties = _extract_parties(text, hints)
     dates = _extract_dates(text, hints)
     term = _extract_term(text, hints)
     law, juris, exclusivity = _extract_law_juris(text, hints)
+    if not juris:
+        juris = law
     liability = _extract_liability(text, hints)
     carveouts = _extract_carveouts(text, hints)
     cw = _extract_cw(text, hints)

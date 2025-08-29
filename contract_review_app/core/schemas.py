@@ -1,7 +1,7 @@
 # contract_review_app/core/schemas.py
 from __future__ import annotations
 
-from typing import List, Optional, Dict, Literal, Any, Union, Tuple
+from typing import List, Optional, Dict, Literal, Any, Union
 from pydantic import BaseModel, Field, AnyUrl, field_validator
 
 # pydantic v2 compatibility shims
@@ -15,36 +15,60 @@ except Exception:  # pragma: no cover
     def model_validator(*args, **kwargs):  # type: ignore
         def _decorator(fn):
             return fn
+
         return _decorator
+
 
 # ============================================================================
 # Public exports control (clean imports across project)
 # ============================================================================
 __all__ = [
     # constants
-    "SCHEMA_VERSION", "RISK_ORDER",
+    "SCHEMA_VERSION",
+    "RISK_ORDER",
     # enums/literals
-    "Status", "RiskLevel", "Severity", "DraftMode",
+    "Status",
+    "RiskLevel",
+    "Severity",
+    "DraftMode",
     # primitives
-    "Span", "Citation", "CrossRef", "TextPatch",
+    "Span",
+    "Citation",
+    "CrossRef",
+    "TextPatch",
     # inputs
-    "AnalysisInput", "AnalyzeIn",
+    "AnalysisInput",
+    "AnalyzeIn",
     # building blocks
-    "Finding", "Diagnostic", "Suggestion", "GPTDraftResponse",
+    "Finding",
+    "Diagnostic",
+    "Suggestion",
+    "GPTDraftResponse",
     # clause/document
-    "Clause", "AnalysisOutput", "DocIndex", "DocumentAnalysis",
+    "Clause",
+    "AnalysisOutput",
+    "DocIndex",
+    "DocumentAnalysis",
     # responses (panel-compat legacy + combined)
-    "Analysis", "AnalyzeResponse", "AnalyzeOut",
+    "Analysis",
+    "AnalyzeResponse",
+    "AnalyzeOut",
     # base-doc
     "BaseDoc",
     # Step 4 DTOs
-    "DraftIn", "DraftOut",
-    "SuggestIn", "SuggestOut",
-    "AppliedChange", "DeltaMetrics",
-    "QARecheckIn", "QARecheckOut",
+    "DraftIn",
+    "DraftOut",
+    "SuggestIn",
+    "SuggestOut",
+    "AppliedChange",
+    "DeltaMetrics",
+    "QARecheckIn",
+    "QARecheckOut",
     # helpers (both long and short names)
-    "risk_to_ordinal", "ordinal_to_risk",
-    "risk_to_ord", "ord_to_risk",
+    "risk_to_ordinal",
+    "ordinal_to_risk",
+    "risk_to_ord",
+    "ord_to_risk",
 ]
 
 # ============================================================================
@@ -58,8 +82,12 @@ SCHEMA_VERSION: str = "1.3"
 RiskLevel = Literal["low", "medium", "high", "critical"]
 
 RISK_ORDER: Dict[RiskLevel, int] = {  # type: ignore[name-defined]
-    "low": 0, "medium": 1, "high": 2, "critical": 3
+    "low": 0,
+    "medium": 1,
+    "high": 2,
+    "critical": 3,
 }
+
 
 def risk_to_ordinal(r: RiskLevel | str) -> int:
     """
@@ -71,6 +99,7 @@ def risk_to_ordinal(r: RiskLevel | str) -> int:
         return RISK_ORDER[key_l]  # type: ignore[index]
     except Exception:
         return 1
+
 
 def ordinal_to_risk(o: int) -> RiskLevel:
     """
@@ -84,9 +113,11 @@ def ordinal_to_risk(o: int) -> RiskLevel:
         return "high"
     return "critical"
 
+
 # Short aliases (convenient names used across the codebase)
 risk_to_ord = risk_to_ordinal
 ord_to_risk = ordinal_to_risk
+
 
 # ============================================================================
 # Base config (tolerant to extras; safe string length)
@@ -96,20 +127,25 @@ class AppBaseModel(BaseModel):
     Base model with tolerant config to avoid breaking older producers.
     Note: str_max_length increased to handle large contracts comfortably.
     """
+
     model_config = ConfigDict(
         populate_by_name=True,
-        extra="ignore",           # tolerate unknown fields (legacy/producers)
-        str_max_length=200_000,   # large documents supported
+        extra="ignore",  # tolerate unknown fields (legacy/producers)
+        str_max_length=200_000,  # large documents supported
     )
+
 
 # ============================================================================
 # Enums / Literals
 # ============================================================================
 # [CHANGED]: расширили множество статусов для приема синонимов и "UNKNOWN"
-Status = Literal["OK", "WARN", "FAIL", "PASS", "UNKNOWN"]  # accepts PASS (normalized to OK)
+Status = Literal[
+    "OK", "WARN", "FAIL", "PASS", "UNKNOWN"
+]  # accepts PASS (normalized to OK)
 
 Severity = Literal["info", "minor", "major", "critical"]
 DraftMode = Literal["friendly", "standard", "strict"]
+
 
 # ============================================================================
 # Inputs
@@ -118,11 +154,13 @@ class AnalysisInput(AppBaseModel):
     """
     Unified input for Rule Engine (per clause or text block).
     """
+
     clause_type: str
     text: str
     language: Optional[str] = None
     policy: Optional[Dict[str, Any]] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
 
 # --- AnalyzeIn (replace) ---
 class AnalyzeIn(AppBaseModel):
@@ -130,6 +168,7 @@ class AnalyzeIn(AppBaseModel):
     Public DTO for /api/analyze request.
     Adds optional segment context and output switches without breaking legacy.
     """
+
     document_name: Optional[str] = None
     text: str
     language: Optional[str] = None
@@ -141,8 +180,8 @@ class AnalyzeIn(AppBaseModel):
 
     # policy & switches
     policy: Dict[str, Any] = Field(default_factory=dict)
-    return_legacy: bool = True     # keep analysis/results/clauses
-    return_ssot: bool = True       # include document-level SSOT
+    return_legacy: bool = True  # keep analysis/results/clauses
+    return_ssot: bool = True  # include document-level SSOT
 
     @model_validator(mode="after")
     def _validate_clean(self):
@@ -151,6 +190,7 @@ class AnalyzeIn(AppBaseModel):
         self.text = self.text.strip()
         return self
 
+
 # ============================================================================
 # Value objects
 # ============================================================================
@@ -158,6 +198,7 @@ class Span(AppBaseModel):
     """
     Text location anchor for UI annotations and cross-checks (absolute coords).
     """
+
     start: int = 0
     length: int = 0
     page: Optional[int] = None
@@ -172,10 +213,12 @@ class Span(AppBaseModel):
             raise ValueError("Span.start and Span.length must be >= 0")
         return v
 
+
 class Citation(AppBaseModel):
     """
     Legal citation item; url is validated if present.
     """
+
     system: Literal["UK", "UA", "EU", "INT"] = "UK"
     instrument: str
     section: str
@@ -202,13 +245,18 @@ class Citation(AppBaseModel):
     def _link_str(cls, v):
         return None if v is None else str(v)
 
+
 class CrossRef(AppBaseModel):
     """
     Relation between clauses (e.g., Termination depends on Notice).
     """
+
     source_clause_id: str
     target_clause_id: str
-    relation: Literal["contradicts", "depends_on", "duplicates", "requires"] = "depends_on"
+    relation: Literal["contradicts", "depends_on", "duplicates", "requires"] = (
+        "depends_on"
+    )
+
 
 class TextPatch(AppBaseModel):
     """
@@ -217,6 +265,7 @@ class TextPatch(AppBaseModel):
         to {"start","length"} with non-negative ints.
       - 'replacement' uses alias 'text' for back/forward compatibility.
     """
+
     span: Optional[Span] = None
     range: Optional[Dict[str, int]] = None
     replacement: str = Field(alias="text", default="")
@@ -261,6 +310,7 @@ class TextPatch(AppBaseModel):
         self.range = {"start": start, "length": length}
         return self
 
+
 # ============================================================================
 # Building blocks
 # ============================================================================
@@ -268,9 +318,12 @@ class Finding(AppBaseModel):
     """
     Single rule finding; can be rendered to UI and used for scoring.
     """
+
     code: str
     message: str
-    severity_level: Optional[Severity] = Field(default=None, alias="severity", description="SSOT severity enum")
+    severity_level: Optional[Severity] = Field(
+        default=None, alias="severity", description="SSOT severity enum"
+    )
     risk: Optional[RiskLevel] = Field(default=None, description="SSOT risk enum")
     evidence: Optional[str] = None
     span: Optional[Span] = None
@@ -283,6 +336,31 @@ class Finding(AppBaseModel):
     @property
     def severity(self) -> Optional[Severity]:
         return self.severity_level
+
+    @field_validator("severity_level", mode="before")
+    @classmethod
+    def _normalize_severity_level(cls, v):
+        """
+        Accept common synonyms and normalize to: info | minor | major | critical.
+        Unknown values fall back to 'major' (conservative).
+        """
+        if v is None:
+            return None
+        s = str(v).strip().lower()
+        mapping = {
+            "info": "info",
+            "information": "info",
+            "low": "minor",
+            "minor": "minor",
+            "med": "major",
+            "medium": "major",
+            "moderate": "major",
+            "major": "major",
+            "high": "critical",
+            "severe": "critical",
+            "critical": "critical",
+        }
+        return mapping.get(s, "major")
 
     @field_validator("legal_basis", mode="before")
     @classmethod
@@ -309,34 +387,38 @@ class Finding(AppBaseModel):
                 elif isinstance(it, str):
                     out.append(Citation(instrument=it, section=""))
                 elif isinstance(it, dict):
-                    out.append(Citation(
-                        system=it.get("system", "UK"),
-                        instrument=str(it.get("instrument", "")),
-                        section=str(it.get("section", "")),
-                        url=it.get("url"),
-                        title=it.get("title"),
-                        source=it.get("source"),
-                        link=it.get("link"),
-                        score=it.get("score"),
-                        evidence_text=it.get("evidence_text"),
-                    ))
+                    out.append(
+                        Citation(
+                            system=it.get("system", "UK"),
+                            instrument=str(it.get("instrument", "")),
+                            section=str(it.get("section", "")),
+                            url=it.get("url"),
+                            title=it.get("title"),
+                            source=it.get("source"),
+                            link=it.get("link"),
+                            score=it.get("score"),
+                            evidence_text=it.get("evidence_text"),
+                        )
+                    )
                 else:
                     out.append(Citation(instrument=str(it), section=""))
             return out
         if isinstance(v, str):
             return [Citation(instrument=v, section="")]
         if isinstance(v, dict):
-            return [Citation(
-                system=v.get("system", "UK"),
-                instrument=str(v.get("instrument", "")),
-                section=str(v.get("section", "")),
-                url=v.get("url"),
-                title=v.get("title"),
-                source=v.get("source"),
-                link=v.get("link"),
-                score=v.get("score"),
-                evidence_text=v.get("evidence_text"),
-            )]
+            return [
+                Citation(
+                    system=v.get("system", "UK"),
+                    instrument=str(v.get("instrument", "")),
+                    section=str(v.get("section", "")),
+                    url=v.get("url"),
+                    title=v.get("title"),
+                    source=v.get("source"),
+                    link=v.get("link"),
+                    score=v.get("score"),
+                    evidence_text=v.get("evidence_text"),
+                )
+            ]
         return [Citation(instrument=str(v), section="")]
 
     @model_validator(mode="after")
@@ -355,10 +437,12 @@ class Finding(AppBaseModel):
             self.risk = mapping.get(self.severity_level, "medium")
         return self
 
+
 class Diagnostic(AppBaseModel):
     """
     Structured diagnostic record (engine trace; not a Finding).
     """
+
     rule: str
     message: str
     severity: Optional[Literal["info", "warn", "error"]] = "info"
@@ -371,9 +455,14 @@ class Diagnostic(AppBaseModel):
             return "info"
         s = str(v).strip().lower()
         mapping = {
-            "medium": "info", "minor": "info", "notice": "info",
-            "warning": "warn", "major": "warn",
-            "critical": "error", "error": "error", "err": "error",
+            "medium": "info",
+            "minor": "info",
+            "notice": "info",
+            "warning": "warn",
+            "major": "warn",
+            "critical": "error",
+            "error": "error",
+            "err": "error",
         }
         return mapping.get(s, s if s in {"info", "warn", "error"} else "info")
 
@@ -388,24 +477,29 @@ class Diagnostic(AppBaseModel):
             return [str(x) for x in v]
         return [str(v)]
 
+
 class Suggestion(AppBaseModel):
     """
     Human-readable suggestion for clause improvements.
     Accepts both `text=` and legacy `message=` (panel shape).
     """
+
     text: str = Field(alias="message")
     reason: Optional[str] = None
     span: Optional[Span] = None
     source: Optional[Literal["rule", "gpt"]] = None  # provenance
 
+
 class GPTDraftResponse(AppBaseModel):
     """
     Minimal LLM/proxy draft response (used by /api/gpt/draft).
     """
+
     draft_text: str
     explanation: Optional[str] = None
     score: Optional[float] = None
     metadata: Dict[str, str] = Field(default_factory=dict)
+
 
 # ----------------------------------------------------------------------------
 # Clause (SSOT)
@@ -414,11 +508,13 @@ class Clause(AppBaseModel):
     """
     Extracted clause with location anchor.
     """
+
     id: str
     type: str
     text: str
     span: Span
     title: Optional[str] = None
+
 
 # ----------------------------------------------------------------------------
 # AnalysisOutput (SSOT, per clause) + legacy compat
@@ -428,6 +524,7 @@ class AnalysisOutput(AppBaseModel):
     Unified result for rule functions (per clause).
     SSOT fields are provided while legacy panel-shape fields are kept for compat.
     """
+
     # Identity
     clause_id: Optional[str] = None
     clause_type: str
@@ -443,12 +540,12 @@ class AnalysisOutput(AppBaseModel):
 
     # Legacy compat (do not remove yet):
     risk_level: Optional[str] = None  # legacy textual risk
-    severity: Optional[str] = None    # legacy textual severity (e.g., "medium")
+    severity: Optional[str] = None  # legacy textual severity (e.g., "medium")
 
     # Content
     findings: List[Finding] = Field(default_factory=list)
     recommendations: List[str] = Field(default_factory=list)
-    proposed_text: str = ""                  # rule-synthesised alternative (if any)
+    proposed_text: str = ""  # rule-synthesised alternative (if any)
     suggestions: List[Suggestion] = Field(default_factory=list)
     citations: List[Citation] = Field(default_factory=list)
     diagnostics: List[Diagnostic] = Field(default_factory=list)
@@ -513,12 +610,14 @@ class AnalysisOutput(AppBaseModel):
             elif isinstance(item, str):
                 normalized.append(Diagnostic(rule="ENGINE", message=item))
             elif isinstance(item, dict):
-                normalized.append(Diagnostic(
-                    rule=str(item.get("rule", "ENGINE")),
-                    message=str(item.get("message", "")),
-                    severity=item.get("severity", "info"),
-                    legal_basis=item.get("legal_basis", []),
-                ))
+                normalized.append(
+                    Diagnostic(
+                        rule=str(item.get("rule", "ENGINE")),
+                        message=str(item.get("message", "")),
+                        severity=item.get("severity", "info"),
+                        legal_basis=item.get("legal_basis", []),
+                    )
+                )
             else:
                 normalized.append(Diagnostic(rule="ENGINE", message=str(item)))
         return normalized
@@ -537,7 +636,14 @@ class AnalysisOutput(AppBaseModel):
                 normalized.append(Suggestion(text=item))
             elif isinstance(item, dict):
                 msg = item.get("text", item.get("message", ""))
-                normalized.append(Suggestion(text=msg, reason=item.get("reason"), span=item.get("span"), source=item.get("source")))
+                normalized.append(
+                    Suggestion(
+                        text=msg,
+                        reason=item.get("reason"),
+                        span=item.get("span"),
+                        source=item.get("source"),
+                    )
+                )
             else:
                 normalized.append(Suggestion(text=str(item)))
         return normalized
@@ -556,34 +662,38 @@ class AnalysisOutput(AppBaseModel):
                 elif isinstance(it, str):
                     out.append(Citation(instrument=it, section=""))
                 elif isinstance(it, dict):
-                    out.append(Citation(
-                        system=it.get("system", "UK"),
-                        instrument=str(it.get("instrument", "")),
-                        section=str(it.get("section", "")),
-                        url=it.get("url"),
-                        title=it.get("title"),
-                        source=it.get("source"),
-                        link=it.get("link"),
-                        score=it.get("score"),
-                        evidence_text=it.get("evidence_text"),
-                    ))
+                    out.append(
+                        Citation(
+                            system=it.get("system", "UK"),
+                            instrument=str(it.get("instrument", "")),
+                            section=str(it.get("section", "")),
+                            url=it.get("url"),
+                            title=it.get("title"),
+                            source=it.get("source"),
+                            link=it.get("link"),
+                            score=it.get("score"),
+                            evidence_text=it.get("evidence_text"),
+                        )
+                    )
                 else:
                     out.append(Citation(instrument=str(it), section=""))
             return out
         if isinstance(v, str):
             return [Citation(instrument=v, section="")]
         if isinstance(v, dict):
-            return [Citation(
-                system=v.get("system", "UK"),
-                instrument=str(v.get("instrument", "")),
-                section=str(v.get("section", "")),
-                url=v.get("url"),
-                title=v.get("title"),
-                source=v.get("source"),
-                link=v.get("link"),
-                score=v.get("score"),
-                evidence_text=v.get("evidence_text"),
-            )]
+            return [
+                Citation(
+                    system=v.get("system", "UK"),
+                    instrument=str(v.get("instrument", "")),
+                    section=str(v.get("section", "")),
+                    url=v.get("url"),
+                    title=v.get("title"),
+                    source=v.get("source"),
+                    link=v.get("link"),
+                    score=v.get("score"),
+                    evidence_text=v.get("evidence_text"),
+                )
+            ]
         return [Citation(instrument=str(v), section="")]
 
     @field_validator("risk", mode="before")
@@ -677,6 +787,7 @@ class Analysis(AppBaseModel):
     """
     Legacy panel-shape block used by the current taskpane JS.
     """
+
     clause_type: str
     findings: List[Finding] = Field(default_factory=list)
     recommendations: List[str] = Field(default_factory=list)
@@ -686,13 +797,16 @@ class Analysis(AppBaseModel):
     severity: str = "medium"
     status: Status = "OK"
 
+
 class AnalyzeResponse(AppBaseModel):
     """
     Legacy response shape expected by the Word panel today.
     """
+
     analysis: Analysis
     results: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     clauses: List[Dict[str, Any]] = Field(default_factory=list)
+
 
 # ============================================================================
 # Base document for SSOT document-level models
@@ -701,7 +815,9 @@ class BaseDoc(AppBaseModel):
     """
     Base SSOT document model with schema version.
     """
+
     schema_version: str = Field(default=SCHEMA_VERSION)
+
 
 # ----------------------------------------------------------------------------
 # Document-level SSOT
@@ -710,14 +826,17 @@ class DocIndex(AppBaseModel):
     """
     Document index with clause anchors for UI navigation.
     """
+
     document_name: Optional[str] = None
     language: Optional[str] = None
     clauses: List[Clause] = Field(default_factory=list)
+
 
 class DocumentAnalysis(BaseDoc):
     """
     Aggregated document-level analysis (SSOT).
     """
+
     document_name: Optional[str] = None
     jurisdiction: Optional[str] = None
     policy: Dict[str, Any] = Field(default_factory=dict)
@@ -734,8 +853,12 @@ class DocumentAnalysis(BaseDoc):
     index: DocIndex = Field(default_factory=DocIndex)
 
     # Observability / performance
-    timings: Dict[str, float] = Field(default_factory=dict, description="ms timings per stage")
-    errors: List[str] = Field(default_factory=list, description="non-fatal errors/warnings during run")
+    timings: Dict[str, float] = Field(
+        default_factory=dict, description="ms timings per stage"
+    )
+    errors: List[str] = Field(
+        default_factory=list, description="non-fatal errors/warnings during run"
+    )
 
     # ---- Aggregation invariants --------------------------------------------
     @field_validator("summary_score", mode="before")
@@ -797,6 +920,7 @@ class DocumentAnalysis(BaseDoc):
             return ordinal_to_risk(max_ord)
         return v
 
+
 # ----------------------------------------------------------------------------
 # Combined analyze response (legacy + SSOT)
 # ----------------------------------------------------------------------------
@@ -807,11 +931,13 @@ class AnalyzeOut(AppBaseModel):
     - SSOT document-level block (document)
     - top-level schema version for legacy/e2e consumers
     """
+
     schema_version: str = Field(default=SCHEMA_VERSION)
     analysis: Analysis
     results: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     clauses: List[Dict[str, Any]] = Field(default_factory=list)
     document: DocumentAnalysis
+
 
 # ============================================================================
 # Step 4: Public DTOs for /api/gpt/draft, /api/suggest, /api/qa-recheck
@@ -822,6 +948,7 @@ class DraftIn(AppBaseModel):
     At least one of (text, analysis) must be provided.
     If clause_type is missing, it is derived from analysis (if present).
     """
+
     text: Optional[str] = None
     analysis: Optional[Union[AnalysisOutput, Dict[str, Any]]] = None
     clause_type: Optional[str] = None
@@ -831,7 +958,9 @@ class DraftIn(AppBaseModel):
 
     @model_validator(mode="after")
     def _require_text_or_analysis(self):
-        if (self.text is None or str(self.text).strip() == "") and self.analysis is None:
+        if (
+            self.text is None or str(self.text).strip() == ""
+        ) and self.analysis is None:
             raise ValueError("DraftIn: either 'text' or 'analysis' must be provided")
         # derive clause_type if missing
         if self.clause_type is None and isinstance(self.analysis, AnalysisOutput):
@@ -845,10 +974,12 @@ class DraftIn(AppBaseModel):
             self.text = self.text.strip()
         return self
 
+
 class DraftOut(AppBaseModel):
     """
     Response DTO for /api/gpt/draft.
     """
+
     draft_text: str
     alternatives: List[str] = Field(default_factory=list)
     rationale: Optional[str] = None
@@ -876,40 +1007,46 @@ class DraftOut(AppBaseModel):
                 elif isinstance(it, str):
                     out.append(Citation(instrument=it, section=""))
                 elif isinstance(it, dict):
-                    out.append(Citation(
-                        system=it.get("system", "UK"),
-                        instrument=str(it.get("instrument", "")),
-                        section=str(it.get("section", "")),
-                        url=it.get("url"),
-                        title=it.get("title"),
-                        source=it.get("source"),
-                        link=it.get("link"),
-                        score=it.get("score"),
-                        evidence_text=it.get("evidence_text"),
-                    ))
+                    out.append(
+                        Citation(
+                            system=it.get("system", "UK"),
+                            instrument=str(it.get("instrument", "")),
+                            section=str(it.get("section", "")),
+                            url=it.get("url"),
+                            title=it.get("title"),
+                            source=it.get("source"),
+                            link=it.get("link"),
+                            score=it.get("score"),
+                            evidence_text=it.get("evidence_text"),
+                        )
+                    )
                 else:
                     out.append(Citation(instrument=str(it), section=""))
             return out
         if isinstance(v, str):
             return [Citation(instrument=v, section="")]
         if isinstance(v, dict):
-            return [Citation(
-                system=v.get("system", "UK"),
-                instrument=str(v.get("instrument", "")),
-                section=str(v.get("section", "")),
-                url=v.get("url"),
-                title=v.get("title"),
-                source=v.get("source"),
-                link=v.get("link"),
-                score=v.get("score"),
-                evidence_text=v.get("evidence_text"),
-            )]
+            return [
+                Citation(
+                    system=v.get("system", "UK"),
+                    instrument=str(v.get("instrument", "")),
+                    section=str(v.get("section", "")),
+                    url=v.get("url"),
+                    title=v.get("title"),
+                    source=v.get("source"),
+                    link=v.get("link"),
+                    score=v.get("score"),
+                    evidence_text=v.get("evidence_text"),
+                )
+            ]
         return [Citation(instrument=str(v), section="")]
+
 
 class SuggestIn(AppBaseModel):
     """
     Request DTO for /api/suggest.
     """
+
     clause_id: Optional[str] = None
     clause_type: Optional[str] = None
     text: str
@@ -927,38 +1064,48 @@ class SuggestIn(AppBaseModel):
         has_id = isinstance(self.clause_id, str) and self.clause_id.strip() != ""
         has_type = isinstance(self.clause_type, str) and self.clause_type.strip() != ""
         if has_id == has_type:  # both True or both False
-            raise ValueError("SuggestIn: provide exactly one of 'clause_id' or 'clause_type'")
+            raise ValueError(
+                "SuggestIn: provide exactly one of 'clause_id' or 'clause_type'"
+            )
         return self
+
 
 class SuggestOut(AppBaseModel):
     """
     Response DTO for /api/suggest.
     """
+
     suggestions: List[Suggestion]
+
 
 class AppliedChange(AppBaseModel):
     """
     Item describing a change applied to a clause between analyses.
     (Legacy DTO kept for backward compatibility)
     """
+
     clause_id: str
     before: str
     after: str
+
 
 class DeltaMetrics(AppBaseModel):
     """
     Delta metrics for QA recheck (score/risk/status deltas).
     risk_delta reflects ordinal difference using RISK_ORDER: low=0, medium=1, high=2, critical=3
     """
+
     score_delta: int = Field(default=0, ge=-100, le=100)
     risk_delta: int = Field(default=0, ge=-3, le=3)  # ordinal diff: now - prev
     status_from: Status = "OK"
     status_to: Status = "OK"
 
+
 class QARecheckIn(AppBaseModel):
     """
     Request DTO for /api/qa-recheck.
     """
+
     document_name: Optional[str] = None
     text: str
     applied_changes: List[TextPatch] = Field(default_factory=list)
@@ -970,11 +1117,13 @@ class QARecheckIn(AppBaseModel):
         self.text = self.text.strip()
         return self
 
+
 class QARecheckOut(AppBaseModel):
     """
     Response DTO for /api/qa-recheck.
     Flattened deltas with backward-compat for legacy `{'deltas': {...}}`.
     """
+
     score_delta: int = Field(default=0, ge=-100, le=100)
     risk_delta: int = Field(default=0, ge=-3, le=3)
     status_from: Status = "OK"
@@ -985,7 +1134,11 @@ class QARecheckOut(AppBaseModel):
     @model_validator(mode="before")
     @classmethod
     def _from_legacy(cls, data: Any):
-        if isinstance(data, dict) and "deltas" in data and isinstance(data["deltas"], dict):
+        if (
+            isinstance(data, dict)
+            and "deltas" in data
+            and isinstance(data["deltas"], dict)
+        ):
             d = data.get("deltas") or {}
             # copy flat fields if not already present
             data.setdefault("score_delta", d.get("score_delta", 0))

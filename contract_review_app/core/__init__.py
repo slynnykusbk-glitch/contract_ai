@@ -1,1 +1,1 @@
-__all__ = ["schemas", "interfaces"]
+__all__ = ["schemas", "interfaces", "normalize"]

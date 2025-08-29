@@ -130,11 +130,33 @@ def run_draft(
 
 
 # Back-compat entry (used by some legacy callers)
-def run_gpt_drafting_pipeline(analysis: Dict[str, Any], model: Optional[str] = "gpt-4") -> Dict[str, Any]:
+def run_gpt_drafting_pipeline(analysis: Union[Dict[str, Any], Any], model: Optional[str] = "gpt-4") -> Dict[str, Any]:
     """
-    Legacy wrapper kept for compatibility. Uses LLM only if proxy is available.
+    Legacy wrapper kept for compatibility. Accepts either dict or Pydantic model.
+    Uses LLM only if proxy is available.
     """
-    return run_draft(analysis=analysis, mode=str(analysis.get("mode") or "friendly"), use_llm=_HAS_PROXY, model=model)
+    # Resolve mode safely
+    _mode: Optional[str] = None
+    if isinstance(analysis, dict):
+        _mode = analysis.get("mode")
+    else:
+        _mode = getattr(analysis, "mode", None)
+        if _mode is None and hasattr(analysis, "model_dump"):
+            try:
+                _mode = analysis.model_dump().get("mode")  # type: ignore[attr-defined]
+            except Exception:
+                _mode = None
+    # Ensure we pass a dict into run_draft
+    if isinstance(analysis, dict):
+        a = analysis
+    elif hasattr(analysis, "model_dump"):
+        try:
+            a = analysis.model_dump()  # type: ignore[attr-defined]
+        except Exception:
+            a = _best_effort_to_dict(analysis)
+    else:
+        a = _best_effort_to_dict(analysis)
+    return run_draft(analysis=a, mode=str(_mode or "friendly"), use_llm=_HAS_PROXY, model=model)
 
 
 # ---------------------------------------------------------------------------
@@ -344,3 +366,28 @@ def _get_attr(obj: Any, name: str, default: Any = None) -> Any:
     if isinstance(obj, dict):
         return obj.get(name, default)
     return getattr(obj, name, default)
+
+def _best_effort_to_dict(obj: Any) -> Dict[str, Any]:
+    """
+    Convert unknown analysis-like object to a plain dict without raising.
+    """
+    try:
+        if hasattr(obj, "dict"):
+            return obj.dict()  # pydantic v1
+    except Exception:
+        pass
+    try:
+        if hasattr(obj, "__dict__"):
+            return dict(getattr(obj, "__dict__") or {})
+    except Exception:
+        pass
+    # Last resort: copy a few common attrs if present
+    out: Dict[str, Any] = {}
+    for f in ("clause_type", "text", "proposed_text", "findings", "citations"):
+        try:
+            val = getattr(obj, f)
+            if val is not None:
+                out[f] = val
+        except Exception:
+            continue
+    return out

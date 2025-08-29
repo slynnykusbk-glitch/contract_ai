@@ -26,13 +26,13 @@ __all__ = [
     # enums/literals
     "Status", "RiskLevel", "Severity", "DraftMode",
     # primitives
-    "Span", "Citation", "CrossRef", "TextPatch",
+    "Span", "TextSpan", "Evidence", "Citation", "CrossRef", "TextPatch",
     # inputs
     "AnalysisInput", "AnalyzeIn",
     # building blocks
     "Finding", "Diagnostic", "Suggestion", "GPTDraftResponse",
     # clause/document
-    "Clause", "AnalysisOutput", "DocIndex", "DocumentAnalysis",
+    "Clause", "AnalysisOutput", "DocIndex", "ParsedDocument", "DocumentAnalysis",
     # responses (panel-compat legacy + combined)
     "Analysis", "AnalyzeResponse", "AnalyzeOut",
     # base-doc
@@ -172,19 +172,70 @@ class Span(AppBaseModel):
             raise ValueError("Span.start and Span.length must be >= 0")
         return v
 
+
+class TextSpan(AppBaseModel):
+    """Span on the normalized text with language/script metadata."""
+
+    start: int = 0
+    end: int = 0
+    lang: Optional[str] = None
+    script: Optional[str] = None
+
+    @field_validator("start", "end")
+    @classmethod
+    def _non_negative(cls, v: int) -> int:
+        if v is None:
+            return 0
+        if v < 0:
+            raise ValueError("TextSpan.start and TextSpan.end must be >= 0")
+        return v
+
+    @model_validator(mode="after")
+    def _validate_bounds(self):
+        if self.end < self.start:
+            raise ValueError("TextSpan.end must be >= start")
+        return self
+
+
+class Evidence(AppBaseModel):
+    """Supporting evidence snippet for a citation."""
+
+    text: str
+    spans: List[TextSpan] = Field(default_factory=list)
+
+    @field_validator("spans", mode="before")
+    @classmethod
+    def _coerce_spans(cls, v):
+        if v is None:
+            return []
+        items = v if isinstance(v, list) else [v]
+        out: List[TextSpan] = []
+        for it in items:
+            if isinstance(it, TextSpan):
+                out.append(it)
+            elif isinstance(it, dict):
+                out.append(TextSpan(**it))
+        return out
+
 class Citation(AppBaseModel):
-    """
-    Legal citation item; url is validated if present.
-    """
+    """Generic citation with optional provenance and evidence."""
+
+    # legacy fields (kept for backward compatibility)
     system: Literal["UK", "UA", "EU", "INT"] = "UK"
-    instrument: str
-    section: str
+    instrument: str | None = None
+    section: str | None = None
     url: Optional[AnyUrl] = None
-    title: Optional[str] = None
     source: Optional[str] = None
     link: Optional[str] = None
-    score: Optional[float] = None
     evidence_text: Optional[str] = None
+
+    # new fields
+    title: Optional[str] = None
+    source_type: Optional[str] = None
+    source_id: Optional[str] = None
+    evidence: List[Evidence] = Field(default_factory=list)
+    score: Optional[float] = None
+    meta: Dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("score", mode="before")
     @classmethod
@@ -195,12 +246,32 @@ class Citation(AppBaseModel):
             fv = float(v)
         except Exception:
             return None
-        return fv if 0.0 <= fv <= 1.0 else None
+        if fv < 0.0:
+            return 0.0
+        if fv > 1.0:
+            return 1.0
+        return fv
 
     @field_validator("link", mode="before")
     @classmethod
     def _link_str(cls, v):
         return None if v is None else str(v)
+
+    @field_validator("evidence", mode="before")
+    @classmethod
+    def _coerce_evidence(cls, v):
+        if v is None:
+            return []
+        items = v if isinstance(v, list) else [v]
+        out: List[Evidence] = []
+        for it in items:
+            if isinstance(it, Evidence):
+                out.append(it)
+            elif isinstance(it, dict):
+                out.append(Evidence(**it))
+            else:
+                out.append(Evidence(text=str(it)))
+        return out
 
 class CrossRef(AppBaseModel):
     """
@@ -298,46 +369,28 @@ class Finding(AppBaseModel):
     @field_validator("citations", mode="before")
     @classmethod
     def _coerce_citations(cls, v):
-        # Accept str | list[str] | list[dict] | list[Citation] | dict
+        # Accept str | dict | Citation | list[mixed]
         if v is None:
             return []
-        if isinstance(v, list):
-            out: List[Citation] = []
-            for it in v:
-                if isinstance(it, Citation):
-                    out.append(it)
-                elif isinstance(it, str):
-                    out.append(Citation(instrument=it, section=""))
-                elif isinstance(it, dict):
-                    out.append(Citation(
-                        system=it.get("system", "UK"),
-                        instrument=str(it.get("instrument", "")),
-                        section=str(it.get("section", "")),
-                        url=it.get("url"),
-                        title=it.get("title"),
-                        source=it.get("source"),
-                        link=it.get("link"),
-                        score=it.get("score"),
-                        evidence_text=it.get("evidence_text"),
-                    ))
-                else:
-                    out.append(Citation(instrument=str(it), section=""))
-            return out
-        if isinstance(v, str):
-            return [Citation(instrument=v, section="")]
-        if isinstance(v, dict):
-            return [Citation(
-                system=v.get("system", "UK"),
-                instrument=str(v.get("instrument", "")),
-                section=str(v.get("section", "")),
-                url=v.get("url"),
-                title=v.get("title"),
-                source=v.get("source"),
-                link=v.get("link"),
-                score=v.get("score"),
-                evidence_text=v.get("evidence_text"),
-            )]
-        return [Citation(instrument=str(v), section="")]
+        items = v if isinstance(v, list) else [v]
+        out: List[Citation] = []
+        for it in items:
+            if isinstance(it, Citation):
+                out.append(it)
+            elif isinstance(it, str):
+                out.append(Citation(title=it))
+            elif isinstance(it, dict):
+                data = dict(it)
+                if "instrument" in data and "title" not in data:
+                    data["title"] = str(data.get("instrument", ""))
+                if "system" in data and "source_type" not in data:
+                    data["source_type"] = str(data.get("system", ""))
+                if "section" in data and "source_id" not in data:
+                    data["source_id"] = str(data.get("section", ""))
+                out.append(Citation(**data))
+            else:
+                out.append(Citation(title=str(it)))
+        return out
 
     @model_validator(mode="after")
     def _derive_risk_from_severity(self):
@@ -545,46 +598,28 @@ class AnalysisOutput(AppBaseModel):
     @field_validator("citations", mode="before")
     @classmethod
     def _coerce_citations(cls, v):
-        # Accept str | list[str] | list[dict] | list[Citation] | dict
+        # Accept str | dict | Citation | list[mixed]
         if v is None:
             return []
-        if isinstance(v, list):
-            out: List[Citation] = []
-            for it in v:
-                if isinstance(it, Citation):
-                    out.append(it)
-                elif isinstance(it, str):
-                    out.append(Citation(instrument=it, section=""))
-                elif isinstance(it, dict):
-                    out.append(Citation(
-                        system=it.get("system", "UK"),
-                        instrument=str(it.get("instrument", "")),
-                        section=str(it.get("section", "")),
-                        url=it.get("url"),
-                        title=it.get("title"),
-                        source=it.get("source"),
-                        link=it.get("link"),
-                        score=it.get("score"),
-                        evidence_text=it.get("evidence_text"),
-                    ))
-                else:
-                    out.append(Citation(instrument=str(it), section=""))
-            return out
-        if isinstance(v, str):
-            return [Citation(instrument=v, section="")]
-        if isinstance(v, dict):
-            return [Citation(
-                system=v.get("system", "UK"),
-                instrument=str(v.get("instrument", "")),
-                section=str(v.get("section", "")),
-                url=v.get("url"),
-                title=v.get("title"),
-                source=v.get("source"),
-                link=v.get("link"),
-                score=v.get("score"),
-                evidence_text=v.get("evidence_text"),
-            )]
-        return [Citation(instrument=str(v), section="")]
+        items = v if isinstance(v, list) else [v]
+        out: List[Citation] = []
+        for it in items:
+            if isinstance(it, Citation):
+                out.append(it)
+            elif isinstance(it, str):
+                out.append(Citation(title=it))
+            elif isinstance(it, dict):
+                data = dict(it)
+                if "instrument" in data and "title" not in data:
+                    data["title"] = str(data.get("instrument", ""))
+                if "system" in data and "source_type" not in data:
+                    data["source_type"] = str(data.get("system", ""))
+                if "section" in data and "source_id" not in data:
+                    data["source_id"] = str(data.get("section", ""))
+                out.append(Citation(**data))
+            else:
+                out.append(Citation(title=str(it)))
+        return out
 
     @field_validator("risk", mode="before")
     @classmethod
@@ -702,6 +737,22 @@ class BaseDoc(AppBaseModel):
     Base SSOT document model with schema version.
     """
     schema_version: str = Field(default=SCHEMA_VERSION)
+
+
+class ParsedDocument(AppBaseModel):
+    """Parsed document with normalization metadata."""
+
+    content: str = ""
+    normalized_text: str = ""
+    offset_map: List[int] = Field(default_factory=list)
+    segments: List[TextSpan] = Field(default_factory=list)
+
+    @field_validator("offset_map", mode="after")
+    def _validate_offset(cls, v, info):
+        nt = info.data.get("normalized_text", "") or ""
+        if len(v) != len(nt):
+            raise ValueError("offset_map length must equal normalized_text length")
+        return v
 
 # ----------------------------------------------------------------------------
 # Document-level SSOT
@@ -868,43 +919,25 @@ class DraftOut(AppBaseModel):
     def _coerce_citations_hint(cls, v):
         if v is None:
             return []
-        if isinstance(v, list):
-            out: List[Citation] = []
-            for it in v:
-                if isinstance(it, Citation):
-                    out.append(it)
-                elif isinstance(it, str):
-                    out.append(Citation(instrument=it, section=""))
-                elif isinstance(it, dict):
-                    out.append(Citation(
-                        system=it.get("system", "UK"),
-                        instrument=str(it.get("instrument", "")),
-                        section=str(it.get("section", "")),
-                        url=it.get("url"),
-                        title=it.get("title"),
-                        source=it.get("source"),
-                        link=it.get("link"),
-                        score=it.get("score"),
-                        evidence_text=it.get("evidence_text"),
-                    ))
-                else:
-                    out.append(Citation(instrument=str(it), section=""))
-            return out
-        if isinstance(v, str):
-            return [Citation(instrument=v, section="")]
-        if isinstance(v, dict):
-            return [Citation(
-                system=v.get("system", "UK"),
-                instrument=str(v.get("instrument", "")),
-                section=str(v.get("section", "")),
-                url=v.get("url"),
-                title=v.get("title"),
-                source=v.get("source"),
-                link=v.get("link"),
-                score=v.get("score"),
-                evidence_text=v.get("evidence_text"),
-            )]
-        return [Citation(instrument=str(v), section="")]
+        items = v if isinstance(v, list) else [v]
+        out: List[Citation] = []
+        for it in items:
+            if isinstance(it, Citation):
+                out.append(it)
+            elif isinstance(it, str):
+                out.append(Citation(title=it))
+            elif isinstance(it, dict):
+                data = dict(it)
+                if "instrument" in data and "title" not in data:
+                    data["title"] = str(data.get("instrument", ""))
+                if "system" in data and "source_type" not in data:
+                    data["source_type"] = str(data.get("system", ""))
+                if "section" in data and "source_id" not in data:
+                    data["source_id"] = str(data.get("section", ""))
+                out.append(Citation(**data))
+            else:
+                out.append(Citation(title=str(it)))
+        return out
 
 class SuggestIn(AppBaseModel):
     """

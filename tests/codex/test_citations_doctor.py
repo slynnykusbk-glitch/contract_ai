@@ -17,10 +17,10 @@ def test_confidentiality_citations_present():
     assert out.citations and isinstance(out.citations[0], Citation)
 
     for c in [*out.citations, *first_finding.citations]:
-        assert isinstance(c.system, str) and c.system
-        assert isinstance(c.instrument, str) and c.instrument
-        assert isinstance(c.section, str)
-        assert c.url is None or isinstance(c.url, str)
+        assert isinstance(c.title, str) and c.title
+        assert c.source_type is None or isinstance(c.source_type, str)
+        assert c.source_id is None or isinstance(c.source_id, str)
+        assert c.meta == {} or isinstance(c.meta, dict)
 
     data = json.loads(out.model_dump_json())
     assert data["citations"], "citations missing from JSON output"

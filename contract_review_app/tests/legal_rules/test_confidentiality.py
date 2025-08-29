@@ -29,4 +29,4 @@ def test_personal_data_triggers_gdpr_hint():
     out = conf.analyze(AnalysisInput(clause_type="confidentiality", text=text))
     codes = [f.code for f in out.findings]
     assert "CONF-9" in codes
-    assert any(c.instrument.startswith("UK GDPR") for f in out.findings for c in f.citations)
+    assert any(c.title and c.title.startswith("UK GDPR") for f in out.findings for c in f.citations)

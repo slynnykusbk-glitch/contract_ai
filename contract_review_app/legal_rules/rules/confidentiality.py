@@ -12,10 +12,38 @@ from contract_review_app.core.schemas import (
 rule_name = "confidentiality"  # used by registry discovery
 
 # --- UK citations (strictly UK) ----------------------------------------------
-CIT_UK_GDPR = Citation(system="UK", instrument="UK GDPR", section="Arts. 5(1)(f), 32")
-CIT_DPA_2018 = Citation(system="UK", instrument="Data Protection Act 2018", section="Part 2")
-CIT_SCA_1981 = Citation(system="UK", instrument="Senior Courts Act 1981", section="s.37")
-CIT_COCO_1969 = Citation(system="UK", instrument="Coco v A N Clark (Engineers) Ltd [1969] RPC 41", section="breach of confidence")
+CIT_UK_GDPR = Citation(
+    system="UK",
+    instrument="UK GDPR",
+    section="Arts. 5(1)(f), 32",
+    title="UK GDPR",
+    source_type="law",
+    source_id="uk_gdpr",
+)
+CIT_DPA_2018 = Citation(
+    system="UK",
+    instrument="Data Protection Act 2018",
+    section="Part 2",
+    title="Data Protection Act 2018",
+    source_type="law",
+    source_id="dpa_2018",
+)
+CIT_SCA_1981 = Citation(
+    system="UK",
+    instrument="Senior Courts Act 1981",
+    section="s.37",
+    title="Senior Courts Act 1981",
+    source_type="law",
+    source_id="sca_1981",
+)
+CIT_COCO_1969 = Citation(
+    system="UK",
+    instrument="Coco v A N Clark (Engineers) Ltd [1969] RPC 41",
+    section="breach of confidence",
+    title="Coco v A N Clark (Engineers) Ltd [1969] RPC 41",
+    source_type="case",
+    source_id="coco_1969",
+)
 
 # --- helpers -----------------------------------------------------------------
 _DURATION_RE = re.compile(

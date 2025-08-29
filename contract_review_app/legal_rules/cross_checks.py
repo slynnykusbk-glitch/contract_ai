@@ -235,11 +235,11 @@ def cross_check_clauses(
                 _add_finding(o_gl, "GL_103",
                              "Governing law and forum selection appear misaligned; consider aligning law and courts.",
                              severity="major",
-                             citations=[Citation(system="UK", instrument="General contract practice", section="GL↔JUR")])
+                             citations=[Citation(system="UK", instrument="General contract practice", section="GL↔JUR", title="General contract practice", source_type="practice", source_id="gl_jur")])
                 _add_finding(o_jur, "JUR_102",
                              "Jurisdiction clause may conflict with chosen governing law; clarify forum or adjust law.",
                              severity="major",
-                             citations=[Citation(system="UK", instrument="General contract practice", section="GL↔JUR")])
+                             citations=[Citation(system="UK", instrument="General contract practice", section="GL↔JUR", title="General contract practice", source_type="practice", source_id="gl_jur")])
 
     # ---------- 2) TERM <-> NOTICE / LoL -------------------------------------
     term_refs = _all(outputs, by_type, ["termination", "term_and_termination", "termination_clause"])
@@ -294,7 +294,7 @@ def cross_check_clauses(
                 o_conf, "CONF_114",
                 "Confidentiality clause lacks data protection carve-outs/references (UK GDPR/DPA).",
                 severity="major",
-                citations=[Citation(system="UK", instrument="UK GDPR / DPA 2018", section="General reference")],
+                citations=[Citation(system="UK", instrument="UK GDPR / DPA 2018", section="General reference", title="UK GDPR / DPA 2018", source_type="law", source_id="uk_gdpr_dpa_2018")],
             )
 
     # ---------- 5) FM <-> Payment --------------------------------------------

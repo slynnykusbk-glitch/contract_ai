@@ -14,9 +14,13 @@ def analyze(inp: AnalysisInput) -> AnalysisOutput:
     has_courts = re.search(r"\bcourts? of\b", text, flags=re.I)
 
     if not (has_excl or has_non or has_courts):
-        findings.append(mk_finding("JUR-ABSENT", "No jurisdiction/forum selection stated", "high"))
+        sev = "critical" if not text.strip() else "high"
+        findings.append(mk_finding("JURIS_MISSING", "No jurisdiction/forum selection stated", sev))
 
     if has_excl and has_non:
         findings.append(mk_finding("JUR-CONFLICT", "Both 'exclusive' and 'non-exclusive' jurisdiction detected", "high"))
+
+    if has_courts and re.search(r"united kingdom", text, flags=re.I):
+        findings.append(mk_finding("JURIS_UK_AMBIGUOUS", "Jurisdiction reference is broad/ambiguous", "high"))
 
     return make_output(rule_name, inp, findings, "Jurisdiction", "Jurisdiction")

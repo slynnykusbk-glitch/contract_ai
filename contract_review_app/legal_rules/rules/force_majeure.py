@@ -10,7 +10,7 @@ def analyze(inp: AnalysisInput) -> AnalysisOutput:
     findings = []
 
     if not re.search(r"\bforce majeure\b", text, flags=re.I):
-        findings.append(mk_finding("FM-ABSENT", "No 'Force Majeure' provision detected", "medium"))
+        findings.append(mk_finding("FM_MISSING", "No 'Force Majeure' provision detected", "critical"))
     else:
         # Notice requirement
         if not re.search(r"\bnotice\b", text, flags=re.I):

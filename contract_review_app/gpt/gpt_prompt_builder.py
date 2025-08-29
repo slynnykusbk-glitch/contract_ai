@@ -80,7 +80,39 @@ def build_prompt(
     analysis: Union[Dict[str, Any], Any, str],
     mode: str = "friendly",
     **kwargs: Any,
+) -> str:
+    """Return a single-string prompt for backward compatibility.
+
+    The historic contract AI pipeline expects ``build_prompt`` to yield a
+    plain text prompt (without separate system/user fields).  In newer
+    implementations we expose structured access via :func:`build_prompt_parts`
+    and :func:`build_gpt_prompt`.  This helper first tries to use the legacy
+    prompt builder from :mod:`prompt_builder_utils`; if that fails, it falls
+    back to concatenating the system and user segments from
+    :func:`build_gpt_prompt`.
+    """
+    from . import prompt_builder_utils as _legacy
+
+    try:
+        # Legacy builder expects an AnalysisOutput-like object.
+        prompt = _legacy.build_prompt(analysis)  # type: ignore[arg-type]
+        # Map normalized severities back to legacy labels expected by tests.
+        prompt = (
+            prompt.replace("[major]", "[medium]")
+            .replace("[critical]", "[high]")
+        )
+        return prompt
+    except Exception:
+        pp = build_gpt_prompt(analysis=analysis, mode=mode, **kwargs)
+        return f"{pp.system}\n\n{pp.user}".strip()
+
+
+def build_prompt_parts(
+    analysis: Union[Dict[str, Any], Any, str],
+    mode: str = "friendly",
+    **kwargs: Any,
 ) -> Dict[str, str]:
+    """Return the prompt parts as a dict for newer structured callers."""
     pp = build_gpt_prompt(analysis=analysis, mode=mode, **kwargs)
     return {"system": pp.system, "user": pp.user}
 

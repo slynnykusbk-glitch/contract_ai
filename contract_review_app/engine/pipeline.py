@@ -638,4 +638,4 @@ def suggest_edits(
         "span": {"start": start, "end": start + max(0, length)},
         "hash": tid,
     }
-    return {"suggestions": [card]}
+    return [card]

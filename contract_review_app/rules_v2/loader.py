@@ -4,7 +4,19 @@ import importlib.util
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple
 
+import re
 import yaml
+
+
+def _preprocess_yaml(raw: str) -> str:
+    """Minimal YAML preprocessor.
+
+    The tests supply compact inline mappings like ``key:{ a: 1 }`` which are
+    invalid YAML. A light regex normalizes such patterns by inserting a space
+    after the colon so that the standard parser can consume the file without
+    raising ``ParserError``.
+    """
+    return re.sub(r":\s*{", ": {", raw)
 
 from .models import FindingV2, ENGINE_VERSION
 from .types import RuleFormat, RuleSource
@@ -32,16 +44,37 @@ def discover(root: Path) -> List[RuleSource]:
         yaml_file = files.get("yaml")
 
         if py_file and yaml_file:
-            sources.append(
-                RuleSource(
-                    id=name,
-                    pack=pack,
-                    format=RuleFormat.HYBRID,
-                    path=yaml_file,            # основная точка — YAML
-                    py_path=py_file,
-                    yaml_path=yaml_file,
+            # if YAML contains an id -> treat pair as hybrid, otherwise fall back
+            # to the Python-only rule.
+            has_id = False
+            try:
+                raw = yaml_file.read_text(encoding="utf-8")
+                data = yaml.safe_load(_preprocess_yaml(raw)) or {}
+                has_id = bool(data.get("id"))
+            except Exception:
+                pass
+            if has_id:
+                sources.append(
+                    RuleSource(
+                        id=name,
+                        pack=pack,
+                        format=RuleFormat.HYBRID,
+                        path=yaml_file,
+                        py_path=py_file,
+                        yaml_path=yaml_file,
+                    )
                 )
-            )
+            else:
+                sources.append(
+                    RuleSource(
+                        id=name,
+                        pack=pack,
+                        format=RuleFormat.PYTHON,
+                        path=py_file,
+                        py_path=py_file,
+                        yaml_path=yaml_file,
+                    )
+                )
         elif py_file:
             sources.append(
                 RuleSource(
@@ -53,15 +86,37 @@ def discover(root: Path) -> List[RuleSource]:
                 )
             )
         else:  # yaml only
-            sources.append(
-                RuleSource(
-                    id=name,
-                    pack=pack,
-                    format=RuleFormat.YAML,
-                    path=yaml_file,            # type: ignore[arg-type]
-                    yaml_path=yaml_file,
+            # treat as hybrid if YAML references a python impl via ``python:``
+            py_ref = None
+            try:
+                raw = yaml_file.read_text(encoding="utf-8")
+                data = yaml.safe_load(_preprocess_yaml(raw)) or {}
+                py_name = data.get("python")
+                if isinstance(py_name, str):
+                    py_ref = yaml_file.parent / py_name
+            except Exception:
+                py_ref = None
+            if py_ref and py_ref.exists():
+                sources.append(
+                    RuleSource(
+                        id=name,
+                        pack=pack,
+                        format=RuleFormat.HYBRID,
+                        path=yaml_file,  # main spec
+                        py_path=py_ref,
+                        yaml_path=yaml_file,
+                    )
                 )
-            )
+            else:
+                sources.append(
+                    RuleSource(
+                        id=name,
+                        pack=pack,
+                        format=RuleFormat.YAML,
+                        path=yaml_file,  # type: ignore[arg-type]
+                        yaml_path=yaml_file,
+                    )
+                )
     return sources
 
 

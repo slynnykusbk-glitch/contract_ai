@@ -59,6 +59,17 @@ try:
 except Exception:  # pragma: no cover
     rules_loader = None  # type: ignore
 
+
+# --- test hook (будет перезаписан monkeypatch в тестах) ---
+def run_gpt_draft(payload: dict | None = None, *args, **kwargs) -> dict:
+    """Placeholder для тестов: тесты заменяют эту функцию через monkeypatch.
+    Возвращаем минимальную структуру по умолчанию.
+    """
+    return {"text": "", "model": "noop"}
+
+
+# ----------------------------------------------------------
+
 # --------------------------------------------------------------------
 # Config
 # --------------------------------------------------------------------

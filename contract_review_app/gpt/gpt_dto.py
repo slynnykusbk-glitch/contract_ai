@@ -1,19 +1,23 @@
 from __future__ import annotations
 from typing import Optional, Any
 from pydantic import BaseModel
+from contract_review_app.core.schemas import (
+    GPTDraftResponse as CoreGPTDraftResponse,
+)
 
 # ⚠️ Не імпортуємо AnalysisOutput як тип, щоб уникати циклічних імпортів під час runtime.
 # Приймаємо dict-подібний об'єкт.
 
-class GPTDraftResponse(BaseModel):
+
+class GPTDraftResponse(CoreGPTDraftResponse):
+    """Розширений варіант :class:`core.schemas.GPTDraftResponse`.
+
+    Додає кілька полів, корисних для фронтенду/Word, але зберігає сумісність
+    з базовим класом, що використовується у тестах.
     """
-    Уніфікований DTO-відповідь для фронтенду/Word.
-    """
+
     clause_type: Optional[str] = None
     original_text: Optional[str] = None
-    draft_text: str
-    explanation: str
-    score: int
     status: str = "ok"  # ok | warn | fail
     title: Optional[str] = None
 

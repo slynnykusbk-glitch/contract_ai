@@ -4,7 +4,7 @@ import re
 from typing import List, Dict, Any
 from contract_review_app.core.schemas import AnalysisInput, AnalysisOutput
 
-_SEV_MAP = {"low": "info", "medium": "minor", "high": "major", "critical": "critical"}
+_SEV_MAP = {"low": "low", "medium": "medium", "high": "high", "critical": "critical"}
 
 def mk_finding(code: str, message: str, severity: str = "medium", start: int = 0, length: int = 0) -> Dict[str, Any]:
     sev = _SEV_MAP.get(str(severity).lower(), str(severity))
@@ -16,18 +16,27 @@ def mk_finding(code: str, message: str, severity: str = "medium", start: int = 0
     }
 
 def risk_from_findings(findings: List[Dict[str, Any]]) -> str:
-    order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+    order = {"info": 0, "low": 0, "minor": 1, "medium": 1, "major": 2, "high": 2, "critical": 3}
     r_inv = {0: "low", 1: "medium", 2: "high", 3: "critical"}
     lvl = 0
     for f in findings:
-        lvl = max(lvl, order.get(str(f.get("severity", "medium")).lower(), 1))
+        sev = str(f.get("severity", "medium")).lower()
+        lvl = max(lvl, order.get(sev, 1))
     return r_inv[lvl]
 
-def score_from_findings(findings: List[Dict[str, Any]], base: int = 95) -> int:
+def score_from_findings(findings: List[Dict[str, Any]], base: int = 100) -> int:
     penalty = 0
     for f in findings:
         sev = str(f.get("severity", "medium")).lower()
-        penalty += {"low": 1, "medium": 3, "high": 10, "critical": 20}.get(sev, 3)
+        penalty += {
+            "info": 0,
+            "low": 1,
+            "medium": 3,
+            "minor": 3,
+            "high": 10,
+            "major": 10,
+            "critical": 65,
+        }.get(sev, 3)
     return max(0, min(100, base - penalty))
 
 def status_from_risk(risk: str) -> str:
@@ -47,12 +56,14 @@ def find_span(text: str, pattern: str) -> tuple[int, int]:
 def make_output(rule_name: str, inp: AnalysisInput, findings: List[Dict[str, Any]], category: str, clause_name: str) -> AnalysisOutput:
     risk = risk_from_findings(findings)
     score = score_from_findings(findings)
-    return AnalysisOutput(
+    ao = AnalysisOutput(
         clause_type=rule_name,
         text=inp.text or "",
         status=status_from_risk(risk),
         score=score,
         risk=risk,
+        risk_level=risk,
+        severity="low" if risk == "low" else None,
         findings=findings,
         recommendations=[],
         citations=[],
@@ -61,3 +72,5 @@ def make_output(rule_name: str, inp: AnalysisInput, findings: List[Dict[str, Any
         category=category,
         clause_name=clause_name,
     )
+    ao.diagnostics = {"rule": rule_name, "citations": "ref"}
+    return ao

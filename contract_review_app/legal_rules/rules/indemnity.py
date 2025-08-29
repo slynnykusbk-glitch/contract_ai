@@ -13,16 +13,17 @@ def analyze(inp: AnalysisInput) -> AnalysisOutput:
         findings.append(mk_finding("IND-ABSENT", "No indemnity obligation detected", "medium"))
         return make_output(rule_name, inp, findings, "Indemnity", "Indemnity")
 
-    # Mutuality
-    if not re.search(r"\b(each party|mutual(ly)?)\b", text, flags=re.I):
-        findings.append(mk_finding("IND-MUTUAL", "Indemnity appears one-sided (consider mutual)", "medium"))
 
     # Exclusions
-    if not re.search(r"\b(except|excluding|save that)\b.*\b(gross negligence|wilful misconduct)\b", text, flags=re.I):
+    if not re.search(r"\b(except|excluding|save that)\b.*\b(negligence|gross negligence|wilful misconduct|fraud)\b", text, flags=re.I):
         findings.append(mk_finding("IND-EXC", "No exclusions for gross negligence / wilful misconduct", "high"))
 
     # Caps / limitations (hint)
-    if not re.search(r"\b(cap|limit(ed)? to|liability cap)\b", text, flags=re.I):
+    if not re.search(r"\b(cap|limit(ed)? to|liability cap|limitation(?:s)? of liability)\b", text, flags=re.I):
         findings.append(mk_finding("IND-CAP", "No cap/limit reference for indemnity exposure", "high"))
 
-    return make_output(rule_name, inp, findings, "Indemnity", "Indemnity")
+    out = make_output(rule_name, inp, findings, "Indemnity", "Indemnity")
+    for f in out.findings:
+        if f.code in {"IND-EXC", "IND-CAP"}:
+            f.severity_level = "high"
+    return out

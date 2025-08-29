@@ -2,7 +2,10 @@
 # ASCII-only. Orchestrates drafting with guardrails and deterministic fallbacks.
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Union
+
+from pydantic import BaseModel
+from contract_review_app.core.schemas import AnalysisOutput
 
 # Prompt builder (new API with system/user) + legacy fallback
 try:
@@ -130,33 +133,72 @@ def run_draft(
 
 
 # Back-compat entry (used by some legacy callers)
-def run_gpt_drafting_pipeline(analysis: Union[Dict[str, Any], Any], model: Optional[str] = "gpt-4") -> Dict[str, Any]:
+def run_gpt_drafting_pipeline(
+    analysis: Union[Dict[str, Any], Any],
+    model: Optional[str] = "gpt-4",
+) -> AnalysisOutput:
     """
-    Legacy wrapper kept for compatibility. Accepts either dict or Pydantic model.
-    Uses LLM only if proxy is available.
+    Orchestrates drafting:
+    - accepts AnalysisOutput or dict
+    - calls drafter
+    - returns AnalysisOutput (not dict)
     """
-    # Resolve mode safely
-    _mode: Optional[str] = None
-    if isinstance(analysis, dict):
-        _mode = analysis.get("mode")
-    else:
-        _mode = getattr(analysis, "mode", None)
-        if _mode is None and hasattr(analysis, "model_dump"):
-            try:
-                _mode = analysis.model_dump().get("mode")  # type: ignore[attr-defined]
-            except Exception:
-                _mode = None
-    # Ensure we pass a dict into run_draft
-    if isinstance(analysis, dict):
-        a = analysis
-    elif hasattr(analysis, "model_dump"):
+    a = _best_effort_to_dict(analysis)
+    mode = str(a.get("mode") or "friendly")
+
+    draft_result: Dict[str, Any] = run_draft(
+        analysis=a,
+        mode=mode,
+        use_llm=_HAS_PROXY,
+        model=model,
+    )
+
+    merged: Dict[str, Any] = dict(a)
+    draft_text = draft_result.get("draft_text") or draft_result.get("draft")
+    if draft_text:
+        merged["proposed_text"] = draft_text
+
+    recs = list(merged.get("recommendations") or [])
+    explanation = draft_result.get("explanation")
+    if explanation or draft_text:
+        parts: List[str] = []
+        if explanation:
+            parts.append(str(explanation))
+        if draft_text:
+            parts.append(str(draft_text))
+        recs.insert(0, " ".join(parts).strip())
+    if recs:
+        merged["recommendations"] = recs
+
+    if "score" in draft_result:
         try:
-            a = analysis.model_dump()  # type: ignore[attr-defined]
+            merged["score"] = max(
+                int(merged.get("score") or 0), int(draft_result.get("score") or 0)
+            )
         except Exception:
-            a = _best_effort_to_dict(analysis)
-    else:
-        a = _best_effort_to_dict(analysis)
-    return run_draft(analysis=a, mode=str(_mode or "friendly"), use_llm=_HAS_PROXY, model=model)
+            pass
+
+    md = dict(merged.get("metadata") or {})
+    for k in (
+        "title",
+        "explanation",
+        "score",
+        "status",
+        "guardrails",
+        "model",
+        "llm_provider",
+    ):
+        if k in draft_result and draft_result[k] is not None:
+            md[f"gpt_{k}"] = draft_result[k]
+    if md:
+        merged["metadata"] = md
+
+    out = AnalysisOutput(**merged)
+    try:
+        out.diagnostics.append("gpt_draft")
+    except Exception:
+        pass
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -360,34 +402,38 @@ def _draft_out(
         "explanation": explanation,
     }
 
+_ATTR_ALIASES = {"draft_text": ["draft"]}
+
+
 def _get_attr(obj: Any, name: str, default: Any = None) -> Any:
     if obj is None:
         return default
+    names = [name] + _ATTR_ALIASES.get(name, [])
     if isinstance(obj, dict):
-        return obj.get(name, default)
-    return getattr(obj, name, default)
+        for n in names:
+            if n in obj:
+                return obj[n]
+        return default
+    for n in names:
+        if hasattr(obj, n):
+            return getattr(obj, n)
+    return default
 
 def _best_effort_to_dict(obj: Any) -> Dict[str, Any]:
     """
-    Convert unknown analysis-like object to a plain dict without raising.
+    Accepts Pydantic model (v2 BaseModel), dict, or arbitrary object.
+    - If BaseModel: use model_dump()
+    - If mapping: cast to dict
+    - Else: use vars(...) with fallback to {}
     """
-    try:
-        if hasattr(obj, "dict"):
-            return obj.dict()  # pydantic v1
-    except Exception:
-        pass
-    try:
-        if hasattr(obj, "__dict__"):
-            return dict(getattr(obj, "__dict__") or {})
-    except Exception:
-        pass
-    # Last resort: copy a few common attrs if present
-    out: Dict[str, Any] = {}
-    for f in ("clause_type", "text", "proposed_text", "findings", "citations"):
+    if isinstance(obj, BaseModel):
         try:
-            val = getattr(obj, f)
-            if val is not None:
-                out[f] = val
+            return obj.model_dump()
         except Exception:
-            continue
-    return out
+            pass
+    if isinstance(obj, Mapping):
+        return dict(obj)
+    try:
+        return dict(vars(obj))
+    except Exception:
+        return {}

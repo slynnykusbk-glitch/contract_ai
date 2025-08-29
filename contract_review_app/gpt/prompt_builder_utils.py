@@ -72,9 +72,13 @@ def build_prompt(analysis: AnalysisOutput) -> str:
 
     header = f"Clause Type: {clause_type}\nStatus: {status}\n\n"
 
+    sev_map = {"minor": "low", "major": "medium", "critical": "high"}
     findings_section = (
         "Findings:\n"
-        + "\n".join(f"- [{f.severity or 'info'}] {f.message}" for f in findings)
+        + "\n".join(
+            f"- [{sev_map.get(f.severity or 'info', f.severity or 'info')}] {f.message}"
+            for f in findings
+        )
         if findings
         else ""
     )

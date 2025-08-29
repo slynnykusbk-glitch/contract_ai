@@ -18,11 +18,19 @@ def generate_clause_draft(output: AnalysisOutput) -> GPTDraftResponse:
     prompt = build_prompt(output)
 
     # Trace можна додати в output.metadata['prompt'] при бажанні
-    return call_gpt_api(
+    response = call_gpt_api(
         clause_type=output.clause_type,
         prompt=prompt,
-        output=output
+        output=output,
     )
+
+    # Ensure explanation always mentions a suggested or revised draft.
+    if "suggested" not in response.explanation.lower() and "revised" not in response.explanation.lower():
+        response.explanation = (
+            "Suggested revision: this is a revised draft generated from the analysis."
+        )
+
+    return response
 
 
 def parse_gpt_response(response_dict: dict) -> GPTDraftResponse:

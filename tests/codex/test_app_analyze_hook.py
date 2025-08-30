@@ -1,15 +1,17 @@
-import json, subprocess, sys
+import json
+import subprocess
+import sys
 
 
 def _run_doctor(tmp_path, monkeypatch):
-    out_dir = tmp_path / "diag"
-    out_dir.mkdir()
+    prefix = tmp_path / "diag" / "analysis"
+    prefix.parent.mkdir()
     monkeypatch.setenv("LLM_PROVIDER", "mock")
     monkeypatch.setenv("LLM_MODEL", "mock")
     monkeypatch.setenv("LLM_TIMEOUT", "5")
-    cmd = [sys.executable, "tools/doctor.py", "--out", str(out_dir), "--json"]
+    cmd = [sys.executable, "tools/doctor.py", "--out", str(prefix), "--json"]
     assert subprocess.call(cmd) == 0
-    return json.loads((out_dir / "analysis.json").read_text(encoding="utf-8"))
+    return json.loads(prefix.with_suffix(".json").read_text(encoding="utf-8"))
 
 
 def test_app_has_analyze_hook(monkeypatch):

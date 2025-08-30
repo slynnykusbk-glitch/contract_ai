@@ -1,0 +1,15 @@
+items:
+  - source: "legislation.gov.uk"
+    jurisdiction: "UK"
+    act_code: "UK_GDPR"
+    act_title: "UK GDPR"
+    section_code: "Art.5"
+    section_title: "Principles relating to processing of personal data"
+    version: "2024-06"
+    updated_at: "2024-06-01T00:00:00Z"
+    url: "https://www.legislation.gov.uk/eur/2016/679/article/5"
+    rights: "Open Government Licence v3.0"
+    lang: "en"
+    script: "Latn"
+    text: |
+      Personal data shall be processed lawfully, fairly and in a transparent manner…

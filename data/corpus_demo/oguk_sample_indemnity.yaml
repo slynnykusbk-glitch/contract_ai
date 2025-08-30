@@ -1,0 +1,14 @@
+items:
+  - source: "OGUK"
+    jurisdiction: "UK"
+    act_code: "OGUK_MODEL"
+    act_title: "OGUK Model Form"
+    section_code: "Indemnity"
+    section_title: "Indemnity clause"
+    version: "2024-01"
+    updated_at: "2024-01-01T00:00:00Z"
+    rights: "OGUK sample rights"
+    lang: "en"
+    script: "Latn"
+    text: |
+      Contractor shall indemnify the Company against all claims arising from pollution.

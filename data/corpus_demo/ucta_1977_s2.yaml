@@ -1,0 +1,15 @@
+items:
+  - source: "legislation.gov.uk"
+    jurisdiction: "UK"
+    act_code: "UCTA_1977"
+    act_title: "Unfair Contract Terms Act 1977"
+    section_code: "s.2"
+    section_title: "Negligence liability"
+    version: "2020-01"
+    updated_at: "2020-01-01T00:00:00Z"
+    url: "https://www.legislation.gov.uk/ukpga/1977/50/section/2"
+    rights: "Open Government Licence v3.0"
+    lang: "en"
+    script: "Latn"
+    text: |
+      A person cannot exclude or restrict liability for negligence resulting in death or personal injury.

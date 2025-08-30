@@ -50,41 +50,74 @@ class CorpusRepository:
             CorpusDoc.version == dto["version"],
         )
 
-        existing = self.session.execute(stmt).scalar_one_or_none()
-        if existing and existing.checksum == checksum:
-            self.session.commit()
-            return existing
+        if self.session.get_transaction() is not None:
+            self.session.rollback()
 
-        self.session.execute(
-            update(CorpusDoc)
-            .where(
-                CorpusDoc.jurisdiction == dto["jurisdiction"],
-                CorpusDoc.act_code == dto["act_code"],
-                CorpusDoc.section_code == dto["section_code"],
-                CorpusDoc.latest.is_(True),
+        with self.session.begin():
+            existing = self.session.execute(stmt).scalar_one_or_none()
+            if existing and existing.checksum == checksum:
+                doc = existing
+            elif existing:
+                existing.source = dto["source"]
+                existing.act_title = dto["act_title"]
+                existing.section_title = dto["section_title"]
+                existing.updated_at = updated_at
+                existing.url = dto.get("url")
+                existing.rights = dto["rights"]
+                existing.lang = dto.get("lang")
+                existing.script = dto.get("script")
+                existing.text = normalized_text
+                existing.checksum = checksum
+                doc = existing
+            else:
+                doc = CorpusDoc(
+                    source=dto["source"],
+                    jurisdiction=dto["jurisdiction"],
+                    act_code=dto["act_code"],
+                    act_title=dto["act_title"],
+                    section_code=dto["section_code"],
+                    section_title=dto["section_title"],
+                    version=dto["version"],
+                    updated_at=updated_at,
+                    url=dto.get("url"),
+                    rights=dto["rights"],
+                    lang=dto.get("lang"),
+                    script=dto.get("script"),
+                    text=normalized_text,
+                    checksum=checksum,
+                    latest=False,
+                )
+                self.session.add(doc)
+            self.session.flush()
+
+            max_version = self.session.execute(
+                select(func.max(CorpusDoc.version)).where(
+                    CorpusDoc.jurisdiction == dto["jurisdiction"],
+                    CorpusDoc.act_code == dto["act_code"],
+                    CorpusDoc.section_code == dto["section_code"],
+                )
+            ).scalar_one()
+
+            self.session.execute(
+                update(CorpusDoc)
+                .where(
+                    CorpusDoc.jurisdiction == dto["jurisdiction"],
+                    CorpusDoc.act_code == dto["act_code"],
+                    CorpusDoc.section_code == dto["section_code"],
+                )
+                .values(latest=False)
             )
-            .values(latest=False)
-        )
-        doc = CorpusDoc(
-            source=dto["source"],
-            jurisdiction=dto["jurisdiction"],
-            act_code=dto["act_code"],
-            act_title=dto["act_title"],
-            section_code=dto["section_code"],
-            section_title=dto["section_title"],
-            version=dto["version"],
-            updated_at=updated_at,
-            url=dto.get("url"),
-            rights=dto["rights"],
-            lang=dto.get("lang"),
-            script=dto.get("script"),
-            text=normalized_text,
-            checksum=checksum,
-            latest=True,
-        )
-        self.session.add(doc)
-        self.session.commit()
-        self.session.refresh(doc)
+            self.session.execute(
+                update(CorpusDoc)
+                .where(
+                    CorpusDoc.jurisdiction == dto["jurisdiction"],
+                    CorpusDoc.act_code == dto["act_code"],
+                    CorpusDoc.section_code == dto["section_code"],
+                    CorpusDoc.version == max_version,
+                )
+                .values(latest=True)
+            )
+            self.session.refresh(doc)
         doc.updated_at = utc_iso(doc.updated_at)
         return doc
 
@@ -114,6 +147,19 @@ class CorpusRepository:
         self.session.commit()
         return res
 
+    def group_latest_count(
+        self, jurisdiction: str, act_code: str, section_code: str
+    ) -> int:
+        stmt = select(func.count()).where(
+            CorpusDoc.jurisdiction == jurisdiction,
+            CorpusDoc.act_code == act_code,
+            CorpusDoc.section_code == section_code,
+            CorpusDoc.latest.is_(True),
+        )
+        count = self.session.execute(stmt).scalar_one()
+        self.session.commit()
+        return int(count)
+
     def find(
         self,
         jurisdiction: Optional[str] = None,
@@ -142,6 +188,8 @@ class CorpusRepository:
         return res
 
     def delete_all(self) -> None:
+        if self.session.get_transaction() is not None:
+            self.session.rollback()
         with self.session.begin():
             self.session.execute(delete(CorpusDoc))
 

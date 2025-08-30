@@ -33,3 +33,25 @@ def init_db(engine: Engine, create_all: bool = True) -> None:
 
     if create_all:
         Base.metadata.create_all(engine)
+
+    dialect = engine.dialect.name
+    if dialect == "sqlite":
+        sql = (
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_latest_unique "
+            "ON corpus_docs (jurisdiction, act_code, section_code) "
+            "WHERE latest = 1;"
+        )
+        _exec_ddl(engine, sql)
+    elif dialect == "postgresql":
+        sql = (
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_latest_unique "
+            "ON corpus_docs (jurisdiction, act_code, section_code) "
+            "WHERE latest = TRUE;"
+        )
+        _exec_ddl(engine, sql)
+
+
+def _exec_ddl(engine: Engine, sql: str) -> None:
+    """Execute raw DDL statement."""
+    with engine.begin() as conn:
+        conn.exec_driver_sql(sql)

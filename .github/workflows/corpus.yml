@@ -1,0 +1,28 @@
+name: Corpus
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    paths:
+      - "contract_review_app/corpus/**"
+      - "data/corpus_demo/**"
+      - "contract_review_app/tests/corpus/**"
+
+jobs:
+  corpus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m pip install -U pip
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q contract_review_app/tests/corpus --maxfail=1 --disable-warnings -p no:cov
+      - run: python -m contract_review_app.corpus.ingest --dir data/corpus_demo > corpus_demo_report.txt
+      - name: Upload demo corpus report
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpus_demo_report
+          path: corpus_demo_report.txt

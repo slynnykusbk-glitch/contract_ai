@@ -7,6 +7,7 @@ from contract_review_app.engine.pipeline_compat import (
     map_norm_span_to_raw,
     normalized_view,
 )
+from contract_review_app.core.citation_resolver import resolve_citation
 
 # Keep schema types for compatibility (DocumentAnalysis return, Clause/Span shapes, etc.)
 try:
@@ -221,14 +222,32 @@ def _rules_evaluate(
 def _to_finding_model(f: Dict[str, Any]) -> Any:
     sp = _norm_span(f.get("span", {}))
     try:
-        return Finding(**{"code": f.get("code"), "message": f.get("message"), "severity": f.get("severity"), "span": sp})  # type: ignore
+        finding = Finding(
+            **{
+                "code": f.get("code"),
+                "message": f.get("message"),
+                "severity": f.get("severity"),
+                "span": sp,
+            }
+        )  # type: ignore
     except Exception:
-        return {
+        finding = {
             "code": f.get("code"),
             "message": f.get("message"),
             "severity": f.get("severity"),
             "span": {"start": sp.start, "length": sp.length},
+            "citations": [],
         }
+    try:
+        citation = resolve_citation(finding)
+        if citation:
+            if isinstance(finding, dict):
+                finding.setdefault("citations", []).extend(citation)
+            else:
+                finding.citations.extend(citation)  # type: ignore[attr-defined]
+    except Exception:
+        pass
+    return finding
 
 
 def _to_analysis_model(

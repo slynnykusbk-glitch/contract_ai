@@ -1,0 +1,15 @@
+items:
+  - source: "legislation.gov.uk"
+    jurisdiction: "UK"
+    act_code: "DPA_2018"
+    act_title: "Data Protection Act 2018"
+    section_code: "s.28(3)"
+    section_title: "National security certificates"
+    version: "2024-06"
+    updated_at: "2024-06-01T00:00:00Z"
+    url: "https://www.legislation.gov.uk/ukpga/2018/12/section/28"
+    rights: "Open Government Licence v3.0"
+    lang: "en"
+    script: "Latn"
+    text: |
+      A certificate issued by a Minister of the Crown certifying that exemption is required for the purpose of safeguarding national security…

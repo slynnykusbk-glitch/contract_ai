@@ -1,0 +1,14 @@
+items:
+  - source: "OGUK"
+    jurisdiction: "UK"
+    act_code: "OGUK_MODEL"
+    act_title: "OGUK Model Form"
+    section_code: "Indemnity"
+    section_title: "Sample mutual indemnity clause"
+    version: "2024-06"
+    updated_at: "2024-06-01T00:00:00Z"
+    rights: "OGUK Licence"
+    lang: "en"
+    script: "Latn"
+    text: |
+      Each party shall indemnify the other against all claims and losses arising from the indemnifying party's operations…

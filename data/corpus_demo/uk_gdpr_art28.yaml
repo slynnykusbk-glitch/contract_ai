@@ -1,0 +1,15 @@
+items:
+  - source: "legislation.gov.uk"
+    jurisdiction: "UK"
+    act_code: "UK_GDPR"
+    act_title: "UK GDPR"
+    section_code: "Art.28"
+    section_title: "Processor"
+    version: "2024-06"
+    updated_at: "2024-06-01T00:00:00Z"
+    url: "https://www.legislation.gov.uk/eur/2016/679/article/28"
+    rights: "Open Government Licence v3.0"
+    lang: "en"
+    script: "Latn"
+    text: |
+      The processor shall not engage another processor without prior specific or general written authorisation…

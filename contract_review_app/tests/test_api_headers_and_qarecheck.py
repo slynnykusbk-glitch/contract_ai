@@ -37,7 +37,7 @@ def test_trace_index_has_headers_and_shape():
 
 def test_qarecheck_always_enveloped_status_ok_and_flattened():
     body = {"text": "Hello world", "applied_changes": [{"range": {"start": 6, "length": 5}, "text": "LEGAL"}]}
-    r = client.post("/api/qa-recheck", data=json.dumps(body))
+    r = client.post("/api/qa-recheck", content=json.dumps(body))
     assert r.status_code == 200
     j = r.json()
     assert j.get("status") == "ok"

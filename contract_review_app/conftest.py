@@ -1,8 +1,8 @@
 from pathlib import Path
 
 
-def pytest_ignore_collect(path, config):
-    p = Path(str(path))
+def pytest_ignore_collect(collection_path: Path, config):
+    p = collection_path
     parts = [s.lower() for s in p.parts]
     if "contract_review_app" in parts:
         idx = parts.index("contract_review_app")

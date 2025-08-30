@@ -9,6 +9,7 @@ import time
 import re
 import copy
 from collections import OrderedDict
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -413,6 +414,16 @@ class _LRUCache(OrderedDict):
 IDEMPOTENT_CACHE = _LRUCache(CACHE_SIZE)
 
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    async with _cache_lock:
+        IDEMPOTENT_CACHE.clear()
+    yield
+
+
+app.router.lifespan_context = _lifespan
+
+
 # --------------------------------------------------------------------
 # Schemas (Pydantic) for learning endpoints
 # --------------------------------------------------------------------
@@ -505,7 +516,7 @@ def _problem_response(status: int, title: str, detail: str) -> JSONResponse:
 
 def _ok(payload: dict) -> dict:
     out = dict(payload or {})
-    out["status"] = "ok"
+    out.setdefault("status", "ok")
     return out
 
 
@@ -813,10 +824,10 @@ async def api_analyze(
     if hasattr(result, "model_dump"):
         result = result.model_dump()
 
-    raw_status = "ok"
+    status = "OK"
     if isinstance(result, dict):
-        raw_status = str(result.get("status", "ok"))
-        result["status"] = raw_status.upper()
+        status = str(result.get("status", "ok")).upper()
+        result["status"] = status
         # ensure results/summary exists
         results = result.setdefault("results", {})
         summary_block = results.setdefault("summary", {})
@@ -843,8 +854,9 @@ async def api_analyze(
         snap_dict = snap.model_dump()
         if hasattr(snap, "debug"):
             snap_dict["debug"] = getattr(snap, "debug")
+        status = "OK"
         result = {
-            "status": "OK",
+            "status": status,
             "results": {"summary": snap_dict},
         }
 
@@ -873,7 +885,7 @@ async def api_analyze(
         if analysis_block is not result:
             result["analysis"] = analysis_block
     envelope = {
-        "status": raw_status,
+        "status": status,
         "analysis": (
             result.get("analysis")
             if isinstance(result, dict) and isinstance(result.get("analysis"), dict)

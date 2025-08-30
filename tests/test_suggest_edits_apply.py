@@ -13,7 +13,7 @@ def apply_suggestion(text: str, suggestion: dict) -> str:
 def test_suggest_edits_apply_governing_law():
     original = "This Agreement shall be governed by the laws of Mars."
     payload = {"text": original, "clause_type": "governing_law", "mode": "friendly", "top_k": 1}
-    r = client.post("/api/suggest_edits", data=json.dumps(payload))
+    r = client.post("/api/suggest_edits", content=json.dumps(payload))
     assert r.status_code == 200
     data = r.json()
     assert data["status"] == "ok"

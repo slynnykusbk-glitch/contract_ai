@@ -15,17 +15,17 @@ def test_health():
     assert r.headers.get("x-schema-version") == SCHEMA_VERSION
 
 def test_analyze_envelope_and_keys():
-    r = client.post("/api/analyze", data=json.dumps({"text": "Some clause text."}))
+    r = client.post("/api/analyze", content=json.dumps({"text": "Some clause text."}))
     assert r.status_code == 200
     j = r.json()
-    assert j["status"] == "ok"
+    assert j["status"] == "OK"
     # legacy-compatible keys
     for k in ("analysis", "results", "clauses", "document"):
         assert k in j
 
 
 def test_suggest_edits_smoke():
-    r = client.post("/api/suggest_edits", data=json.dumps({
+    r = client.post("/api/suggest_edits", content=json.dumps({
         "text": "Termination by convenience.",
         "clause_type": "termination",
         "mode": "friendly",
@@ -40,7 +40,7 @@ def test_suggest_edits_smoke():
         assert {"start", "length"}.issubset(rng.keys())
 
 def test_qa_recheck_smoke_flattened():
-    r = client.post("/api/qa-recheck", data=json.dumps({
+    r = client.post("/api/qa-recheck", content=json.dumps({
         "text": "Confidential info shall be protected.",
         "applied_changes": [{"range": {"start": 0, "length": 12}, "text": "Sensitive data"}]
     }))

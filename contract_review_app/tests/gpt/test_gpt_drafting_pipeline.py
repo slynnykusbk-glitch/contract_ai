@@ -27,5 +27,5 @@ def test_generate_clause_draft():
     result: GPTDraftResponse = generate_clause_draft(analysis)
 
     assert isinstance(result, GPTDraftResponse)
-    assert "draft_text" in result.dict()
+    assert "draft_text" in result.model_dump()
     assert result.draft_text.strip() != ""

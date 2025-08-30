@@ -199,6 +199,25 @@ def _analyze_document(text: str) -> Dict[str, Any]:
     }
 
 
+def _finding_to_issue(f: dict) -> dict:
+    """Map a finding to legacy issue structure.
+
+    The mapper is defensive: if expected keys are missing it falls back to
+    sensible defaults so that the caller always receives a minimal issue
+    dictionary. It does **not** modify the input finding.
+    """
+    return {
+        "clause_type": f.get("clause_type") or f.get("category") or "Unknown",
+        "message": f.get("message")
+        or f.get("title")
+        or f.get("explain")
+        or "Detected clause",
+        "severity": f.get("severity") or f.get("severity_level") or "low",
+        "start": f.get("start"),
+        "end": f.get("end"),
+    }
+
+
 def _ensure_legacy_doc_type(summary: dict) -> None:
     """
     Guarantee backward-compatible ``summary.doc_type`` shape for older UIs,
@@ -781,7 +800,9 @@ async def api_analyze(
             merged.update(summary_block)  # keep any fields already in results.summary
             results["summary"] = summary_block = merged
         # fill type info if absent
-        if not isinstance(summary_block.get("type"), str) or not summary_block.get("type"):
+        if not isinstance(summary_block.get("type"), str) or not summary_block.get(
+            "type"
+        ):
             snap = extract_document_snapshot(model.text or "")
             snap_dict = snap.model_dump()
             if hasattr(snap, "debug"):
@@ -803,13 +824,22 @@ async def api_analyze(
     # guaranteed summary on root (copy from results.summary after merge)
     if isinstance(result, dict):
         if "document" in result and isinstance(result.get("document"), dict):
-            result["summary"] = result["document"].get("summary", result.get("summary", {}))
+            result["summary"] = result["document"].get(
+                "summary", result.get("summary", {})
+            )
         if "results" in result and isinstance(result.get("results"), dict):
             rs = result["results"].get("summary", {})
             # merge, preserving any pre-existing root fields (e.g., from analyzer)
             root = (result.get("summary") or {}).copy()
             root.update(rs or {})
             result["summary"] = root
+        # Mirror findings into legacy ``issues`` if not already populated
+        analysis = result
+        analysis.setdefault("issues", [])
+        if not analysis["issues"] and analysis.get("findings"):
+            analysis["issues"] = [
+                _finding_to_issue(f) for f in analysis.get("findings", [])
+            ]
     envelope = {
         "status": raw_status,
         "analysis": result,
@@ -1076,7 +1106,9 @@ async def api_qa_recheck(
 
 
 @router.post("/api/suggest_edits")
-async def api_suggest_edits(request: Request, response: Response, x_cid: Optional[str] = Header(None)):
+async def api_suggest_edits(
+    request: Request, response: Response, x_cid: Optional[str] = Header(None)
+):
     """Minimal suggest edits stub used for tests."""
     _set_schema_headers(response)
     try:
@@ -1096,11 +1128,17 @@ async def api_suggest_edits(request: Request, response: Response, x_cid: Optiona
     # validation error tests).
     content_type = request.headers.get("content-type") or ""
     if (not clause_type and not clause_id) and "application/json" not in content_type:
-        return _problem_response(422, "Validation error", "clause_type or clause_id required")
+        return _problem_response(
+            422, "Validation error", "clause_type or clause_id required"
+        )
 
     cid = x_cid or _sha256_hex("suggest" + str(_now_ms()))
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
-    msg = "Add Exhibit M" if clause_type == "data_protection" and "exhibit m" not in text.lower() else ""
+    msg = (
+        "Add Exhibit M"
+        if clause_type == "data_protection" and "exhibit m" not in text.lower()
+        else ""
+    )
     dummy = {"message": msg, "range": {"start": 0, "length": 0}}
     return {"status": "ok", "edits": [dummy], "suggestions": [dummy]}
 

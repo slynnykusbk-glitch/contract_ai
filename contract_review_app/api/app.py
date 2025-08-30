@@ -13,7 +13,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, FastAPI, Header, HTTPException, Request, Response, Body
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    FastAPI,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -253,23 +262,28 @@ def _ensure_legacy_doc_type(summary: dict) -> None:
 router = APIRouter()
 app = FastAPI(title="Contract Review App API", version="1.0")
 
+_TRUTHY = {"1", "true", "yes", "on", "enabled"}
+
 
 def _env_truthy(name: str) -> bool:
-    """Return True if environment variable ``name`` is set to a truthy value."""
-    return os.getenv(name, "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-        "enabled",
-    )
+    """Return ``True`` if environment variable ``name`` is set to a truthy value."""
+    return (os.getenv(name, "") or "").strip().lower() in _TRUTHY
+
+
+def require_llm_enabled() -> None:
+    if not _env_truthy("CONTRACTAI_LLM_API"):
+        raise HTTPException(status_code=404, detail="LLM API disabled")
 
 
 if _env_truthy("CONTRACTAI_LLM_API"):
     try:
         from contract_review_app.llm.api_router import router as llm_router
 
-        app.include_router(llm_router, prefix="/api/gpt")
+        app.include_router(
+            llm_router,
+            prefix="/api/gpt",
+            dependencies=[Depends(require_llm_enabled)],
+        )
     except Exception:
         # Do not crash application if optional llm stack misconfigured
         pass

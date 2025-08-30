@@ -205,7 +205,7 @@ def extract_document_snapshot(text: str) -> DocumentSnapshot:
     subject = _extract_subject(text)
     subject_raw = subject.get("raw") if subject else None
 
-    slug, confidence, evidence, _ = guess_doc_type(text, subject_raw)
+    slug, confidence, evidence, score_map = guess_doc_type(text, subject_raw)
     doc_type = slug_to_display(slug)
     if confidence < 0.1:
         doc_type = "unknown"
@@ -252,4 +252,14 @@ def extract_document_snapshot(text: str) -> DocumentSnapshot:
             object.__setattr__(snapshot, "subject", subject)
         except Exception:
             pass
+    # Expose top document type candidates for debugging/clients
+    try:
+        debug_top = [
+            {"type": slug_to_display(s), "score": round(v, 3)}
+            for s, v in sorted(score_map.items(), key=lambda kv: kv[1], reverse=True)[:5]
+        ]
+        if debug_top:
+            object.__setattr__(snapshot, "debug", {"doctype_top": debug_top})
+    except Exception:
+        pass
     return snapshot

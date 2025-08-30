@@ -33,6 +33,7 @@ __all__ = [
     "DraftMode",
     # primitives
     "Span",
+    "Evidence",
     "Citation",
     "CrossRef",
     "TextPatch",
@@ -214,6 +215,14 @@ class Span(AppBaseModel):
         return v
 
 
+class Evidence(AppBaseModel):
+    """Supporting evidence snippet for a citation."""
+
+    text: str
+    source: Optional[str] = None
+    link: Optional[AnyUrl] = None
+
+
 class Citation(AppBaseModel):
     """
     Legal citation item; url is validated if present.
@@ -227,6 +236,7 @@ class Citation(AppBaseModel):
     source: Optional[str] = None
     link: Optional[str] = None
     score: Optional[float] = None
+    evidence: Optional[Evidence] = None
     evidence_text: Optional[str] = None
 
     @field_validator("score", mode="before")
@@ -244,6 +254,27 @@ class Citation(AppBaseModel):
     @classmethod
     def _link_str(cls, v):
         return None if v is None else str(v)
+
+    @field_validator("evidence", mode="before")
+    @classmethod
+    def _coerce_evidence(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, Evidence):
+            return v
+        if isinstance(v, str):
+            return Evidence(text=v)
+        if isinstance(v, dict):
+            return Evidence(**v)
+        return None
+
+    @model_validator(mode="after")
+    def _sync_evidence_text(self):
+        if self.evidence is None and self.evidence_text:
+            self.evidence = Evidence(text=self.evidence_text)
+        if self.evidence and not self.evidence_text:
+            self.evidence_text = self.evidence.text
+        return self
 
 
 class CrossRef(AppBaseModel):
@@ -397,6 +428,7 @@ class Finding(AppBaseModel):
                             source=it.get("source"),
                             link=it.get("link"),
                             score=it.get("score"),
+                            evidence=it.get("evidence"),
                             evidence_text=it.get("evidence_text"),
                         )
                     )
@@ -416,6 +448,7 @@ class Finding(AppBaseModel):
                     source=v.get("source"),
                     link=v.get("link"),
                     score=v.get("score"),
+                    evidence=v.get("evidence"),
                     evidence_text=v.get("evidence_text"),
                 )
             ]
@@ -672,6 +705,7 @@ class AnalysisOutput(AppBaseModel):
                             source=it.get("source"),
                             link=it.get("link"),
                             score=it.get("score"),
+                            evidence=it.get("evidence"),
                             evidence_text=it.get("evidence_text"),
                         )
                     )
@@ -691,6 +725,7 @@ class AnalysisOutput(AppBaseModel):
                     source=v.get("source"),
                     link=v.get("link"),
                     score=v.get("score"),
+                    evidence=v.get("evidence"),
                     evidence_text=v.get("evidence_text"),
                 )
             ]
@@ -1017,6 +1052,7 @@ class DraftOut(AppBaseModel):
                             source=it.get("source"),
                             link=it.get("link"),
                             score=it.get("score"),
+                            evidence=it.get("evidence"),
                             evidence_text=it.get("evidence_text"),
                         )
                     )
@@ -1036,6 +1072,7 @@ class DraftOut(AppBaseModel):
                     source=v.get("source"),
                     link=v.get("link"),
                     score=v.get("score"),
+                    evidence=v.get("evidence"),
                     evidence_text=v.get("evidence_text"),
                 )
             ]

@@ -33,6 +33,29 @@ def test_citation_optional_fields_tolerated():
         assert getattr(c, key, value if key == "score" else None) in {value, None}
 
 
+def test_citation_evidence_backwards_compat():
+    c_old = Citation(
+        system="UK", instrument="Act", section="1", evidence_text="Old evidence"
+    )
+    assert c_old.evidence and c_old.evidence.text == "Old evidence"
+    assert c_old.evidence_text == "Old evidence"
+
+    c_new = Citation(
+        system="UK",
+        instrument="Act",
+        section="1",
+        evidence={
+            "text": "New evidence",
+            "source": "Source",
+            "link": "https://example.com/evid",
+        },
+    )
+    assert c_new.evidence and c_new.evidence.text == "New evidence"
+    assert c_new.evidence.source == "Source"
+    assert str(c_new.evidence.link).startswith("https://example.com/evid")
+    assert c_new.evidence_text == "New evidence"
+
+
 def test_citation_url_validation():
     with pytest.raises(ValidationError):
         Citation(system="UK", instrument="Law", section="1", url="not-a-url")
@@ -62,6 +85,22 @@ def test_backward_compat_str_and_dict():
     assert f2.citations[0].instrument == "Reg"
 
     assert Finding(code="X", message="m", citations=None).citations == []
+
+
+def test_findings_accept_evidence_object():
+    f = Finding(
+        code="X",
+        message="m",
+        citations=[{"instrument": "Act", "section": "s", "evidence": {"text": "E"}}],
+    )
+    assert f.citations and f.citations[0].evidence.text == "E"
+
+    f2 = Finding(
+        code="X",
+        message="m",
+        citations=[{"instrument": "Act", "section": "s", "evidence_text": "E"}],
+    )
+    assert f2.citations and f2.citations[0].evidence.text == "E"
 
 
 def test_coerce_citations_mixed_and_invalid():

@@ -38,6 +38,7 @@ _OGUK_MODEL_AGREEMENT = Citation(
 
 _OIL_GAS_RE = re.compile(r"\boil\b|\bgas\b", re.IGNORECASE)
 
+# lightweight fallback map for keyword search
 _KEYWORD_MAP = {
     "gdpr": _UK_GDPR_ART_28_3,
     "oguk": _OGUK_MODEL_AGREEMENT,
@@ -47,46 +48,47 @@ _KEYWORD_MAP = {
 
 
 def resolve_citation(finding: Finding) -> Optional[Citation]:
-    """Resolve citations based on rule metadata.
-
-    Args:
-        finding: Finding object to inspect.
-
-    Returns:
-        A matching :class:`Citation` or ``None`` if no match.
     """
+    Resolve a single best-matching legal citation for the given finding.
 
-    message = (finding.message or "").lower()
-    code = (finding.code or "").lower()
-    rule = getattr(finding, "rule", None)
+    Notes:
+      * All processing is in-memory; contract text is never logged.
+      * Returns a fully populated `Citation` or None if no match.
+    """
+    try:
+        message = (finding.message or "").lower()
+        code = (getattr(finding, "code", "") or "").lower()
+        rule = getattr(finding, "rule", None)
 
-    if "personal data" in message or "conf_gdpr" in code:
-        citation = deepcopy(_UK_GDPR_ART_28_3)
-        cid = f"{citation.instrument} {citation.section}"
-        logger.info("resolve_citation cid=%s rule=%s", cid, rule)
-        return citation
-
-    if _OIL_GAS_RE.search(message) or "oguk" in message or "oguk" in code:
-        citation = deepcopy(_OGUK_MODEL_AGREEMENT)
-        cid = f"{citation.instrument} {citation.section}"
-        logger.info("resolve_citation cid=%s rule=%s", cid, rule)
-        return citation
-
-    # Fallback keyword-based search (stub)
-    for kw, base in _KEYWORD_MAP.items():
-        if kw in message or kw in code:
-            citation = Citation(
-                system=base.system,
-                instrument=base.instrument,
-                section=base.section,
-                title=base.title,
-                source=base.source,
-                link=base.link,
-                score=0.6,
-                evidence_text=(finding.evidence or finding.message or "")[:200],
-            )
-            cid = f"{citation.instrument} {citation.section}"
-            logger.info("resolve_citation cid=%s rule=%s", cid, rule)
+        # Strong rules first
+        if "personal data" in message or "conf_gdpr" in code:
+            citation = deepcopy(_UK_GDPR_ART_28_3)
+            logger.info("resolve_citation cid=%s rule=%s", f"{citation.instrument} {citation.section}", rule)
             return citation
 
-    return None
+        if _OIL_GAS_RE.search(message) or "oguk" in message or "oguk" in code:
+            citation = deepcopy(_OGUK_MODEL_AGREEMENT)
+            logger.info("resolve_citation cid=%s rule=%s", f"{citation.instrument} {citation.section}", rule)
+            return citation
+
+        # Fallback keyword-based stub
+        for kw, base in _KEYWORD_MAP.items():
+            if kw in message or kw in code:
+                citation = Citation(
+                    system=base.system,
+                    instrument=base.instrument,
+                    section=base.section,
+                    title=base.title,
+                    source=base.source,
+                    link=base.link,
+                    score=0.6,
+                    # не логируем текст, но можем вернуть snippet в объекте
+                    evidence_text=(getattr(finding, "evidence", None) or finding.message or "")[:200],
+                )
+                logger.info("resolve_citation cid=%s rule=%s", f"{citation.instrument} {citation.section}", rule)
+                return citation
+
+        return None
+    except Exception as exc:
+        logger.warning("resolve_citation failed: %s", exc)
+        return None

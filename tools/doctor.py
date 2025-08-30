@@ -10,11 +10,12 @@ import os
 import subprocess
 import sys
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 import re
 from pathlib import Path
 from typing import Any, Dict, List
+import html
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -30,6 +31,23 @@ ENV_VARS = [
 ]
 IGNORED_DIRS = {".git", "node_modules", "__pycache__", ".venv", "dist", "build"}
 
+BLOCKS = [
+    {"id": "B0", "name": "Project Doctor & Quality"},
+    {"id": "B1", "name": "SSOT Schemas"},
+    {"id": "B2", "name": "Document Intake & Parsing"},
+    {"id": "B3", "name": "Rule Engine v2"},
+    {"id": "B4", "name": "LLM Orchestrator/Proxy"},
+    {"id": "B5", "name": "Legal Corpus & Metadata"},
+    {"id": "B6", "name": "Hybrid Retrieval"},
+    {"id": "B7", "name": "Citation Resolver API"},
+    {"id": "B8", "name": "API Layer Harmonization"},
+    {"id": "B9", "name": "Word Add-in UX"},
+    {"id": "B10", "name": "Learning & Feedback"},
+    {"id": "B11", "name": "Compliance & Security"},
+    {"id": "B12", "name": "Monitoring/CI/CD"},
+    {"id": "B13", "name": "Deployment & Runbooks"},
+]
+
 # ---------- transparent state log ----------
 LOG_ENTRIES = 0
 
@@ -37,7 +55,7 @@ LOG_ENTRIES = 0
 def _log_state(path: Path, message: str) -> None:
     """Append a timestamped message to the state log."""
     global LOG_ENTRIES
-    timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as fh:
         fh.write(f"[{timestamp}] {message}\n")
@@ -486,67 +504,345 @@ def gather_repo() -> Dict[str, Any]:
     return info
 
 
+# ---------- maturity matrix assessors ----------
+
+def _status_score(status: str, adjustment: int = 0) -> int:
+    base = {"OK": 100, "WARN": 60, "MISSING": 0}.get(status, 0)
+    adj = max(-20, min(20, adjustment))
+    return max(0, min(100, base + adj))
+
+
+def assess_B0(data: Dict[str, Any]) -> Dict[str, Any]:
+    quality = data.get("quality", {}).get("ruff", {})
+    ruff_total = quality.get("issues_total")
+    ruff_ok = quality.get("status") == "ok" and ruff_total is not None
+    try:  # pytest discoverable
+        import pytest  # noqa: F401
+
+        pytest_ok = True
+    except Exception:  # pragma: no cover - pytest missing
+        pytest_ok = False
+    precommit_exists = data.get("precommit", {}).get("config_exists", False)
+    status = "OK" if ruff_ok and pytest_ok else ("WARN" if ruff_ok or pytest_ok else "MISSING")
+    metrics = {
+        "ruff_issues": ruff_total,
+        "pytest": pytest_ok,
+        "precommit": bool(precommit_exists),
+    }
+    score = _status_score(status, adjustment=-min(20, int(ruff_total or 0)))
+    return {"status": status, "score": score, "metrics": metrics, "notes": []}
+
+
+def assess_B1(data: Dict[str, Any]) -> Dict[str, Any]:
+    metrics: Dict[str, Any] = {}
+    notes: List[str] = []
+    try:
+        import contract_review_app.core.schemas as schemas  # type: ignore
+
+        found = {name: hasattr(schemas, name) for name in ["Finding", "Citation", "Evidence", "ParsedDocument"]}
+        metrics.update(found)
+        status = "OK"
+        if not (found.get("Citation") and found.get("Evidence")):
+            status = "WARN"
+    except Exception:
+        status = "MISSING"
+        notes.append("core/schemas.py not found")
+    score = _status_score(status)
+    return {"status": status, "score": score, "metrics": metrics, "notes": notes}
+
+
+def assess_B2(data: Dict[str, Any]) -> Dict[str, Any]:
+    modules: List[str] = []
+    for rel in [
+        "contract_review_app/document/normalize.py",
+        "contract_review_app/document/load_docx_text.py",
+        "contract_review_app/core/load_docx_text.py",
+    ]:
+        p = ROOT / rel
+        if p.exists():
+            txt = ""
+            try:
+                txt = p.read_text(encoding="utf-8")
+            except Exception:  # pragma: no cover - encoding issues
+                pass
+            if "def normalize" in txt or "def load" in txt:
+                modules.append(rel)
+    status = "OK" if modules else "MISSING"
+    metrics = {"modules": modules}
+    return {"status": status, "score": _status_score(status), "metrics": metrics, "notes": []}
+
+
+def assess_B3(data: Dict[str, Any]) -> Dict[str, Any]:
+    rules = data.get("rules", {})
+    py_count = int(rules.get("python", {}).get("count", 0))
+    yaml_count = int(rules.get("yaml", {}).get("count", 0))
+    total = py_count + yaml_count
+    status = "MISSING"
+    if total > 0:
+        status = "OK" if py_count >= 5 or yaml_count >= 1 else "WARN"
+    metrics = {"rules_python": py_count, "rules_yaml": yaml_count}
+    adjustment = min(20, py_count) if status == "OK" else 0
+    score = _status_score(status, adjustment=adjustment)
+    notes: List[str] = []
+    return {"status": status, "score": score, "metrics": metrics, "notes": notes}
+
+
+def assess_B4(data: Dict[str, Any]) -> Dict[str, Any]:
+    llm = data.get("llm", {})
+    service = data.get("service", {})
+    providers = llm.get("providers_detected", []) or []
+    has_service = bool(service.get("exports", {}).get("LLMService"))
+    draft_endpoint = bool(llm.get("has_draft_endpoint"))
+    status = "MISSING"
+    if has_service or providers:
+        status = "WARN"
+    if has_service and providers:
+        status = "OK" if not llm.get("node_is_mock") else "WARN"
+    metrics = {
+        "providers": providers,
+        "service_exports": has_service,
+        "draft_endpoint": draft_endpoint,
+    }
+    adjustment = min(20, len(providers) * 5) if status == "OK" else 0
+    score = _status_score(status, adjustment=adjustment)
+    notes: List[str] = []
+    return {"status": status, "score": score, "metrics": metrics, "notes": notes}
+
+
+def assess_B5(data: Dict[str, Any]) -> Dict[str, Any]:
+    notes: List[str] = []
+    corpus_dir = ROOT / "contract_review_app" / "corpus"
+    db_models = ROOT / "contract_review_app" / "db" / "models.py"
+    present = corpus_dir.exists() or db_models.exists()
+    status = "OK" if present else "MISSING"
+    if not present:
+        notes.append("corpus not initialized")
+    metrics = {"corpus_dir": corpus_dir.exists(), "db_models": db_models.exists()}
+    return {"status": status, "score": _status_score(status), "metrics": metrics, "notes": notes}
+
+
+def assess_B6(data: Dict[str, Any]) -> Dict[str, Any]:
+    search_dir = ROOT / "contract_review_app" / "search"
+    modules: List[str] = []
+    funcs_found = 0
+    if search_dir.exists():
+        for p in search_dir.rglob("*.py"):
+            name = p.stem
+            if any(key in name for key in ["qdrant", "faiss", "elastic", "search", "vector"]):
+                txt = p.read_text(encoding="utf-8", errors="ignore")
+                modules.append(p.relative_to(ROOT).as_posix())
+                if "hybrid_search" in txt or "def search" in txt:
+                    funcs_found += 1
+    status = "OK" if funcs_found else ("WARN" if modules else "MISSING")
+    metrics = {"modules": modules, "search_funcs": funcs_found}
+    return {"status": status, "score": _status_score(status), "metrics": metrics, "notes": []}
+
+
+def assess_B7(data: Dict[str, Any]) -> Dict[str, Any]:
+    resolver_path = ROOT / "contract_review_app" / "core" / "citation_resolver.py"
+    has_resolver = resolver_path.exists()
+    has_func = False
+    if has_resolver:
+        txt = resolver_path.read_text(encoding="utf-8", errors="ignore")
+        has_func = "def resolve" in txt
+    metrics = {"resolver": has_resolver, "resolve_funcs": int(has_func)}
+    status = "OK" if has_resolver and has_func else "MISSING"
+    return {"status": status, "score": _status_score(status), "metrics": metrics, "notes": []}
+
+
+def assess_B8(data: Dict[str, Any]) -> Dict[str, Any]:
+    endpoints = data.get("backend", {}).get("endpoints", [])
+    wanted = [
+        "/api/analyze",
+        "/api/gpt/draft",
+        "/api/suggest_edits",
+        "/api/qa-recheck",
+    ]
+    learning_prefix = "/api/learning"
+    present = []
+    for ep in endpoints:
+        path = ep.get("path", "")
+        if path in wanted or path.startswith(learning_prefix):
+            present.append(path)
+    status = "MISSING"
+    if present:
+        status = "OK" if len(present) >= 3 else "WARN"
+    metrics = {"present": sorted(set(present))}
+    adjustment = min(20, len(present)) if status == "OK" else 0
+    score = _status_score(status, adjustment=adjustment)
+    return {"status": status, "score": score, "metrics": metrics, "notes": []}
+
+
+def assess_B9(data: Dict[str, Any]) -> Dict[str, Any]:
+    addin = data.get("addin", {})
+    manifest = addin.get("manifest", {}).get("exists", False)
+    bundle = addin.get("bundle", {}).get("exists", False)
+    status = "MISSING"
+    if manifest and bundle:
+        status = "OK"
+    elif manifest or bundle:
+        status = "WARN"
+    metrics = {"manifest": manifest, "bundle": bundle}
+    return {"status": status, "score": _status_score(status), "metrics": metrics, "notes": []}
+
+
+def assess_B10(data: Dict[str, Any]) -> Dict[str, Any]:
+    endpoints = data.get("backend", {}).get("endpoints", [])
+    learning_eps = [ep for ep in endpoints if str(ep.get("path", "")).startswith("/api/learning")]
+    models_dir = ROOT / "contract_review_app" / "learning"
+    has_models = models_dir.exists()
+    status = "OK" if learning_eps and has_models else ("WARN" if learning_eps else "MISSING")
+    metrics = {"endpoints": [ep.get("path") for ep in learning_eps], "models": has_models}
+    return {"status": status, "score": _status_score(status), "metrics": metrics, "notes": []}
+
+
+def assess_B11(data: Dict[str, Any]) -> Dict[str, Any]:
+    env = data.get("env", {}).get("env", {})
+    flags = [k for k, v in env.items() if k and ("RETENTION" in k.upper() or "PERMISSION" in k.upper())]
+    status = "OK" if flags else "WARN"
+    metrics = {"security_flags": flags}
+    return {"status": status, "score": _status_score(status), "metrics": metrics, "notes": []}
+
+
+def assess_B12(data: Dict[str, Any]) -> Dict[str, Any]:
+    workflows = list((ROOT / ".github" / "workflows").glob("*.yml"))
+    ruff_ok = data.get("quality", {}).get("ruff", {}).get("status") == "ok"
+    status = "OK" if workflows and ruff_ok else "WARN"
+    metrics = {"workflows": len(workflows), "ruff_ok": ruff_ok}
+    return {"status": status, "score": _status_score(status), "metrics": metrics, "notes": []}
+
+
+def assess_B13(data: Dict[str, Any]) -> Dict[str, Any]:
+    dockerfile = ROOT / "Dockerfile"
+    compose = ROOT / "docker-compose.yml"
+    compose2 = ROOT / "docker-compose.yaml"
+    helm = ROOT / "helm"
+    present = dockerfile.exists() or compose.exists() or compose2.exists() or helm.exists()
+    status = "OK" if present else "MISSING"
+    metrics = {
+        "dockerfile": dockerfile.exists(),
+        "docker_compose": compose.exists() or compose2.exists(),
+        "helm": helm.exists(),
+    }
+    return {"status": status, "score": _status_score(status), "metrics": metrics, "notes": []}
+
+
+def assess_blocks(data: Dict[str, Any]) -> Dict[str, Any]:
+    results: List[Dict[str, Any]] = []
+    total = 0
+    for block in BLOCKS:
+        func = globals().get(f"assess_{block['id']}")
+        if not callable(func):
+            continue
+        res = func(data)
+        res.update(block)
+        results.append(res)
+        total += res.get("score", 0)
+    overall = int(round(total / len(results))) if results else 0
+    return {"blocks": results, "overall_score": overall}
+
+
 # ---------- report ----------
 def generate_report(state_log: Path | None = None) -> Dict[str, Any]:
-    """If state_log is provided, wrap all gatherers with START/OK/ERR logging."""
-    data: Dict[str, Any] = {}
+    """Collect raw data and assess maturity blocks."""
+    gathered: Dict[str, Any] = {}
     if state_log is None:
-        data["env"] = gather_env()
-        data["git"] = gather_git()
-        data["precommit"] = gather_precommit()
+        gathered["env"] = gather_env()
+        gathered["git"] = gather_git()
+        gathered["precommit"] = gather_precommit()
         backend = gather_backend()
-        data["backend"] = backend
+        gathered["backend"] = backend
         llm = gather_llm(backend)
-        data["llm"] = llm
+        gathered["llm"] = llm
 
-        # --- Backward-compat: duplicate LLM keys into env ---
         for k in ("provider", "model", "timeout_s", "node_is_mock"):
-            data["env"][k] = llm.get(k)
+            gathered["env"][k] = llm.get(k)
 
-        data["service"] = gather_service()
-        data["api"] = gather_api()
-        data["rules"] = gather_rules()
-        data["addin"] = gather_addin()
-        data["runtime_checks"] = gather_runtime()
-        data["inventory"] = gather_inventory()
-        data["repo"] = gather_repo()
-        data["quality"] = gather_quality()
-        data["smoke"] = gather_smoke()
+        gathered["service"] = gather_service()
+        gathered["api"] = gather_api()
+        gathered["rules"] = gather_rules()
+        gathered["addin"] = gather_addin()
+        gathered["runtime_checks"] = gather_runtime()
+        gathered["inventory"] = gather_inventory()
+        gathered["repo"] = gather_repo()
+        gathered["quality"] = gather_quality()
+        gathered["smoke"] = gather_smoke()
     else:
-        data["env"] = _run_with_state("env", gather_env, state_log)
-        data["git"] = _run_with_state("git", gather_git, state_log)
-        data["precommit"] = _run_with_state("precommit", gather_precommit, state_log)
+        gathered["env"] = _run_with_state("env", gather_env, state_log)
+        gathered["git"] = _run_with_state("git", gather_git, state_log)
+        gathered["precommit"] = _run_with_state("precommit", gather_precommit, state_log)
         backend = _run_with_state("backend", gather_backend, state_log)
-        data["backend"] = backend
+        gathered["backend"] = backend
         llm = _run_with_state("llm", gather_llm, state_log, backend)
-        data["llm"] = llm
+        gathered["llm"] = llm
 
-        # --- Backward-compat: duplicate LLM keys into env ---
         for k in ("provider", "model", "timeout_s", "node_is_mock"):
-            data["env"][k] = llm.get(k)
+            gathered["env"][k] = llm.get(k)
 
-        data["service"] = _run_with_state("service", gather_service, state_log)
-        data["api"] = _run_with_state("api", gather_api, state_log)
-        data["rules"] = _run_with_state("rules", gather_rules, state_log)
-        data["addin"] = _run_with_state("addin", gather_addin, state_log)
-        data["runtime_checks"] = _run_with_state("runtime", gather_runtime, state_log)
-        data["inventory"] = _run_with_state("inventory", gather_inventory, state_log)
-        data["repo"] = _run_with_state("repo", gather_repo, state_log)
-        data["quality"] = _run_with_state("quality", gather_quality, state_log)
-        data["smoke"] = _run_with_state("smoke", gather_smoke, state_log)
+        gathered["service"] = _run_with_state("service", gather_service, state_log)
+        gathered["api"] = _run_with_state("api", gather_api, state_log)
+        gathered["rules"] = _run_with_state("rules", gather_rules, state_log)
+        gathered["addin"] = _run_with_state("addin", gather_addin, state_log)
+        gathered["runtime_checks"] = _run_with_state("runtime", gather_runtime, state_log)
+        gathered["inventory"] = _run_with_state("inventory", gather_inventory, state_log)
+        gathered["repo"] = _run_with_state("repo", gather_repo, state_log)
+        gathered["quality"] = _run_with_state("quality", gather_quality, state_log)
+        gathered["smoke"] = _run_with_state("smoke", gather_smoke, state_log)
+
+    assessment = assess_blocks(gathered)
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    data: Dict[str, Any] = {
+        "generated_at_utc": timestamp,
+        "overall_score": assessment["overall_score"],
+        "blocks": assessment["blocks"],
+    }
+    data.update(gathered)
     return data
+
+
+def render_html_report(data: Dict[str, Any]) -> str:
+    blocks = data.get("blocks", [])
+    style = (
+        "<style>body{font-family:sans-serif;}table{border-collapse:collapse;width:100%;}"
+        "th,td{border:1px solid #ccc;padding:4px;}"
+        ".OK{background:#c8e6c9;} .WARN{background:#fff9c4;} .MISSING{background:#ffcdd2;}"
+        "details{margin-top:1em;}" "</style>"
+    )
+    rows = []
+    for b in blocks:
+        metrics = ", ".join(f"{k}={v}" for k, v in b.get("metrics", {}).items())
+        rows.append(
+            f"<tr><td><a href='#{b['id']}'>{b['id']}</a></td><td>{b['name']}</td>"
+            f"<td class='{b['status']}'><span>{b['status']}</span></td><td>{b['score']}</td><td>{metrics}</td></tr>"
+        )
+    table = (
+        "<table><tr><th>ID</th><th>Name</th><th>Status</th><th>Score</th><th>Metrics</th></tr>"
+        + "".join(rows)
+        + "</table>"
+    )
+    details = "".join(
+        f"<details id='{b['id']}'><summary>{b['id']} - {b['name']}</summary><pre>"
+        + html.escape(json.dumps(b, indent=2, ensure_ascii=False))
+        + "</pre></details>"
+        for b in blocks
+    )
+    body = (
+        f"<h1>Doctor Report</h1><p>Generated at {data.get('generated_at_utc')} "
+        f"Overall score: {data.get('overall_score')}</p>" + table + details
+    )
+    return f"<html><head><meta charset='utf-8'><title>Doctor Report</title>{style}</head><body>{body}</body></html>"
 
 
 def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Collect project diagnostics")
-    parser.add_argument("--out", required=True, help="Output directory for the report")
+    parser.add_argument("--out", required=True, help="Output file prefix for the report")
     parser.add_argument("--json", action="store_true", help="Write JSON report")
     parser.add_argument("--html", action="store_true", help="Write HTML report")
     args = parser.parse_args(argv)
 
-    out_dir = Path(args.out)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    state_log = out_dir / "state.log"
+    prefix = Path(args.out)
+    prefix.parent.mkdir(parents=True, exist_ok=True)
+    state_log = prefix.parent / "state.log"
 
     global LOG_ENTRIES
     LOG_ENTRIES = 0
@@ -559,17 +855,17 @@ def main(argv: List[str] | None = None) -> int:
         state_path_str = str(state_log)
     data["state_log"] = {"path": state_path_str, "entries": LOG_ENTRIES}
 
+    if not args.json and not args.html:
+        args.json = True
+        args.html = True
     if args.json:
-        (out_dir / "analysis.json").write_text(
+        prefix.with_suffix(".json").write_text(
             json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
         )
     if args.html:
-        html = (
-            "<html><body><pre>"
-            + json.dumps(data, indent=2, ensure_ascii=False)
-            + "</pre></body></html>"
+        prefix.with_suffix(".html").write_text(
+            render_html_report(data), encoding="utf-8"
         )
-        (out_dir / "analysis.html").write_text(html, encoding="utf-8")
     return 0
 
 

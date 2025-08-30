@@ -1,50 +1,16 @@
-# Block B5 — Legal Corpus & Metadata
+# Migration Guide — Doctor v2 (14-block matrix) & Block B5: Legal Corpus
 
-## Schema
+Документ описывает:
+1) как обновлённый **Doctor v2** собирает диагностику и показывает **матрицу зрелости из 14 блоков (B0…B13)**;
+2) базовые понятия и схему для **B5 — Legal Corpus & Metadata**.
 
-```sql
-CREATE TABLE legal_corpus (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    source TEXT NOT NULL,
-    jurisdiction TEXT NOT NULL,
-    act_code TEXT NOT NULL,
-    act_title TEXT NOT NULL,
-    section_code TEXT NOT NULL,
-    section_title TEXT NOT NULL,
-    version TEXT NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    url TEXT,
-    rights TEXT NOT NULL,
-    lang TEXT,
-    script TEXT,
-    text TEXT NOT NULL,
-    checksum TEXT NOT NULL,
-    latest BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+---
 
-CREATE UNIQUE INDEX uq_doc_version
-ON legal_corpus (jurisdiction, act_code, section_code, version);
+## Doctor v2 — 14-block maturity matrix
 
-CREATE UNIQUE INDEX ux_latest_unique
-ON legal_corpus (jurisdiction, act_code, section_code)
-WHERE latest = TRUE;
-```
+Doctor v2 собирает техническую диагностику проекта (env, git, quality, api, rules, add-in, llm и др.) и формирует отчёт с матрицей состояния 14 блоков.
 
-## Usage
-
-Dev/CI: SQLite (sqlite:///.local/corpus.db)
-
-Prod: PostgreSQL (postgresql+psycopg://...)
-
-Run demo ingest:
+### Запуск
 
 ```bash
-make corpus-demo
-```
-
-Run tests:
-
-```bash
-make corpus-test
-```
+python tools/doctor.py --out reports/latest/analysis --json --html

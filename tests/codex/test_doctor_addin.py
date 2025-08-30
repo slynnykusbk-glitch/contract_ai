@@ -4,12 +4,12 @@ import sys
 
 
 def test_doctor_addin_section(tmp_path):
-    out_dir = tmp_path / "diag"
-    out_dir.mkdir()
-    cmd = [sys.executable, "tools/doctor.py", "--out", str(out_dir), "--json"]
+    prefix = tmp_path / "diag" / "analysis"
+    prefix.parent.mkdir()
+    cmd = [sys.executable, "tools/doctor.py", "--out", str(prefix), "--json"]
     rc = subprocess.call(cmd)
     assert rc == 0
-    data = json.loads((out_dir / "analysis.json").read_text(encoding="utf-8"))
+    data = json.loads(prefix.with_suffix(".json").read_text(encoding="utf-8"))
     addin = data.get("addin", {})
     assert "manifest" in addin and "bundle" in addin
 

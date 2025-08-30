@@ -6,10 +6,10 @@ from contract_review_app.core.schemas import AnalyzeOut, SuggestOut, QARecheckOu
 client = TestClient(app)
 
 def test_analyze_response_is_compatible_with_AnalyzeOut():
-    r = client.post("/api/analyze", data=json.dumps({"text": "A short clause."}))
+    r = client.post("/api/analyze", content=json.dumps({"text": "A short clause."}))
     assert r.status_code == 200
     j = r.json()
-    assert j["status"] == "ok"
+    assert j["status"] == "OK"
     # Build AnalyzeOut from envelope fields
     payload = {
         "analysis": j["analysis"],
@@ -22,7 +22,7 @@ def test_analyze_response_is_compatible_with_AnalyzeOut():
     _ = AnalyzeOut(**payload)
 
 def test_suggest_response_is_compatible_with_SuggestOut():
-    r = client.post("/api/suggest_edits", data=json.dumps({
+    r = client.post("/api/suggest_edits", content=json.dumps({
         "text": "Warranty lasts 12 months.",
         "clause_type": "warranty",
         "mode": "friendly",
@@ -36,7 +36,7 @@ def test_suggest_response_is_compatible_with_SuggestOut():
     _ = SuggestOut(**payload)
 
 def test_qarecheck_response_is_compatible_with_QARecheckOut():
-    r = client.post("/api/qa-recheck", data=json.dumps({
+    r = client.post("/api/qa-recheck", content=json.dumps({
         "text": "NDA applies to disclosures.",
         "applied_changes": [{"range": {"start": 0, "length": 3}, "text": "The NDA"}]
     }))

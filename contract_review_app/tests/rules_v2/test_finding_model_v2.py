@@ -3,7 +3,7 @@ import sys
 
 sys.path.append(str(Path(__file__).resolve().parents[3]))
 
-from datetime import datetime
+from datetime import datetime, UTC
 
 import pytest
 from pydantic import ValidationError
@@ -23,7 +23,7 @@ def build_valid_finding() -> FindingV2:
         explain={"en": "exp"},
         suggestion={"en": "sug"},
         version="0",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
         engine_version=ENGINE_VERSION,
     )
 
@@ -47,7 +47,7 @@ def test_severity_constraint() -> None:
             explain={"en": "e"},
             suggestion={"en": "s"},
             version="0",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
             engine_version=ENGINE_VERSION,
         )
 
@@ -65,6 +65,6 @@ def test_en_required() -> None:
             explain={"en": "e"},
             suggestion={"en": "s"},
             version="0",
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
             engine_version=ENGINE_VERSION,
         )

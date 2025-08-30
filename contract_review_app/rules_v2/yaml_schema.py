@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 LocaleDict = Dict[str, str]
@@ -37,25 +37,25 @@ class RuleYaml(BaseModel):
     engine_version: str
     checks: List[CheckItem]
 
-    @validator("title")
+    @field_validator("title")
     def _title_has_en(cls, v: LocaleDict) -> LocaleDict:
         if "en" not in v:
             raise ValueError("title must include 'en'")
         return v
 
-    @validator("message", "explain", "suggestion")
+    @field_validator("message", "explain", "suggestion")
     def _locale_has_en(cls, v: Optional[LocaleDict]) -> Optional[LocaleDict]:
         if v is not None and "en" not in v:
             raise ValueError("locale dict must include 'en'")
         return v
 
-    @validator("severity")
+    @field_validator("severity")
     def _severity_valid(cls, v: str) -> str:
         if v not in {"High", "Medium", "Low"}:
             raise ValueError("invalid severity")
         return v
 
-    @validator("version", "engine_version")
+    @field_validator("version", "engine_version")
     def _non_empty(cls, v: str) -> str:
         if not v:
             raise ValueError("must be non-empty")

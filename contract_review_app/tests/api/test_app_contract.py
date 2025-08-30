@@ -41,7 +41,7 @@ def test_analyze_idempotent_cache_hit_on_second_call():
 
     env = r2.json()
     # envelope shape
-    assert env["status"] == "ok"
+    assert env["status"] == "OK"
     assert "analysis" in env and "results" in env and "document" in env
     assert env["schema_version"] == SCHEMA_VERSION
 

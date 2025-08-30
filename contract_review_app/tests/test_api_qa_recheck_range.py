@@ -16,7 +16,7 @@ def test_qa_recheck_accepts_range_and_span():
             {"range": {"start": 6, "length": 5}, "replacement": "LAWYER"}
         ]
     }
-    r1 = client.post("/api/qa-recheck", data=json.dumps(body1), headers=_env_headers())
+    r1 = client.post("/api/qa-recheck", content=json.dumps(body1), headers=_env_headers())
     assert r1.status_code == 200
     j1 = r1.json()
     # Плоскі дельти є, типи коректні
@@ -33,7 +33,7 @@ def test_qa_recheck_accepts_range_and_span():
             {"span": {"start": 6, "end": 11}, "text": "LEGAL"}
         ]
     }
-    r2 = client.post("/api/qa-recheck", data=json.dumps(body2), headers=_env_headers())
+    r2 = client.post("/api/qa-recheck", content=json.dumps(body2), headers=_env_headers())
     assert r2.status_code == 200
     j2 = r2.json()
     assert j2["status"] == "ok"
@@ -46,7 +46,7 @@ def test_suggest_edits_returns_range_norm():
         "mode": "friendly",
         "top_k": 1
     }
-    r = client.post("/api/suggest_edits", data=json.dumps(body))
+    r = client.post("/api/suggest_edits", content=json.dumps(body))
     assert r.status_code == 200
     j = r.json()
     assert j["status"] == "ok"

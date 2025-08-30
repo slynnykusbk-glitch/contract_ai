@@ -220,10 +220,17 @@ def _finding_to_issue(f: dict) -> dict:
         "message": f.get("message")
         or f.get("title")
         or f.get("explain")
-        or "Detected clause",
+        or "Issue",
         "severity": f.get("severity") or f.get("severity_level") or "low",
-        "start": f.get("start"),
-        "end": f.get("end"),
+        **(
+            {"span": f.get("span")}
+            if isinstance(f.get("span"), dict)
+            else (
+                {"range": f.get("range")}
+                if isinstance(f.get("range"), dict)
+                else {}
+            )
+        ),
     }
 
 
@@ -847,16 +854,25 @@ async def api_analyze(
             root = (result.get("summary") or {}).copy()
             root.update(rs or {})
             result["summary"] = root
-        # Mirror findings into legacy ``issues`` if not already populated
-        analysis = result
-        analysis.setdefault("issues", [])
-        if not analysis["issues"] and analysis.get("findings"):
-            analysis["issues"] = [
-                _finding_to_issue(f) for f in analysis.get("findings", [])
+        # Mirror findings into legacy ``issues``
+        analysis_block = (
+            result.get("analysis")
+            if isinstance(result, dict) and isinstance(result.get("analysis"), dict)
+            else result
+        )
+        if not analysis_block.get("issues"):
+            analysis_block["issues"] = [
+                _finding_to_issue(f) for f in analysis_block.get("findings", [])
             ]
+        if analysis_block is not result:
+            result["analysis"] = analysis_block
     envelope = {
         "status": raw_status,
-        "analysis": result,
+        "analysis": (
+            result.get("analysis")
+            if isinstance(result, dict) and isinstance(result.get("analysis"), dict)
+            else result
+        ),
         "results": result.get("results", {}),
         "clauses": result.get("clauses", []),
         "document": result.get("document", {}),

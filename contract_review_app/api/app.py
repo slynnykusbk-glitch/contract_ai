@@ -503,6 +503,12 @@ def _problem_response(status: int, title: str, detail: str) -> JSONResponse:
     return resp
 
 
+def _ok(payload: dict) -> dict:
+    out = dict(payload or {})
+    out["status"] = "ok"
+    return out
+
+
 async def _read_body_guarded(request: Request) -> bytes:
     clen = request.headers.get("content-length")
     if clen and clen.isdigit() and int(clen) > MAX_BODY_BYTES:
@@ -799,7 +805,7 @@ async def api_analyze(
                 "summary", cached.get("summary", {})
             )
         _ensure_legacy_doc_type(cached.get("summary"))
-        return cached
+        return _ok(cached)
 
     result = _analyze_document(model.text or "")
     if asyncio.iscoroutine(result):  # allow async monkeypatches
@@ -881,8 +887,7 @@ async def api_analyze(
     }
     _ensure_legacy_doc_type(envelope.get("summary"))
 
-    cache_entry = copy.deepcopy(envelope)
-    cache_entry["status"] = str(cache_entry.get("status", "ok")).lower()
+    cache_entry = _ok(copy.deepcopy(envelope))
     async with _cache_lock:
         IDEMPOTENT_CACHE.put(key, cache_entry)
 
@@ -893,7 +898,7 @@ async def api_analyze(
         schema=SCHEMA_VERSION,
         latency_ms=_now_ms() - t0,
     )
-    return envelope
+    return _ok(envelope)
 
 
 # --------------------------------------------------------------------

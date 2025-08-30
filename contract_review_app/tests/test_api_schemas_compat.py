@@ -1,7 +1,7 @@
 import json
 from fastapi.testclient import TestClient
 from contract_review_app.api.app import app
-from contract_review_app.core.schemas import AnalyzeOut, DraftOut, SuggestOut, QARecheckOut
+from contract_review_app.core.schemas import AnalyzeOut, SuggestOut, QARecheckOut
 
 client = TestClient(app)
 
@@ -20,20 +20,6 @@ def test_analyze_response_is_compatible_with_AnalyzeOut():
     }
     # Will raise if incompatible:
     _ = AnalyzeOut(**payload)
-
-def test_draft_response_is_compatible_with_DraftOut():
-    r = client.post("/api/gpt/draft", data=json.dumps({"text": "Make this clause polite."}))
-    assert r.status_code == 200
-    j = r.json()
-    assert j["status"] == "ok"
-    payload = {k: j[k] for k in ("draft_text",) if k in j}
-    payload["alternatives"] = j.get("alternatives", [])
-    payload["rationale"] = j.get("rationale")
-    payload["citations_hint"] = j.get("citations_hint", [])
-    payload["model"] = j.get("model", "rule-based")
-    payload["elapsed_ms"] = j.get("elapsed_ms")
-    payload["metadata"] = j.get("metadata", {})
-    _ = DraftOut(**payload)
 
 def test_suggest_response_is_compatible_with_SuggestOut():
     r = client.post("/api/suggest_edits", data=json.dumps({

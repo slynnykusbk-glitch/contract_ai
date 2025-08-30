@@ -234,7 +234,19 @@ def _ensure_legacy_doc_type(summary: dict) -> None:
 router = APIRouter()
 app = FastAPI(title="Contract Review App API", version="1.0")
 
-if os.getenv("CONTRACTAI_LLM_API", "0") == "1":
+
+def _env_truthy(name: str) -> bool:
+    """Return True if environment variable ``name`` is set to a truthy value."""
+    return os.getenv(name, "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+        "enabled",
+    )
+
+
+if _env_truthy("CONTRACTAI_LLM_API"):
     try:
         from contract_review_app.llm.api_router import router as llm_router
 
@@ -1091,26 +1103,6 @@ async def api_suggest_edits(request: Request, response: Response, x_cid: Optiona
     msg = "Add Exhibit M" if clause_type == "data_protection" and "exhibit m" not in text.lower() else ""
     dummy = {"message": msg, "range": {"start": 0, "length": 0}}
     return {"status": "ok", "edits": [dummy], "suggestions": [dummy]}
-
-
-@router.post("/api/gpt/draft")
-async def api_gpt_draft(new_req: dict, response: Response, x_cid: Optional[str] = Header(None)):
-    """
-    Minimal endpoint used by tests; the implementation is monkeypatched.
-    """
-    if not new_req:
-        raise HTTPException(status_code=404)
-    _set_schema_headers(response)
-    cid = x_cid or _sha256_hex("draft" + str(_now_ms()))
-    _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
-    if not _has_llm_keys():
-        text = (new_req.get("text") or "").strip()
-        draft = f"[AI-DRAFT] {text}".strip() if text else "[AI-DRAFT]"
-        return {"status": "ok", "draft_text": draft, "meta": {"model": "rulebased"}}
-    result = run_gpt_draft(new_req)
-    text = result.get("text", "") if isinstance(result, dict) else ""
-    model = result.get("model") if isinstance(result, dict) else None
-    return {"status": "ok", "draft_text": text, "meta": {"model": model}}
 
 
 @router.post("/api/gpt-draft")

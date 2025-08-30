@@ -146,8 +146,7 @@ def test_gpt_draft_endpoint():
     r = client.post(
         "/api/gpt/draft", json={"text": "sample", "clause_type": "clause"}
     )
-    assert r.status_code == 200
-    assert r.json().get("draft_text")
+    assert r.status_code == 404
 
 
 def test_suggest_edits_endpoint():

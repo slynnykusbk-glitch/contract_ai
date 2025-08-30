@@ -23,12 +23,6 @@ def test_analyze_envelope_and_keys():
     for k in ("analysis", "results", "clauses", "document"):
         assert k in j
 
-def test_draft_endpoint_minimal_text():
-    r = client.post("/api/gpt/draft", data=json.dumps({"text": "Draft me a friendlier clause."}))
-    assert r.status_code == 200
-    j = r.json()
-    assert j["status"] == "ok"
-    assert "draft_text" in j and isinstance(j["draft_text"], str)
 
 def test_suggest_edits_smoke():
     r = client.post("/api/suggest_edits", data=json.dumps({

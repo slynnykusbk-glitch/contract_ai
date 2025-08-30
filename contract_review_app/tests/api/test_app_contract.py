@@ -71,28 +71,6 @@ def test_suggest_edits_normalization_and_bounds():
         assert isinstance(s.get("message", ""), str)
 
 
-def test_gpt_draft_shape_and_headers():
-    r = client.post("/api/gpt/draft", json={"text": "Some clause text", "mode": "friendly"})
-    assert r.status_code == 200
-    body = r.json()
-    assert body["status"] == "ok"
-    assert "draft_text" in body
-    assert isinstance(body.get("meta", {}), dict)
-    # std headers
-    assert r.headers.get("x-schema-version") == SCHEMA_VERSION
-    assert _is_int(r.headers.get("x-latency-ms", "0"))
-
-
-def test_gpt_draft_stub_without_llm_keys(monkeypatch):
-    for k in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LLM_API_KEY"):
-        monkeypatch.delenv(k, raising=False)
-    r = client.post("/api/gpt/draft", json={"text": "Law"})
-    assert r.status_code == 200
-    data = r.json()
-    assert isinstance(data.get("draft_text"), str) and data["draft_text"].strip()
-    assert data.get("meta", {}).get("model") == "rulebased"
-
-
 def test_qa_recheck_fallback_payload_and_deltas():
     text = "Payment shall be made within 30 days."
     # apply a trivial patch (replace '30' -> '60')

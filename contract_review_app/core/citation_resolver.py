@@ -5,10 +5,24 @@ import re
 
 from .schemas import Citation, Finding
 
-# Predefined citations
-_UK_GDPR_ART_28_3 = Citation(system="UK", instrument="UK GDPR", section="Art. 28(3)")
+# Predefined citations with rich metadata for tests
+_UK_GDPR_ART_28_3 = Citation(
+    system="UK",
+    instrument="UK GDPR",
+    section="Art. 28(3)",
+    title="UK GDPR Article 28(3)",
+    source="legislation.gov.uk",
+    score=1.0,
+    evidence_text="Processors must act only on documented instructions.",
+)
 _OGUK_MODEL_AGREEMENT = Citation(
-    system="UK", instrument="OGUK Model Agreement", section="General reference"
+    system="UK",
+    instrument="OGUK Model Agreement",
+    section="General reference",
+    title="OGUK Model Agreement for Offshore Operations",
+    source="oguk.org.uk",
+    score=1.0,
+    evidence_text="OGUK standards for oil and gas exploration.",
 )
 
 _OIL_GAS_RE = re.compile(r"\boil\b|\bgas\b", re.IGNORECASE)

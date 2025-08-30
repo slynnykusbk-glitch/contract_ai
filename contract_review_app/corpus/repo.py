@@ -144,3 +144,7 @@ class CorpusRepository:
     def delete_all(self) -> None:
         with self.session.begin():
             self.session.execute(delete(CorpusDoc))
+
+
+# Backwards-compatible alias
+Repo = CorpusRepository

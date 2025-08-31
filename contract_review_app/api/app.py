@@ -495,6 +495,32 @@ def _ok(payload: dict) -> dict:
     return out
 
 
+def _normalize_analyze_payload(payload: dict) -> dict:
+    """Ensure ``results.analysis.findings`` path and standard status."""
+    # не разрушаем существующие поля
+    out = dict(payload or {})
+    # пытаемся вытащить findings из разных возможных форм
+    findings = []
+    if isinstance(payload, dict):
+        if (
+            isinstance(payload.get("results"), dict)
+            and isinstance(payload["results"].get("analysis"), dict)
+            and "findings" in payload["results"]["analysis"]
+        ):
+            findings = payload["results"]["analysis"]["findings"]
+        elif isinstance(payload.get("analysis"), dict) and "findings" in payload["analysis"]:
+            findings = payload["analysis"]["findings"]
+        elif "findings" in payload:
+            findings = payload["findings"]
+    # гарантируем целевой путь
+    out.setdefault("results", {})
+    out["results"].setdefault("analysis", {})
+    out["results"]["analysis"].setdefault("findings", findings)
+    # статус в верхнем уровне — всегда "OK" (back-compat)
+    out["status"] = "OK"
+    return out
+
+
 async def _read_body_guarded(request: Request) -> bytes:
     clen = request.headers.get("content-length")
     if clen and clen.isdigit() and int(clen) > MAX_BODY_BYTES:
@@ -783,6 +809,8 @@ async def api_analyze(request: Request, x_cid: Optional[str] = Header(None)):
     if hasattr(result, "model_dump"):
         result = result.model_dump()
 
+    result = _normalize_analyze_payload(result)
+
     status = "OK"
     if isinstance(result, dict):
         status = str(result.get("status", "ok")).upper()
@@ -858,7 +886,8 @@ async def api_analyze(request: Request, x_cid: Optional[str] = Header(None)):
     }
     _ensure_legacy_doc_type(envelope.get("summary"))
 
-    resp_bytes = json.dumps(_ok(envelope)).encode("utf-8")
+    normalized = _normalize_analyze_payload(envelope)
+    resp_bytes = json.dumps(_ok(normalized)).encode("utf-8")
     IDEMPOTENCY_CACHE.set(cid, resp_bytes)
     resp = Response(content=resp_bytes, media_type="application/json")
     _set_std_headers(

@@ -27,6 +27,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from fastapi.openapi.utils import get_openapi
+from .error_handlers import register_error_handlers
+from .models import ProblemDetail
 
 # --------------------------------------------------------------------
 # Language segmentation helpers
@@ -307,7 +310,34 @@ async def lifespan(app: FastAPI):
 router = APIRouter()
 # guard: ensure cache cleared even if lifespan not triggered
 IDEMPOTENCY_CACHE.clear()
-app = FastAPI(title="Contract Review App API", version="1.0", lifespan=lifespan)
+_default_problem = {"model": ProblemDetail}
+_default_responses = {code: _default_problem for code in (400, 401, 403, 404, 422, 429, 500)}
+app = FastAPI(
+    title="Contract Review App API",
+    version="1.0",
+    lifespan=lifespan,
+    responses=_default_responses,
+)
+register_error_handlers(app)
+
+
+def _custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        routes=app.routes,
+    )
+    components = openapi_schema.setdefault("components", {}).setdefault("schemas", {})
+    components["ProblemDetail"] = ProblemDetail.model_json_schema(
+        ref_template="#/components/schemas/{model}"
+    )
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = _custom_openapi
 
 _TRUTHY = {"1", "true", "yes", "on", "enabled"}
 
@@ -520,12 +550,14 @@ def _set_llm_headers(resp: Response, meta: Dict[str, Any]) -> None:
 
 
 def _problem_json(
-    status: int, title: str, detail: str, type_: str = "about:blank"
+    status: int, title: str, detail: str | None = None, type_: str = "/errors/general"
 ) -> Dict[str, Any]:
-    return {"type": type_, "title": title, "status": status, "detail": detail}
+    return ProblemDetail(
+        status=status, title=title, detail=detail, type=type_
+    ).model_dump()
 
 
-def _problem_response(status: int, title: str, detail: str) -> JSONResponse:
+def _problem_response(status: int, title: str, detail: str | None = None) -> JSONResponse:
     resp = JSONResponse(
         status_code=status,
         media_type="application/problem+json",
@@ -821,7 +853,10 @@ async def api_trace_index(response: Response):
     return {"status": "ok", "cids": list(_TRACE.keys())}
 
 
-@router.post("/api/analyze")
+@router.post(
+    "/api/analyze",
+    responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
+)
 async def api_analyze(request: Request, x_cid: Optional[str] = Header(None)):
     t0 = _now_ms()
     try:
@@ -1321,8 +1356,14 @@ app.include_router(router)
 # --------------------------------------------------------------------
 # Citation resolver endpoint
 # --------------------------------------------------------------------
-@app.post("/api/citation/resolve")
-@app.post("/api/citations/resolve")
+@app.post(
+    "/api/citation/resolve",
+    responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
+)
+@app.post(
+    "/api/citations/resolve",
+    responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
+)
 async def api_citation_resolve(
     body: CitationResolveRequest,
     response: Response,

@@ -163,3 +163,22 @@ Search responses now expose additional context for each chunk:
 
 These rely on the offset map stored in `corpus_chunks` and help clients
 highlight matches in the original text.
+
+# Block B8-S1 — Unified API error format
+
+## Summary
+
+All endpoints now return a standard ProblemDetail JSON body for 4xx/5xx errors.
+
+* Added `ProblemDetail` schema and global exception handlers.
+* FastAPI default error responses: 400/401/403/404/422/429/500.
+* OpenAPI components include `ProblemDetail`; key routes expose it explicitly.
+
+## How to verify
+
+```bash
+curl -X POST localhost:8000/api/analyze -d '{"text":123}' -H 'Content-Type: application/json'
+curl -X POST localhost:8000/api/gpt/draft -d '{}' -H 'Content-Type: application/json'
+```
+
+Both calls return `{"type":"/errors/general","title":...,"status":422}`.

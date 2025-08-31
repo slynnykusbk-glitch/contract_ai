@@ -21,3 +21,11 @@ class IdempotencyCache:
 
 
 IDEMPOTENCY_CACHE = IdempotencyCache()
+
+
+def clear_cache() -> None:
+    """Public API to clear the idempotency cache.
+
+    Tests call this to avoid cross-test cache interference.
+    """
+    IDEMPOTENCY_CACHE.clear()

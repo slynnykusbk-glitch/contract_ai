@@ -47,7 +47,7 @@
 
   <div class="row">
     <label for="backendInput">Backend URL:</label>
-    <input id="backendInput" type="text" value="http://127.0.0.1:9000" class="mono" />
+    <input id="backendInput" type="text" value="https://127.0.0.1:9443" class="mono" />
     <button id="saveBtn">Save</button>
     <button id="runAllBtn">Run All</button>
     <span class="small">Saved in localStorage</span>
@@ -126,7 +126,7 @@
 
   <script>
     // ---------------------- helpers ----------------------
-    const LS_KEY = "doctor:backendUrl";
+    const LS_KEY = "panel:backendUrl";
     let clientCid = genCid();
     let lastCid = ""; // from response headers
 
@@ -163,18 +163,19 @@
 
     function genCid(){ return "cid-" + Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
 
-    function normBase(v){
-      v = (v || "").trim();
-      if (!v) return "";
-      if (!/^https?:\/\//i.test(v)) v = "http://" + v;
-      v = v.replace(/\/+$/,"");
-      return v;
+    function normBase(u){
+      if (!u) return "";
+      let s = String(u).trim();
+      if (s.startsWith("//")) s = "https:" + s;
+      if (!/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(s)) s = "https://" + s;
+      s = s.replace(/^http:\/\/(127\.0\.0\.1|localhost)(:9443)(\/|$)/, "https://$1$2$3");
+      return s.replace(/\/+$/, "");
     }
     function saveBase(){ try{ localStorage.setItem(LS_KEY, document.getElementById("backendInput").value.trim()); }catch{} }
     function loadBase(){
-      let v = localStorage.getItem(LS_KEY) || document.getElementById("backendInput").value || "http://127.0.0.1:9000";
+      let v = localStorage.getItem(LS_KEY) || document.getElementById("backendInput").value || "https://127.0.0.1:9443";
       v = normBase(v);
-      document.getElementById("backendInput").value = v || "http://127.0.0.1:9000";
+      document.getElementById("backendInput").value = v || "https://127.0.0.1:9443";
       return v;
     }
     function setCidLabels(){

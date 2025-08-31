@@ -153,3 +153,13 @@ are met (0.8/0.6 for hybrid, 0.6/0.5 for bm25/vector).
 # Testing
 
 tests reset analyze idempotency cache per test via conftest.py
+
+# Block B6-6 — Highlight snippets and offsets
+
+Search responses now expose additional context for each chunk:
+
+* `snippet` – a short window around the first query token match,
+* `span` – exact `start`/`end` offsets in the source document.
+
+These rely on the offset map stored in `corpus_chunks` and help clients
+highlight matches in the original text.

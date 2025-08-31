@@ -10,6 +10,7 @@ from .cache import ensure_vector_cache
 from .config import load_config
 from .embedder import HashingEmbedder
 from .fusion import rrf, weighted_fusion
+from .highlight import make_snippet
 
 
 class BM25Search:
@@ -62,7 +63,7 @@ class BM25Search:
         return [dict(r) for r in res.mappings()]
 
 
-def _format_rows(rows: List[dict]) -> List[dict]:
+def _format_rows(rows: List[dict], query: str) -> List[dict]:
     formatted = []
     for r in rows:
         item = {
@@ -75,8 +76,9 @@ def _format_rows(rows: List[dict]) -> List[dict]:
                 "section_code": r["section_code"],
                 "version": r["version"],
             },
-            "span": {"start": r["start"], "end": r["end"], "lang": r["lang"]},
+            "span": {"start": r["start"], "end": r["end"]},
             "text": r["text"],
+            "snippet": make_snippet(r["text"], query),
             "bm25_score": float(r["score"]),
             "cosine_sim": None,
             "rank_fusion": None,
@@ -86,7 +88,14 @@ def _format_rows(rows: List[dict]) -> List[dict]:
     return formatted
 
 
-def _cosine_search(vecs: np.ndarray, metas: List[dict], ids: np.ndarray, query_vec: np.ndarray, top: int) -> List[dict]:
+def _cosine_search(
+    vecs: np.ndarray,
+    metas: List[dict],
+    ids: np.ndarray,
+    query_vec: np.ndarray,
+    query: str,
+    top: int,
+) -> List[dict]:
     norms = np.linalg.norm(vecs, axis=1)
     q_norm = np.linalg.norm(query_vec)
     denom = norms * (q_norm if q_norm != 0 else 1)
@@ -106,8 +115,9 @@ def _cosine_search(vecs: np.ndarray, metas: List[dict], ids: np.ndarray, query_v
                 "section_code": m["section_code"],
                 "version": m["version"],
             },
-            "span": {"start": m["start"], "end": m["end"], "lang": m["lang"]},
+            "span": {"start": m["start"], "end": m["end"]},
             "text": m["text"],
+            "snippet": make_snippet(m["text"], query),
             "bm25_score": None,
             "cosine_sim": float(sims[idx]),
             "rank_fusion": None,
@@ -139,7 +149,7 @@ def search_corpus(
             section_code=section_code,
             top=top,
         )
-        return _format_rows(rows)
+        return _format_rows(rows, query)
 
     cfg = load_config()
     vec_cfg = cfg["vector"]
@@ -151,7 +161,7 @@ def search_corpus(
         emb_ver=vec_cfg["embedding_version"],
     )
     q_vec = embedder.embed([query]).astype(np.float32)[0]
-    vec_results = _cosine_search(vecs, metas, ids, q_vec, top)
+    vec_results = _cosine_search(vecs, metas, ids, q_vec, query, top)
     if mode == "vector":
         return vec_results
     bm25_rows = BM25Search(session).search(
@@ -162,7 +172,7 @@ def search_corpus(
         section_code=section_code,
         top=cfg["bm25"]["top"],
     )
-    bm25_results = _format_rows(bm25_rows)
+    bm25_results = _format_rows(bm25_rows, query)
 
     bm25_ids = [r["id"] for r in bm25_results]
     vec_ids = [r["id"] for r in vec_results]
@@ -200,6 +210,7 @@ def search_corpus(
             "meta": base["meta"],
             "span": base["span"],
             "text": base["text"],
+            "snippet": base["snippet"],
             "bm25_score": bm25_map.get(i, {}).get("bm25_score"),
             "cosine_sim": vec_map.get(i, {}).get("cosine_sim"),
             "rank_fusion": len(merged) + 1,

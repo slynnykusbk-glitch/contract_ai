@@ -34,7 +34,8 @@ from contract_review_app.analysis.extract_summary import extract_document_snapsh
 from contract_review_app.api.calloff_validator import validate_calloff
 
 # SSOT DTO imports
-from contract_review_app.core.schemas import AnalyzeIn
+from contract_review_app.core.schemas import AnalyzeIn, Citation, Finding
+from contract_review_app.core.citation_resolver import resolve_citation
 from contract_review_app.gpt.config import load_llm_config
 from contract_review_app.gpt.service import (
     LLMService,
@@ -394,6 +395,22 @@ _analyze_sem = asyncio.Semaphore(MAX_CONCURRENCY)
 # --------------------------------------------------------------------
 class LearningUpdateIn(BaseModel):
     force: Optional[bool] = False
+
+
+# --------------------------------------------------------------------
+# Citation resolver DTOs
+# --------------------------------------------------------------------
+class CitationResolveRequest(BaseModel):
+    finding: Finding | None = None
+    citation: Citation | None = None
+    jurisdiction: str | None = None
+
+
+class CitationResolveResponse(BaseModel):
+    citation: Citation
+    evidence: dict[str, Any] | None = None
+    context: dict[str, Any] | None = None
+    score: float | None = 1.0
 
 
 # --------------------------------------------------------------------
@@ -1250,6 +1267,40 @@ async def api_learning_update(response: Response, body: LearningUpdateIn):
 
 # Mount router
 app.include_router(router)
+
+# --------------------------------------------------------------------
+# Citation resolver endpoint
+# --------------------------------------------------------------------
+@app.post("/api/citation/resolve")
+@app.post("/api/citations/resolve")
+async def api_citation_resolve(
+    body: CitationResolveRequest,
+    response: Response,
+    x_cid: str | None = Header(None),
+):
+    t0 = _now_ms()
+    if (body.finding is None) == (body.citation is None):
+        raise HTTPException(
+            status_code=400, detail="Exactly one of finding or citation is required"
+        )
+    if body.citation is not None:
+        resp_model = CitationResolveResponse(citation=body.citation, score=1.0)
+    else:
+        citation = resolve_citation(body.finding)
+        if citation is None:
+            raise HTTPException(status_code=422, detail="unresolvable")
+        resp_model = CitationResolveResponse(
+            citation=citation, score=citation.score or 1.0
+        )
+    _set_schema_headers(response)
+    _set_std_headers(
+        response,
+        cid=x_cid or "citation.resolve",
+        xcache="miss",
+        schema=SCHEMA_VERSION,
+        latency_ms=_now_ms() - t0,
+    )
+    return resp_model
 
 # --------------------------------------------------------------------
 # Static panel mount (/panel) with no-store headers and version endpoint

@@ -14,7 +14,7 @@ from datetime import datetime
 import time
 import re
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -486,6 +486,56 @@ def gather_repo() -> Dict[str, Any]:
     return info
 
 
+# ---------- output helpers ----------
+def _resolve_out_prefix(out_arg: str) -> Tuple[Path, Path]:
+    """
+    Backward compatible --out:
+    - Directory mode (legacy): if OUT is an existing dir, write <dir>/analysis.json and
+      <dir>/analysis.html
+    - Prefix mode (new): otherwise (file/prefix), write <prefix>.json and <prefix>.html
+    Returns: (out_dir, prefix_without_suffix)
+    """
+    p = Path(out_arg)
+
+    if p.suffix in {".json", ".html"}:
+        prefix = p.with_suffix("")
+        out_dir = prefix.parent
+        out_dir.mkdir(parents=True, exist_ok=True)
+        return out_dir, prefix
+
+    if p.exists() and p.is_dir():
+        out_dir = p
+        out_dir.mkdir(parents=True, exist_ok=True)
+        return out_dir, out_dir / "analysis"
+
+    prefix = p.with_suffix("") if p.suffix else p
+    out_dir = prefix.parent if str(prefix.parent) != "" else Path(".")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    return out_dir, prefix
+
+
+def render_html_report(data: dict) -> str:
+    return (
+        "<html><body><pre>"
+        + json.dumps(data, indent=2, ensure_ascii=False)
+        + "</pre></body></html>"
+    )
+
+
+def _write_reports(out_arg: str, data: dict, write_json: bool, write_html: bool) -> None:
+    """Write JSON/HTML and state.log next to them; preserves legacy directory behaviour."""
+    out_dir, prefix = _resolve_out_prefix(out_arg)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if write_json:
+        (prefix.with_suffix(".json")).write_text(
+            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+    if write_html:
+        html = render_html_report(data)
+        (prefix.with_suffix(".html")).write_text(html, encoding="utf-8")
+
+
 # ---------- report ----------
 def generate_report(state_log: Path | None = None) -> Dict[str, Any]:
     """If state_log is provided, wrap all gatherers with START/OK/ERR logging."""
@@ -539,13 +589,16 @@ def generate_report(state_log: Path | None = None) -> Dict[str, Any]:
 
 def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Collect project diagnostics")
-    parser.add_argument("--out", required=True, help="Output directory for the report")
+    parser.add_argument(
+        "--out",
+        required=True,
+        help="Output target. Directory (legacy) -> <dir>/analysis.(json|html). Or file prefix -> <prefix>.json/.html.",
+    )
     parser.add_argument("--json", action="store_true", help="Write JSON report")
     parser.add_argument("--html", action="store_true", help="Write HTML report")
     args = parser.parse_args(argv)
 
-    out_dir = Path(args.out)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir, _prefix = _resolve_out_prefix(args.out)
     state_log = out_dir / "state.log"
 
     global LOG_ENTRIES
@@ -559,17 +612,34 @@ def main(argv: List[str] | None = None) -> int:
         state_path_str = str(state_log)
     data["state_log"] = {"path": state_path_str, "entries": LOG_ENTRIES}
 
-    if args.json:
-        (out_dir / "analysis.json").write_text(
-            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
-        )
-    if args.html:
-        html = (
-            "<html><body><pre>"
-            + json.dumps(data, indent=2, ensure_ascii=False)
-            + "</pre></body></html>"
-        )
-        (out_dir / "analysis.html").write_text(html, encoding="utf-8")
+    data.setdefault(
+        "generated_at_utc", datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    )
+
+    block_keys = [
+        "env",
+        "git",
+        "precommit",
+        "backend",
+        "llm",
+        "service",
+        "api",
+        "rules",
+        "addin",
+        "runtime_checks",
+        "inventory",
+        "repo",
+        "quality",
+        "smoke",
+    ]
+    blocks = [data.get(k, {}) for k in block_keys]
+    if len(blocks) != 14:
+        blocks = (blocks + [{}] * 14)[:14]
+    data["blocks"] = blocks
+
+    _write_reports(
+        args.out, data, write_json=bool(args.json), write_html=bool(args.html)
+    )
     return 0
 
 

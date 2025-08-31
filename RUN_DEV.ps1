@@ -20,6 +20,8 @@ $ErrorActionPreference = 'Stop'
 if (-not (Test-Path .\.venv\Scripts\Activate.ps1)) { py -3.11 -m venv .venv }
 .\.venv\Scripts\Activate.ps1
 $env:PYTHONPATH = "$PWD"
+if (!(Test-Path .\var)) { New-Item -ItemType Directory -Path .\var | Out-Null }
+if (-not $env:LEGAL_CORPUS_DSN) { $env:LEGAL_CORPUS_DSN = 'sqlite:///var/corpus.db' }
 $env:CONTRACTAI_LLM_API = 'mock'
 $env:CONTRACTAI_DEV_PANEL = '1'
 

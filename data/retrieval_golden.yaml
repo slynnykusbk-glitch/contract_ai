@@ -1,0 +1,25 @@
+- query: "UK GDPR principles of processing"
+  expected:
+    - jurisdiction: "UK"
+      act_code: "UK_GDPR"
+      section_code: "Art.5"
+- query: "data processing contract requirements"
+  expected:
+    - jurisdiction: "UK"
+      act_code: "UK_GDPR"
+      section_code: "Art.28"
+- query: "UCTA reasonableness test section 2"
+  expected:
+    - jurisdiction: "UK"
+      act_code: "UCTA_1977"
+      section_code: "s.2"
+- query: "DPA 2018 section 28 processors"
+  expected:
+    - jurisdiction: "UK"
+      act_code: "DPA_2018"
+      section_code: "s.28(3)"
+- query: "OGUK model form indemnity"
+  expected:
+    - jurisdiction: "UK"
+      act_code: "OGUK_MODEL"
+      section_code: "Indemnity"

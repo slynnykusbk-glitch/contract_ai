@@ -25,3 +25,7 @@ corpus-test:
 .PHONY: retrieval-build
 retrieval-build:
 \tpython -m contract_review_app.retrieval.cli build
+
+.PHONY: retrieval-eval
+retrieval-eval:
+	python -m contract_review_app.retrieval.eval --golden data/retrieval_golden.yaml --method hybrid --k 5

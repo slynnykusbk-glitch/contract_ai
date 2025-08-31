@@ -135,3 +135,16 @@ Build vector cache:
 ```bash
 make retrieval-build
 ```
+
+# Block B6-5 — Retrieval evaluation
+
+Run offline evaluation on the demo corpus. Hybrid search should reach at least
+80% recall@5 and MRR above 0.6.
+
+```bash
+python -m contract_review_app.corpus.ingest --dir data/corpus_demo
+python -m contract_review_app.retrieval.indexer
+python -m contract_review_app.retrieval.eval --golden data/retrieval_golden.yaml --method hybrid --k 5
+```
+
+Exit code is zero when the recall threshold is met.

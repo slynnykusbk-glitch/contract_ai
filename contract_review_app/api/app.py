@@ -7,7 +7,6 @@ import json
 import os
 import time
 import re
-import copy
 from collections import OrderedDict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -43,6 +42,7 @@ from contract_review_app.core.schemas import AnalyzeIn
 # Snapshot extraction heuristics
 # Snapshot extraction heuristics
 from contract_review_app.analysis.extract_summary import extract_document_snapshot
+from .cache import IDEMPOTENCY_CACHE
 
 # Orchestrator / Engine imports
 try:
@@ -90,7 +90,6 @@ QA_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_QA_TIMEOUT_SEC", "20"))
 DRAFT_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_DRAFT_TIMEOUT_SEC", "25"))
 MAX_CONCURRENCY = int(os.getenv("CONTRACT_AI_MAX_CONCURRENCY", "4"))
 MAX_BODY_BYTES = int(os.getenv("CONTRACT_AI_MAX_BODY_BYTES", str(2_500_000)))
-CACHE_SIZE = int(os.getenv("CONTRACT_AI_CACHE_SIZE", "128"))
 
 # weighted risk scoring (configurable)
 RISK_WEIGHTS = {
@@ -267,8 +266,18 @@ def _ensure_legacy_doc_type(summary: dict) -> None:
 # --------------------------------------------------------------------
 # App / Router
 # --------------------------------------------------------------------
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    IDEMPOTENCY_CACHE.clear()
+    yield
+
+
 router = APIRouter()
-app = FastAPI(title="Contract Review App API", version="1.0")
+# guard: ensure cache cleared even if lifespan not triggered
+IDEMPOTENCY_CACHE.clear()
+app = FastAPI(title="Contract Review App API", version="1.0", lifespan=lifespan)
 
 _TRUTHY = {"1", "true", "yes", "on", "enabled"}
 
@@ -388,40 +397,6 @@ async def _trace_mw(request: Request, call_next):
 # Concurrency / Cache
 # --------------------------------------------------------------------
 _analyze_sem = asyncio.Semaphore(MAX_CONCURRENCY)
-_cache_lock = asyncio.Lock()
-
-
-class _LRUCache(OrderedDict):
-    def __init__(self, maxsize: int):
-        super().__init__()
-        self.maxsize = maxsize
-
-    def get(self, key: str) -> Any:  # type: ignore[override]
-        try:
-            val = super().__getitem__(key)
-            self.move_to_end(key)
-            return val
-        except KeyError:
-            return None
-
-    def put(self, key: str, value: Any) -> None:
-        super().__setitem__(key, value)
-        self.move_to_end(key)
-        if len(self) > self.maxsize:
-            self.popitem(last=False)
-
-
-IDEMPOTENT_CACHE = _LRUCache(CACHE_SIZE)
-
-
-@asynccontextmanager
-async def _lifespan(app: FastAPI):
-    async with _cache_lock:
-        IDEMPOTENT_CACHE.clear()
-    yield
-
-
-app.router.lifespan_context = _lifespan
 
 
 # --------------------------------------------------------------------
@@ -769,11 +744,8 @@ async def api_trace_index(response: Response):
 
 
 @router.post("/api/analyze")
-async def api_analyze(
-    request: Request, response: Response, x_cid: Optional[str] = Header(None)
-):
+async def api_analyze(request: Request, x_cid: Optional[str] = Header(None)):
     t0 = _now_ms()
-    _set_schema_headers(response)
     try:
         body = await _read_body_guarded(request)
         payload = json.loads(body.decode("utf-8")) if body else {}
@@ -785,38 +757,25 @@ async def api_analyze(
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
     try:
-        model = (
-            AnalyzeIn(**payload) if isinstance(payload, dict) else AnalyzeIn(text="")
-        )
+        model = AnalyzeIn(**payload) if isinstance(payload, dict) else AnalyzeIn(text="")
     except Exception as ex:
         return _problem_response(422, "Validation error", str(ex))
 
-    cid = x_cid or _sha256_hex(str(t0) + model.text[:128])
-    key = _idempotency_key(
+    cid = x_cid or _idempotency_key(
         model.text or "", getattr(model, "policy_pack", getattr(model, "policy", None))
     )
 
-    async with _cache_lock:
-        cached = IDEMPOTENT_CACHE.get(key)
+    cached = IDEMPOTENCY_CACHE.get(cid)
     if cached is not None:
+        resp = Response(content=cached, media_type="application/json")
         _set_std_headers(
-            response,
+            resp,
             cid=cid,
             xcache="hit",
             schema=SCHEMA_VERSION,
             latency_ms=_now_ms() - t0,
         )
-        # guaranteed summary on root
-        if "document" in cached and isinstance(cached["document"], dict):
-            cached["summary"] = cached["document"].get(
-                "summary", cached.get("summary", {})
-            )
-        elif "results" in cached and isinstance(cached["results"], dict):
-            cached["summary"] = cached["results"].get(
-                "summary", cached.get("summary", {})
-            )
-        _ensure_legacy_doc_type(cached.get("summary"))
-        return _ok(cached)
+        return resp
 
     result = _analyze_document(model.text or "")
     if asyncio.iscoroutine(result):  # allow async monkeypatches
@@ -899,18 +858,17 @@ async def api_analyze(
     }
     _ensure_legacy_doc_type(envelope.get("summary"))
 
-    cache_entry = _ok(copy.deepcopy(envelope))
-    async with _cache_lock:
-        IDEMPOTENT_CACHE.put(key, cache_entry)
-
+    resp_bytes = json.dumps(_ok(envelope)).encode("utf-8")
+    IDEMPOTENCY_CACHE.set(cid, resp_bytes)
+    resp = Response(content=resp_bytes, media_type="application/json")
     _set_std_headers(
-        response,
+        resp,
         cid=cid,
         xcache="miss",
         schema=SCHEMA_VERSION,
         latency_ms=_now_ms() - t0,
     )
-    return _ok(envelope)
+    return resp
 
 
 # --------------------------------------------------------------------

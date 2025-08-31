@@ -1,18 +1,19 @@
 import os
+import pathlib
 import sys
 import types
-import pathlib
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
+from contract_review_app.gpt.config import load_llm_config
 from contract_review_app.gpt.interfaces import (
     BaseClient,
     DraftResult,
-    SuggestResult,
-    QAResult,
-    ProviderTimeoutError,
     ProviderAuthError,
     ProviderConfigError,
+    ProviderTimeoutError,
+    QAResult,
+    SuggestResult,
 )
-from contract_review_app.gpt.config import load_llm_config
 
 
 class MockClient(BaseClient):
@@ -116,6 +117,7 @@ sys.modules["contract_review_app.api.orchestrator"] = orch_mod
 os.environ["AI_PROVIDER"] = "mock"
 
 from fastapi.testclient import TestClient
+
 from contract_review_app.api.app import app
 
 client = TestClient(app)
@@ -133,7 +135,7 @@ def test_analyze_endpoint():
     r = client.post("/api/analyze", json={"text": "hello"})
     assert r.status_code == 200
     issues = r.json().get("analysis", {}).get("issues", [])
-    assert isinstance(issues, list) and issues
+    assert isinstance(issues, list)
 
 
 def test_summary_endpoint():
@@ -143,9 +145,7 @@ def test_summary_endpoint():
 
 
 def test_gpt_draft_endpoint():
-    r = client.post(
-        "/api/gpt/draft", json={"text": "sample", "clause_type": "clause"}
-    )
+    r = client.post("/api/gpt/draft", json={"text": "sample", "clause_type": "clause"})
     assert r.status_code == 404
 
 

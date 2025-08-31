@@ -5,8 +5,8 @@ import asyncio
 import hashlib
 import json
 import os
-import time
 import re
+import time
 from collections import OrderedDict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -27,21 +27,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from contract_review_app.api.calloff_validator import validate_calloff
-from contract_review_app.gpt.service import (
-    LLMService,
-    ProviderAuthError,
-    ProviderTimeoutError,
-    ProviderConfigError,
-)
-from contract_review_app.gpt.config import load_llm_config
-
-# SSOT DTO imports
-from contract_review_app.core.schemas import AnalyzeIn
 
 # Snapshot extraction heuristics
 # Snapshot extraction heuristics
 from contract_review_app.analysis.extract_summary import extract_document_snapshot
+from contract_review_app.api.calloff_validator import validate_calloff
+
+# SSOT DTO imports
+from contract_review_app.core.schemas import AnalyzeIn
+from contract_review_app.gpt.config import load_llm_config
+from contract_review_app.gpt.service import (
+    LLMService,
+    ProviderAuthError,
+    ProviderConfigError,
+    ProviderTimeoutError,
+)
+
 from .cache import IDEMPOTENCY_CACHE
 
 # Orchestrator / Engine imports
@@ -61,7 +62,9 @@ except Exception:  # pragma: no cover
 
 # Optional: rule registry for /health
 try:
-    from contract_review_app.legal_rules import registry as rules_registry  # type: ignore
+    from contract_review_app.legal_rules import (
+        registry as rules_registry,
+    )  # type: ignore
 except Exception:  # pragma: no cover
     rules_registry = None  # type: ignore
 
@@ -189,13 +192,7 @@ def _analyze_document(text: str) -> Dict[str, Any]:
     # Drop findings missing clause_type and ensure at least one is returned
     findings = [f for f in findings if str(f.get("clause_type", "")).strip()]
     if not findings:
-        findings = [
-            {
-                "clause_type": "Unknown",
-                "message": "No findings generated",
-                "code": "NO_FINDINGS",
-            }
-        ]
+        findings = []
     # ``issues`` historically mirrored ``findings``; keep behaviour
     issues = findings.copy()
     return {
@@ -217,19 +214,12 @@ def _finding_to_issue(f: dict) -> dict:
     """
     return {
         "clause_type": f.get("clause_type") or f.get("category") or "Unknown",
-        "message": f.get("message")
-        or f.get("title")
-        or f.get("explain")
-        or "Issue",
+        "message": f.get("message") or f.get("title") or f.get("explain") or "Issue",
         "severity": f.get("severity") or f.get("severity_level") or "low",
         **(
             {"span": f.get("span")}
             if isinstance(f.get("span"), dict)
-            else (
-                {"range": f.get("range")}
-                if isinstance(f.get("range"), dict)
-                else {}
-            )
+            else ({"range": f.get("range")} if isinstance(f.get("range"), dict) else {})
         ),
     }
 
@@ -495,11 +485,16 @@ def _ok(payload: dict) -> dict:
     return out
 
 
-def _normalize_analyze_payload(payload: dict) -> dict:
-    """Ensure ``results.analysis.findings`` path and standard status."""
-    # не разрушаем существующие поля
+def _normalize_analyze_response(payload: dict) -> dict:
+    """Normalize analysis payload to ensure standard shape.
+
+    The function guarantees the presence of ``results.analysis.findings`` and a
+    top-level ``status`` key set to ``"OK"``. If findings are provided in
+    alternative locations they are moved accordingly; otherwise an empty list is
+    used. Existing findings are left untouched.
+    """
+
     out = dict(payload or {})
-    # пытаемся вытащить findings из разных возможных форм
     findings = []
     if isinstance(payload, dict):
         if (
@@ -508,16 +503,17 @@ def _normalize_analyze_payload(payload: dict) -> dict:
             and "findings" in payload["results"]["analysis"]
         ):
             findings = payload["results"]["analysis"]["findings"]
-        elif isinstance(payload.get("analysis"), dict) and "findings" in payload["analysis"]:
-            findings = payload["analysis"]["findings"]
+        elif (
+            isinstance(payload.get("results"), dict)
+            and "findings" in payload["results"]
+        ):
+            findings = payload["results"]["findings"]
         elif "findings" in payload:
             findings = payload["findings"]
-    # гарантируем целевой путь
     out.setdefault("results", {})
     out["results"].setdefault("analysis", {})
-    out["results"]["analysis"].setdefault("findings", findings)
-    # статус в верхнем уровне — всегда "OK" (back-compat)
-    out["status"] = "OK"
+    out["results"]["analysis"]["findings"] = findings
+    out["status"] = out.get("status", "OK").upper() or "OK"
     return out
 
 
@@ -783,7 +779,9 @@ async def api_analyze(request: Request, x_cid: Optional[str] = Header(None)):
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
     try:
-        model = AnalyzeIn(**payload) if isinstance(payload, dict) else AnalyzeIn(text="")
+        model = (
+            AnalyzeIn(**payload) if isinstance(payload, dict) else AnalyzeIn(text="")
+        )
     except Exception as ex:
         return _problem_response(422, "Validation error", str(ex))
 
@@ -809,7 +807,7 @@ async def api_analyze(request: Request, x_cid: Optional[str] = Header(None)):
     if hasattr(result, "model_dump"):
         result = result.model_dump()
 
-    result = _normalize_analyze_payload(result)
+    result = _normalize_analyze_response(result)
 
     status = "OK"
     if isinstance(result, dict):
@@ -886,7 +884,7 @@ async def api_analyze(request: Request, x_cid: Optional[str] = Header(None)):
     }
     _ensure_legacy_doc_type(envelope.get("summary"))
 
-    normalized = _normalize_analyze_payload(envelope)
+    normalized = _normalize_analyze_response(envelope)
     resp_bytes = json.dumps(_ok(normalized)).encode("utf-8")
     IDEMPOTENCY_CACHE.set(cid, resp_bytes)
     resp = Response(content=resp_bytes, media_type="application/json")

@@ -28,6 +28,45 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+# --------------------------------------------------------------------
+# Language segmentation helpers
+# --------------------------------------------------------------------
+
+
+def _script_of(ch: str) -> str | None:
+    cp = ord(ch)
+    # Cyrillic ranges (basic + extended)
+    if 0x0400 <= cp <= 0x052F:
+        return "cyrillic"
+    # Latin (ASCII + Latin-1/Extended)
+    if (0x0041 <= cp <= 0x005A) or (0x0061 <= cp <= 0x007A) or (0x00C0 <= cp <= 0x024F):
+        return "latin"
+    return None
+
+
+def _make_segments(text: str) -> list[dict]:
+    segs: list[dict] = []
+    cur: str | None = None
+    start: int | None = None
+    for i, ch in enumerate(text):
+        s = _script_of(ch)
+        if s is None:
+            if cur is not None:
+                segs.append({"span": {"start": start, "end": i}, "lang": cur})
+                cur = None
+                start = None
+            continue
+        if cur is None:
+            cur = s
+            start = i
+        elif s != cur:
+            segs.append({"span": {"start": start, "end": i}, "lang": cur})
+            cur = s
+            start = i
+    if cur is not None:
+        segs.append({"span": {"start": start, "end": len(text)}, "lang": cur})
+    return segs
+
 # Snapshot extraction heuristics
 # Snapshot extraction heuristics
 from contract_review_app.analysis.extract_summary import extract_document_snapshot
@@ -825,6 +864,17 @@ async def api_analyze(request: Request, x_cid: Optional[str] = Header(None)):
         result = result.model_dump()
 
     result = _normalize_analyze_response(result)
+
+    normalize_on = os.getenv("CONTRACTAI_INTAKE_NORMALIZE", "").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    if normalize_on:
+        result.setdefault("results", {}).setdefault("analysis", {})[
+            "segments"
+        ] = _make_segments(model.text or "")
 
     status = "OK"
     if isinstance(result, dict):

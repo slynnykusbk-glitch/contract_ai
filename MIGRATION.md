@@ -147,4 +147,5 @@ python -m contract_review_app.retrieval.indexer
 python -m contract_review_app.retrieval.eval --golden data/retrieval_golden.yaml --method hybrid --k 5
 ```
 
-Exit code is zero when the recall threshold is met.
+Exit code is zero when both recall and MRR thresholds for the selected method
+are met (0.8/0.6 for hybrid, 0.6/0.5 for bm25/vector).

@@ -110,17 +110,25 @@ def evaluate(golden: List[QueryCase], method: str, k: int) -> dict:
     }
 
 
+THRESHOLDS = {
+    "hybrid": {"recall": 0.8, "mrr": 0.6},
+    "bm25": {"recall": 0.6, "mrr": 0.5},
+    "vector": {"recall": 0.6, "mrr": 0.5},
+}
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--golden", required=True)
     p.add_argument("--method", choices=["bm25", "vector", "hybrid"], required=True)
     p.add_argument("--k", type=int, default=5)
-    p.add_argument("--json", action="store_true", help="reserved; outputs JSON")
     args = p.parse_args()
     golden = load_golden(args.golden)
     res = evaluate(golden, args.method, args.k)
     print(json.dumps(res))
-    return 0 if res["recall_at_k"] >= 0.8 else 1
+    thr = THRESHOLDS.get(args.method, {"recall": 0.0, "mrr": 0.0})
+    ok = res["recall_at_k"] >= thr["recall"] and res["mrr_at_k"] >= thr["mrr"]
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":  # pragma: no cover

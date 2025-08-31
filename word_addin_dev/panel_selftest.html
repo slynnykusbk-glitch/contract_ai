@@ -65,7 +65,7 @@
         <button id="btnHealth">GET /health</button>
         <button id="btnAnalyze">POST /api/analyze</button>
         <button id="btnSummary">POST /api/summary</button>
-        <button id="btnDraft">POST /api/gpt/draft</button>
+        <button id="btnDraft">POST /api/gpt-draft</button>
         <button id="btnSuggest">POST /api/suggest_edits</button>
         <button id="btnQA">POST /api/qa-recheck</button>
         <button id="btnCalloff">POST /api/calloff/validate</button>
@@ -90,7 +90,7 @@
             <tr id="row-health"><td>GET /health</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             <tr id="row-analyze"><td>POST /api/analyze</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             <tr id="row-summary"><td>POST /api/summary</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-            <tr id="row-draft"><td>POST /api/gpt/draft</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr id="row-draft"><td>POST /api/gpt-draft</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             <tr id="row-suggest"><td>POST /api/suggest_edits</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             <tr id="row-qa"><td>POST /api/qa-recheck</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             <tr id="row-calloff"><td>POST /api/calloff/validate</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
@@ -287,7 +287,7 @@
     }
     async function testDraft(){
       const r = await callEndpoint({
-        name:"draft", method:"POST", path:"/api/gpt/draft",
+        name:"draft", method:"POST", path:"/api/gpt-draft",
         body:{ text:"Make this clause polite." }
       });
       setStatusRow("row-draft", r);

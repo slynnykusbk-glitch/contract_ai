@@ -35,13 +35,21 @@ def session(tmp_path):
 def test_load_config_env_override(tmp_path, monkeypatch):
     cfg_path = tmp_path / 'retrieval.yaml'
     cfg_path.write_text(
-        "vector:\n  embedding_dim: 128\n  embedding_version: v1\n  cache_dir: cache\n", encoding='utf-8'
+        "vector:\n  embedding_dim: 128\n  embedding_version: v1\n  cache_dir: cache\n"
+        "fusion:\n  method: rrf\n  weights:\n    vector: 0.1\n    bm25: 0.9\n",
+        encoding='utf-8',
     )
     monkeypatch.setenv('RETRIEVAL_CONFIG', str(cfg_path))
     monkeypatch.setenv('RETRIEVAL_EMBEDDING_DIM', '64')
+    monkeypatch.setenv('RETRIEVAL_FUSION_METHOD', 'weighted')
+    monkeypatch.setenv('RETRIEVAL_WEIGHT_VECTOR', '0.7')
+    monkeypatch.setenv('RETRIEVAL_WEIGHT_BM25', '0.3')
     cfg = load_config()
     assert cfg['vector']['embedding_dim'] == 64
     assert cfg['vector']['embedding_version'] == 'v1'
+    assert cfg['fusion']['method'] == 'weighted'
+    assert cfg['fusion']['weights']['vector'] == 0.7
+    assert cfg['fusion']['weights']['bm25'] == 0.3
 
 
 def test_vector_cache_build_and_reuse(session, tmp_path):

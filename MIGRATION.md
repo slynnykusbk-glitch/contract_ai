@@ -104,10 +104,17 @@ vector:
   cache_dir: .cache/retrieval
 fusion:
   method: rrf
+  weights:
+    vector: 0.6
+    bm25: 0.4
   rrf_k: 60
 bm25:
   top: 10
 ```
+
+`fusion.method` controls how BM25 and vector results are combined: "rrf" for
+reciprocal rank fusion (default) or "weighted" for weighted hybrid using the
+specified `weights`.
 
 Environment overrides:
 
@@ -117,6 +124,9 @@ RETRIEVAL_EMBEDDING_DIM     # int
 RETRIEVAL_EMBEDDING_VERSION # string
 RETRIEVAL_CACHE_DIR         # cache location
 RETRIEVAL_RRF_K             # int
+RETRIEVAL_FUSION_METHOD     # rrf|weighted
+RETRIEVAL_WEIGHT_VECTOR     # float
+RETRIEVAL_WEIGHT_BM25       # float
 RETRIEVAL_BM25_TOP          # int
 ```
 

@@ -65,3 +65,19 @@ def test_vector_and_hybrid_modes(session, monkeypatch):
     assert r2.status_code == 200
     assert r2.json()['results']
     assert calls == [True, True]
+
+
+def test_hybrid_weighted_has_rank_fusion(session, monkeypatch):
+    monkeypatch.setenv('RETRIEVAL_FUSION_METHOD', 'weighted')
+    monkeypatch.setenv('RETRIEVAL_WEIGHT_VECTOR', '0.6')
+    monkeypatch.setenv('RETRIEVAL_WEIGHT_BM25', '0.4')
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    r = client.get('/api/corpus/search', params={'q': 'data', 'mode': 'hybrid'})
+    assert r.status_code == 200
+    results = r.json()['results']
+    assert results
+    for item in results:
+        assert isinstance(item.get('rank_fusion'), int)
+        assert 'bm25_score' in item and 'cosine_sim' in item

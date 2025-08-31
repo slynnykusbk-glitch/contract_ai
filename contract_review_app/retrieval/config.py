@@ -12,16 +12,23 @@ DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "retrieva
 
 def _env_override(data: Dict[str, Any]) -> None:
     mapping = {
-        "RETRIEVAL_EMBEDDING_DIM": ("vector", "embedding_dim", int),
-        "RETRIEVAL_EMBEDDING_VERSION": ("vector", "embedding_version", str),
-        "RETRIEVAL_CACHE_DIR": ("vector", "cache_dir", str),
-        "RETRIEVAL_RRF_K": ("fusion", "rrf_k", int),
-        "RETRIEVAL_BM25_TOP": ("bm25", "top", int),
+        "RETRIEVAL_EMBEDDING_DIM": (("vector",), "embedding_dim", int),
+        "RETRIEVAL_EMBEDDING_VERSION": (("vector",), "embedding_version", str),
+        "RETRIEVAL_CACHE_DIR": (("vector",), "cache_dir", str),
+        "RETRIEVAL_RRF_K": (("fusion",), "rrf_k", int),
+        "RETRIEVAL_FUSION_METHOD": (("fusion",), "method", str),
+        "RETRIEVAL_WEIGHT_VECTOR": (("fusion", "weights"), "vector", float),
+        "RETRIEVAL_WEIGHT_BM25": (("fusion", "weights"), "bm25", float),
+        "RETRIEVAL_BM25_TOP": (("bm25",), "top", int),
     }
-    for env, (section, key, cast) in mapping.items():
+    for env, (sections, key, cast) in mapping.items():
         val = os.getenv(env)
-        if val is not None:
-            data.setdefault(section, {})[key] = cast(val)
+        if val is None:
+            continue
+        target = data
+        for sec in sections:
+            target = target.setdefault(sec, {})
+        target[key] = cast(val)
 
 
 def load_config(path: str | None = None) -> Dict[str, Any]:
@@ -44,6 +51,10 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
     vec["cache_dir"] = str(vec.get("cache_dir", ".cache/retrieval"))
     vec["backend"] = str(vec.get("backend", "inmemory"))
     fusion["method"] = str(fusion.get("method", "rrf"))
+    weights = fusion.get("weights", {})
+    weights["vector"] = float(weights.get("vector", 0.6))
+    weights["bm25"] = float(weights.get("bm25", 0.4))
+    fusion["weights"] = weights
     if "rrf_k" in fusion:
         fusion["rrf_k"] = int(fusion["rrf_k"])
     bm25["top"] = int(bm25.get("top", 10))

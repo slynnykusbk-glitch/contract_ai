@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional, Dict
 
 from fastapi import APIRouter, HTTPException
+from contract_review_app.api.models import ProblemDetail
 from pydantic import BaseModel
 
 # Спробуємо підтягнути типи, але не ламаємося, якщо їх немає
@@ -159,7 +160,11 @@ def api_gpt_draft_analysis_output(payload: Dict[str, Any]) -> Any:
     return _fallback_redraft(analysis)
 
 
-@router.post("/api/gpt/draft", response_model=GPTDraftResponse)
+@router.post(
+    "/api/gpt/draft",
+    response_model=GPTDraftResponse,
+    responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
+)
 def api_gpt_draft_gptdto(payload: Dict[str, Any]) -> GPTDraftResponse:
     """
     НОВИЙ контракт для UI-панелі: приймає або {analysis: ...}, або legacy {clause_type,text}

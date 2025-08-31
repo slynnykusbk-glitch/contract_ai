@@ -301,7 +301,7 @@
     if (opts.text) body.text = opts.text;
     body.mode = opts.mode || "friendly";
     try {
-      return await callEndpoint({ method: "POST", path: "/api/gpt/draft", body: body, timeoutMs: 25000 });
+      return await callEndpoint({ method: "POST", path: "/api/gpt-draft", body: body, timeoutMs: 25000 });
     } catch (e) {
       status("✖ Draft error: " + (e && e.message ? e.message : e));
       return { ok: false, status: 0, json: null, headers: {} };
@@ -1149,4 +1149,62 @@
     try { var n = $("console"); if (n) { n.appendChild(document.createTextNode("[PROMISE REJECTION] " + (e.reason && (e.reason.message || e.reason)) + "\n")); n.scrollTop = n.scrollHeight; } } catch (_) {}
   });
 
+})();
+
+(function(){
+  function attachSafeFill(){
+    const fill = (txt) => {
+      try{
+        const area = document.querySelector("#clause");
+        if(area){ area.value = txt; }
+        window.state = window.state || {};
+        window.state.original_text = txt;
+        window.state.doc_text = txt;
+        console.log("[patch] clause filled, length=", (txt||"").length);
+      }catch(e){ console.error("[patch] fill error", e); }
+    };
+    try{
+      const modeSel = document.querySelector("#cai-mode");
+      if(modeSel && !modeSel.querySelector('option[value="medium"]')){
+        const friendlyOpt = modeSel.querySelector('option[value="friendly"]');
+        const opt = document.createElement('option');
+        opt.value = 'medium';
+        opt.textContent = 'medium';
+        if(friendlyOpt && friendlyOpt.nextSibling){
+          modeSel.insertBefore(opt, friendlyOpt.nextSibling);
+        }else{
+          modeSel.appendChild(opt);
+        }
+      }
+    }catch(e){ console.error("[patch] mode option error", e); }
+    const btnWhole = document.querySelector("#btnUseWholeDoc, [data-action='use-whole-doc']");
+    const btnSel   = document.querySelector("#btnUseSelection, [data-action='use-selection']");
+    if(btnWhole && !btnWhole.__patched){
+      btnWhole.__patched = true;
+      btnWhole.addEventListener("click", async ()=>{
+        try{
+          await Word.run(async ctx=>{
+            const body = ctx.document.body; body.load("text"); await ctx.sync();
+            fill(body.text || "");
+          });
+        }catch(e){ console.error("[patch] whole-doc error", e); }
+      }, true);
+    }
+    if(btnSel && !btnSel.__patched){
+      btnSel.__patched = true;
+      btnSel.addEventListener("click", async ()=>{
+        try{
+          await Word.run(async ctx=>{
+            const sel = ctx.document.getSelection(); sel.load("text"); await ctx.sync();
+            fill(sel.text || "");
+          });
+        }catch(e){ console.error("[patch] selection error", e); }
+      }, true);
+    }
+  }
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", attachSafeFill);
+  }else{
+    attachSafeFill();
+  }
 })();

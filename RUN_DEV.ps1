@@ -16,6 +16,13 @@ Remove-Item "$env:LOCALAPPDATA\Microsoft\EdgeWebView\User Data\Default\Cache\*" 
 $repo = Split-Path -Parent $PSCommandPath
 cd $repo
 
+$ErrorActionPreference = 'Stop'
+if (-not (Test-Path .\.venv\Scripts\Activate.ps1)) { py -3.11 -m venv .venv }
+.\.venv\Scripts\Activate.ps1
+$env:PYTHONPATH = "$PWD"
+$env:CONTRACTAI_LLM_API = 'mock'
+$env:CONTRACTAI_DEV_PANEL = '1'
+
 # 2) Виправити маніфест на прямий taskpane і єдиний хост 127.0.0.1
 $mf = Join-Path $repo "word_addin_dev\manifest.xml"
 $xml = Get-Content $mf -Raw -Encoding UTF8
@@ -34,13 +41,12 @@ Copy-Item $mf (Join-Path $wef "contract_ai_manifest.xml") -Force
 $certPem = Join-Path $repo "word_addin_dev\certs\localhost.pem"
 Import-Certificate -FilePath $certPem -CertStoreLocation Cert:\CurrentUser\Root | Out-Null
 
-# 5) Підняти бекенд (HTTPS 127.0.0.1:9443) і панель (HTTPS 127.0.0.1:3000)
+# 5) Підняти бекенд (HTTPS localhost:9443) і панель (HTTPS localhost:3000)
 $py = Join-Path $repo ".venv\Scripts\python.exe"
-$env:AI_PROVIDER = "mock"
 
 Start-Process $py -ArgumentList @(
   "-m","uvicorn","contract_review_app.api.app:app",
-  "--host","127.0.0.1","--port","9443",
+  "--host","localhost","--port","9443",
   "--ssl-certfile", (Join-Path $repo "word_addin_dev\certs\localhost.pem"),
   "--ssl-keyfile",  (Join-Path $repo "word_addin_dev\certs\localhost-key.pem"),
   "--reload"
@@ -51,7 +57,7 @@ Start-Sleep -Seconds 1  # невелика пауза, щоб уникнути �
 Start-Process $py -ArgumentList (Join-Path $repo "word_addin_dev\serve_https_panel.py")
 
 # 6) Відкрити self-test у браузері (для контролю зв’язку)
-Start-Process "https://127.0.0.1:3000/panel_selftest.html?v=dev&ts=$(Get-Date).Ticks"
+Start-Process "https://localhost:3000/panel_selftest.html?v=dev"
 
 # 7) Запустити Word — далі «Вставка → Мои надстройки → Общая папка → Contract AI — Draft Assistant»
 Start-Process winword.exe

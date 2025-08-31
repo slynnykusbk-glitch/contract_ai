@@ -26,6 +26,10 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, future=True)
 
 
 from .models import Base  # imported late to avoid circular import
+try:  # ensure retrieval models are registered
+    from contract_review_app.retrieval.models import CorpusChunk  # noqa: F401
+except Exception:  # pragma: no cover
+    CorpusChunk = None
 
 
 def init_db(engine: Engine, create_all: bool = True) -> None:
@@ -42,6 +46,23 @@ def init_db(engine: Engine, create_all: bool = True) -> None:
             "WHERE latest = 1;"
         )
         _exec_ddl(engine, sql)
+        fts_sql = (
+            "CREATE VIRTUAL TABLE IF NOT EXISTS corpus_chunks_fts "
+            "USING fts5(text, jurisdiction, source, act_code, section_code, version, "
+            "content='corpus_chunks', content_rowid='id');"
+        )
+        _exec_ddl(engine, fts_sql)
+        triggers = [
+            "CREATE TRIGGER IF NOT EXISTS corpus_chunks_ai AFTER INSERT ON corpus_chunks BEGIN "
+            "INSERT INTO corpus_chunks_fts(rowid, text, jurisdiction, source, act_code, section_code, version) "
+            "VALUES (new.id, new.text, new.jurisdiction, new.source, new.act_code, new.section_code, new.version); END;",
+            "CREATE TRIGGER IF NOT EXISTS corpus_chunks_au AFTER UPDATE ON corpus_chunks BEGIN "
+            "UPDATE corpus_chunks_fts SET text=new.text, jurisdiction=new.jurisdiction, source=new.source, act_code=new.act_code, section_code=new.section_code, version=new.version WHERE rowid=new.id; END;",
+            "CREATE TRIGGER IF NOT EXISTS corpus_chunks_ad AFTER DELETE ON corpus_chunks BEGIN "
+            "DELETE FROM corpus_chunks_fts WHERE rowid=old.id; END;",
+        ]
+        for t in triggers:
+            _exec_ddl(engine, t)
     elif dialect == "postgresql":
         sql = (
             "CREATE UNIQUE INDEX IF NOT EXISTS ux_latest_unique "

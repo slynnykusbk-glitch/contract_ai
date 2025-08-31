@@ -20,4 +20,8 @@ corpus-demo:
 	python -m contract_review_app.corpus.ingest --dir data/corpus_demo
 
 corpus-test:
-	pytest -q contract_review_app/tests/corpus --maxfail=1
+\tpytest -q contract_review_app/tests/corpus --maxfail=1
+
+.PHONY: retrieval-build
+retrieval-build:
+\tpython -m contract_review_app.retrieval.cli build

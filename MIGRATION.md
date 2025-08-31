@@ -91,3 +91,37 @@ API smoke:
 ```bash
 uvicorn contract_review_app.api.corpus_search:router
 ```
+
+# Block B6-3 — Retrieval config & vector cache
+
+Configuration lives in `config/retrieval.yaml`:
+
+```yaml
+vector:
+  backend: inmemory
+  embedding_dim: 128
+  embedding_version: emb-dev-1
+  cache_dir: .cache/retrieval
+fusion:
+  method: rrf
+  rrf_k: 60
+bm25:
+  top: 10
+```
+
+Environment overrides:
+
+```
+RETRIEVAL_CONFIG            # path to YAML
+RETRIEVAL_EMBEDDING_DIM     # int
+RETRIEVAL_EMBEDDING_VERSION # string
+RETRIEVAL_CACHE_DIR         # cache location
+RETRIEVAL_RRF_K             # int
+RETRIEVAL_BM25_TOP          # int
+```
+
+Build vector cache:
+
+```bash
+make retrieval-build
+```

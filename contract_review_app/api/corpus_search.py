@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Generator
 
 from contract_review_app.corpus.db import SessionLocal
-from contract_review_app.retrieval.search import BM25Search
+from contract_review_app.retrieval.search import search_corpus
 
 
 router = APIRouter(prefix="/api/corpus")
@@ -27,32 +27,17 @@ def corpus_search(
     act_code: str | None = None,
     section_code: str | None = None,
     top: int = 10,
+    mode: str = "bm25",
     session: Session = Depends(get_session),
 ):
-    searcher = BM25Search(session)
-    rows = searcher.search(
+    rows = search_corpus(
+        session,
         q,
+        mode=mode,
         jurisdiction=jurisdiction,
         source=source,
         act_code=act_code,
         section_code=section_code,
         top=top,
     )
-    results = [
-        {
-            "id": r["id"],
-            "meta": {
-                "corpus_id": r["corpus_id"],
-                "jurisdiction": r["jurisdiction"],
-                "source": r["source"],
-                "act_code": r["act_code"],
-                "section_code": r["section_code"],
-                "version": r["version"],
-            },
-            "span": {"start": r["start"], "end": r["end"], "lang": r["lang"]},
-            "text": r["text"],
-            "score": r["score"],
-        }
-        for r in rows
-    ]
-    return {"results": results}
+    return {"results": rows}

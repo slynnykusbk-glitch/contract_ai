@@ -1,0 +1,10 @@
+vector:
+  backend: "inmemory"
+  embedding_dim: 128
+  embedding_version: "emb-dev-1"
+  cache_dir: ".cache/retrieval"
+fusion:
+  method: "rrf"
+  rrf_k: 60
+bm25:
+  top: 10

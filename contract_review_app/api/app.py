@@ -70,6 +70,37 @@ def _make_segments(text: str) -> list[dict]:
         segs.append({"span": {"start": start, "end": len(text)}, "lang": cur})
     return segs
 
+
+_WORD_RE = re.compile(r"[A-Za-z]+|[А-Яа-яЁёІіЇїҐґ]+|\d+", re.UNICODE)
+
+
+def _lang_of(token: str) -> str:
+    ch = next((c for c in token if c.isalpha()), "")
+    code = ord(ch) if ch else 0
+    # латиница диапазоны + дефолт
+    if (0x0041 <= code <= 0x024F) or (0x1E00 <= code <= 0x1EFF):
+        return "latin"
+    # кириллица
+    if 0x0400 <= code <= 0x04FF or 0x0500 <= code <= 0x052F:
+        return "cyrillic"
+    return "latin"
+
+
+def _make_basic_findings(text: str) -> list[dict]:
+    out: list[dict] = []
+    for m in _WORD_RE.finditer(text or ""):
+        token = m.group(0)
+        out.append(
+            {
+                "code": "TOKEN",
+                "message": token,
+                "span": {"start": m.start(), "end": m.end()},
+                "text": token,
+                "lang": _lang_of(token),
+            }
+        )
+    return out
+
 # Snapshot extraction heuristics
 # Snapshot extraction heuristics
 from contract_review_app.analysis.extract_summary import extract_document_snapshot
@@ -897,6 +928,20 @@ async def api_analyze(request: Request, x_cid: Optional[str] = Header(None)):
         result = await result
     if hasattr(result, "model_dump"):
         result = result.model_dump()
+
+    analysis = result.setdefault("analysis", {}) if isinstance(result, dict) else {}
+    analysis.setdefault("clause_type", "document")
+    findings = []
+    if isinstance(result, dict):
+        if isinstance(result.get("findings"), list) and result["findings"]:
+            findings = result["findings"]
+        elif isinstance(analysis.get("findings"), list) and analysis["findings"]:
+            findings = analysis["findings"]
+    if not findings:
+        findings = _make_basic_findings(model.text or "")
+        if isinstance(result, dict):
+            result["findings"] = findings
+    analysis["findings"] = findings
 
     result = _normalize_analyze_response(result)
 

@@ -5,6 +5,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from contract_review_app.core.schemas import AppBaseModel
 
 
+SCHEMA_VERSION = "1.3"
+
+
 class _DTOBase(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 

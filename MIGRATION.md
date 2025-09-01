@@ -182,3 +182,23 @@ curl -X POST localhost:8000/api/gpt/draft -d '{}' -H 'Content-Type: application/
 ```
 
 Both calls return `{"type":"/errors/general","title":...,"status":422}`.
+
+# Block B8-S3 — Standard API headers
+
+## Summary
+
+Every API response now includes three standard headers:
+
+* `x-schema-version` – current schema version (`1.3`).
+* `x-latency-ms` – request processing time in milliseconds.
+* `x-cid` – deterministic SHA256 hash of the canonical request (`path + sorted(query) + JSON body`).
+
+## How to verify
+
+```bash
+curl -i -X POST localhost:8000/api/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"hello"}'
+```
+
+Repeated calls with the same payload yield identical `x-cid`, while changing the body alters the hash. The headers are also present on error responses.

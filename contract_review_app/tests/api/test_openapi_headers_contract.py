@@ -11,7 +11,7 @@ def test_openapi_headers_contract():
     assert "XSchemaVersion" in headers
     assert "XLatencyMs" in headers
     assert "XCid" in headers
-    for path in ["/api/analyze", "/api/gpt/draft"]:
+    for path in ["/api/analyze", "/api/gpt-draft"]:
         op = schema["paths"][path]["post"]
         resp_headers = op["responses"]["200"]["headers"]
         assert resp_headers["x-schema-version"]["$ref"] == "#/components/headers/XSchemaVersion"

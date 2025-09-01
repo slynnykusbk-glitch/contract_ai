@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import requests
+import httpx
 
 from ..config import LLMConfig
 from ..interfaces import (
@@ -36,8 +36,8 @@ class AnthropicClient(BaseClient):
             "anthropic-version": self._version,
         }
         try:
-            r = requests.post(f"{self._base}/messages", json=payload, headers=headers, timeout=timeout)
-        except requests.Timeout:
+            r = httpx.post(f"{self._base}/messages", json=payload, headers=headers, timeout=timeout)
+        except httpx.TimeoutException:
             raise ProviderTimeoutError(self.provider, timeout)
         if r.status_code in (401, 403):
             raise ProviderAuthError(self.provider, r.text)

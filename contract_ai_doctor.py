@@ -22,12 +22,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # Optional HTTP client
 try:
-    import requests
-    from requests.packages.urllib3.exceptions import InsecureRequestWarning
-
-    requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+    import httpx
 except Exception:
-    requests = None
+    httpx = None
 
 OK = "PASS"
 WARN = "WARN"
@@ -68,38 +65,38 @@ def inspect_cert(host: str, port: int, timeout: float = 4.0) -> Tuple[bool, Dict
 
 # --------------------------- HTTP helpers -----------------------------------
 def http_get(url: str, headers: dict | None = None, timeout: float = 8.0) -> Tuple[bool, int, dict, str, int]:
-    if not requests:
-        return False, 0, {}, "requests missing", 0
+    if not httpx:
+        return False, 0, {}, "httpx missing", 0
     t0 = now_ms()
     try:
-        r = requests.get(url, headers=headers or {}, timeout=timeout, verify=False)
+        r = httpx.get(url, headers=headers or {}, timeout=timeout, verify=False)
         ms = now_ms() - t0
         try:
             j = r.json()
         except Exception:
             j = {"raw": r.text[:1000]}
-        return r.ok, r.status_code, j, "", ms
+        return r.is_success, r.status_code, j, "", ms
     except Exception as e:
         return False, 0, {}, repr(e), now_ms() - t0
 
 def http_post_json(url: str, payload: dict, headers: dict | None = None, timeout: float = 12.0) -> Tuple[bool, int, dict, str, int]:
-    if not requests:
-        return False, 0, {}, "requests missing", 0
+    if not httpx:
+        return False, 0, {}, "httpx missing", 0
     t0 = now_ms()
     try:
-        r = requests.post(url, json=payload, headers=headers or {}, timeout=timeout, verify=False)
+        r = httpx.post(url, json=payload, headers=headers or {}, timeout=timeout, verify=False)
         ms = now_ms() - t0
         try:
             j = r.json()
         except Exception:
             j = {"raw": r.text[:1000]}
-        return r.ok, r.status_code, j, "", ms
+        return r.is_success, r.status_code, j, "", ms
     except Exception as e:
         return False, 0, {}, repr(e), now_ms() - t0
 
 def http_options(url: str, origin: str, req_method: str = "POST", timeout: float = 6.0) -> Tuple[bool, int, dict, str, int]:
-    if not requests:
-        return False, 0, {}, "requests missing", 0
+    if not httpx:
+        return False, 0, {}, "httpx missing", 0
     t0 = now_ms()
     try:
         headers = {
@@ -107,10 +104,10 @@ def http_options(url: str, origin: str, req_method: str = "POST", timeout: float
             "Access-Control-Request-Method": req_method,
             "Access-Control-Request-Headers": "content-type"
         }
-        r = requests.options(url, headers=headers, timeout=timeout, verify=False)
+        r = httpx.options(url, headers=headers, timeout=timeout, verify=False)
         ms = now_ms() - t0
         hdr = {k.lower(): v for k, v in r.headers.items()}
-        return (r.ok and ("access-control-allow-origin" in hdr)), r.status_code, hdr, "", ms
+        return (r.is_success and ("access-control-allow-origin" in hdr)), r.status_code, hdr, "", ms
     except Exception as e:
         return False, 0, {}, repr(e), now_ms() - t0
 
@@ -319,7 +316,7 @@ def main():
         )
 
         # try server-side trace if available
-        if requests:
+        if httpx:
             okt, sct, jt, errt, mst = http_get(args.backend.rstrip("/") + f"/api/trace/{cid}")
             add(report, "API", OK if okt else WARN, "Trace by CID", f"{sct} {errt}", jt, mst)
 

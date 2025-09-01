@@ -21,7 +21,7 @@ def test_problem_detail_component():
 def test_problem_detail_responses():
     client = _build_client()
     schema = client.get("/openapi.json").json()
-    for path in ["/api/analyze", "/api/gpt/draft", "/api/citations/resolve"]:
+    for path in ["/api/analyze", "/api/gpt-draft", "/api/citations/resolve"]:
         post = schema["paths"][path]["post"]
         for code in ("422", "500"):
             ref = post["responses"][code]["content"]["application/json"]["schema"]["$ref"]

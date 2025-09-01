@@ -115,5 +115,13 @@ class SearchHit(_DTOBase):
     rank_fusion: int | None = None
 
 
+class Paging(BaseModel):
+    page: int
+    page_size: int
+    total: int
+    pages: int
+
+
 class CorpusSearchResponse(_DTOBase):
     hits: List[SearchHit]
+    paging: Paging | None = None

@@ -204,3 +204,40 @@ curl -i -X POST localhost:8000/api/analyze \
 Repeated calls with the same payload yield identical `x-cid`, while changing the body alters the hash. The headers are also present on error responses.
 
 Trace middleware теперь получает те же `x-cid`/`x-latency-ms`, что и клиент; порядок middleware фиксирован: trace → headers → endpoint → headers → trace.
+
+# Block B8-S4 — Timeouts, 429, Pagination
+
+## Summary
+
+* Added global request timeout and rate limiting.
+* List endpoints now support pagination.
+* OpenAPI documents new responses (429/504) and paging parameters.
+
+## Environment variables
+
+```bash
+CONTRACTAI_API_TIMEOUT_S   # default 30
+CONTRACTAI_RATE_PER_MIN    # default 60
+CONTRACTAI_PAGE_SIZE       # default 10
+CONTRACTAI_MAX_PAGE_SIZE   # default 50
+```
+
+## Examples
+
+Timeout (504):
+
+```bash
+curl -i /api/analyze -d '{"text":"slow"}' -H 'Content-Type: application/json'
+```
+
+Too many requests (429):
+
+```bash
+curl -i -X POST /api/analyze -d '{"text":"hi"}' -H 'Content-Type: application/json'
+```
+
+Pagination:
+
+```bash
+curl -X POST '/api/corpus/search?page=2&page_size=5' -d '{"q":"data"}' -H 'Content-Type: application/json'
+```

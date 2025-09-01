@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import requests
+import httpx
 
 from ..config import LLMConfig
 from ..interfaces import (
@@ -31,13 +31,13 @@ class OpenAIClient(BaseClient):
 
     def _post(self, payload: dict, timeout: float) -> dict:
         try:
-            r = requests.post(
+            r = httpx.post(
                 f"{self._base}/chat/completions",
                 json=payload,
                 headers={"Authorization": f"Bearer {self._api_key}"},
                 timeout=timeout,
             )
-        except requests.Timeout:
+        except httpx.TimeoutException:
             raise ProviderTimeoutError(self.provider, timeout)
         if r.status_code in (401, 403):
             raise ProviderAuthError(self.provider, r.text)

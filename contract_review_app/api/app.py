@@ -8,7 +8,6 @@ import json
 import os
 import re
 import time
-import difflib
 from collections import OrderedDict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -28,7 +27,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
@@ -48,14 +47,6 @@ from .models import (
 # --- LLM provider & limits (final resolution) ---
 from contract_review_app.llm.provider import provider_from_env
 from contract_review_app.api.limits import API_TIMEOUT_S, API_RATE_LIMIT_PER_MIN
-
-# legacy удаляем:
-# from contract_review_app.gpt.service import LLMService, LLM_CONFIG
-# LLM_SERVICE = LLMService(LLM_CONFIG)
-
-# единая точка доступа к LLM (mock по умолчанию, azure если CONTRACTAI_PROVIDER=azure)
-LLM_PROVIDER = provider_from_env()
-# --- end ---
 
 # --------------------------------------------------------------------
 # Language segmentation helpers
@@ -468,18 +459,7 @@ def require_llm_enabled() -> None:
         raise HTTPException(status_code=404, detail="LLM API disabled")
 
 
-if _env_truthy("CONTRACTAI_LLM_API"):
-    try:
-        from contract_review_app.llm.api_router import router as llm_router
-
-        app.include_router(
-            llm_router,
-            prefix="/api/gpt",
-            dependencies=[Depends(require_llm_enabled)],
-        )
-    except Exception:
-        # Do not crash application if optional llm stack misconfigured
-        pass
+# Optional legacy LLM API removed
 
 app.add_middleware(
     CORSMiddleware,
@@ -1439,63 +1419,59 @@ async def api_suggest_edits(
     return {"status": "ok", "edits": [dummy], "suggestions": [dummy]}
 
 
-class _DraftIn(BaseModel):
-    text: str = Field(min_length=1)
-    mode: str = Field(default="friendly")
-
-    @field_validator("mode")
-    @classmethod
-    def _norm_mode(cls, v: str) -> str:
-        v = (v or "friendly").lower()
-        if v not in {"friendly", "medium", "strict"}:
-            raise ValueError("mode must be friendly, medium or strict")
-        return v
+class DraftIn(BaseModel):
+    text: str = Field(..., min_length=1)
+    mode: str = Field("friendly", pattern="^(friendly|medium|strict)$")
 
 
-@router.post("/api/gpt-draft")
-async def api_gpt_draft_dash(body: _DraftIn, response: Response):
-    t0 = _now_ms()
-    provider = provider_from_env()
-    result = provider.draft(body.text, body.mode)
+class DraftOut(BaseModel):
+    status: str
+    mode: str
+    proposed_text: str
+    rationale: str
+    evidence: list
+    before_text: str
+    after_text: str
+    diff: dict
+    x_schema_version: str
 
-    diff_text = "\n".join(
-        difflib.unified_diff(
-            (result.before_text or "").splitlines(),
-            (result.after_text or "").splitlines(),
-            lineterm="",
-        )
-    )
 
-    payload = {
+@router.post("/api/gpt-draft", response_model=DraftOut, responses={422: {"model": ProblemDetail}})
+async def api_gpt_draft(inp: DraftIn, request: Request):
+    started = time.perf_counter()
+    text = (inp.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="text is required")
+
+    prov = provider_from_env()
+    res = prov.draft(text=text, mode=inp.mode)
+
+    out = {
         "status": "ok",
-        "mode": result.mode,
-        "proposed_text": result.proposed_text,
-        "rationale": result.rationale,
-        "evidence": result.evidence,
-        "before_text": result.before_text,
-        "after_text": result.after_text,
-        "diff": {"type": "unified", "value": diff_text},
-        "x_schema_version": "1.3",
+        "mode": inp.mode,
+        "proposed_text": res.proposed_text,
+        "rationale": res.rationale,
+        "evidence": res.evidence,
+        "before_text": res.before_text,
+        "after_text": res.after_text,
+        "diff": {"type": "unified", "value": res.diff_unified},
+        "x_schema_version": SCHEMA_VERSION,
     }
+    resp = JSONResponse(out)
 
-    _set_schema_headers(response)
-    _set_std_headers(
-        response,
-        cid="gpt-draft",
-        xcache="miss",
-        schema="1.3",
-        latency_ms=_now_ms() - t0,
-    )
-    _set_llm_headers(
-        response,
-        {
-            "provider": result.provider,
-            "model": result.model,
-            "mode": result.mode,
-            "usage": result.usage,
-        },
-    )
-    return payload
+    if isinstance(getattr(res, "provider", ""), str):
+        resp.headers["x-provider"] = res.provider or ""
+    if isinstance(getattr(res, "model", ""), str):
+        resp.headers["x-model"] = res.model or ""
+    if isinstance(getattr(res, "mode", ""), str):
+        resp.headers["x-llm-mode"] = res.mode or ""
+    usage = getattr(res, "usage", None) or {}
+    total = usage.get("total_tokens")
+    if isinstance(total, int):
+        resp.headers["x-usage-total"] = str(total)
+
+    apply_std_headers(resp, request, started)
+    return resp
 
 
 @router.post("/api/calloff/validate")

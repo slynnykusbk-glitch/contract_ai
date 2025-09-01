@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import requests
+import httpx
 
 from ..config import LLMConfig
 from ..interfaces import (
@@ -32,8 +32,8 @@ class OpenRouterClient(BaseClient):
     def _post(self, payload: dict, timeout: float) -> dict:
         headers = {"Authorization": f"Bearer {self._api_key}", "HTTP-Referer": ""}
         try:
-            r = requests.post(f"{self._base}/chat/completions", json=payload, headers=headers, timeout=timeout)
-        except requests.Timeout:
+            r = httpx.post(f"{self._base}/chat/completions", json=payload, headers=headers, timeout=timeout)
+        except httpx.TimeoutException:
             raise ProviderTimeoutError(self.provider, timeout)
         if r.status_code in (401, 403):
             raise ProviderAuthError(self.provider, r.text)

@@ -1,32 +1,29 @@
-from __future__ import annotations
-
-from dataclasses import dataclass, field
-from typing import Any, Dict
-
+from dataclasses import dataclass
+from typing import List, Dict, Any
+import os
 
 @dataclass
-class LLMConfig:
-    """Configuration for LLM providers.
-
-    For now this class is intentionally minimal; fields can be extended later
-    without breaking compatibility.
-    """
-
-    pass
-
-
-@dataclass
-class LLMResult:
-    text: str
-    provider: str
-    model: str = "mock-legal-v1"
-    usage: Dict[str, Any] = field(default_factory=dict)
-
+class DraftResult:
+    proposed_text: str
+    rationale: str
+    evidence: List[Dict[str, Any]]
+    before_text: str
+    after_text: str
+    diff_unified: str
+    # optional metadata for headers
+    provider: str = ""
+    model: str = ""
+    mode: str = ""
+    usage: Dict[str, Any] | None = None
 
 class LLMProvider:
-    """Abstract base class for all LLM providers."""
-
-    def generate(
-        self, prompt: str, config: LLMConfig
-    ) -> LLMResult:  # pragma: no cover - interface
+    def draft(self, text: str, mode: str = "friendly") -> DraftResult:  # pragma: no cover - interface
         raise NotImplementedError
+
+def provider_from_env() -> "LLMProvider":
+    prov = (os.getenv("CONTRACTAI_PROVIDER", "mock") or "").lower()
+    if prov == "azure":
+        from .azure import AzureProvider
+        return AzureProvider()
+    from .mock import MockProvider
+    return MockProvider()

@@ -241,3 +241,16 @@ Pagination:
 ```bash
 curl -X POST '/api/corpus/search?page=2&page_size=5' -d '{"q":"data"}' -H 'Content-Type: application/json'
 ```
+
+# Block B8-S5 — LLM providers
+
+By default the application uses a mock LLM provider (`CONTRACTAI_PROVIDER=mock`).
+
+For Azure integration set the following environment variables:
+
+* `AZURE_OPENAI_ENDPOINT`
+* `AZURE_OPENAI_DEPLOYMENT`
+* `AZURE_OPENAI_API_KEY`
+* optional `AZURE_OPENAI_API_VERSION`
+
+The `/api/gpt-draft` endpoint resolves the provider lazily via `provider_from_env()`.

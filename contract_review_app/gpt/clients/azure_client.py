@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import requests
+import httpx
 
 from ..config import LLMConfig
 from ..interfaces import (
@@ -35,8 +35,8 @@ class AzureClient(BaseClient):
         url = f"{self._endpoint}/openai/deployments/{self._deployment}/chat/completions?api-version={self._api_version}"
         headers = {"api-key": self._api_key}
         try:
-            r = requests.post(url, json=payload, headers=headers, timeout=timeout)
-        except requests.Timeout:
+            r = httpx.post(url, json=payload, headers=headers, timeout=timeout)
+        except httpx.TimeoutException:
             raise ProviderTimeoutError(self.provider, timeout)
         if r.status_code in (401, 403):
             raise ProviderAuthError(self.provider, r.text)

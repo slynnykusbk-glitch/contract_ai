@@ -8,6 +8,7 @@ import json
 import os
 import re
 import time
+import difflib
 from collections import OrderedDict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -27,7 +28,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
@@ -44,7 +45,17 @@ from .models import (
     Span,
     SCHEMA_VERSION,
 )
-from .limits import API_TIMEOUT_S, API_RATE_LIMIT_PER_MIN
+# --- LLM provider & limits (final resolution) ---
+from contract_review_app.llm.provider import provider_from_env
+from contract_review_app.api.limits import API_TIMEOUT_S, API_RATE_LIMIT_PER_MIN
+
+# legacy удаляем:
+# from contract_review_app.gpt.service import LLMService, LLM_CONFIG
+# LLM_SERVICE = LLMService(LLM_CONFIG)
+
+# единая точка доступа к LLM (mock по умолчанию, azure если CONTRACTAI_PROVIDER=azure)
+LLM_PROVIDER = provider_from_env()
+# --- end ---
 
 # --------------------------------------------------------------------
 # Language segmentation helpers
@@ -1428,13 +1439,63 @@ async def api_suggest_edits(
     return {"status": "ok", "edits": [dummy], "suggestions": [dummy]}
 
 
+class _DraftIn(BaseModel):
+    text: str = Field(min_length=1)
+    mode: str = Field(default="friendly")
+
+    @field_validator("mode")
+    @classmethod
+    def _norm_mode(cls, v: str) -> str:
+        v = (v or "friendly").lower()
+        if v not in {"friendly", "medium", "strict"}:
+            raise ValueError("mode must be friendly, medium or strict")
+        return v
+
+
 @router.post("/api/gpt-draft")
-async def api_gpt_draft_dash(new_req: dict):
-    out = dict(new_req or {})
-    txt = str(out.get("text") or "")
-    out["text"] = f"{txt} [draft]" if txt else "[draft]"
-    out["score"] = int(out.get("score", 0)) + 1
-    return out
+async def api_gpt_draft_dash(body: _DraftIn, response: Response):
+    t0 = _now_ms()
+    provider = provider_from_env()
+    result = provider.draft(body.text, body.mode)
+
+    diff_text = "\n".join(
+        difflib.unified_diff(
+            (result.before_text or "").splitlines(),
+            (result.after_text or "").splitlines(),
+            lineterm="",
+        )
+    )
+
+    payload = {
+        "status": "ok",
+        "mode": result.mode,
+        "proposed_text": result.proposed_text,
+        "rationale": result.rationale,
+        "evidence": result.evidence,
+        "before_text": result.before_text,
+        "after_text": result.after_text,
+        "diff": {"type": "unified", "value": diff_text},
+        "x_schema_version": "1.3",
+    }
+
+    _set_schema_headers(response)
+    _set_std_headers(
+        response,
+        cid="gpt-draft",
+        xcache="miss",
+        schema="1.3",
+        latency_ms=_now_ms() - t0,
+    )
+    _set_llm_headers(
+        response,
+        {
+            "provider": result.provider,
+            "model": result.model,
+            "mode": result.mode,
+            "usage": result.usage,
+        },
+    )
+    return payload
 
 
 @router.post("/api/calloff/validate")

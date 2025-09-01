@@ -51,7 +51,8 @@
     docText: "",
     clauseText: "",
     proposedText: "",
-    analysis: null
+    analysis: null,
+    draftResp: null
   };
 
   var REQ_LOG = [];
@@ -845,6 +846,7 @@
       var r = await apiAnalyze({ text: text });
       if (!r.ok) { status("Analyze HTTP " + r.status); return; }
       state.analysis = r.json || null;
+      CAI_STORE.analysis.analysis = state.analysis;
       var cid = r.headers && r.headers.cid;
       if (cid) console.info("[STATUS] Analyze OK • cid=" + cid);
       else console.info("[STATUS] Analyze OK");
@@ -874,31 +876,23 @@
   }
 
   function onPreview() {
-    var orig = (state.clauseText || val(els.clause) || "").trim();
-    var draft = (state.proposedText || val(els.draft) || "").trim();
-    if (!draft) { status("Nothing to diff — click 'Suggest' first"); return; }
-    var html = diffHTML(orig, draft);
+    var resp = state.draftResp || null;
+    var diff = resp && resp.diff && resp.diff.value;
+    if (!diff) { status("Nothing to diff — click 'Draft' first"); return; }
     if (els.diffOutput && els.diffContainer) {
-      els.diffOutput.innerHTML = html;
+      els.diffOutput.textContent = diff;
       els.diffContainer.style.display = "block";
     }
     status("Diff ready");
   }
 
   async function onApply() {
-    var t = (state.proposedText || val(els.draft) || "").trim();
+    var resp = state.draftResp || null;
+    var t = resp && resp.after_text;
     if (!t) { status("Nothing to apply."); return; }
     if (!window.Word || !Word.run) { status("⚠️ Word API not available"); return; }
     try {
-      await Word.run(async function (ctx) {
-        var range = ctx.document.getSelection();
-        range.load("text");
-        await ctx.sync();
-        if (!range.text) throw new Error("Use selection");
-        var mode = val(els.sugMode) || "friendly";
-        range.insertText(t, "Replace");
-        try { range.insertComment("AI suggestion (" + mode + ")"); } catch (_) {}
-      });
+      await applyTracked(t, resp && resp.rationale);
       console.info("[STATUS] Apply OK (len=" + t.length + ")");
       status("Apply OK (len=" + t.length + ")");
     } catch (e) {
@@ -954,18 +948,18 @@
     try {
       var input = analysis ? { analysis: analysis, mode: "friendly" } : { text: text, mode: "friendly" };
       var r = await apiGptDraft(input);
-      var env = (r.json && (r.json.data || r.json)) || {};
+      var env = r.json || {};
       if (!r.ok || env.status !== "ok") {
         var msg = env && env.detail ? env.detail : ("HTTP " + r.status);
         status("✖ Draft error: " + msg);
-        applyMeta(env.meta || {});
         return;
       }
-      var draft = String(env.draft_text || env.draft || "");
+      var draft = String(env.proposed_text || "");
       setVal(els.draft, draft);
+      state.proposedText = draft;
+      state.draftResp = env;
       window.LAST_DRAFT = draft;
       enableDraftApply(!!draft);
-      applyMeta(env.meta || {});
       status(draft ? "Draft OK" : "Draft empty");
     } catch (e) { status("✖ Draft error: " + (e && e.message ? e.message : e)); }
   }

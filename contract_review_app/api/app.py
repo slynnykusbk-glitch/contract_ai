@@ -17,7 +17,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import (
     APIRouter,
     Body,
-    Depends,
     FastAPI,
     Header,
     HTTPException,
@@ -44,6 +43,7 @@ from .models import (
     Span,
     SCHEMA_VERSION,
 )
+
 # --- LLM provider & limits (final resolution) ---
 from contract_review_app.llm.provider import provider_from_env
 from contract_review_app.api.limits import API_TIMEOUT_S, API_RATE_LIMIT_PER_MIN
@@ -403,15 +403,16 @@ def _custom_openapi():
     for path_item in openapi_schema.get("paths", {}).values():
         for op in path_item.values():
             responses = op.setdefault("responses", {})
-            for code, desc in (("429", "Too Many Requests"), ("504", "Gateway Timeout")):
+            for code, desc in (
+                ("429", "Too Many Requests"),
+                ("504", "Gateway Timeout"),
+            ):
                 if code not in responses:
                     responses[code] = {
                         "description": desc,
                         "content": {
                             "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ProblemDetail"
-                                }
+                                "schema": {"$ref": "#/components/schemas/ProblemDetail"}
                             }
                         },
                     }
@@ -1436,7 +1437,9 @@ class DraftOut(BaseModel):
     x_schema_version: str
 
 
-@router.post("/api/gpt-draft", response_model=DraftOut, responses={422: {"model": ProblemDetail}})
+@router.post(
+    "/api/gpt-draft", response_model=DraftOut, responses={422: {"model": ProblemDetail}}
+)
 async def api_gpt_draft(inp: DraftIn, request: Request):
     started = time.perf_counter()
     text = (inp.text or "").strip()
@@ -1472,6 +1475,13 @@ async def api_gpt_draft(inp: DraftIn, request: Request):
 
     apply_std_headers(resp, request, started)
     return resp
+
+
+@router.post("/api/gpt/draft")
+async def gpt_draft_alias(request: Request):
+    payload = await request.json()
+    inp = DraftIn(**payload)
+    return await api_gpt_draft(inp, request)
 
 
 @router.post("/api/calloff/validate")

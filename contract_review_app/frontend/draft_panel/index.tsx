@@ -5,6 +5,7 @@ type Status = "ok" | "warn" | "fail";
 
 const DEFAULT_BACKEND = "http://127.0.0.1:9000";
 const LS_KEY = "contract_ai_backend";
+const DRAFT_PATH = "/api/gpt-draft";
 
 function getBackend(): string {
   try {
@@ -128,7 +129,7 @@ const DraftAssistantPanel: React.FC = () => {
     setLoadingDraft(true);
     setError(null);
     try {
-      const env = await postJSON<DraftEnvelope>("/api/gpt/draft", {
+      const env = await postJSON<DraftEnvelope>(DRAFT_PATH, {
         analysis,
         mode: "friendly",
       });

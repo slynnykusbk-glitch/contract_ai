@@ -1,0 +1,6 @@
+import os
+
+API_TIMEOUT_S = int(os.getenv("CONTRACTAI_API_TIMEOUT_S", "30"))
+API_RATE_LIMIT_PER_MIN = int(os.getenv("CONTRACTAI_RATE_PER_MIN", "60"))
+DEFAULT_PAGE_SIZE = int(os.getenv("CONTRACTAI_PAGE_SIZE", "10"))
+MAX_PAGE_SIZE = int(os.getenv("CONTRACTAI_MAX_PAGE_SIZE", "50"))

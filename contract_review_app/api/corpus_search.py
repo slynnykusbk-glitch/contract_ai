@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import Generator, List
 
 from contract_review_app.corpus.db import SessionLocal
 from contract_review_app.retrieval.search import search_corpus
 
-from .models import CorpusSearchRequest, CorpusSearchResponse, SearchHit, Span
+from .limits import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
+from .models import CorpusSearchRequest, CorpusSearchResponse, SearchHit, Span, Paging
 
 
 router = APIRouter(prefix="/api/corpus")
@@ -22,7 +23,13 @@ def get_session() -> Generator[Session, None, None]:
 
 
 @router.post("/search", response_model=CorpusSearchResponse)
-def corpus_search(body: CorpusSearchRequest, session: Session = Depends(get_session)):
+def corpus_search(
+    body: CorpusSearchRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+):
     rows = search_corpus(
         session,
         body.q,
@@ -48,4 +55,14 @@ def corpus_search(body: CorpusSearchRequest, session: Session = Depends(get_sess
             rank_fusion=r.get("rank_fusion"),
         ).model_dump()
         hits.append(hit)
-    return CorpusSearchResponse(hits=hits)
+
+    if "page" in request.query_params or "page_size" in request.query_params:
+        total = len(hits)
+        start = (page - 1) * page_size
+        end = page * page_size
+        items = hits[start:end]
+        pages = (total + page_size - 1) // page_size
+        paging = Paging(page=page, page_size=page_size, total=total, pages=pages)
+        return CorpusSearchResponse(hits=items, paging=paging)
+
+    return CorpusSearchResponse(hits=hits, paging=None)

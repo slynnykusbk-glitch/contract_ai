@@ -134,8 +134,27 @@ def test_health_endpoint():
 def test_analyze_endpoint():
     r = client.post("/api/analyze", json={"text": "hello"})
     assert r.status_code == 200
-    issues = r.json().get("analysis", {}).get("issues", [])
+    data = r.json()
+    issues = data.get("analysis", {}).get("issues", [])
     assert isinstance(issues, list)
+    findings = data.get("analysis", {}).get("findings", [])
+    assert findings and all(set(f.keys()) == {"span", "text", "lang"} for f in findings)
+
+
+def test_analyze_segments_with_flag(monkeypatch):
+    monkeypatch.setenv("CONTRACTAI_INTAKE_NORMALIZE", "1")
+    r = client.post("/api/analyze", json={"text": "hello АБВ"})
+    assert r.status_code == 200
+    data = r.json()
+    segments = data.get("results", {}).get("analysis", {}).get("segments")
+    assert segments and all(seg.get("lang") in {"latin", "cyrillic"} for seg in segments)
+
+
+def test_analyze_x_cid_deterministic():
+    payload = {"text": "same"}
+    r1 = client.post("/api/analyze", json=payload)
+    r2 = client.post("/api/analyze", json=payload)
+    assert r1.headers["x-cid"] == r2.headers["x-cid"]
 
 
 def test_summary_endpoint():

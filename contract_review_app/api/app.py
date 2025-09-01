@@ -38,6 +38,8 @@ from .models import (
     CorpusSearchRequest,
     CorpusSearchResponse,
     ProblemDetail,
+    Finding,
+    Span,
 )
 
 # --------------------------------------------------------------------
@@ -95,18 +97,16 @@ def _lang_of(token: str) -> str:
     return "latin"
 
 
-def _make_basic_findings(text: str) -> list[dict]:
-    out: list[dict] = []
+def _make_basic_findings(text: str) -> list[Finding]:
+    out: list[Finding] = []
     for m in _WORD_RE.finditer(text or ""):
         token = m.group(0)
         out.append(
-            {
-                "code": "TOKEN",
-                "message": token,
-                "span": {"start": m.start(), "end": m.end()},
-                "text": token,
-                "lang": _lang_of(token),
-            }
+            Finding(
+                span=Span(start=m.start(), end=m.end()),
+                text=token,
+                lang=_lang_of(token),
+            )
         )
     return out
 
@@ -881,10 +881,10 @@ async def api_trace_index(response: Response):
     return {"status": "ok", "cids": list(_TRACE.keys())}
 
 
-@router.post(
+@app.post(
     "/api/analyze",
     response_model=AnalyzeResponse,
-    responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
+    response_model_exclude_none=True,
 )
 async def api_analyze(payload: AnalyzeRequest, x_cid: Optional[str] = Header(None)):
     t0 = _now_ms()
@@ -917,17 +917,27 @@ async def api_analyze(payload: AnalyzeRequest, x_cid: Optional[str] = Header(Non
 
     analysis = result.setdefault("analysis", {}) if isinstance(result, dict) else {}
     analysis.setdefault("clause_type", "document")
-    findings = []
+    findings_raw: list[Any] = []
     if isinstance(result, dict):
         if isinstance(result.get("findings"), list) and result["findings"]:
-            findings = result["findings"]
+            findings_raw = result["findings"]
         elif isinstance(analysis.get("findings"), list) and analysis["findings"]:
-            findings = analysis["findings"]
-    if not findings:
-        findings = _make_basic_findings(model.text or "")
-        if isinstance(result, dict):
-            result["findings"] = findings
-    analysis["findings"] = findings
+            findings_raw = analysis["findings"]
+
+    findings_models: list[Finding] = []
+    if findings_raw:
+        for f in findings_raw:
+            try:
+                findings_models.append(Finding.model_validate(f))
+            except Exception:
+                continue
+    if not findings_models:
+        findings_models = _make_basic_findings(model.text or "")
+
+    findings_out = [f.model_dump(exclude_none=True) for f in findings_models]
+    if isinstance(result, dict):
+        result["findings"] = findings_out
+    analysis["findings"] = findings_out
 
     result = _normalize_analyze_response(result)
 

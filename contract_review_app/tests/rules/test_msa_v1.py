@@ -57,4 +57,4 @@ def test_analyze_endpoint_returns_findings():
     assert r.status_code == 200
     data = r.json()
     findings = data.get("analysis", {}).get("findings", [])
-    assert findings and all(f.get("clause_type") for f in findings)
+    assert findings and all(set(f.keys()) == {"span", "text", "lang"} for f in findings)

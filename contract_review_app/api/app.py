@@ -26,7 +26,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
@@ -371,6 +371,13 @@ app = FastAPI(
     responses=_default_responses,
 )
 register_error_handlers(app)
+
+# instantiate LLM provider once
+PROVIDER = get_provider()
+PROVIDER_META = {
+    "provider": getattr(PROVIDER, "name", "?"),
+    "model": getattr(PROVIDER, "model", "?"),
+}
 
 
 def _custom_openapi():
@@ -966,6 +973,7 @@ async def health(response: Response) -> dict:
             "mode": LLM_CONFIG.mode,
             "timeout_s": LLM_CONFIG.timeout_s,
         },
+        "provider": PROVIDER_META,
     }
 
 
@@ -1382,106 +1390,47 @@ async def api_qa_recheck(
     return {"status": "ok", "qa": result.items, "meta": meta}
 
 
-@router.post("/api/suggest_edits")
+@router.post("/api/suggest_edits", responses={400: {"model": ProblemDetail}, 422: {"model": ProblemDetail}})
 async def api_suggest_edits(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
-    """Minimal suggest edits stub used for tests."""
     _set_schema_headers(response)
     try:
         payload = await request.json()
     except Exception:
-        return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
+        raise HTTPException(status_code=400, detail="Request body is not valid JSON")
 
     text = (payload or {}).get("text", "")
-    clause_type = (payload or {}).get("clause_type")
-    clause_id = (payload or {}).get("clause_id")
-    if not text:
-        return _problem_response(422, "Validation error", "text required")
-    # Historically clause_type or clause_id was required, but tests expect
-    # the endpoint to accept just raw text when called with proper JSON.
-    # To remain backward compatible, enforce the requirement only when the
-    # request does not declare JSON content (e.g. form posts used in legacy
-    # validation error tests).
-    content_type = request.headers.get("content-type") or ""
-    if (not clause_type and not clause_id) and "application/json" not in content_type:
-        return _problem_response(
-            422, "Validation error", "clause_type or clause_id required"
-        )
+    if not text.strip():
+        raise HTTPException(status_code=422, detail="text required")
 
     cid = x_cid or _sha256_hex("suggest" + str(_now_ms()))
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
-    msg = (
-        "Add Exhibit M"
-        if clause_type == "data_protection" and "exhibit m" not in text.lower()
-        else ""
-    )
-    dummy = {"message": msg, "range": {"start": 0, "length": 0}}
-    return {"status": "ok", "edits": [dummy], "suggestions": [dummy]}
+    result = PROVIDER.suggest(text)
+    return {"status": "ok", "proposed_text": result["proposed_text"], "meta": PROVIDER_META}
 
 
-class DraftIn(BaseModel):
-    text: str = Field(..., min_length=1)
-    mode: str = Field("friendly", pattern="^(friendly|medium|strict)$")
-
-
-class DraftOut(BaseModel):
-    status: str
-    mode: str
-    proposed_text: str
-    rationale: str
-    evidence: list
-    before_text: str
-    after_text: str
-    diff: dict
-    x_schema_version: str
-
-
-@router.post(
-    "/api/gpt-draft", response_model=DraftOut, responses={422: {"model": ProblemDetail}}
-)
-async def api_gpt_draft(inp: DraftIn, request: Request):
+@router.post("/api/gpt-draft", responses={400: {"model": ProblemDetail}, 422: {"model": ProblemDetail}})
+async def api_gpt_draft(request: Request):
     started = time.perf_counter()
-    text = (inp.text or "").strip()
-    if not text:
-        raise HTTPException(status_code=422, detail="text is required")
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Request body is not valid JSON")
 
-    prov = get_provider()
-    res = prov.draft(text=text, mode=inp.mode)
+    prompt = (payload or {}).get("prompt") or (payload or {}).get("text") or ""
+    if not prompt.strip():
+        raise HTTPException(status_code=400, detail="prompt is required")
 
-    out = {
-        "status": "ok",
-        "mode": inp.mode,
-        "proposed_text": res.proposed_text,
-        "rationale": res.rationale,
-        "evidence": res.evidence,
-        "before_text": res.before_text,
-        "after_text": res.after_text,
-        "diff": {"type": "unified", "value": res.diff_unified},
-        "x_schema_version": SCHEMA_VERSION,
-    }
-    resp = JSONResponse(out)
-
-    if isinstance(getattr(res, "provider", ""), str):
-        resp.headers["x-provider"] = res.provider or ""
-    if isinstance(getattr(res, "model", ""), str):
-        resp.headers["x-model"] = res.model or ""
-    if isinstance(getattr(res, "mode", ""), str):
-        resp.headers["x-llm-mode"] = res.mode or ""
-    usage = getattr(res, "usage", None) or {}
-    total = usage.get("total_tokens")
-    if isinstance(total, int):
-        resp.headers["x-usage-total"] = str(total)
-
+    result = PROVIDER.draft(prompt)
+    resp = JSONResponse({"status": "ok", "draft": {"text": result["text"]}, "meta": PROVIDER_META})
     apply_std_headers(resp, request, started)
     return resp
 
 
 @router.post("/api/gpt/draft")
 async def gpt_draft_alias(request: Request):
-    payload = await request.json()
-    inp = DraftIn(**payload)
-    return await api_gpt_draft(inp, request)
+    return await api_gpt_draft(request)
 
 
 @router.post("/api/calloff/validate")

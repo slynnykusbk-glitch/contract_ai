@@ -29,10 +29,11 @@ def test_analyze_flags_missing_exhibit_m():
     assert dp["status"] == "FAIL"
     assert any("Exhibit M" in f["message"] for f in dp.get("findings", []))
 
-    r2 = client.post("/api/suggest_edits", json={"text": TEXT_MISSING_M, "clause_type": "data_protection"})
+    r2 = client.post("/api/suggest_edits", json={"text": TEXT_MISSING_M})
     assert r2.status_code == 200
-    suggestions = r2.json().get("suggestions", [])
-    assert any("Exhibit M" in s.get("message", "") for s in suggestions)
+    out = r2.json()
+    assert out["status"] == "ok"
+    assert isinstance(out.get("proposed_text"), str)
 
 def test_analyze_passes_when_exhibits_present():
     r = client.post("/api/analyze", json={"text": TEXT_POSITIVE})

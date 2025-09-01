@@ -38,19 +38,10 @@ def test_qa_recheck_accepts_range_and_span():
     j2 = r2.json()
     assert j2["status"] == "ok"
 
-def test_suggest_edits_returns_range_norm():
-    # мінімальний кейс: fallback path також нормалізує range
-    body = {
-        "text": "Payment shall be made promptly upon invoice.",
-        "clause_id": "payment-1",
-        "mode": "friendly",
-        "top_k": 1
-    }
+def test_suggest_edits_returns_proposed_text():
+    body = {"text": "Payment shall be made promptly upon invoice."}
     r = client.post("/api/suggest_edits", content=json.dumps(body))
     assert r.status_code == 200
     j = r.json()
     assert j["status"] == "ok"
-    edits = j.get("edits", [])
-    if edits:
-        sug = edits[0]
-        assert "range" in sug and "start" in sug["range"] and "length" in sug["range"]
+    assert isinstance(j.get("proposed_text"), str)

@@ -46,29 +46,14 @@ def test_analyze_idempotent_cache_hit_on_second_call():
     assert env["schema_version"] == SCHEMA_VERSION
 
 
-def test_suggest_edits_normalization_and_bounds():
-    # With no orchestrator/pipeline this uses rule-based fallback
-    payload = {
-        "text": "Lorem ipsum dolor sit amet.",
-        "clause_id": "C-1",
-        "mode": "friendly",
-        "top_k": 7,  # should be clamped 1..10 by app layer
-    }
+def test_suggest_edits_returns_proposed_text():
+    payload = {"text": "Lorem ipsum dolor sit amet."}
     r = client.post("/api/suggest_edits", json=payload)
     assert r.status_code == 200
     out = r.json()
     assert out["status"] == "ok"
-    edits = out.get("edits") or []
-    assert isinstance(edits, list)
-
-    for s in edits:
-        # robust normalized range
-        assert isinstance(s.get("range"), dict)
-        assert "start" in s["range"] and "length" in s["range"]
-        assert isinstance(s["range"]["start"], int)
-        assert isinstance(s["range"]["length"], int)
-        # message is always present after normalization
-        assert isinstance(s.get("message", ""), str)
+    assert isinstance(out.get("proposed_text"), str)
+    assert out["meta"]["provider"]
 
 
 def test_qa_recheck_fallback_payload_and_deltas():

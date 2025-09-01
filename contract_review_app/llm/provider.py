@@ -1,96 +1,65 @@
-import os
-import requests
-import difflib
-from dataclasses import dataclass
-from typing import List, Dict
+from __future__ import annotations
+import os, requests
+from typing import Dict, Any
 
+class ProviderError(RuntimeError): ...
 
-@dataclass
-class DraftResult:
-    proposed_text: str
-    rationale: str
-    evidence: List[Dict]
-    before_text: str
-    after_text: str
-    diff_unified: str
+class MockProvider:
+    name = "mock"
+    model = "mock"
+    def draft(self, prompt: str) -> Dict[str, Any]:
+        return {"text": f"[MOCK DRAFT]\n{prompt}"}
+    def suggest(self, text: str) -> Dict[str, Any]:
+        # trivial, deterministic
+        return {"proposed_text": text.replace("Confidential", "Confidential (as defined)")}
 
-
-class LLMProviderBase:
-    def draft(self, text: str, mode: str = "friendly") -> DraftResult:
-        raise NotImplementedError()
-
-
-class MockProvider(LLMProviderBase):
-    def draft(self, text: str, mode: str = "friendly") -> DraftResult:
-        before = (text or "").strip()
-        after = before + ("\n\n[Mock suggestion: tighten confidentiality carve-outs.]")
-        diff = "\n".join(
-            difflib.unified_diff(before.splitlines(), after.splitlines(), lineterm="")
-        )
-        return DraftResult(
-            proposed_text=after,
-            rationale="Mock rationale.",
-            evidence=[],
-            before_text=before,
-            after_text=after,
-            diff_unified=diff,
-        )
-
-
-class AzureProvider(LLMProviderBase):
+class AzureProvider:
     def __init__(self):
-        self.endpoint = os.environ["AZURE_OPENAI_ENDPOINT"].rstrip("/")
-        self.deployment = os.environ["AZURE_OPENAI_DEPLOYMENT"]
-        self.api_ver = os.environ.get("AZURE_OPENAI_API_VERSION", "2025-01-01-preview")
-        self.api_key = os.environ["AZURE_OPENAI_API_KEY"]
+        ep = os.getenv("AZURE_OPENAI_ENDPOINT")
+        dep = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+        ver = os.getenv("AZURE_OPENAI_API_VERSION")
+        key = os.getenv("AZURE_OPENAI_API_KEY")
+        if not (ep and dep and ver and key):
+            raise ProviderError("Azure env is incomplete")
+        self.endpoint = ep.rstrip("/")
+        self.deployment = dep
+        self.api_version = ver
+        self.key = key
+        self.name = "azure"
+        self.model = dep
 
-    def _ask(self, prompt: str, max_tokens: int = 512, temperature: float = 0.0) -> str:
-        url = f"{self.endpoint}/openai/deployments/{self.deployment}/chat/completions?api-version={self.api_ver}"
-        body = {
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are a contracts assistant. Return only the improved clause text. No commentary.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-        r = requests.post(url, headers={"api-key": self.api_key}, json=body, timeout=60)
-        r.raise_for_status()
-        j = r.json()
-        return j["choices"][0]["message"]["content"]
-
-    def draft(self, text: str, mode: str = "friendly") -> DraftResult:
-        before = (text or "").strip()
-        style = {
-            "friendly": "mild and businesslike",
-            "medium": "balanced and precise",
-            "strict": "firm and risk-averse",
-        }.get(mode, "balanced and precise")
-
-        prompt = (
-            "Rewrite/improve the following NDA clause to be clearer and compliant with UK practice. "
-            f"Tone: {style}. Keep semantics. Output only the final clause text (no preamble).\n\n"
-            f"CLAUSE:\n{before}"
+    def _chat(self, messages: list[dict], temperature: float = 0.0, max_tokens: int = 1024):
+        url = f"{self.endpoint}/openai/deployments/{self.deployment}/chat/completions"
+        r = requests.post(
+            f"{url}?api-version={self.api_version}",
+            headers={"api-key": self.key, "Content-Type": "application/json"},
+            json={"messages": messages, "temperature": temperature, "max_tokens": max_tokens},
+            timeout=30,
         )
-        after = self._ask(prompt)
-        diff = "\n".join(
-            difflib.unified_diff(before.splitlines(), after.splitlines(), lineterm="")
-        )
-        return DraftResult(
-            proposed_text=after,
-            rationale=f"Improved clarity and compliance (mode={mode}).",
-            evidence=[],
-            before_text=before,
-            after_text=after,
-            diff_unified=diff,
-        )
+        if not r.ok:
+            raise ProviderError(f"Azure HTTP {r.status_code}: {r.text[:300]}")
+        data = r.json()
+        return data["choices"][0]["message"]["content"]
 
+    def draft(self, prompt: str) -> Dict[str, Any]:
+        out = self._chat([{"role": "user", "content": f"Draft a concise clause revision:\n{prompt}"}])
+        return {"text": out}
+
+    def suggest(self, text: str) -> Dict[str, Any]:
+        out = self._chat([
+            {"role": "system", "content": "You are a contract drafting assistant. Return only the revised clause."},
+            {"role": "user", "content": f"Revise the following for clarity and compliance, keep structure:\n{text}"}
+        ])
+        return {"proposed_text": out}
 
 def get_provider():
-    provider = os.environ.get("CONTRACTAI_PROVIDER", "mock").lower()
-    if provider == "azure":
-        return AzureProvider()
+    # explicit selector; env var wins
+    # hint for local runs: set LLM_PROVIDER=azure
+    want = (os.getenv("LLM_PROVIDER") or os.getenv("AI_PROVIDER") or "").lower()
+    if want == "azure":
+        try:
+            return AzureProvider()
+        except ProviderError:
+            # fall through to mock if misconfigured
+            return MockProvider()
     return MockProvider()

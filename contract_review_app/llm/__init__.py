@@ -1,19 +1,10 @@
-from .provider import (
-    DraftResult,
-    LLMProviderBase,
-    MockProvider,
-    AzureProvider,
-    get_provider,
-)
+from .provider import ProviderError, MockProvider, AzureProvider, get_provider
 
 # Backwards compatibility
-LLMProvider = LLMProviderBase
 provider_from_env = get_provider
 
 __all__ = [
-    "DraftResult",
-    "LLMProviderBase",
-    "LLMProvider",
+    "ProviderError",
     "MockProvider",
     "AzureProvider",
     "get_provider",

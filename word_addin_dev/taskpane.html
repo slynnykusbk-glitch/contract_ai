@@ -81,6 +81,13 @@
       border-radius:8px;padding:8px;overflow:auto;max-height:220px;
       box-shadow:0 6px 18px var(--shadow);
     }
+    .pre{
+      background:var(--input-bg);
+      border:1px solid var(--border);
+      border-radius:8px;padding:8px;overflow:auto;max-height:220px;
+      box-shadow:0 6px 18px var(--shadow);
+      white-space:pre-wrap;
+    }
     .toggle{cursor:pointer;text-decoration:underline}
     .right{margin-left:auto}
     .inline{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -255,7 +262,7 @@
           </select>
         </div>
         <div class="col-auto d-flex align-items-end">
-          <button id="cai-btn-suggest" class="btn btn-primary">Suggest</button>
+          <button id="btnSuggest" class="btn btn-primary">Suggest</button>
         </div>
       </div>
       <div id="cai-suggest-list"></div>
@@ -268,13 +275,14 @@
     <div class="row flex" style="margin-top:8px">
       <button id="btnPreview" class="btn-grey" disabled>Preview diff</button>
       <button id="btnApply" class="btn" disabled title="Select text in Word before applying edits.">Apply (tracked + comment)</button>
-      <button id="acceptAllBtn" class="btn-grey" disabled>Accept all</button>
-      <button id="rejectAllBtn" class="btn-grey" disabled>Reject all</button>
+      <button id="btnAcceptAll" class="btn-grey" disabled>Accept all</button>
+      <button id="btnRejectAll" class="btn-grey" disabled>Reject all</button>
     </div>
     <div id="diffContainer" class="row" style="display:none;margin-top:8px">
       <div class="muted" style="margin-bottom:4px">Diff Preview</div>
       <div id="diffOutput" style="background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:8px;white-space:pre-wrap"></div>
     </div>
+    <div id="diffView" class="pre"></div>
   </div>
 
   <div class="row">

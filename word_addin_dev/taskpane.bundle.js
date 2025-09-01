@@ -100,6 +100,33 @@
     status(msg);
   }
 
+  function showErr(msg) { toast(msg); }
+
+  function simpleDiff(a, b) {
+    const A = a.match(/\S+|\s+/g) || [];
+    const B = b.match(/\S+|\s+/g) || [];
+    const dp = Array(A.length + 1).fill(null).map(() => Array(B.length + 1).fill(0));
+    for (let i = 1; i <= A.length; i++) for (let j = 1; j <= B.length; j++) dp[i][j] = A[i - 1] === B[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    let i = A.length, j = B.length, parts = [];
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && A[i - 1] === B[j - 1]) { parts.push({ type: "eq", text: A[i - 1] }); i--; j--; }
+      else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) { parts.push({ type: "ins", text: B[j - 1] }); j--; }
+      else { parts.push({ type: "del", text: A[i - 1] }); i--; }
+    }
+    return parts.reverse();
+  }
+
+  function renderDiff(orig, prop) {
+    const parts = simpleDiff(orig, prop);
+    const frag = parts.map(p => {
+      if (p.type === "eq") return p.text.replace(/</g, "&lt;");
+      if (p.type === "ins") return `<ins>${p.text.replace(/</g, "&lt;")}</ins>`;
+      return `<del>${p.text.replace(/</g, "&lt;")}</del>`;
+    }).join("");
+    var el = document.getElementById("diffView");
+    if (el) el.innerHTML = frag;
+  }
+
   async function getPanelTextOrFetch() {
     var t = (val(els.clause) || "").trim();
     if (t) return t;
@@ -909,6 +936,9 @@
       setVal(els.draft, prop);
       state.proposedText = prop;
       setApplyEnabled(!!prop);
+      window._orig = text;
+      window._prop = prop;
+      renderDiff(window._orig, window._prop);
       if (prop) { status("Suggest OK"); console.info("[STATUS] Suggest OK"); }
       else { status("Nothing to suggest for this clause"); }
     } catch (e) { status("✖ Suggest error: " + (e && e.message ? e.message : e)); }
@@ -932,6 +962,21 @@
   }
 
   async function onApply() {
+    if (window._prop) {
+      try {
+        await Word.run(async (ctx) => {
+          const sel = ctx.document.getSelection();
+          sel.insertText(window._prop, "Replace");
+          const range = ctx.document.getSelection();
+          range.insertComment("Applied by Contract AI (mode: " + getModeOrDefault() + ")");
+          await ctx.sync();
+        });
+        toast("Applied");
+      } catch (e) {
+        showErr("Apply failed");
+      }
+      return;
+    }
     var resp = state.draftResp || null;
     var t = resp && resp.after_text;
     if (!t) { status("Nothing to apply."); return; }
@@ -1164,16 +1209,17 @@
 
     els.sugSelect = $("cai-clause-select");
     els.sugMode = $("cai-mode");
-    els.sugBtn = $("cai-btn-suggest");
+    els.sugBtn = $("btnSuggest");
     els.sugList = $("cai-suggest-list");
 
     els.draft = $("draftBox");
     els.btnPreview = $("btnPreview");
     els.btnApply = $("btnApply");
-    els.btnAcceptAll = $("acceptAllBtn");
-    els.btnRejectAll = $("rejectAllBtn");
+    els.btnAcceptAll = $("btnAcceptAll");
+    els.btnRejectAll = $("btnRejectAll");
     els.diffContainer = $("diffContainer");
     els.diffOutput = $("diffOutput");
+    els.diffView = $("diffView");
 
     els.console = $("console");
 
@@ -1234,12 +1280,15 @@
 
     if (els.btnPreview) els.btnPreview.addEventListener("click", onPreview);
 
-    if (els.btnAcceptAll) els.btnAcceptAll.addEventListener("click", async function () {
-      try { await acceptAll(); status("Accepted all changes."); } catch (e) { status("✖ Accept failed: " + (e && e.message ? e.message : e)); }
+    if (els.btnAcceptAll) els.btnAcceptAll.addEventListener("click", function () {
+      var btn = document.getElementById("btnApply");
+      if (btn) btn.click();
     });
 
-    if (els.btnRejectAll) els.btnRejectAll.addEventListener("click", async function () {
-      try { await rejectAll(); status("Rejected all changes."); } catch (e) { status("✖ Reject failed: " + (e && e.message ? e.message : e)); }
+    if (els.btnRejectAll) els.btnRejectAll.addEventListener("click", function () {
+      window._prop = null;
+      if (els.diffView) els.diffView.innerHTML = "";
+      toast("Rejected");
     });
 
     if (els.btnAnnotate) els.btnAnnotate.addEventListener("click", function () { doAnnotate(); });

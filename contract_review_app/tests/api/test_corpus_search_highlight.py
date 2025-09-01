@@ -47,12 +47,12 @@ def client(tmp_path, monkeypatch):
 
 
 def test_search_returns_snippet_and_span(client):
-    r = client.get(
+    r = client.post(
         "/api/corpus/search",
-        params={"q": "principles processing", "mode": "hybrid", "top": 5},
+        json={"q": "principles processing", "method": "hybrid", "k": 5},
     )
     assert r.status_code == 200
-    results = r.json()["results"]
+    results = r.json()["hits"]
     assert results
     def stem(w: str) -> str:
         for suf in ("ing", "ed", "es", "s"):

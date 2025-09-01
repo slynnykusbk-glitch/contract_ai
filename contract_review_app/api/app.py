@@ -29,7 +29,16 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
-from .models import ProblemDetail
+from .models import (
+    AnalyzeRequest,
+    AnalyzeResponse,
+    Citation,
+    CitationResolveRequest,
+    CitationResolveResponse,
+    CorpusSearchRequest,
+    CorpusSearchResponse,
+    ProblemDetail,
+)
 
 # --------------------------------------------------------------------
 # Language segmentation helpers
@@ -107,7 +116,7 @@ from contract_review_app.analysis.extract_summary import extract_document_snapsh
 from contract_review_app.api.calloff_validator import validate_calloff
 
 # SSOT DTO imports
-from contract_review_app.core.schemas import AnalyzeIn, Citation, Finding
+from contract_review_app.core.schemas import AnalyzeIn
 from contract_review_app.core.citation_resolver import resolve_citation
 from contract_review_app.gpt.config import load_llm_config
 from contract_review_app.gpt.service import (
@@ -118,6 +127,7 @@ from contract_review_app.gpt.service import (
 )
 
 from .cache import IDEMPOTENCY_CACHE
+from .corpus_search import router as corpus_router
 
 # Orchestrator / Engine imports
 try:
@@ -500,19 +510,6 @@ class LearningUpdateIn(BaseModel):
 # --------------------------------------------------------------------
 # Citation resolver DTOs
 # --------------------------------------------------------------------
-class CitationResolveRequest(BaseModel):
-    finding: Finding | None = None
-    citation: Citation | None = None
-    jurisdiction: str | None = None
-
-
-class CitationResolveResponse(BaseModel):
-    citation: Citation
-    evidence: dict[str, Any] | None = None
-    context: dict[str, Any] | None = None
-    score: float | None = 1.0
-
-
 # --------------------------------------------------------------------
 # Utilities
 # --------------------------------------------------------------------
@@ -886,24 +883,13 @@ async def api_trace_index(response: Response):
 
 @router.post(
     "/api/analyze",
+    response_model=AnalyzeResponse,
     responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
 )
-async def api_analyze(request: Request, x_cid: Optional[str] = Header(None)):
+async def api_analyze(payload: AnalyzeRequest, x_cid: Optional[str] = Header(None)):
     t0 = _now_ms()
     try:
-        body = await _read_body_guarded(request)
-        payload = json.loads(body.decode("utf-8")) if body else {}
-    except HTTPException:
-        return _problem_response(
-            413, "Payload too large", "Request body exceeds limits"
-        )
-    except Exception:
-        return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
-
-    try:
-        model = (
-            AnalyzeIn(**payload) if isinstance(payload, dict) else AnalyzeIn(text="")
-        )
+        model = AnalyzeIn(**payload.model_dump())
     except Exception as ex:
         return _problem_response(422, "Validation error", str(ex))
 
@@ -1397,16 +1383,19 @@ async def api_learning_update(response: Response, body: LearningUpdateIn):
 
 # Mount router
 app.include_router(router)
+app.include_router(corpus_router)
 
 # --------------------------------------------------------------------
 # Citation resolver endpoint
 # --------------------------------------------------------------------
 @app.post(
     "/api/citation/resolve",
+    response_model=CitationResolveResponse,
     responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
 )
 @app.post(
     "/api/citations/resolve",
+    response_model=CitationResolveResponse,
     responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
 )
 async def api_citation_resolve(
@@ -1415,19 +1404,22 @@ async def api_citation_resolve(
     x_cid: str | None = Header(None),
 ):
     t0 = _now_ms()
-    if (body.finding is None) == (body.citation is None):
+    if (body.findings is None) == (body.citations is None):
         raise HTTPException(
-            status_code=400, detail="Exactly one of finding or citation is required"
+            status_code=400, detail="Exactly one of findings or citations is required"
         )
-    if body.citation is not None:
-        resp_model = CitationResolveResponse(citation=body.citation, score=1.0)
+    if body.citations is not None:
+        citations = body.citations
     else:
-        citation = resolve_citation(body.finding)
-        if citation is None:
+        citations = []
+        for f in body.findings or []:
+            c = resolve_citation(f)
+            if c is None:
+                continue
+            citations.append(Citation(instrument=c.instrument, section=c.section))
+        if not citations:
             raise HTTPException(status_code=422, detail="unresolvable")
-        resp_model = CitationResolveResponse(
-            citation=citation, score=citation.score or 1.0
-        )
+    resp_model = CitationResolveResponse(citations=citations)
     _set_schema_headers(response)
     _set_std_headers(
         response,

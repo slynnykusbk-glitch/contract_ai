@@ -58,12 +58,12 @@ def test_vector_and_hybrid_modes(session, monkeypatch):
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
-    r = client.get('/api/corpus/search', params={'q': 'data', 'mode': 'vector'})
+    r = client.post('/api/corpus/search', json={'q': 'data', 'method': 'vector'})
     assert r.status_code == 200
-    assert r.json()['results']
-    r2 = client.get('/api/corpus/search', params={'q': 'data', 'mode': 'hybrid'})
+    assert r.json()['hits']
+    r2 = client.post('/api/corpus/search', json={'q': 'data', 'method': 'hybrid'})
     assert r2.status_code == 200
-    assert r2.json()['results']
+    assert r2.json()['hits']
     assert calls == [True, True]
 
 
@@ -74,9 +74,9 @@ def test_hybrid_weighted_has_rank_fusion(session, monkeypatch):
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
-    r = client.get('/api/corpus/search', params={'q': 'data', 'mode': 'hybrid'})
+    r = client.post('/api/corpus/search', json={'q': 'data', 'method': 'hybrid'})
     assert r.status_code == 200
-    results = r.json()['results']
+    results = r.json()['hits']
     assert results
     for item in results:
         assert isinstance(item.get('rank_fusion'), int)

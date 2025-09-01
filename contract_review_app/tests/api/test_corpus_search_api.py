@@ -30,10 +30,13 @@ def test_corpus_search_api(tmp_path):
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
-    r = client.get("/api/corpus/search", params={"q": "processing", "jurisdiction": "UK", "top": 3})
+    r = client.post(
+        "/api/corpus/search",
+        json={"q": "processing", "jurisdiction": "UK", "k": 3, "method": "bm25"},
+    )
     assert r.status_code == 200
     data = r.json()
-    assert isinstance(data.get("results"), list)
-    assert data["results"]
-    item = data["results"][0]
-    assert {"id", "meta", "span", "text", "score"}.issubset(item.keys())
+    assert isinstance(data.get("hits"), list)
+    assert data["hits"]
+    item = data["hits"][0]
+    assert {"doc_id", "span", "score"}.issubset(item.keys())

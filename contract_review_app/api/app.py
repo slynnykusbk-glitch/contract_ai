@@ -56,6 +56,10 @@ from contract_review_app.api.limits import API_TIMEOUT_S, API_RATE_LIMIT_PER_MIN
 LLM_PROVIDER = provider_from_env()
 # --- end ---
 
+
+LLM_PROVIDER = provider_from_env()
+
+
 # --------------------------------------------------------------------
 # Language segmentation helpers
 # --------------------------------------------------------------------
@@ -165,16 +169,6 @@ try:
 except Exception:  # pragma: no cover
     rules_loader = None  # type: ignore
 
-
-# --- test hook (будет перезаписан monkeypatch в тестах) ---
-def run_gpt_draft(payload: dict | None = None, *args, **kwargs) -> dict:
-    """Placeholder для тестов: тесты заменяют эту функцию через monkeypatch.
-    Возвращаем минимальную структуру по умолчанию.
-    """
-    return {"text": "", "model": "noop"}
-
-
-# ----------------------------------------------------------
 
 # --------------------------------------------------------------------
 # Config
@@ -1300,14 +1294,18 @@ class DraftOut(BaseModel):
     diff: dict
     x_schema_version: str
 
-
-@router.post("/api/gpt-draft", response_model=DraftOut, responses={422: {"model": ProblemDetail}})
-async def api_gpt_draft_dash(inp: DraftIn, request: Request):
+@router.post(
+    "/api/gpt-draft",
+    response_model=DraftOut,
+    responses={422: {"model": ProblemDetail}},
+)
+async def gpt_draft(inp: DraftIn, request: Request):
     started = time.perf_counter()
     text = inp.text.strip()
     if not text:
         raise HTTPException(status_code=422, detail="text is required")
-    result = LLM_PROVIDER.draft(text=text, mode=inp.mode)
+
+    result: DraftResult = LLM_PROVIDER.draft(text=text, mode=inp.mode)
     out = {
         "status": "ok",
         "mode": inp.mode,
@@ -1323,10 +1321,10 @@ async def api_gpt_draft_dash(inp: DraftIn, request: Request):
     _set_llm_headers(
         resp,
         {
-            "provider": result.provider,
-            "model": result.model,
-            "mode": result.mode,
-            "usage": result.usage,
+            "provider": getattr(result, "provider", ""),
+            "model": getattr(result, "model", ""),
+            "mode": getattr(result, "mode", inp.mode),
+            "usage": getattr(result, "usage", {}),
         },
     )
     apply_std_headers(resp, request, started)

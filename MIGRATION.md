@@ -202,3 +202,5 @@ curl -i -X POST localhost:8000/api/analyze \
 ```
 
 Repeated calls with the same payload yield identical `x-cid`, while changing the body alters the hash. The headers are also present on error responses.
+
+Trace middleware теперь получает те же `x-cid`/`x-latency-ms`, что и клиент; порядок middleware фиксирован: trace → headers → endpoint → headers → trace.

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Light‑weight provider implementations used by the gpt-draft endpoint.
 
 The historic codebase shipped a slightly different provider abstraction that
@@ -18,9 +16,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import os
+import difflib
 from typing import Any, Dict, List
-
-import requests
 
 
 @dataclass
@@ -43,8 +40,20 @@ class DraftResult:
     model: str
     usage: Dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def diff_unified(self) -> str:
+        """Return a unified diff between ``before_text`` and ``after_text``."""
 
-class MockProvider:
+        return "\n".join(
+            difflib.unified_diff(
+                (self.before_text or "").splitlines(),
+                (self.after_text or "").splitlines(),
+                lineterm="",
+            )
+        )
+
+
+class DraftMockProvider:
     """Deterministic provider used in development and tests."""
 
     provider = "mock"
@@ -115,6 +124,8 @@ class AzureProvider:
         headers = {"api-key": self._api_key}
 
         try:
+            import requests  # type: ignore
+
             resp = requests.post(url, json=payload, headers=headers, timeout=30)
             data = resp.json()
             draft = (
@@ -139,16 +150,19 @@ class AzureProvider:
             model=self.model,
             usage=usage,
         )
-
-
-def provider_from_env() -> MockProvider | AzureProvider:
+def provider_from_env() -> DraftMockProvider | AzureProvider:
     """Return provider instance based on ``CONTRACTAI_PROVIDER`` env var."""
 
     name = os.getenv("CONTRACTAI_PROVIDER", "mock").strip().lower()
     if name == "azure":
         return AzureProvider()
-    return MockProvider()
+    return DraftMockProvider()
 
 
-__all__ = ["DraftResult", "MockProvider", "AzureProvider", "provider_from_env"]
+__all__ = [
+    "DraftResult",
+    "DraftMockProvider",
+    "AzureProvider",
+    "provider_from_env",
+]
 

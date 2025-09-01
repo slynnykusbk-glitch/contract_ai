@@ -8,7 +8,6 @@ import json
 import os
 import re
 import time
-import difflib
 from collections import OrderedDict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -28,7 +27,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
@@ -46,6 +45,8 @@ from .models import (
     SCHEMA_VERSION,
 )
 from contract_review_app.llm.provider import provider_from_env
+
+LLM_PROVIDER = provider_from_env()
 
 # --------------------------------------------------------------------
 # Language segmentation helpers
@@ -1377,63 +1378,48 @@ async def api_suggest_edits(
     return {"status": "ok", "edits": [dummy], "suggestions": [dummy]}
 
 
-class _DraftIn(BaseModel):
-    text: str = Field(min_length=1)
-    mode: str = Field(default="friendly")
-
-    @field_validator("mode")
-    @classmethod
-    def _norm_mode(cls, v: str) -> str:
-        v = (v or "friendly").lower()
-        if v not in {"friendly", "medium", "strict"}:
-            raise ValueError("mode must be friendly, medium or strict")
-        return v
+class DraftIn(BaseModel):
+    text: str = Field(..., min_length=1)
+    mode: str = Field("friendly", pattern="^(friendly|medium|strict)$")
 
 
-@router.post("/api/gpt-draft")
-async def api_gpt_draft_dash(body: _DraftIn, response: Response):
-    t0 = _now_ms()
-    provider = provider_from_env()
-    result = provider.draft(body.text, body.mode)
+class DraftOut(BaseModel):
+    status: str
+    mode: str
+    proposed_text: str
+    rationale: str
+    evidence: list
+    before_text: str
+    after_text: str
+    diff: dict
+    x_schema_version: str
 
-    diff_text = "\n".join(
-        difflib.unified_diff(
-            (result.before_text or "").splitlines(),
-            (result.after_text or "").splitlines(),
-            lineterm="",
-        )
-    )
 
-    payload = {
+@router.post(
+    "/api/gpt-draft",
+    response_model=DraftOut,
+    responses={422: {"model": ProblemDetail}},
+)
+async def gpt_draft(inp: DraftIn, request: Request):
+    started = time.perf_counter()
+    text = inp.text.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="text is required")
+    res = LLM_PROVIDER.draft(text=text, mode=inp.mode)
+    out = {
         "status": "ok",
-        "mode": result.mode,
-        "proposed_text": result.proposed_text,
-        "rationale": result.rationale,
-        "evidence": result.evidence,
-        "before_text": result.before_text,
-        "after_text": result.after_text,
-        "diff": {"type": "unified", "value": diff_text},
-        "x_schema_version": "1.3",
+        "mode": inp.mode,
+        "proposed_text": res.proposed_text,
+        "rationale": res.rationale,
+        "evidence": res.evidence,
+        "before_text": res.before_text,
+        "after_text": res.after_text,
+        "diff": {"type": "unified", "value": res.diff_unified},
+        "x_schema_version": SCHEMA_VERSION,
     }
-
-    _set_schema_headers(response)
-    _set_std_headers(
-        response,
-        cid="gpt-draft",
-        xcache="miss",
-        schema="1.3",
-        latency_ms=_now_ms() - t0,
-    )
-    _set_llm_headers(
-        response,
-        {
-            "provider": result.provider,
-            "model": result.model,
-            "mode": result.mode,
-            "usage": result.usage,
-        },
-    )
-    return payload
+    resp = JSONResponse(out)
+    apply_std_headers(resp, request, started)
+    return resp
 
 
 @router.post("/api/calloff/validate")

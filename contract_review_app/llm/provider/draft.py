@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Light‑weight provider implementations used by the gpt-draft endpoint.
 
 The historic codebase shipped a slightly different provider abstraction that
@@ -17,21 +15,14 @@ In CI and tests the default is a deterministic mock provider.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import difflib
 import os
 from typing import Any, Dict, List
-
-import requests
 
 
 @dataclass
 class DraftResult:
-    """Result returned by :meth:`AzureProvider.draft` and
-    :meth:`MockProvider.draft`.
-
-    Attributes mirror the JSON structure consumed by the Word add‑in.
-    ``provider``/``model`` are included so the API can surface them via
-    response headers.
-    """
+    """Result returned by :class:`AzureProvider` and :class:`MockProvider`."""
 
     proposed_text: str
     rationale: str
@@ -42,6 +33,17 @@ class DraftResult:
     provider: str
     model: str
     usage: Dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def diff_unified(self) -> str:
+        """Return unified diff between ``before_text`` and ``after_text``."""
+        return "\n".join(
+            difflib.unified_diff(
+                (self.before_text or "").splitlines(),
+                (self.after_text or "").splitlines(),
+                lineterm="",
+            )
+        )
 
 
 class MockProvider:
@@ -115,6 +117,8 @@ class AzureProvider:
         headers = {"api-key": self._api_key}
 
         try:
+            import requests  # lazily import to keep mock default lightweight
+
             resp = requests.post(url, json=payload, headers=headers, timeout=30)
             data = resp.json()
             draft = (
@@ -150,5 +154,5 @@ def provider_from_env() -> MockProvider | AzureProvider:
     return MockProvider()
 
 
-__all__ = ["DraftResult", "MockProvider", "AzureProvider", "provider_from_env"]
+__all__ = ["DraftResult", "provider_from_env"]
 

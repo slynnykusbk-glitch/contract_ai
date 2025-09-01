@@ -191,7 +191,7 @@
     function setStatusRow(rowId, {code, xcid, xcache, xschema, latencyMs, ok, error_code, detail}){
       const tr = document.getElementById(rowId);
       const cells = tr.getElementsByTagName('td');
-      const latencyText = (latencyMs != null ? `${latencyMs} ms` : (xcid ? "" : ""));
+      const latencyText = latencyMs != null ? `${latencyMs} ms` : "";
       cells[1].textContent = code ?? "";
       cells[2].textContent = xcid ?? "";
       cells[3].textContent = xcache ?? "";

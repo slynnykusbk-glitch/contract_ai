@@ -115,6 +115,7 @@
   <div class="topline">
     <h3 style="margin:6px 0;">Contract AI - Draft Assistant</h3>
     <span class="pill">Build: <span id="buildInfo"></span></span>
+    <span class="pill">Provider: <span id="providerMeta">—</span></span>
   </div>
 
   <div class="row muted">Endpoints: <code>/health</code> · <code>/api/analyze</code> · <code>/api/gpt-draft</code> · <code>/api/qa-recheck</code></div>
@@ -281,5 +282,23 @@
     <div id="console"></div>
   </div>
 </div>
+<script>
+async function getSelectionText() {
+  return Word.run(async (ctx) => {
+    const sel = ctx.document.getSelection();
+    sel.load("text");
+    await ctx.sync();
+    return (sel.text || "").trim();
+  });
+}
+async function getWholeDocText() {
+  return Word.run(async (ctx) => {
+    const body = ctx.document.body;
+    body.load("text");
+    await ctx.sync();
+    return (body.text || "").trim();
+  });
+}
+</script>
 </body>
 </html>

@@ -996,7 +996,7 @@ async def api_trace_index(response: Response):
     response_model=AnalyzeResponse,
     response_model_exclude_none=True,
 )
-async def api_analyze(payload: AnalyzeRequest, x_cid: Optional[str] = Header(None)):
+async def api_analyze(payload: AnalyzeRequest, request: Request, x_cid: Optional[str] = Header(None)):
     t0 = _now_ms()
     try:
         model = AnalyzeIn(**payload.model_dump())
@@ -1041,7 +1041,8 @@ async def api_analyze(payload: AnalyzeRequest, x_cid: Optional[str] = Header(Non
                 findings_models.append(Finding.model_validate(f))
             except Exception:
                 continue
-    if not findings_models:
+    debug = bool(request.query_params.get("debug")) if hasattr(request, "query_params") else False
+    if not findings_models and debug:
         findings_models = _make_basic_findings(model.text or "")
 
     findings_out = [f.model_dump(exclude_none=True) for f in findings_models]

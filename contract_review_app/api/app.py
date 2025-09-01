@@ -45,7 +45,7 @@ from .models import (
 )
 
 # --- LLM provider & limits (final resolution) ---
-from contract_review_app.llm.provider import provider_from_env
+from contract_review_app.llm.provider import get_provider
 from contract_review_app.api.limits import API_TIMEOUT_S, API_RATE_LIMIT_PER_MIN
 
 # --------------------------------------------------------------------
@@ -1446,7 +1446,7 @@ async def api_gpt_draft(inp: DraftIn, request: Request):
     if not text:
         raise HTTPException(status_code=422, detail="text is required")
 
-    prov = provider_from_env()
+    prov = get_provider()
     res = prov.draft(text=text, mode=inp.mode)
 
     out = {

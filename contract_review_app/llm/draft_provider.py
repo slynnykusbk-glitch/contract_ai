@@ -14,13 +14,10 @@ appropriate provider based on the ``CONTRACTAI_PROVIDER`` environment variable.
 In CI and tests the default is a deterministic mock provider.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
+import difflib
 import os
 from typing import Any, Dict, List
-
-import requests
 
 
 @dataclass
@@ -42,6 +39,17 @@ class DraftResult:
     provider: str
     model: str
     usage: Dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def diff_unified(self) -> str:
+        """Return unified diff between ``before_text`` and ``after_text``."""
+        return "\n".join(
+            difflib.unified_diff(
+                (self.before_text or "").splitlines(),
+                (self.after_text or "").splitlines(),
+                lineterm="",
+            )
+        )
 
 
 class MockProvider:
@@ -115,6 +123,8 @@ class AzureProvider:
         headers = {"api-key": self._api_key}
 
         try:
+            import requests
+
             resp = requests.post(url, json=payload, headers=headers, timeout=30)
             data = resp.json()
             draft = (

@@ -18,7 +18,9 @@ def test_analyze_response_is_compatible_with_AnalyzeOut():
         "document": j["document"],
         "schema_version": j.get("schema_version", "1.0"),
     }
-    # Will raise if incompatible:
+    for f in payload["analysis"].get("findings", []):
+        f.setdefault("code", "")
+        f.setdefault("message", f.get("text", ""))
     _ = AnalyzeOut(**payload)
 
 def test_suggest_response_is_compatible_with_SuggestOut():

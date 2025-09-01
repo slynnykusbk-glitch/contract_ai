@@ -250,13 +250,34 @@
       setJSON("resp", r.body);
       return r;
     }
-  async function testAnalyze(){
+    async function getTextOrWord(){
+      const area = document.getElementById("testText");
+      let t = (area.value || "").trim();
+      if(t) return t;
+      if(window.Word && Word.run){
+        try{
+          return await Word.run(async ctx => {
+            const sel = ctx.document.getSelection(); sel.load("text");
+            await ctx.sync();
+            if(sel.text && sel.text.trim()) return sel.text;
+            const body = ctx.document.body; body.load("text");
+            await ctx.sync();
+            return body.text || "";
+          });
+        }catch{}
+      }
+      return "";
+    }
+
+    async function testAnalyze(){
+      const text = await getTextOrWord();
+      if(!text){ alert("Select text or click 'Use whole doc'"); return; }
       const r = await callEndpoint({
         name:"analyze", method:"POST", path:"/api/analyze",
-        body:{ text: document.getElementById("testText").value }
+        body:{ text }
       });
       setStatusRow("row-analyze", r);
-      setJSON("resp", r.body);
+      alert(r.ok ? `HTTP ${r.code}` : `HTTP ${r.code}`);
       return r;
     }
     async function testSummary(){
@@ -310,21 +331,25 @@
       return r;
     }
     async function testSuggest(){
+      const text = await getTextOrWord();
+      if(!text){ alert("Select text or click 'Use whole doc'"); return; }
       const r = await callEndpoint({
         name:"suggest", method:"POST", path:"/api/suggest_edits",
-        body:{ text:"Payment within 30 days.", clause:"Payment within 30 days.", mode:"friendly" }
+        body:{ text, clause:text, mode:"friendly" }
       });
       setStatusRow("row-suggest", r);
-      setJSON("resp", r.body);
+      alert(r.ok ? `HTTP ${r.code}` : `HTTP ${r.code}`);
       return r;
     }
     async function testQA(){
+      const text = await getTextOrWord();
+      if(!text){ alert("Select text or click 'Use whole doc'"); return; }
       const r = await callEndpoint({
         name:"qa", method:"POST", path:"/api/qa-recheck",
-        body:{ text:"Hello world", applied_changes:[{ range:{ start:6, length:5 }, text:"TEAM" }] }
+        body:{ text, applied_changes:[] }
       });
       setStatusRow("row-qa", r);
-      setJSON("resp", r.body);
+      alert(r.ok ? `HTTP ${r.code}` : `HTTP ${r.code}`);
       return r;
     }
     async function testCalloff(){

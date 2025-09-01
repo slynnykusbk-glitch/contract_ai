@@ -85,6 +85,30 @@
   function readLS(k) { try { return localStorage.getItem(k) || ""; } catch (_) { return ""; } }
   function writeLS(k, v) { try { localStorage.setItem(k, v); return true; } catch (_) { return false; } }
 
+  function getModeOrDefault() {
+    return (els.sugMode && val(els.sugMode)) || "friendly";
+  }
+
+  function getThresholdOrDefault() {
+    return (val(els.riskThreshold) || CAI_STORE.settings.riskThreshold || "high").toLowerCase();
+  }
+
+  function toast(msg) {
+    try { if (window.OfficeRuntime && OfficeRuntime.displayToastAsync) { OfficeRuntime.displayToastAsync(String(msg)); return; } }
+    catch (_) {}
+    try { alert(String(msg)); } catch (_) {}
+    status(msg);
+  }
+
+  async function getPanelTextOrFetch() {
+    var t = (val(els.clause) || "").trim();
+    if (t) return t;
+    var sel = await readSelection();
+    if (sel && sel.trim()) return sel.trim();
+    var doc = await readWholeDoc();
+    return (doc || "").trim();
+  }
+
   // HTTPS-only base normalization (no mixed content)
   function normBase(u) {
     if (!u) return "";
@@ -273,6 +297,8 @@
   async function apiAnalyze(opts) {
     opts = opts || {};
     var text = opts.text || "";
+    var mode = opts.mode || getModeOrDefault();
+    var threshold = opts.threshold || getThresholdOrDefault();
     var policyPack = null;
     var norm = normalizeText(text);
     var pol = "{}";
@@ -281,7 +307,7 @@
       return await callEndpoint({
         method: "POST",
         path: "/api/analyze",
-        body: { text: text, policy_pack: policyPack },
+        body: { text: text, mode: mode, threshold: threshold, policy_pack: policyPack },
         timeoutMs: 30000,
         headers: { "x-idempotency-key": idem }
       });
@@ -334,7 +360,8 @@
     var body = {
       text: opts.text || "",
       clause: opts.clause || "",
-      mode: opts.mode || "friendly"
+      mode: opts.mode || "friendly",
+      threshold: opts.threshold || getThresholdOrDefault()
     };
     try {
       return await callEndpoint({ method: "POST", path: "/api/suggest_edits", body: body, timeoutMs: 25000 });
@@ -350,8 +377,7 @@
   }
 
   async function apiQARecheck(fullText, residual) {
-    var thr = (val(els.riskThreshold) || CAI_STORE.settings.riskThreshold || "high");
-    var body = { text: fullText || "", threshold: thr, applied_changes: Array.isArray(residual) ? residual : [] };
+    var body = { text: fullText || "", mode: getModeOrDefault(), threshold: getThresholdOrDefault(), applied_changes: Array.isArray(residual) ? residual : [] };
     try {
       return await callEndpoint({ method: "POST", path: "/api/qa-recheck", body: body, timeoutMs: 20000 });
     } catch (e) {
@@ -854,12 +880,13 @@
   }
 
   async function onSuggest() {
-    var mode = val(els.sugMode) || "friendly";
+    var mode = getModeOrDefault();
+    var text = await getPanelTextOrFetch();
     var clause = (state.clauseText || val(els.clause) || "").trim();
-    var text = (state.docText || clause || "").trim();
-    if (!clause) { status("Paste or select a clause first."); return; }
+    if (!clause) clause = text;
+    if (!text || !clause) { toast("Select text or click 'Use whole doc'"); return; }
     try {
-      var r = await apiSuggestEdits({ text: text, clause: clause, mode: mode });
+      var r = await apiSuggestEdits({ text: text, clause: clause, mode: mode, threshold: getThresholdOrDefault() });
       var payload = r.json || {};
       if (!r.ok || payload.status === "error") {
         var msg = payload && payload.detail ? payload.detail : ("HTTP " + r.status);
@@ -875,15 +902,21 @@
     } catch (e) { status("✖ Suggest error: " + (e && e.message ? e.message : e)); }
   }
 
-  function onPreview() {
-    var resp = state.draftResp || null;
-    var diff = resp && resp.diff && resp.diff.value;
-    if (!diff) { status("Nothing to diff — click 'Draft' first"); return; }
-    if (els.diffOutput && els.diffContainer) {
-      els.diffOutput.textContent = diff;
-      els.diffContainer.style.display = "block";
-    }
-    status("Diff ready");
+  async function onPreview() {
+    var text = await getPanelTextOrFetch();
+    if (!text) { toast("Select text or click 'Use whole doc'"); return; }
+    try {
+      var r = await apiGptDraft({ text: text, mode: getModeOrDefault() });
+      var env = r.json || {};
+      state.draftResp = env;
+      var diff = env && env.diff && env.diff.value;
+      if (!r.ok || !diff) { status("✖ Draft error"); return; }
+      if (els.diffOutput && els.diffContainer) {
+        els.diffOutput.textContent = diff;
+        els.diffContainer.style.display = "block";
+      }
+      status("Diff ready");
+    } catch (e) { status("✖ Draft error: " + (e && e.message ? e.message : e)); }
   }
 
   async function onApply() {
@@ -902,8 +935,8 @@
   }
 
   async function doAnalyze(useWhole) {
-    var text = useWhole ? await readWholeDoc() : (val(els.clause) || "");
-    if (!text || !text.trim()) { status("⚠️ No text to analyze."); return; }
+    var text = useWhole ? await readWholeDoc() : await getPanelTextOrFetch();
+    if (!text) { toast("Select text or click 'Use whole doc'"); return; }
     status("Analyzing…");
     clearResults();
     try {
@@ -920,7 +953,7 @@
         status("Summary error");
         renderDocSnapshot(null);
       }
-      var r = await apiAnalyze({ text: text });
+      var r = await apiAnalyze({ text: text, mode: getModeOrDefault(), threshold: getThresholdOrDefault() });
       if (!r.ok) { status("Analyze HTTP " + r.status); return; }
       var payload = r.json || {};
       var env = payload.data || payload;
@@ -942,11 +975,11 @@
 
   async function doDraft() {
     var analysis = CAI_STORE.analysis.analysis;
-    var text = val(els.clause) || "";
-    if (!analysis && !text.trim()) { status("⚠️ Nothing to draft. Paste text or run Analyze."); return; }
+    var text = await getPanelTextOrFetch();
+    if (!analysis && !text) { toast("Select text or click 'Use whole doc'"); return; }
     status("Drafting…");
     try {
-      var input = analysis ? { analysis: analysis, mode: "friendly" } : { text: text, mode: "friendly" };
+      var input = analysis ? { analysis: analysis, mode: getModeOrDefault() } : { text: text, mode: getModeOrDefault() };
       var r = await apiGptDraft(input);
       var env = r.json || {};
       if (!r.ok || env.status !== "ok") {
@@ -1022,7 +1055,8 @@
   }
 
   async function doQARecheck() {
-    var full = await readWholeDoc();
+    var full = await getPanelTextOrFetch();
+    if (!full) { toast("Select text or click 'Use whole doc'"); return; }
     status("QA recheck…");
     try {
       var r = await apiQARecheck(full, []);

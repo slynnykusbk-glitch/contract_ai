@@ -45,7 +45,17 @@ from .models import (
     Span,
     SCHEMA_VERSION,
 )
+# --- LLM provider & limits (final resolution) ---
 from contract_review_app.llm.provider import provider_from_env
+from contract_review_app.api.limits import API_TIMEOUT_S, API_RATE_LIMIT_PER_MIN
+
+# legacy удаляем:
+# from contract_review_app.gpt.service import LLMService, LLM_CONFIG
+# LLM_SERVICE = LLMService(LLM_CONFIG)
+
+# единая точка доступа к LLM (mock по умолчанию, azure если CONTRACTAI_PROVIDER=azure)
+LLM_PROVIDER = provider_from_env()
+# --- end ---
 
 # --------------------------------------------------------------------
 # Language segmentation helpers
@@ -200,6 +210,9 @@ _PLACEHOLDER_RE = re.compile(
     r"(\[[^\]]+\]|\bTBD\b|\bTO BE DETERMINED\b)", re.IGNORECASE
 )
 _EXHIBIT_RE = re.compile(r"exhibit\s+([A-Z])", re.IGNORECASE)
+
+# Rate limit storage
+_RATE_BUCKETS: dict[str, list[float]] = {}
 
 LEARNING_LOG_PATH = Path(__file__).resolve().parents[2] / "var" / "learning_logs.jsonl"
 
@@ -398,8 +411,20 @@ def _custom_openapi():
 
     for path_item in openapi_schema.get("paths", {}).values():
         for op in path_item.values():
-            responses = op.get("responses", {})
-            for code in ["200", "400", "422", "500"]:
+            responses = op.setdefault("responses", {})
+            for code, desc in (("429", "Too Many Requests"), ("504", "Gateway Timeout")):
+                if code not in responses:
+                    responses[code] = {
+                        "description": desc,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ProblemDetail"
+                                }
+                            }
+                        },
+                    }
+            for code in ["200", "400", "422", "429", "500", "504"]:
                 if code in responses:
                     hdrs = responses[code].setdefault("headers", {})
                     hdrs["x-schema-version"] = {
@@ -499,6 +524,23 @@ def _trace_push(cid: str, event: Dict[str, Any]) -> None:
 
 
 @app.middleware("http")
+async def add_response_headers(request: Request, call_next):
+    body = await request.body()
+    started_at = time.perf_counter()
+
+    async def receive():
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    request = Request(request.scope, receive)
+    request.state.body = body
+    request.state.started_at = started_at
+    response = await call_next(request)
+    if "x-schema-version" not in response.headers:
+        apply_std_headers(response, request, started_at)
+    return response
+
+
+@app.middleware("http")
 async def _trace_mw(request: Request, call_next):
     t0 = time.perf_counter()
     req_cid = request.headers.get("x-cid") or compute_cid(request)
@@ -542,20 +584,40 @@ async def _trace_mw(request: Request, call_next):
 
 
 @app.middleware("http")
-async def add_response_headers(request: Request, call_next):
-    body = await request.body()
+async def timeout_mw(request: Request, call_next):
     started_at = time.perf_counter()
+    try:
+        return await asyncio.wait_for(call_next(request), timeout=API_TIMEOUT_S)
+    except asyncio.TimeoutError:
+        problem = ProblemDetail(type="timeout", title="Request timeout", status=504)
+        resp = JSONResponse(problem.model_dump(), status_code=504)
+        apply_std_headers(resp, request, started_at)
+        return resp
 
-    async def receive():
-        return {"type": "http.request", "body": body, "more_body": False}
 
-    request = Request(request.scope, receive)
-    request.state.body = body
-    request.state.started_at = started_at
-    response = await call_next(request)
-    if "x-schema-version" not in response.headers:
-        apply_std_headers(response, request, started_at)
-    return response
+@app.middleware("http")
+async def rate_limit_mw(request: Request, call_next):
+    started_at = time.perf_counter()
+    ident = request.headers.get("x-api-key") or (
+        request.client.host if request.client else "unknown"
+    )
+    key = f"{request.url.path}:{ident}"
+    now = time.monotonic()
+    bucket = _RATE_BUCKETS.get(key, [])
+    bucket = [t for t in bucket if now - t < 60]
+    if len(bucket) >= API_RATE_LIMIT_PER_MIN:
+        retry_after = int(max(0, 60 - (now - bucket[0]))) + 1
+        _RATE_BUCKETS[key] = bucket
+        problem = ProblemDetail(
+            type="too_many_requests", title="Too Many Requests", status=429
+        )
+        resp = JSONResponse(problem.model_dump(), status_code=429)
+        resp.headers["Retry-After"] = str(retry_after)
+        apply_std_headers(resp, request, started_at)
+        return resp
+    bucket.append(now)
+    _RATE_BUCKETS[key] = bucket
+    return await call_next(request)
 
 
 # --------------------------------------------------------------------

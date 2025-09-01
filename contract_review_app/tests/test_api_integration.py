@@ -25,19 +25,14 @@ def test_analyze_envelope_and_keys():
 
 
 def test_suggest_edits_smoke():
-    r = client.post("/api/suggest_edits", content=json.dumps({
-        "text": "Termination by convenience.",
-        "clause_type": "termination",
-        "mode": "friendly",
-        "top_k": 1
-    }))
+    r = client.post(
+        "/api/suggest_edits",
+        content=json.dumps({"text": "Termination by convenience."}),
+    )
     assert r.status_code == 200
     j = r.json()
     assert j["status"] == "ok"
-    # normalized range
-    if j.get("edits"):
-        rng = j["edits"][0].get("range", {})
-        assert {"start", "length"}.issubset(rng.keys())
+    assert isinstance(j.get("proposed_text"), str)
 
 def test_qa_recheck_smoke_flattened():
     r = client.post("/api/qa-recheck", content=json.dumps({

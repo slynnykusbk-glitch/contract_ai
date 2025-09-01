@@ -4,29 +4,16 @@ from contract_review_app.api.app import app, SCHEMA_VERSION
 
 client = TestClient(app)
 
-def test_suggest_in_accepts_clause_type_xor_and_normalizes_range():
-    body = {
-        "text": "Payment shall be made within 30 days.",
-        "clause_type": "payment_terms",
-        "mode": "friendly",
-        "top_k": 3
-    }
+def test_suggest_edits_accepts_text():
+    body = {"text": "Payment shall be made within 30 days."}
     r = client.post("/api/suggest_edits", content=json.dumps(body))
     assert r.status_code == 200
     j = r.json()
     assert j["status"] == "ok"
-    assert isinstance(j.get("edits", []), list)
-    if j["edits"]:
-        s0 = j["edits"][0]
-        assert "range" in s0 and "start" in s0["range"] and "length" in s0["range"]
+    assert isinstance(j.get("proposed_text"), str)
 
-def test_suggest_in_legacy_clause_id_still_works():
-    body = {
-        "text": "Indemnity shall be limited.",
-        "clause_id": "indemnity-1",
-        "mode": "strict",
-        "top_k": 1
-    }
+def test_suggest_edits_with_clause_id_still_ok():
+    body = {"text": "Indemnity shall be limited.", "clause_id": "indemnity-1"}
     r = client.post("/api/suggest_edits", content=json.dumps(body))
     assert r.status_code == 200
     assert r.json()["status"] == "ok"

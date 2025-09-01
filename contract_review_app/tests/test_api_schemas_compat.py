@@ -1,7 +1,7 @@
 import json
 from fastapi.testclient import TestClient
 from contract_review_app.api.app import app
-from contract_review_app.core.schemas import AnalyzeOut, SuggestOut, QARecheckOut
+from contract_review_app.core.schemas import AnalyzeOut, QARecheckOut
 
 client = TestClient(app)
 
@@ -23,19 +23,12 @@ def test_analyze_response_is_compatible_with_AnalyzeOut():
         f.setdefault("message", f.get("text", ""))
     _ = AnalyzeOut(**payload)
 
-def test_suggest_response_is_compatible_with_SuggestOut():
-    r = client.post("/api/suggest_edits", content=json.dumps({
-        "text": "Warranty lasts 12 months.",
-        "clause_type": "warranty",
-        "mode": "friendly",
-        "top_k": 1
-    }))
+def test_suggest_response_shape():
+    r = client.post("/api/suggest_edits", content=json.dumps({"text": "Warranty lasts 12 months."}))
     assert r.status_code == 200
     j = r.json()
     assert j["status"] == "ok"
-    payload = {"suggestions": j.get("edits", []), "model": j.get("model", "rule-based"),
-               "elapsed_ms": j.get("elapsed_ms"), "metadata": j.get("metadata", {})}
-    _ = SuggestOut(**payload)
+    assert isinstance(j.get("proposed_text"), str)
 
 def test_qarecheck_response_is_compatible_with_QARecheckOut():
     r = client.post("/api/qa-recheck", content=json.dumps({

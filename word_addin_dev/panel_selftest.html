@@ -127,6 +127,7 @@
   <script>
     // ---------------------- helpers ----------------------
     const LS_KEY = "panel:backendUrl";
+    const DRAFT_PATH = "/api/gpt-draft";
     let clientCid = genCid();
     let lastCid = ""; // from response headers
 
@@ -214,6 +215,7 @@
       try{
         resp = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
       }catch(err){
+        console.warn("[HTTP]", method, path, "network error");
         return { error:true, err, url };
       }
       const t1 = performance.now();
@@ -228,6 +230,12 @@
       const ok = resp.ok && json && (json.status === "ok");
       const error_code = json && json.status === "error" ? (json.error_code || "") : "";
       const detail = json && json.status === "error" ? (json.detail || "") : "";
+      console.info("[HTTP]", method, path, "→", resp.status, "cid=", hdrCid || "—", "latency=", latencyMs + "ms", "schema=", hdrSchema || "—");
+      if (!resp.ok || json.status === "error") {
+        const title = json.title || error_code || "";
+        const det = json.detail || detail || "";
+        if (title || det) console.warn("[ERROR]", title, det);
+      }
       return {
         url, code: resp.status, body: json,
         xcid: hdrCid, xcache: hdrCache, xschema: hdrSchema, latencyMs, ok,
@@ -287,7 +295,7 @@
     }
     async function testDraft(){
       const r = await callEndpoint({
-        name:"draft", method:"POST", path:"/api/gpt-draft",
+        name:"draft", method:"POST", path:DRAFT_PATH,
         body:{ text:"Make this clause polite." }
       });
       setStatusRow("row-draft", r);
@@ -303,7 +311,7 @@
     async function testSuggest(){
       const r = await callEndpoint({
         name:"suggest", method:"POST", path:"/api/suggest_edits",
-        body:{ text:"Payment within 30 days.", clause_type:"payment_terms", mode:"friendly", top_k:1 }
+        body:{ text:"Payment within 30 days.", clause:"Payment within 30 days.", mode:"friendly" }
       });
       setStatusRow("row-suggest", r);
       setJSON("resp", r.body);
@@ -356,11 +364,10 @@
       await testHealth();
       await testAnalyze();
       await testSummary();
-      await testDraft();
       await testSuggest();
       await testQA();
       await testCalloff();
-      await testTrace();
+      await testDraft();
     }
 
     // ---------------------- init & events ----------------------

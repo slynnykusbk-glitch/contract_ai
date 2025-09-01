@@ -44,6 +44,16 @@
   });
   window.LAST_DRAFT = window.LAST_DRAFT || "";
 
+  var DRAFT_PATH = "/api/gpt-draft";
+
+  var state = {
+    cid: null,
+    docText: "",
+    clauseText: "",
+    proposedText: "",
+    analysis: null
+  };
+
   var REQ_LOG = [];
 
   function $(id) { return document.getElementById(id); }
@@ -214,6 +224,13 @@
           var json = null; try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
           var latency = Math.max(0, Math.round(t1 - t0));
           applyHeadersToBadgesAndStore(headers, latency);
+          state.cid = headers.cid || state.cid;
+          console.info("[HTTP]", method, path, "→", x.status, "cid=", headers.cid || "—", "latency=", latency + "ms", "schema=", headers.schema || "—");
+          if (!(x.status >= 200 && x.status < 300) || (json && json.status === "error")) {
+            var tmsg = json && (json.title || json.error || json.error_code || "");
+            var dmsg = json && (json.detail || json.message || "");
+            if (tmsg || dmsg) console.warn("[ERROR]", tmsg, dmsg);
+          }
           recordDoctor({
             method: method, path: path, status: x.status, ok: (x.status >= 200 && x.status < 300),
             cid: headers.cid || (window.__CLIENT_CID__ || ""),
@@ -301,7 +318,7 @@
     if (opts.text) body.text = opts.text;
     body.mode = opts.mode || "friendly";
     try {
-      return await callEndpoint({ method: "POST", path: "/api/gpt-draft", body: body, timeoutMs: 25000 });
+      return await callEndpoint({ method: "POST", path: DRAFT_PATH, body: body, timeoutMs: 25000 });
     } catch (e) {
       status("✖ Draft error: " + (e && e.message ? e.message : e));
       return { ok: false, status: 0, json: null, headers: {} };
@@ -315,9 +332,8 @@
     opts = opts || {};
     var body = {
       text: opts.text || "",
-      clause_id: opts.clause || "",
-      mode: opts.mode || "friendly",
-      top_k: Math.min(10, Math.max(1, opts.top_k || 3))
+      clause: opts.clause || "",
+      mode: opts.mode || "friendly"
     };
     try {
       return await callEndpoint({ method: "POST", path: "/api/suggest_edits", body: body, timeoutMs: 25000 });
@@ -378,6 +394,35 @@
     return Word.run(function (ctx) {
       var b = ctx.document.body; b.load("text");
       return ctx.sync().then(function () { return b.text || ""; });
+    });
+  }
+
+  async function copySelection() {
+    if (!window.Word || !Word.run) { status("⚠️ Word API not available"); return; }
+    await Word.run(async function (ctx) {
+      var range = ctx.document.getSelection();
+      range.load("text");
+      await ctx.sync();
+      var t = (range.text || "").trim();
+      setVal(els.clause, t);
+      state.clauseText = t;
+      console.info("[STATUS] Selection copied.");
+      status("Selection copied.");
+    });
+  }
+
+  async function copyWholeDoc() {
+    if (!window.Word || !Word.run) { status("⚠️ Word API not available"); return; }
+    await Word.run(async function (ctx) {
+      var body = ctx.document.body;
+      body.load("text");
+      await ctx.sync();
+      var t = (body.text || "").trim();
+      setVal(els.clause, t);
+      state.docText = t;
+      state.clauseText = t;
+      console.info("[STATUS] Whole document copied.");
+      status("Whole document copied.");
     });
   }
 
@@ -646,6 +691,8 @@
     en(els.btnRejectAll, on);
   }
 
+  function setApplyEnabled(on) { enableDraftApply(on); }
+
   function normalizeSuggestion(s) {
     var d = {};
     try {
@@ -758,6 +805,29 @@
     }
   };
 
+  function diffHTML(a, b) {
+    var aw = a.split(/(\s+)/);
+    var bw = b.split(/(\s+)/);
+    var m = aw.length, n = bw.length;
+    var dp = Array(m + 1); for (var i = 0; i <= m; i++) { dp[i] = Array(n + 1).fill(0); }
+    for (var i1 = 1; i1 <= m; i1++) {
+      for (var j1 = 1; j1 <= n; j1++) {
+        if (aw[i1 - 1] === bw[j1 - 1]) dp[i1][j1] = dp[i1 - 1][j1 - 1] + 1;
+        else dp[i1][j1] = dp[i1 - 1][j1] >= dp[i1][j1 - 1] ? dp[i1 - 1][j1] : dp[i1][j1 - 1];
+      }
+    }
+    var res = [];
+    var i2 = m, j2 = n;
+    while (i2 > 0 && j2 > 0) {
+      if (aw[i2 - 1] === bw[j2 - 1]) { res.push(esc(aw[i2 - 1])); i2--; j2--; }
+      else if (dp[i2 - 1][j2] >= dp[i2][j2 - 1]) { res.push('<del>' + esc(aw[i2 - 1]) + '</del>'); i2--; }
+      else { res.push('<ins>' + esc(bw[j2 - 1]) + '</ins>'); j2--; }
+    }
+    while (i2 > 0) { res.push('<del>' + esc(aw[i2 - 1]) + '</del>'); i2--; }
+    while (j2 > 0) { res.push('<ins>' + esc(bw[j2 - 1]) + '</ins>'); j2--; }
+    return res.reverse().join('');
+  }
+
   // ===== Flows =====
 
   async function doHealthFlow() {
@@ -765,6 +835,76 @@
     var r = await doHealth();
     // Badges are applied by callEndpoint; just echo status result here
     return r;
+  }
+
+  async function analyzeDoc() {
+    var text = (state.docText || val(els.clause) || "").trim();
+    if (!text) { status("⚠️ No document text."); return; }
+    status("Analyzing document…");
+    try {
+      var r = await apiAnalyze({ text: text });
+      if (!r.ok) { status("Analyze HTTP " + r.status); return; }
+      state.analysis = r.json || null;
+      var cid = r.headers && r.headers.cid;
+      if (cid) console.info("[STATUS] Analyze OK • cid=" + cid);
+      else console.info("[STATUS] Analyze OK");
+    } catch (e) { status("✖ Analyze error: " + (e && e.message ? e.message : e)); }
+  }
+
+  async function onSuggest() {
+    var mode = val(els.sugMode) || "friendly";
+    var clause = (state.clauseText || val(els.clause) || "").trim();
+    var text = (state.docText || clause || "").trim();
+    if (!clause) { status("Paste or select a clause first."); return; }
+    try {
+      var r = await apiSuggestEdits({ text: text, clause: clause, mode: mode });
+      var payload = r.json || {};
+      if (!r.ok || payload.status === "error") {
+        var msg = payload && payload.detail ? payload.detail : ("HTTP " + r.status);
+        status("✖ Suggest error: " + msg);
+        return;
+      }
+      var prop = payload.proposed_text || payload.suggested_text || payload.text || "";
+      setVal(els.draft, prop);
+      state.proposedText = prop;
+      setApplyEnabled(!!prop);
+      if (prop) { status("Suggest OK"); console.info("[STATUS] Suggest OK"); }
+      else { status("Nothing to suggest for this clause"); }
+    } catch (e) { status("✖ Suggest error: " + (e && e.message ? e.message : e)); }
+  }
+
+  function onPreview() {
+    var orig = (state.clauseText || val(els.clause) || "").trim();
+    var draft = (state.proposedText || val(els.draft) || "").trim();
+    if (!draft) { status("Nothing to diff — click 'Suggest' first"); return; }
+    var html = diffHTML(orig, draft);
+    if (els.diffOutput && els.diffContainer) {
+      els.diffOutput.innerHTML = html;
+      els.diffContainer.style.display = "block";
+    }
+    status("Diff ready");
+  }
+
+  async function onApply() {
+    var t = (state.proposedText || val(els.draft) || "").trim();
+    if (!t) { status("Nothing to apply."); return; }
+    if (!window.Word || !Word.run) { status("⚠️ Word API not available"); return; }
+    try {
+      await Word.run(async function (ctx) {
+        var range = ctx.document.getSelection();
+        range.load("text");
+        await ctx.sync();
+        if (!range.text) throw new Error("Use selection");
+        var mode = val(els.sugMode) || "friendly";
+        range.insertText(t, "Replace");
+        try { range.insertComment("AI suggestion (" + mode + ")"); } catch (_) {}
+      });
+      console.info("[STATUS] Apply OK (len=" + t.length + ")");
+      status("Apply OK (len=" + t.length + ")");
+    } catch (e) {
+      console.error("[ERROR] Apply failed: " + (e && e.message ? e.message : e));
+      status("✖ Apply failed: " + (e && e.message ? e.message : e));
+    }
   }
 
   async function doAnalyze(useWhole) {
@@ -828,32 +968,6 @@
       applyMeta(env.meta || {});
       status(draft ? "Draft OK" : "Draft empty");
     } catch (e) { status("✖ Draft error: " + (e && e.message ? e.message : e)); }
-  }
-
-  async function doSuggest() {
-    if (!CAI_STORE.analysis || !CAI_STORE.analysis.clauses || !CAI_STORE.analysis.clauses.length) {
-      status("⚠️ Run Analyze (doc) first");
-      return;
-    }
-    var clauseId = val(els.sugSelect) || "";
-    var mode = val(els.sugMode) || "friendly";
-    var full = await readWholeDoc();
-    status("Suggesting edits…");
-    try {
-      var r = await apiSuggestEdits({ text: full, clause: clauseId, mode: mode, top_k: 3 });
-      var payload = r.json || {};
-      if (!r.ok || payload.status !== "ok") {
-        var msg = payload && payload.detail ? payload.detail : ("HTTP " + r.status);
-        status("✖ Suggest error: " + msg);
-        applyMeta(payload.meta || {});
-        return;
-      }
-      var list = (payload.data && payload.data.suggestions) || payload.suggestions || [];
-      renderSuggestions(list);
-      try { window.CAI_renderSuggestions(list); } catch (_) {}
-      applyMeta(payload.meta || {});
-      status("Suggest OK (" + list.length + ")");
-    } catch (e) { status("✖ Suggest error: " + (e && e.message ? e.message : e)); }
   }
 
   async function doAnnotate() {
@@ -1015,6 +1129,8 @@
     els.btnApply = $("btnApply");
     els.btnAcceptAll = $("acceptAllBtn");
     els.btnRejectAll = $("rejectAllBtn");
+    els.diffContainer = $("diffContainer");
+    els.diffOutput = $("diffOutput");
 
     els.console = $("console");
 
@@ -1039,22 +1155,27 @@
     if (els.btnTest) els.btnTest.addEventListener("click", function () { doHealthFlow(); });
 
     if (els.analyzeBtn) els.analyzeBtn.addEventListener("click", function () { doAnalyze(false); });
-    if (els.btnAnalyzeDoc) els.btnAnalyzeDoc.addEventListener("click", function () { doAnalyze(true); });
+    if (els.btnAnalyzeDoc) els.btnAnalyzeDoc.addEventListener("click", analyzeDoc);
 
-    if (els.useSel) els.useSel.addEventListener("click", async function () { var t = await readSelection(); setVal(els.clause, t); status("Selection copied."); });
-    if (els.useDoc) els.useDoc.addEventListener("click", async function () { var t = await readWholeDoc(); setVal(els.clause, t); status("Whole document copied."); });
+    if (els.useSel) els.useSel.addEventListener("click", copySelection);
+    if (els.useDoc) els.useDoc.addEventListener("click", copyWholeDoc);
 
     if (els.draftBtn) els.draftBtn.addEventListener("click", function () { doDraft(); });
     if (els.copyBtn) els.copyBtn.addEventListener("click", function () {
       try { navigator.clipboard && navigator.clipboard.writeText(val(els.draft) || ""); status("Draft copied to clipboard"); } catch (_) {}
     });
 
-    if (els.sugBtn) els.sugBtn.addEventListener("click", function () { doSuggest(); });
+    if (els.sugBtn) els.sugBtn.addEventListener("click", onSuggest);
 
     if (els.toggleRaw) els.toggleRaw.addEventListener("click", function () {
       if (!els.rawJson) return;
       var s = window.getComputedStyle(els.rawJson).display;
       els.rawJson.style.display = (s === "none" ? "block" : "none");
+    });
+
+    if (els.draft) els.draft.addEventListener("input", function () {
+      state.proposedText = val(els.draft);
+      setApplyEnabled(!!val(els.draft));
     });
 
     if (els.btnInsert) els.btnInsert.addEventListener("click", async function () {
@@ -1066,38 +1187,9 @@
       } catch (e) { status("✖ Insert failed: " + (e && e.message ? e.message : e)); }
     });
 
-    if (els.btnApply) els.btnApply.addEventListener("click", async function () {
-      try {
-        var t = val(els.draft).trim(); if (!t) { status("Draft empty"); return; }
-        await applyTracked(t, "Contract AI — applied draft");
-        enableDraftApply(true);
-        status("Applied as tracked changes.");
-        try {
-          var now = new Date().toISOString();
-          var norm = normalizeText(val(els.clause) || "");
-          var docHash = await sha256Hex(norm + "|local");
-          var ev = {
-            schema_ver: "1",
-            event_id: "ev-" + Date.now(),
-            ts: now,
-            action: "applied",
-            user: "local",
-            doc_id: docHash,
-            clause_id: val(els.sugSelect) || null,
-            mode: val(els.sugMode) || "friendly",
-            ui_latency_ms: CAI_STORE.status.latencyMs || null,
-            client: { cid: CAI_STORE.status.cid || "", panel_build: BUILD }
-          };
-          apiLearningLog([ev]).catch(function () {});
-        } catch (_) {}
-      } catch (e) { status("✖ Apply failed: " + (e && e.message ? e.message : e)); }
-    });
+    if (els.btnApply) els.btnApply.addEventListener("click", onApply);
 
-    if (els.btnPreview) els.btnPreview.addEventListener("click", function () {
-      var o = val(els.clause) || "", d = val(els.draft) || "";
-      if (!o || !d) { status("Provide original and draft for diff."); return; }
-      status("Diff ready (console). orig.len=" + o.length + " draft.len=" + d.length);
-    });
+    if (els.btnPreview) els.btnPreview.addEventListener("click", onPreview);
 
     if (els.btnAcceptAll) els.btnAcceptAll.addEventListener("click", async function () {
       try { await acceptAll(); status("Accepted all changes."); } catch (e) { status("✖ Accept failed: " + (e && e.message ? e.message : e)); }

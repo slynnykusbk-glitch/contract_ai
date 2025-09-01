@@ -103,10 +103,10 @@
   async function getPanelTextOrFetch() {
     var t = (val(els.clause) || "").trim();
     if (t) return t;
-    var sel = await readSelection();
-    if (sel && sel.trim()) return sel.trim();
-    var doc = await readWholeDoc();
-    return (doc || "").trim();
+    var sel = await getSelectionText();
+    if (sel) return sel;
+    var doc = await getWholeDocText();
+    return doc;
   }
 
   // HTTPS-only base normalization (no mixed content)
@@ -198,6 +198,7 @@
     txt(els.providerBadge, meta.provider || "—");
     txt(els.modelBadge, meta.model || "—");
     txt(els.modeBadge, meta.mode || "—");
+    if (els.providerMeta) txt(els.providerMeta, meta.provider || "—");
     if (els.mockModeBadge) {
       els.mockModeBadge.style.display = meta.mode === "mock" ? "inline-block" : "none";
     }
@@ -408,21 +409,28 @@
     } catch (_) { txt(els.officeBadge, "Office: error"); }
   }
 
-  function readSelection() {
-    if (!window.Word || !Word.run) return Promise.resolve("");
-    return Word.run(function (ctx) {
-      var s = ctx.document.getSelection(); s.load("text");
-      return ctx.sync().then(function () { return s.text || ""; });
+  async function getSelectionText() {
+    if (!window.Word || !Word.run) return "";
+    return Word.run(async function (ctx) {
+      var sel = ctx.document.getSelection();
+      sel.load("text");
+      await ctx.sync();
+      return (sel.text || "").trim();
     });
   }
 
-  function readWholeDoc() {
-    if (!window.Word || !Word.run) return Promise.resolve(val(els.clause) || "");
-    return Word.run(function (ctx) {
-      var b = ctx.document.body; b.load("text");
-      return ctx.sync().then(function () { return b.text || ""; });
+  async function getWholeDocText() {
+    if (!window.Word || !Word.run) return "";
+    return Word.run(async function (ctx) {
+      var body = ctx.document.body;
+      body.load("text");
+      await ctx.sync();
+      return (body.text || "").trim();
     });
   }
+
+  function readSelection() { return getSelectionText(); }
+  function readWholeDoc() { return getWholeDocText(); }
 
   async function copySelection() {
     if (!window.Word || !Word.run) { status("⚠️ Word API not available"); return; }
@@ -866,12 +874,15 @@
 
   async function analyzeDoc() {
     var text = (state.docText || val(els.clause) || "").trim();
-    if (!text) { status("⚠️ No document text."); return; }
+    if (!text) text = await getSelectionText();
+    if (!text) text = await getWholeDocText();
+    if (!text) { toast("Document is empty"); return; }
     status("Analyzing document…");
     try {
       var r = await apiAnalyze({ text: text });
       if (!r.ok) { status("Analyze HTTP " + r.status); return; }
       state.analysis = r.json || null;
+      applyMeta((r.json && (r.json.meta || (r.json.data && r.json.data.meta))) || {});
       CAI_STORE.analysis.analysis = state.analysis;
       var cid = r.headers && r.headers.cid;
       if (cid) console.info("[STATUS] Analyze OK • cid=" + cid);
@@ -882,12 +893,13 @@
   async function onSuggest() {
     var mode = getModeOrDefault();
     var text = await getPanelTextOrFetch();
+    if (!text) { toast("Document is empty"); return; }
     var clause = (state.clauseText || val(els.clause) || "").trim();
     if (!clause) clause = text;
-    if (!text || !clause) { toast("Select text or click 'Use whole doc'"); return; }
     try {
       var r = await apiSuggestEdits({ text: text, clause: clause, mode: mode, threshold: getThresholdOrDefault() });
       var payload = r.json || {};
+      applyMeta(payload.meta || {});
       if (!r.ok || payload.status === "error") {
         var msg = payload && payload.detail ? payload.detail : ("HTTP " + r.status);
         status("✖ Suggest error: " + msg);
@@ -904,7 +916,7 @@
 
   async function onPreview() {
     var text = await getPanelTextOrFetch();
-    if (!text) { toast("Select text or click 'Use whole doc'"); return; }
+    if (!text) { toast("Document is empty"); return; }
     try {
       var r = await apiGptDraft({ text: text, mode: getModeOrDefault() });
       var env = r.json || {};
@@ -934,9 +946,9 @@
     }
   }
 
-  async function doAnalyze(useWhole) {
-    var text = useWhole ? await readWholeDoc() : await getPanelTextOrFetch();
-    if (!text) { toast("Select text or click 'Use whole doc'"); return; }
+  async function doAnalyze() {
+    var text = await getPanelTextOrFetch();
+    if (!text) { toast("Document is empty"); return; }
     status("Analyzing…");
     clearResults();
     try {
@@ -947,6 +959,7 @@
       var ssum = senv.summary || senv;
       CAI_STORE.analysis.snapshot = ssum;
       renderDocSnapshot(ssum);
+        applyMeta((s.json && (s.json.meta || (s.json.data && s.json.data.meta))) || {});
         status("Summary OK");
       } else {
         console.warn("summary failed", s);
@@ -957,6 +970,7 @@
       if (!r.ok) { status("Analyze HTTP " + r.status); return; }
       var payload = r.json || {};
       var env = payload.data || payload;
+      applyMeta(payload.meta || {});
       CAI_STORE.analysis.analysis = env.analysis || env;
       CAI_STORE.analysis.results = env.results || null;
       CAI_STORE.analysis.clauses = Array.isArray(env.clauses) ? env.clauses : [];
@@ -976,7 +990,7 @@
   async function doDraft() {
     var analysis = CAI_STORE.analysis.analysis;
     var text = await getPanelTextOrFetch();
-    if (!analysis && !text) { toast("Select text or click 'Use whole doc'"); return; }
+    if (!analysis && !text) { toast("Document is empty"); return; }
     status("Drafting…");
     try {
       var input = analysis ? { analysis: analysis, mode: getModeOrDefault() } : { text: text, mode: getModeOrDefault() };
@@ -1056,7 +1070,7 @@
 
   async function doQARecheck() {
     var full = await getPanelTextOrFetch();
-    if (!full) { toast("Select text or click 'Use whole doc'"); return; }
+    if (!full) { toast("Document is empty"); return; }
     status("QA recheck…");
     try {
       var r = await apiQARecheck(full, []);
@@ -1107,6 +1121,7 @@
     els.latencyBadge = $("latencyBadge");
     els.schemaBadge = $("schemaBadge");
     els.providerBadge = $("providerBadge");
+    els.providerMeta = $("providerMeta");
     els.modelBadge = $("modelBadge");
     els.modeBadge = $("modeBadge");
     els.mockModeBadge = $("mockModeBadge");
@@ -1182,7 +1197,7 @@
 
     if (els.btnTest) els.btnTest.addEventListener("click", function () { doHealthFlow(); });
 
-    if (els.analyzeBtn) els.analyzeBtn.addEventListener("click", function () { doAnalyze(false); });
+    if (els.analyzeBtn) els.analyzeBtn.addEventListener("click", function () { doAnalyze(); });
     if (els.btnAnalyzeDoc) els.btnAnalyzeDoc.addEventListener("click", analyzeDoc);
 
     if (els.useSel) els.useSel.addEventListener("click", copySelection);

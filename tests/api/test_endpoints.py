@@ -132,7 +132,7 @@ def test_health_endpoint():
 
 
 def test_analyze_endpoint():
-    r = client.post("/api/analyze", json={"text": "hello"})
+    r = client.post("/api/analyze?debug=1", json={"text": "hello"})
     assert r.status_code == 200
     data = r.json()
     issues = data.get("analysis", {}).get("issues", [])

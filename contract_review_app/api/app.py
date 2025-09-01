@@ -8,7 +8,6 @@ import json
 import os
 import re
 import time
-import difflib
 from collections import OrderedDict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -28,7 +27,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
@@ -124,13 +123,6 @@ from contract_review_app.api.calloff_validator import validate_calloff
 # SSOT DTO imports
 from contract_review_app.core.schemas import AnalyzeIn
 from contract_review_app.core.citation_resolver import resolve_citation
-from contract_review_app.gpt.config import load_llm_config
-from contract_review_app.gpt.service import (
-    LLMService,
-    ProviderAuthError,
-    ProviderConfigError,
-    ProviderTimeoutError,
-)
 
 from .cache import IDEMPOTENCY_CACHE
 from .corpus_search import router as corpus_router
@@ -226,8 +218,7 @@ def _has_llm_keys() -> bool:
     return any(os.getenv(k) for k in _LLM_KEY_ENV_VARS)
 
 
-LLM_CONFIG = load_llm_config()
-LLM_SERVICE = LLMService(LLM_CONFIG)
+LLM_PROVIDER = provider_from_env()
 
 
 def _analyze_document(text: str) -> Dict[str, Any]:
@@ -918,10 +909,8 @@ async def health(response: Response) -> dict:
         "schema": SCHEMA_VERSION,
         "rules_count": _discover_rules_count(),
         "llm": {
-            "provider": LLM_CONFIG.provider,
-            "model": LLM_CONFIG.model_draft,
-            "mode": LLM_CONFIG.mode,
-            "timeout_s": LLM_CONFIG.timeout_s,
+            "provider": getattr(LLM_PROVIDER, "provider", ""),
+            "model": getattr(LLM_PROVIDER, "model", ""),
         },
     }
 
@@ -1183,160 +1172,16 @@ async def summary_post_alias(
 async def api_qa_recheck(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
-    t0 = _now_ms()
+    """Deprecated endpoint retained for compatibility."""
     _set_schema_headers(response)
-    try:
-        payload = await request.json()
-    except Exception:
-        return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
-
-    text = (payload or {}).get("text", "")
-    rules = (payload or {}).get("rules", {})
-    cid = x_cid or _sha256_hex(str(t0) + text[:128])
-    meta = LLM_CONFIG.meta()
-    if not text.strip():
-        resp = JSONResponse(
-            status_code=422,
-            content={
-                "status": "error",
-                "error_code": "bad_input",
-                "detail": "text is empty",
-                "meta": meta,
-            },
-        )
-        _set_llm_headers(resp, meta)
-        _set_std_headers(
-            resp,
-            cid=cid,
-            xcache="miss",
-            schema=SCHEMA_VERSION,
-            latency_ms=_now_ms() - t0,
-        )
-        return resp
-    mock_env = os.getenv("CONTRACT_AI_LLM_MOCK", "").lower() in ("1", "true", "yes")
-    mock_mode = (
-        mock_env
-        or LLM_CONFIG.provider == "mock"
-        or not LLM_CONFIG.valid
-        or not _has_llm_keys()
+    return JSONResponse(
+        status_code=503,
+        content={
+            "status": "error",
+            "error_code": "unavailable",
+            "detail": "qa-recheck is deprecated",
+        },
     )
-    if mock_mode:
-        _set_llm_headers(response, meta)
-        _set_std_headers(
-            response,
-            cid=cid,
-            xcache="miss",
-            schema=SCHEMA_VERSION,
-            latency_ms=_now_ms() - t0,
-        )
-        return {
-            "status": "ok",
-            "qa": [],
-            "issues": [],
-            "analysis": {"ok": True},
-            "risk_delta": 0,
-            "score_delta": 0,
-            "status_from": "OK",
-            "status_to": "OK",
-            "residual_risks": [{"code": "demo", "message": "demo"}],
-            "deltas": {},
-        }
-    try:
-        result = LLM_SERVICE.qa(text, rules, LLM_CONFIG.timeout_s)
-    except ProviderTimeoutError as ex:
-        resp = JSONResponse(
-            status_code=503,
-            content={
-                "status": "error",
-                "error_code": "provider_timeout",
-                "detail": str(ex),
-                "meta": meta,
-            },
-        )
-        _set_llm_headers(resp, meta)
-        _set_std_headers(
-            resp,
-            cid=cid,
-            xcache="miss",
-            schema=SCHEMA_VERSION,
-            latency_ms=_now_ms() - t0,
-        )
-        return resp
-    except ProviderAuthError as ex:
-        resp = JSONResponse(
-            status_code=401,
-            content={
-                "status": "error",
-                "error_code": "provider_auth",
-                "detail": ex.detail,
-                "meta": meta,
-            },
-        )
-        _set_llm_headers(resp, meta)
-        _set_std_headers(
-            resp,
-            cid=cid,
-            xcache="miss",
-            schema=SCHEMA_VERSION,
-            latency_ms=_now_ms() - t0,
-        )
-        return resp
-    except ProviderConfigError as ex:
-        resp = JSONResponse(
-            status_code=424,
-            content={
-                "status": "error",
-                "error_code": "llm_unavailable",
-                "detail": ex.detail,
-                "meta": meta,
-            },
-        )
-        _set_llm_headers(resp, meta)
-        _set_std_headers(
-            resp,
-            cid=cid,
-            xcache="miss",
-            schema=SCHEMA_VERSION,
-            latency_ms=_now_ms() - t0,
-        )
-        return resp
-    except ValueError as ex:
-        _trace_push(
-            cid,
-            {
-                "qa_prompt_debug": True,
-                "unknown_placeholders": getattr(ex, "unknown_placeholders", []),
-            },
-        )
-        resp = JSONResponse(
-            status_code=500,
-            content={
-                "status": "error",
-                "error_code": "qa_prompt_invalid",
-                "detail": str(ex),
-                "meta": meta,
-            },
-        )
-        _set_llm_headers(resp, meta)
-        _set_std_headers(
-            resp,
-            cid=cid,
-            xcache="miss",
-            schema=SCHEMA_VERSION,
-            latency_ms=_now_ms() - t0,
-        )
-        return resp
-
-    meta = result.meta
-    _set_llm_headers(response, meta)
-    _set_std_headers(
-        response,
-        cid=cid,
-        xcache="miss",
-        schema=SCHEMA_VERSION,
-        latency_ms=_now_ms() - t0,
-    )
-    return {"status": "ok", "qa": result.items, "meta": meta}
 
 
 @router.post("/api/suggest_edits")
@@ -1377,55 +1222,44 @@ async def api_suggest_edits(
     return {"status": "ok", "edits": [dummy], "suggestions": [dummy]}
 
 
-class _DraftIn(BaseModel):
-    text: str = Field(min_length=1)
-    mode: str = Field(default="friendly")
-
-    @field_validator("mode")
-    @classmethod
-    def _norm_mode(cls, v: str) -> str:
-        v = (v or "friendly").lower()
-        if v not in {"friendly", "medium", "strict"}:
-            raise ValueError("mode must be friendly, medium or strict")
-        return v
+class DraftIn(BaseModel):
+    text: str = Field(..., min_length=1)
+    mode: str = Field("friendly", pattern="^(friendly|medium|strict)$")
 
 
-@router.post("/api/gpt-draft")
-async def api_gpt_draft_dash(body: _DraftIn, response: Response):
-    t0 = _now_ms()
-    provider = provider_from_env()
-    result = provider.draft(body.text, body.mode)
+class DraftOut(BaseModel):
+    status: str
+    mode: str
+    proposed_text: str
+    rationale: str
+    evidence: list
+    before_text: str
+    after_text: str
+    diff: dict
+    x_schema_version: str
 
-    diff_text = "\n".join(
-        difflib.unified_diff(
-            (result.before_text or "").splitlines(),
-            (result.after_text or "").splitlines(),
-            lineterm="",
-        )
-    )
 
-    payload = {
+@router.post("/api/gpt-draft", response_model=DraftOut, responses={422: {"model": ProblemDetail}})
+async def api_gpt_draft_dash(inp: DraftIn, request: Request):
+    started = time.perf_counter()
+    text = inp.text.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="text is required")
+    result = LLM_PROVIDER.draft(text=text, mode=inp.mode)
+    out = {
         "status": "ok",
-        "mode": result.mode,
+        "mode": inp.mode,
         "proposed_text": result.proposed_text,
         "rationale": result.rationale,
         "evidence": result.evidence,
         "before_text": result.before_text,
         "after_text": result.after_text,
-        "diff": {"type": "unified", "value": diff_text},
-        "x_schema_version": "1.3",
+        "diff": {"type": "unified", "value": result.diff_unified},
+        "x_schema_version": SCHEMA_VERSION,
     }
-
-    _set_schema_headers(response)
-    _set_std_headers(
-        response,
-        cid="gpt-draft",
-        xcache="miss",
-        schema="1.3",
-        latency_ms=_now_ms() - t0,
-    )
+    resp = JSONResponse(out)
     _set_llm_headers(
-        response,
+        resp,
         {
             "provider": result.provider,
             "model": result.model,
@@ -1433,7 +1267,8 @@ async def api_gpt_draft_dash(body: _DraftIn, response: Response):
             "usage": result.usage,
         },
     )
-    return payload
+    apply_std_headers(resp, request, started)
+    return resp
 
 
 @router.post("/api/calloff/validate")

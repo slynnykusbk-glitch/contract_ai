@@ -1,5 +1,12 @@
+"""Lightweight LLM utilities and orchestrator."""
+
 from .orchestrator import Orchestrator
-from .draft_provider import DraftResult, MockProvider, AzureProvider, provider_from_env
+from .draft_provider import (
+    DraftResult,
+    MockProvider,
+    AzureProvider,
+    provider_from_env,
+)
 
 __all__ = [
     "Orchestrator",
@@ -8,4 +15,3 @@ __all__ = [
     "AzureProvider",
     "provider_from_env",
 ]
-"""Lightweight LLM utilities and orchestrator."""

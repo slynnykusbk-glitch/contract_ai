@@ -1,15 +1,13 @@
-import json
-import hashlib
 import re
 
 from fastapi.testclient import TestClient
+
+import pytest
 
 from contract_review_app.api.app import app
 from contract_review_app.api.models import SCHEMA_VERSION
 
 client = TestClient(app)
-
-import pytest
 
 
 @pytest.mark.parametrize("path", ["/api/analyze", "/api/gpt/draft"])
@@ -31,3 +29,22 @@ def test_error_handlers_also_emit_headers():
     assert r.status_code == 422
     for h in ("x-schema-version", "x-latency-ms", "x-cid"):
         assert h in r.headers
+
+
+def test_trace_uses_same_cid_and_latency(monkeypatch):
+    last = {}
+
+    def fake_push(cid, event):
+        last.clear()
+        last.update(event)
+        last["cid"] = cid
+
+    monkeypatch.setattr("contract_review_app.api.app._trace_push", fake_push)
+
+    payload = {"text": "stable"}
+    resp = client.post("/api/analyze", json=payload)
+
+    assert last["cid"] == resp.headers["x-cid"]
+    event_ms = last["ms"]
+    header_ms = int(resp.headers["x-latency-ms"])
+    assert event_ms == header_ms or abs(event_ms - header_ms) <= 5

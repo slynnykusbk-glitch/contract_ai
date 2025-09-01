@@ -1,4 +1,5 @@
 ﻿# contract_review_app/api/app.py
+# ruff: noqa: E402
 from __future__ import annotations
 
 import asyncio
@@ -29,15 +30,15 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
-from .headers import apply_std_headers
+from .headers import apply_std_headers, compute_cid
 from .models import (
     AnalyzeRequest,
     AnalyzeResponse,
     Citation,
     CitationResolveRequest,
     CitationResolveResponse,
-    CorpusSearchRequest,
-    CorpusSearchResponse,
+    CorpusSearchRequest,  # noqa: F401
+    CorpusSearchResponse,  # noqa: F401
     ProblemDetail,
     Finding,
     Span,
@@ -111,6 +112,7 @@ def _make_basic_findings(text: str) -> list[Finding]:
             )
         )
     return out
+
 
 # Snapshot extraction heuristics
 # Snapshot extraction heuristics
@@ -353,7 +355,9 @@ router = APIRouter()
 # guard: ensure cache cleared even if lifespan not triggered
 IDEMPOTENCY_CACHE.clear()
 _default_problem = {"model": ProblemDetail}
-_default_responses = {code: _default_problem for code in (400, 401, 403, 404, 422, 429, 500)}
+_default_responses = {
+    code: _default_problem for code in (400, 401, 403, 404, 422, 429, 500)
+}
 app = FastAPI(
     title="Contract Review App API",
     version="1.0",
@@ -361,21 +365,6 @@ app = FastAPI(
     responses=_default_responses,
 )
 register_error_handlers(app)
-@app.middleware("http")
-async def add_response_headers(request: Request, call_next):
-    body = await request.body()
-    started_at = time.perf_counter()
-
-    async def receive():
-        return {"type": "http.request", "body": body, "more_body": False}
-
-    request = Request(request.scope, receive)
-    request.state.body = body
-    request.state.started_at = started_at
-    response = await call_next(request)
-    if "x-schema-version" not in response.headers:
-        apply_std_headers(response, request, started_at)
-    return response
 
 
 def _custom_openapi():
@@ -414,9 +403,7 @@ def _custom_openapi():
                     hdrs["x-schema-version"] = {
                         "$ref": "#/components/headers/XSchemaVersion"
                     }
-                    hdrs["x-latency-ms"] = {
-                        "$ref": "#/components/headers/XLatencyMs"
-                    }
+                    hdrs["x-latency-ms"] = {"$ref": "#/components/headers/XLatencyMs"}
                     hdrs["x-cid"] = {"$ref": "#/components/headers/XCid"}
 
     example_headers = {
@@ -511,11 +498,12 @@ def _trace_push(cid: str, event: Dict[str, Any]) -> None:
 
 @app.middleware("http")
 async def _trace_mw(request: Request, call_next):
-    t0 = _now_ms()
-    req_cid = request.headers.get("x-cid", "")
+    t0 = time.perf_counter()
+    req_cid = request.headers.get("x-cid") or compute_cid(request)
     try:
         response: Response = await call_next(request)
     except Exception as ex:
+        ms = int((time.perf_counter() - t0) * 1000)
         _trace_push(
             req_cid or "unknown",
             {
@@ -523,23 +511,19 @@ async def _trace_mw(request: Request, call_next):
                 "method": request.method,
                 "path": request.url.path,
                 "status": 500,
-                "ms": _now_ms() - t0,
+                "ms": ms,
                 "cache": "",
-                "cid": req_cid or "",
+                "cid": req_cid,
             },
         )
         raise ex
-    resp_cid = response.headers.get("x-cid", req_cid or "")
+    resp_cid = response.headers.get("x-cid") or req_cid
     cache = response.headers.get("x-cache", "")
     latency_hdr = response.headers.get("x-latency-ms")
-    try:
-        ms = (
-            int(latency_hdr)
-            if latency_hdr is not None and latency_hdr.isdigit()
-            else (_now_ms() - t0)
-        )
-    except Exception:
-        ms = _now_ms() - t0
+    if latency_hdr and latency_hdr.isdigit():
+        ms = int(latency_hdr)
+    else:
+        ms = int((time.perf_counter() - t0) * 1000)
     _trace_push(
         resp_cid or "unknown",
         {
@@ -552,6 +536,23 @@ async def _trace_mw(request: Request, call_next):
             "cid": resp_cid,
         },
     )
+    return response
+
+
+@app.middleware("http")
+async def add_response_headers(request: Request, call_next):
+    body = await request.body()
+    started_at = time.perf_counter()
+
+    async def receive():
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    request = Request(request.scope, receive)
+    request.state.body = body
+    request.state.started_at = started_at
+    response = await call_next(request)
+    if "x-schema-version" not in response.headers:
+        apply_std_headers(response, request, started_at)
     return response
 
 
@@ -639,7 +640,9 @@ def _problem_json(
     ).model_dump()
 
 
-def _problem_response(status: int, title: str, detail: str | None = None) -> JSONResponse:
+def _problem_response(
+    status: int, title: str, detail: str | None = None
+) -> JSONResponse:
     resp = JSONResponse(
         status_code=status,
         media_type="application/problem+json",
@@ -1002,9 +1005,9 @@ async def api_analyze(payload: AnalyzeRequest, x_cid: Optional[str] = Header(Non
         "on",
     }
     if normalize_on:
-        result.setdefault("results", {}).setdefault("analysis", {})[
-            "segments"
-        ] = _make_segments(model.text or "")
+        result.setdefault("results", {}).setdefault("analysis", {})["segments"] = (
+            _make_segments(model.text or "")
+        )
 
     status = "OK"
     if isinstance(result, dict):
@@ -1449,6 +1452,7 @@ async def api_learning_update(response: Response, body: LearningUpdateIn):
 app.include_router(router)
 app.include_router(corpus_router)
 
+
 # --------------------------------------------------------------------
 # Citation resolver endpoint
 # --------------------------------------------------------------------
@@ -1493,6 +1497,7 @@ async def api_citation_resolve(
         latency_ms=_now_ms() - t0,
     )
     return resp_model
+
 
 # --------------------------------------------------------------------
 # Static panel mount (/panel) with no-store headers and version endpoint

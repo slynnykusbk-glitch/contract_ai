@@ -1,4 +1,5 @@
 import json
+import hashlib
 from fastapi.testclient import TestClient
 from contract_review_app.api.app import app, SCHEMA_VERSION
 
@@ -23,7 +24,8 @@ def test_trace_has_headers_and_shape():
     assert isinstance(j["events"], list)
     assert r.headers.get("x-schema-version") == SCHEMA_VERSION
     assert r.headers.get("x-cache") == "miss"
-    assert r.headers.get("x-cid") == "some-cid"
+    expected_cid = hashlib.sha256("/api/trace/some-cid".encode()).hexdigest()
+    assert r.headers.get("x-cid") == expected_cid
 
 def test_trace_index_has_headers_and_shape():
     r = client.get("/api/trace")
@@ -33,7 +35,8 @@ def test_trace_index_has_headers_and_shape():
     assert "cids" in j and isinstance(j["cids"], list)
     assert r.headers.get("x-schema-version") == SCHEMA_VERSION
     assert r.headers.get("x-cache") == "miss"
-    assert r.headers.get("x-cid") in (None, "trace-index", "")
+    hdr_cid = r.headers.get("x-cid")
+    assert hdr_cid and len(hdr_cid) == 64
 
 def test_qarecheck_always_enveloped_status_ok_and_flattened():
     body = {"text": "Hello world", "applied_changes": [{"range": {"start": 6, "length": 5}, "text": "LEGAL"}]}

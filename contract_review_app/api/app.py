@@ -29,6 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
+from .headers import apply_std_headers
 from .models import (
     AnalyzeRequest,
     AnalyzeResponse,
@@ -40,6 +41,7 @@ from .models import (
     ProblemDetail,
     Finding,
     Span,
+    SCHEMA_VERSION,
 )
 
 # --------------------------------------------------------------------
@@ -171,7 +173,6 @@ def run_gpt_draft(payload: dict | None = None, *args, **kwargs) -> dict:
 # --------------------------------------------------------------------
 # Config
 # --------------------------------------------------------------------
-SCHEMA_VERSION = os.getenv("CONTRACT_AI_SCHEMA_VERSION", "1.3")
 ANALYZE_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_ANALYZE_TIMEOUT_SEC", "25"))
 QA_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_QA_TIMEOUT_SEC", "20"))
 DRAFT_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_DRAFT_TIMEOUT_SEC", "25"))
@@ -360,6 +361,21 @@ app = FastAPI(
     responses=_default_responses,
 )
 register_error_handlers(app)
+@app.middleware("http")
+async def add_response_headers(request: Request, call_next):
+    body = await request.body()
+    started_at = time.perf_counter()
+
+    async def receive():
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    request = Request(request.scope, receive)
+    request.state.body = body
+    request.state.started_at = started_at
+    response = await call_next(request)
+    if "x-schema-version" not in response.headers:
+        apply_std_headers(response, request, started_at)
+    return response
 
 
 def _custom_openapi():
@@ -370,10 +386,55 @@ def _custom_openapi():
         version=app.version,
         routes=app.routes,
     )
-    components = openapi_schema.setdefault("components", {}).setdefault("schemas", {})
-    components["ProblemDetail"] = ProblemDetail.model_json_schema(
+    components = openapi_schema.setdefault("components", {})
+    schemas = components.setdefault("schemas", {})
+    schemas["ProblemDetail"] = ProblemDetail.model_json_schema(
         ref_template="#/components/schemas/{model}"
     )
+    headers = components.setdefault("headers", {})
+    headers["XSchemaVersion"] = {
+        "schema": {"type": "string"},
+        "example": SCHEMA_VERSION,
+    }
+    headers["XLatencyMs"] = {
+        "schema": {"type": "integer", "format": "int32"},
+        "example": 12,
+    }
+    headers["XCid"] = {
+        "schema": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "example": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    }
+
+    for path_item in openapi_schema.get("paths", {}).values():
+        for op in path_item.values():
+            responses = op.get("responses", {})
+            for code in ["200", "400", "422", "500"]:
+                if code in responses:
+                    hdrs = responses[code].setdefault("headers", {})
+                    hdrs["x-schema-version"] = {
+                        "$ref": "#/components/headers/XSchemaVersion"
+                    }
+                    hdrs["x-latency-ms"] = {
+                        "$ref": "#/components/headers/XLatencyMs"
+                    }
+                    hdrs["x-cid"] = {"$ref": "#/components/headers/XCid"}
+
+    example_headers = {
+        "x-schema-version": SCHEMA_VERSION,
+        "x-latency-ms": 12,
+        "x-cid": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    }
+    for p in ["/api/analyze", "/api/gpt/draft"]:
+        op = openapi_schema.get("paths", {}).get(p, {}).get("post")
+        if not op:
+            continue
+        resp = op.get("responses", {}).get("200", {})
+        content = resp.setdefault("content", {}).setdefault("application/json", {})
+        content.setdefault("examples", {})["default"] = {
+            "summary": "Example",
+            "value": {},
+            "headers": example_headers,
+        }
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
@@ -546,10 +607,7 @@ def _as_dict(model_or_obj: Any) -> Dict[str, Any]:
 
 
 def _set_schema_headers(response: Response) -> None:
-    try:
-        response.headers["x-schema-version"] = SCHEMA_VERSION
-    except Exception:
-        pass
+    pass
 
 
 def _set_std_headers(
@@ -560,11 +618,7 @@ def _set_std_headers(
     schema: str,
     latency_ms: Optional[int] = None,
 ) -> None:
-    _set_schema_headers(resp)
-    resp.headers["x-cid"] = cid
     resp.headers["x-cache"] = xcache
-    if latency_ms is not None:
-        resp.headers["x-latency-ms"] = str(latency_ms)
 
 
 def _set_llm_headers(resp: Response, meta: Dict[str, Any]) -> None:

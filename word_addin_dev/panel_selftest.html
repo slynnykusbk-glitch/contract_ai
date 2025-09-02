@@ -54,7 +54,7 @@
   </div>
 
   <div class="row">
-    <textarea id="testText" placeholder="Sample text" style="flex:1; min-height:60px;">Hello world</textarea>
+    <textarea id="testText" placeholder="Sample text" style="flex:1; min-height:60px;">Governing law: England and Wales.</textarea>
   </div>
 
   <div class="row" id="llmInfo">LLM: <span id="llmProv">—</span> / <span id="llmModel">—</span> / <span id="llmMode">—</span> <span id="llmBadge" class="badge" style="display:none;background:#facc15;color:#000;">MOCK</span></div>
@@ -128,6 +128,7 @@
     // ---------------------- helpers ----------------------
     const LS_KEY = "panel:backendUrl";
     const DRAFT_PATH = "/api/gpt-draft";
+    const SAMPLE = "Governing law: England and Wales.";
     let clientCid = genCid();
     let lastCid = ""; // from response headers
 
@@ -205,6 +206,20 @@
       }
     }
 
+    function showResp(r){
+      const el = document.getElementById("resp");
+      if(!r.ok){
+        try{ el.textContent = `HTTP ${r.code}\n` + JSON.stringify(r.body, null, 2); }
+        catch{ el.textContent = `HTTP ${r.code}`; }
+        return;
+      }
+      if(r.body && r.body.status && r.body.status !== "ok"){
+        el.textContent = `API error: ${r.body.detail || r.body.error_code || ''}`;
+        return;
+      }
+      setJSON("resp", r.body);
+    }
+
     async function callEndpoint({name, method, path, body, dynamicPathFn}) {
       const base = normBase(document.getElementById("backendInput").value);
       if (!base) { alert("Please enter backend URL"); return { error:true }; }
@@ -247,45 +262,35 @@
     async function testHealth(){
       const r = await callEndpoint({ name:"health", method:"GET", path:"/health" });
       setStatusRow("row-health", r);
-      setJSON("resp", r.body);
+      showResp(r);
       return r;
     }
-    async function getTextOrWord(){
+    function getSampleText(){
       const area = document.getElementById("testText");
-      let t = (area.value || "").trim();
-      if(t) return t;
-      if(window.Word && Word.run){
-        try{
-          return await Word.run(async ctx => {
-            const sel = ctx.document.getSelection(); sel.load("text");
-            await ctx.sync();
-            if(sel.text && sel.text.trim()) return sel.text;
-            const body = ctx.document.body; body.load("text");
-            await ctx.sync();
-            return body.text || "";
-          });
-        }catch{}
-      }
-      return "";
+      return (area.value || "").trim() || SAMPLE;
     }
 
     async function testAnalyze(){
-      const text = await getTextOrWord();
-      if(!text){ alert("Select text or click 'Use whole doc'"); return; }
+      const text = getSampleText();
       const r = await callEndpoint({
         name:"analyze", method:"POST", path:"/api/analyze",
         body:{ text }
       });
       setStatusRow("row-analyze", r);
-      alert(r.ok ? `HTTP ${r.code}` : `HTTP ${r.code}`);
+      showResp(r);
       return r;
     }
     async function testSummary(){
+      const text = getSampleText();
       const r = await callEndpoint({
         name:"summary", method:"POST", path:"/api/summary",
-        body:{ text: document.getElementById("testText").value }
+        body:{ text }
       });
       setStatusRow("row-summary", r);
+      if(!r.ok || (r.body && r.body.status !== "ok")){
+        showResp(r);
+        return r;
+      }
       const el = document.getElementById("resp");
       try {
         const s = JSON.stringify(r.body, null, 2)
@@ -314,14 +319,16 @@
       }
       return r;
     }
+
     async function testDraft(){
+      const text = getSampleText();
       const r = await callEndpoint({
         name:"draft", method:"POST", path:DRAFT_PATH,
-        body:{ text:"Make this clause polite." }
+        body:{ text }
       });
-      const ok = r.ok && r.body && r.body.status === "ok" && r.body.proposed_text;
+      const ok = r.ok && r.body && r.body.status === "ok";
       setStatusRow("row-draft", Object.assign({}, r, { ok: !!ok }));
-      setJSON("resp", r.body);
+      showResp(r);
       const meta = r.body && r.body.meta ? r.body.meta : {};
       document.getElementById("llmProv").textContent = meta.provider || "—";
       document.getElementById("llmModel").textContent = meta.model || "—";
@@ -331,25 +338,26 @@
       return r;
     }
     async function testSuggest(){
-      const text = await getTextOrWord();
-      if(!text){ alert("Select text or click 'Use whole doc'"); return; }
+      const text = getSampleText();
       const r = await callEndpoint({
         name:"suggest", method:"POST", path:"/api/suggest_edits",
-        body:{ text, clause:text, mode:"friendly" }
+        body:{ text }
       });
       setStatusRow("row-suggest", r);
-      alert(r.ok ? `HTTP ${r.code}` : `HTTP ${r.code}`);
+      showResp(r);
+      const meta = r.body && r.body.meta ? r.body.meta : {};
+      document.getElementById("llmProv").textContent = meta.provider || "—";
+      document.getElementById("llmModel").textContent = meta.model || "—";
       return r;
     }
     async function testQA(){
-      const text = await getTextOrWord();
-      if(!text){ alert("Select text or click 'Use whole doc'"); return; }
+      const text = getSampleText();
       const r = await callEndpoint({
         name:"qa", method:"POST", path:"/api/qa-recheck",
         body:{ text, applied_changes:[] }
       });
       setStatusRow("row-qa", r);
-      alert(r.ok ? `HTTP ${r.code}` : `HTTP ${r.code}`);
+      showResp(r);
       return r;
     }
     async function testCalloff(){
@@ -358,6 +366,10 @@
         body:{ description:"[●]" }
       });
       setStatusRow("row-calloff", r);
+      if(!r.ok || (r.body && r.body.status !== "ok")){
+        showResp(r);
+        return r;
+      }
       const issues = (r.body && r.body.issues) ? r.body.issues.length : 0;
       const tr = document.getElementById("row-calloff");
       const cells = tr.getElementsByTagName('td');

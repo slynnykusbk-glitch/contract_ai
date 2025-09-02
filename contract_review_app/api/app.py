@@ -1017,6 +1017,7 @@ async def api_analyze(payload: AnalyzeRequest, request: Request, x_cid: Optional
             schema=SCHEMA_VERSION,
             latency_ms=_now_ms() - t0,
         )
+        _set_llm_headers(resp, PROVIDER_META)
         return resp
 
     result = _analyze_document(model.text or "")
@@ -1135,6 +1136,7 @@ async def api_analyze(payload: AnalyzeRequest, request: Request, x_cid: Optional
         "document": result.get("document", {}),
         "summary": result.get("summary", {}),
         "schema_version": SCHEMA_VERSION,
+        "meta": PROVIDER_META,
     }
     _ensure_legacy_doc_type(envelope.get("summary"))
 
@@ -1149,6 +1151,7 @@ async def api_analyze(payload: AnalyzeRequest, request: Request, x_cid: Optional
         schema=SCHEMA_VERSION,
         latency_ms=_now_ms() - t0,
     )
+    _set_llm_headers(resp, PROVIDER_META)
     return resp
 
 
@@ -1162,8 +1165,9 @@ async def api_summary_get(response: Response, mode: Optional[str] = None):
     _set_schema_headers(response)
     snap = extract_document_snapshot("")
     snap.rules_count = _discover_rules_count()
-    resp = {"status": "ok", "summary": snap.model_dump()}
+    resp = {"status": "ok", "summary": snap.model_dump(), "meta": PROVIDER_META}
     _set_std_headers(response, cid="summary:get", xcache="miss", schema=SCHEMA_VERSION)
+    _set_llm_headers(response, PROVIDER_META)
     # guaranteed summary on root
     if "document" in resp and isinstance(resp["document"], dict):
         resp["summary"] = resp["document"].get("summary", resp.get("summary", {}))
@@ -1196,7 +1200,7 @@ async def api_summary_post(
     snap = extract_document_snapshot(text)
     snap.rules_count = _discover_rules_count()
 
-    envelope = {"status": "ok", "summary": snap.model_dump()}
+    envelope = {"status": "ok", "summary": snap.model_dump(), "meta": PROVIDER_META}
     _set_std_headers(
         response,
         cid=cid,
@@ -1204,6 +1208,7 @@ async def api_summary_post(
         schema=SCHEMA_VERSION,
         latency_ms=_now_ms() - t0,
     )
+    _set_llm_headers(response, PROVIDER_META)
     # guaranteed summary on root
     if "document" in envelope and isinstance(envelope["document"], dict):
         envelope["summary"] = envelope["document"].get(
@@ -1407,6 +1412,7 @@ async def api_suggest_edits(
 
     cid = x_cid or _sha256_hex("suggest" + str(_now_ms()))
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+    _set_llm_headers(response, PROVIDER_META)
     result = PROVIDER.suggest(text)
     return {"status": "ok", "proposed_text": result["proposed_text"], "meta": PROVIDER_META}
 
@@ -1426,6 +1432,7 @@ async def api_gpt_draft(request: Request):
     result = PROVIDER.draft(prompt)
     resp = JSONResponse({"status": "ok", "draft": {"text": result["text"]}, "meta": PROVIDER_META})
     apply_std_headers(resp, request, started)
+    _set_llm_headers(resp, PROVIDER_META)
     return resp
 
 

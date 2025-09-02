@@ -8,3 +8,4 @@ numpy>=1.26
 cryptography>=42
 requests
 python-dotenv==1.0.1
+pytest-xdist==3.6.1

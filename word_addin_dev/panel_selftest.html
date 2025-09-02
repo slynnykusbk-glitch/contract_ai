@@ -50,6 +50,7 @@
     <input id="backendInput" type="text" value="https://127.0.0.1:9443" class="mono" />
     <button id="saveBtn">Save</button>
     <button id="runAllBtn">Run All</button>
+    <button id="pingBtn">Ping LLM</button>
     <span class="small">Saved in localStorage</span>
   </div>
 
@@ -57,7 +58,7 @@
     <textarea id="testText" placeholder="Sample text" style="flex:1; min-height:60px;">Governing law: England and Wales.</textarea>
   </div>
 
-  <div class="row" id="llmInfo">LLM: <span id="llmProv">—</span> / <span id="llmModel">—</span> / <span id="llmMode">—</span> <span id="llmBadge" class="badge" style="display:none;background:#facc15;color:#000;">MOCK</span></div>
+  <div class="row" id="llmInfo">LLM: <span id="llmProv">—</span> / <span id="llmModel">—</span> / <span id="llmLatency">—</span> <span id="llmBadge" class="badge" style="display:none;background:#facc15;color:#000;">MOCK</span></div>
 
     <div class="card">
       <h3>Tests</h3>
@@ -137,6 +138,8 @@
       const model = document.getElementById("llmModel");
       prov.textContent = (meta && meta.provider) || "—";
       model.textContent = (meta && meta.model) || "—";
+      const badge = document.getElementById("llmBadge");
+      if (badge) badge.style.display = (meta && meta.mode === "mock") ? "inline-block" : "none";
     }
 
     function pickDocType(summary) {
@@ -263,6 +266,25 @@
         xcid: hdrCid, xcache: hdrCache, xschema: hdrSchema, latencyMs, ok,
         error_code, detail
       };
+    }
+
+    async function pingLLM(){
+      const base = normBase(document.getElementById("backendInput").value);
+      const latEl = document.getElementById("llmLatency");
+      if (!base) { alert("Please enter backend URL"); return; }
+      latEl.textContent = "…";
+      latEl.className = "";
+      try{
+        const resp = await fetch(base + "/api/llm/ping");
+        const data = await resp.json();
+        showMeta(data.meta || {});
+        const ms = (data.latency_ms != null) ? data.latency_ms : 0;
+        latEl.textContent = ms + "ms";
+        latEl.className = (resp.ok && data.status === "ok") ? "ok" : "err";
+      }catch(e){
+        latEl.textContent = "ERR";
+        latEl.className = "err";
+      }
     }
 
     // ---------------------- individual tests ----------------------
@@ -410,6 +432,7 @@
     // ---------------------- init & events ----------------------
     document.getElementById("saveBtn").addEventListener("click", () => { saveBase(); alert("Saved"); });
     document.getElementById("runAllBtn").addEventListener("click", runAll);
+    document.getElementById("pingBtn").addEventListener("click", pingLLM);
     document.getElementById("btnHealth").addEventListener("click", testHealth);
     document.getElementById("btnAnalyze").addEventListener("click", testAnalyze);
     document.getElementById("btnDraft").addEventListener("click", testDraft);

@@ -213,21 +213,6 @@ _RATE_BUCKETS: dict[str, list[float]] = {}
 
 LEARNING_LOG_PATH = Path(__file__).resolve().parents[2] / "var" / "learning_logs.jsonl"
 
-ALLOWED_ORIGINS = os.getenv(
-    "CONTRACT_AI_ALLOWED_ORIGINS",
-    "http://127.0.0.1:3000,https://127.0.0.1:3000,http://localhost:3000,https://localhost:3000",
-).split(",")
-ALLOWED_ORIGINS = [o.strip() for o in ALLOWED_ORIGINS if o.strip()]
-# Ensure local dev and WebView contexts
-for _o in (
-    "http://localhost:3000",
-    "https://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://127.0.0.1:3000",
-    "null",
-):
-    if _o not in ALLOWED_ORIGINS:
-        ALLOWED_ORIGINS.append(_o)
 
 _LLM_KEY_ENV_VARS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LLM_API_KEY")
 
@@ -519,7 +504,7 @@ def require_llm_enabled() -> None:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=["https://localhost:3000", "https://127.0.0.1:3000", "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

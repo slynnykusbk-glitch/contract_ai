@@ -390,6 +390,20 @@ PROVIDER_META = {
 }
 
 
+@app.get("/api/llm/ping")
+def llm_ping():
+    try:
+        res = PROVIDER.ping()
+        out = {
+            "status": "ok",
+            "meta": PROVIDER_META,
+            "latency_ms": res.get("latency_ms", 0),
+        }
+    except Exception as e:  # pragma: no cover - network issues
+        out = {"status": "error", "detail": str(e), "meta": PROVIDER_META}
+    return out
+
+
 class AnalyzeRequest(BaseModel):
     text: Optional[str] = None
     clause: Optional[str] = None

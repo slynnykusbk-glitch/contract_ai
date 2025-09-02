@@ -271,6 +271,23 @@
     }
   }
 
+  async function pingLLM() {
+    try {
+      var r = await callEndpoint({ method: "GET", path: "/api/llm/ping", timeoutMs: 8000 });
+      var meta = (r.body && r.body.meta) || {};
+      applyMeta(meta);
+      if (r.ok && r.body && r.body.status === "ok") {
+        toast("LLM: " + (meta.provider || "?") + "/" + (meta.model || "?") + " " + r.body.latency_ms + " ms");
+      } else {
+        toast("LLM ping error");
+      }
+      return r;
+    } catch (e) {
+      toast("LLM ping error");
+      return {};
+    }
+  }
+
   async function apiAnalyze(opts) {
     opts = opts || {};
     var text = opts.text || "";
@@ -856,6 +873,7 @@
   async function doHealthFlow() {
     txt(els.connBadge, "Conn: …");
     var r = await doHealth();
+    await pingLLM();
     // Badges are applied by callEndpoint; just echo status result here
     return r;
   }

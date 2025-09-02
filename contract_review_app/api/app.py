@@ -1391,6 +1391,40 @@ async def gpt_draft_alias(request: Request):
     return await api_gpt_draft(request)
 
 
+# --- Aliases to be robust wrt panel/client paths ---
+
+@router.get("/api/health")
+async def health_alias(response: Response):
+    return await health(response)
+
+
+@app.post("/analyze")
+def analyze_alias(req: AnalyzeRequest, request: Request):
+    return api_analyze(req, request)
+
+
+@router.post("/suggest_edits")
+async def suggest_edits_alias(
+    request: Request, response: Response, x_cid: Optional[str] = Header(None)
+):
+    return await api_suggest_edits(request, response, x_cid)
+
+
+@app.get("/llm/ping")
+def llm_ping_alias():
+    return llm_ping()
+
+
+@router.post("/api/gpt_draft")
+async def gpt_draft_underscore_alias(request: Request):
+    return await api_gpt_draft(request)
+
+
+@router.post("/gpt-draft")
+async def gpt_draft_plain_alias(request: Request):
+    return await api_gpt_draft(request)
+
+
 @router.post("/api/calloff/validate")
 async def api_calloff_validate(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
@@ -1558,6 +1592,19 @@ panel_app.mount(
     "/", StaticFiles(directory=_panel_static_dir(), html=True), name="panel-static"
 )
 app.mount("/panel", panel_app)
+
+
+@app.on_event("startup")
+async def _log_routes_on_startup():
+    try:
+        print("\n[ROUTES at startup]")
+        for r in app.routes:
+            path = getattr(r, "path", "?")
+            methods = getattr(r, "methods", set())
+            print(f"  {path}  {sorted(list(methods))}")
+        print("[/ROUTES]\n")
+    except Exception:
+        pass
 
 
 # --------------------------------------------------------------------

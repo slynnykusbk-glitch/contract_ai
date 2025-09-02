@@ -183,6 +183,11 @@
       s = s.replace(/^http:\/\/(127\.0\.0\.1|localhost)(:9443)(\/|$)/, "https://$1$2$3");
       return s.replace(/\/+$/, "");
     }
+    function joinUrl(base, path){
+      if (!base) throw new Error("backend base URL is empty");
+      if (!path.startsWith("/")) path = "/" + path;
+      return base.replace(/\/+$/, "") + path;
+    }
     function saveBase(){ try{ localStorage.setItem(LS_KEY, document.getElementById("backendInput").value.trim()); }catch{} }
     function loadBase(){
       let v = localStorage.getItem(LS_KEY) || document.getElementById("backendInput").value || "https://127.0.0.1:9443";
@@ -230,10 +235,16 @@
       setJSON("resp", r.body);
     }
 
+    function onClick(id, handler){
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('click', handler);
+    }
+
     async function callEndpoint({name, method, path, body, dynamicPathFn}) {
       const base = normBase(document.getElementById("backendInput").value);
       if (!base) { alert("Please enter backend URL"); return { error:true }; }
-      const url = base + (dynamicPathFn ? dynamicPathFn() : path);
+      const url = joinUrl(base, dynamicPathFn ? dynamicPathFn() : path);
       const headers = { "content-type": "application/json", "x-cid": clientCid, "x-schema-version": "1.3" };
       const t0 = performance.now();
       let resp, json;
@@ -430,17 +441,17 @@
     }
 
     // ---------------------- init & events ----------------------
-    document.getElementById("saveBtn").addEventListener("click", () => { saveBase(); alert("Saved"); });
-    document.getElementById("runAllBtn").addEventListener("click", runAll);
-    document.getElementById("pingBtn").addEventListener("click", pingLLM);
-    document.getElementById("btnHealth").addEventListener("click", testHealth);
-    document.getElementById("btnAnalyze").addEventListener("click", testAnalyze);
-    document.getElementById("btnDraft").addEventListener("click", testDraft);
-    document.getElementById("btnSummary").addEventListener("click", testSummary);
-    document.getElementById("btnSuggest").addEventListener("click", testSuggest);
-    document.getElementById("btnQA").addEventListener("click", testQA);
-    document.getElementById("btnCalloff").addEventListener("click", testCalloff);
-    document.getElementById("btnTrace").addEventListener("click", testTrace);
+    onClick("saveBtn", () => { saveBase(); alert("Saved"); });
+    onClick("runAllBtn", runAll);
+    onClick("pingBtn", pingLLM);
+    onClick("btnHealth", testHealth);
+    onClick("btnAnalyze", testAnalyze);
+    onClick("btnDraft", testDraft);
+    onClick("btnSummary", testSummary);
+    onClick("btnSuggest", testSuggest);
+    onClick("btnQA", testQA);
+    onClick("btnCalloff", testCalloff);
+    onClick("btnTrace", testTrace);
 
     // Load defaults on first paint
     window.addEventListener("DOMContentLoaded", () => {

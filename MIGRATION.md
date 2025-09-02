@@ -274,3 +274,31 @@ Example response:
   "meta": {"provider": "mock", "model": "mock"}
 }
 ```
+
+## ENV matrix
+
+The Azure client now reads configuration from multiple environment variables. The
+following matrix shows the accepted names:
+
+| Setting   | Variables (priority order)                                  |
+|-----------|-------------------------------------------------------------|
+| endpoint  | `AZURE_OPENAI_ENDPOINT`                                     |
+| version   | `AZURE_OPENAI_API_VERSION`                                  |
+| deployment| `AZURE_OPENAI_DEPLOYMENT`                                   |
+| API key   | `AZURE_OPENAI_KEY` → `AZURE_OPENAI_API_KEY` → `OPENAI_API_KEY` |
+
+### curl examples
+
+```bash
+curl -s -X POST localhost:8000/api/gpt-draft \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"Example clause.","profile":"smart"}'
+
+curl -s -X POST localhost:8000/api/suggest_edits \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"Confidential info"}'
+
+curl -s -X POST localhost:8000/api/qa-recheck \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"Hello"}'
+```

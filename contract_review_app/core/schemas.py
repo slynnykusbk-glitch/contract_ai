@@ -990,6 +990,7 @@ class DraftIn(AppBaseModel):
     mode: DraftMode = "friendly"
     jurisdiction: Optional[str] = None
     constraints: Optional[Dict[str, Any]] = None
+    profile: Optional[Literal["smart", "vanilla"]] = None
 
     @model_validator(mode="after")
     def _require_text_or_analysis(self):
@@ -1089,6 +1090,7 @@ class SuggestIn(AppBaseModel):
     text: str
     mode: DraftMode = "friendly"
     top_k: int = Field(default=3, ge=1, le=10)
+    profile: Optional[Literal["smart", "vanilla"]] = None
 
     @model_validator(mode="after")
     def _validate_requirements(self):
@@ -1146,6 +1148,7 @@ class QARecheckIn(AppBaseModel):
     document_name: Optional[str] = None
     text: str
     applied_changes: List[TextPatch] = Field(default_factory=list)
+    profile: Optional[Literal["smart", "vanilla"]] = None
 
     @model_validator(mode="after")
     def _validate_text(self):

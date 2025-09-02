@@ -21,15 +21,19 @@ from .clients.mock_client import MockClient
 def get_client(provider: str, cfg: LLMConfig) -> BaseClient:
     if provider == "openai" and cfg.valid:
         from .clients.openai_client import OpenAIClient
+
         return OpenAIClient(cfg)
     if provider == "azure" and cfg.valid:
         from .clients.azure_client import AzureClient
+
         return AzureClient(cfg)
     if provider == "anthropic" and cfg.valid:
         from .clients.anthropic_client import AnthropicClient
+
         return AnthropicClient(cfg)
     if provider == "openrouter" and cfg.valid:
         from .clients.openrouter_client import OpenRouterClient
+
         return OpenRouterClient(cfg)
     return MockClient(cfg.model_draft)
 
@@ -68,7 +72,9 @@ class LLMService:
         to = timeout or self.cfg.timeout_s
         return self.client.draft(prompt, max_t, temp, to)
 
-    def suggest(self, text: str, risk_level: str, timeout: Optional[float] = None) -> SuggestResult:
+    def suggest(
+        self, text: str, risk_level: str, timeout: Optional[float] = None
+    ) -> SuggestResult:
         prompt_tpl = self._read_prompt("suggest")
         prompt = prompt_tpl.format(text=text, risk=risk_level)
         to = timeout or self.cfg.timeout_s
@@ -80,14 +86,26 @@ class LLMService:
         allowed = {"text", "rules"}
         unknown = fields - allowed
         if unknown:
-            raise ValueError(f"qa_prompt_invalid: unknown placeholders={','.join(sorted(unknown))}")
+            raise ValueError(
+                f"qa_prompt_invalid: unknown placeholders={','.join(sorted(unknown))}"
+            )
         return tpl.format(**{k: kw.get(k, "") for k in allowed})
 
-    def qa(self, text: str, rules_context: Dict[str, Any], timeout: Optional[float] = None) -> QAResult:
+    def qa(
+        self,
+        text: str,
+        rules_context: Dict[str, Any],
+        timeout: Optional[float] = None,
+        profile: str = "smart",
+    ) -> QAResult:
+        if profile == "smart" and not rules_context:
+            raise ValueError("qa_prompt_invalid: missing rules context")
         prompt_tpl = self._read_prompt("qa")
         prompt = self._safe_format_prompt(prompt_tpl, text=text, rules=rules_context)
         to = timeout or self.cfg.timeout_s
-        return self.client.qa_recheck(prompt, to)
+        result = self.client.qa_recheck(prompt, to)
+        result.meta["profile"] = profile
+        return result
 
 
 def create_llm_service() -> LLMService:

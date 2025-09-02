@@ -214,7 +214,13 @@ _RATE_BUCKETS: dict[str, list[float]] = {}
 LEARNING_LOG_PATH = Path(__file__).resolve().parents[2] / "var" / "learning_logs.jsonl"
 
 
-_LLM_KEY_ENV_VARS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LLM_API_KEY")
+_LLM_KEY_ENV_VARS = (
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "LLM_API_KEY",
+    "AZURE_OPENAI_KEY",
+    "AZURE_OPENAI_API_KEY",
+)
 
 
 def _has_llm_keys() -> bool:
@@ -373,6 +379,30 @@ PROVIDER_META = {
     "provider": getattr(PROVIDER, "name", "?"),
     "model": getattr(PROVIDER, "model", "?"),
 }
+if hasattr(PROVIDER, "endpoint_hint"):
+    PROVIDER_META["ep"] = getattr(PROVIDER, "endpoint_hint")
+if hasattr(PROVIDER, "deployment_hint"):
+    PROVIDER_META["dep"] = getattr(PROVIDER, "deployment_hint")
+
+
+def _provider_chat(
+    messages: List[Dict[str, str]], cid: str, **opts: Any
+) -> Dict[str, Any]:
+    """Invoke provider.chat with basic retry and trace support."""
+    _trace_push(
+        cid, {"ep": PROVIDER_META.get("ep", ""), "dep": PROVIDER_META.get("dep", "")}
+    )
+    tries = 2
+    last_err: Exception | None = None
+    for _ in range(tries):
+        try:
+            res = PROVIDER.chat(messages, **opts)
+            usage = res.get("usage") or {}
+            _trace_push(cid, {"llm_tokens": usage.get("total_tokens", 0)})
+            return res
+        except Exception as exc:  # pragma: no cover - network issues
+            last_err = exc
+    raise last_err or RuntimeError("LLM call failed")
 
 
 @app.get("/api/llm/ping")
@@ -1172,6 +1202,7 @@ async def api_qa_recheck(
 
     text = (payload or {}).get("text", "")
     rules = (payload or {}).get("rules", {})
+    profile = (payload or {}).get("profile", "smart")
     cid = x_cid or _sha256_hex(str(t0) + text[:128])
     meta = LLM_CONFIG.meta()
     if not text.strip():
@@ -1201,6 +1232,11 @@ async def api_qa_recheck(
         or not _has_llm_keys()
     )
     if mock_mode:
+        if profile == "smart" and not rules:
+            meta["profile"] = "vanilla"
+            _trace_push(cid, {"qa_profile_fallback": "vanilla"})
+        else:
+            meta["profile"] = profile if profile in ("smart", "vanilla") else "vanilla"
         _set_llm_headers(response, meta)
         _set_std_headers(
             response,
@@ -1220,9 +1256,19 @@ async def api_qa_recheck(
             "status_to": "OK",
             "residual_risks": [{"code": "demo", "message": "demo"}],
             "deltas": {},
+            "meta": meta,
         }
     try:
-        result = LLM_SERVICE.qa(text, rules, LLM_CONFIG.timeout_s)
+        result = LLM_SERVICE.qa(text, rules, LLM_CONFIG.timeout_s, profile=profile)
+    except ValueError:
+        if profile == "smart":
+            _trace_push(cid, {"qa_profile_fallback": "vanilla"})
+            result = LLM_SERVICE.qa(
+                text, rules, LLM_CONFIG.timeout_s, profile="vanilla"
+            )
+            profile = "vanilla"
+        else:
+            raise
     except ProviderTimeoutError as ex:
         resp = JSONResponse(
             status_code=503,
@@ -1336,14 +1382,28 @@ async def api_suggest_edits(
     if not text.strip():
         raise HTTPException(status_code=422, detail="text required")
 
+    profile = (payload or {}).get("profile", "smart")
     cid = x_cid or _sha256_hex("suggest" + str(_now_ms()))
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
-    _set_llm_headers(response, PROVIDER_META)
-    result = PROVIDER.suggest(text)
+    res = _provider_chat(
+        [
+            {
+                "role": "system",
+                "content": "You are a contract drafting assistant. Return only the revised clause.",
+            },
+            {
+                "role": "user",
+                "content": f"Revise the following for clarity and compliance, keep structure:\n{text}",
+            },
+        ],
+        cid,
+    )
+    meta = {**PROVIDER_META, "usage": res.get("usage", {}), "profile": profile}
+    _set_llm_headers(response, meta)
     return {
         "status": "ok",
-        "proposed_text": result["proposed_text"],
-        "meta": PROVIDER_META,
+        "proposed_text": res.get("content", ""),
+        "meta": meta,
     }
 
 
@@ -1359,15 +1419,27 @@ async def api_gpt_draft(request: Request):
         raise HTTPException(status_code=400, detail="Request body is not valid JSON")
 
     prompt = (payload or {}).get("prompt") or (payload or {}).get("text") or ""
+    profile = (payload or {}).get("profile", "smart")
     if not prompt.strip():
         raise HTTPException(status_code=400, detail="prompt is required")
 
-    result = PROVIDER.draft(prompt)
-    resp = JSONResponse(
-        {"status": "ok", "draft": {"text": result["text"]}, "meta": PROVIDER_META}
+    cid = request.headers.get("x-cid") or _sha256_hex("draft" + str(_now_ms()))
+    res = _provider_chat(
+        [{"role": "user", "content": f"Draft a concise clause revision:\n{prompt}"}],
+        cid,
     )
-    apply_std_headers(resp, request, started)
-    _set_llm_headers(resp, PROVIDER_META)
+    meta = {**PROVIDER_META, "usage": res.get("usage", {}), "profile": profile}
+    resp = JSONResponse(
+        {"status": "ok", "draft": {"text": res.get("content", "")}, "meta": meta}
+    )
+    _set_std_headers(
+        resp,
+        cid=cid,
+        xcache="miss",
+        schema=SCHEMA_VERSION,
+        latency_ms=int((time.perf_counter() - started) * 1000),
+    )
+    _set_llm_headers(resp, meta)
     return resp
 
 
@@ -1377,6 +1449,7 @@ async def gpt_draft_alias(request: Request):
 
 
 # --- Aliases to be robust wrt panel/client paths ---
+
 
 @router.get("/api/health")
 async def health_alias(response: Response):

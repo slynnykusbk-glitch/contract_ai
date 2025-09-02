@@ -19,6 +19,7 @@ class LLMConfig:
     azure_api_key: Optional[str] = None
     azure_endpoint: Optional[str] = None
     azure_deployment: Optional[str] = None
+    azure_api_version: Optional[str] = None
     anthropic_api_key: Optional[str] = None
     anthropic_base: str = "https://api.anthropic.com/v1"
     openrouter_api_key: Optional[str] = None
@@ -56,14 +57,23 @@ def load_llm_config() -> LLMConfig:
         cfg.model_qa = os.getenv("MODEL_QA", cfg.model_draft)
         required = ["OPENAI_API_KEY"]
     elif provider == "azure":
-        cfg.azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+        cfg.azure_api_key = (
+            os.getenv("AZURE_OPENAI_KEY")
+            or os.getenv("AZURE_OPENAI_API_KEY")
+            or os.getenv("OPENAI_API_KEY")
+        )
         cfg.azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
         cfg.azure_deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+        cfg.azure_api_version = os.getenv("AZURE_OPENAI_API_VERSION")
         default_model = cfg.azure_deployment or ""
         cfg.model_draft = os.getenv("MODEL_DRAFT", default_model)
         cfg.model_suggest = os.getenv("MODEL_SUGGEST", cfg.model_draft)
         cfg.model_qa = os.getenv("MODEL_QA", cfg.model_draft)
-        required = ["AZURE_OPENAI_API_KEY", "AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_DEPLOYMENT"]
+        required = [
+            "AZURE_OPENAI_ENDPOINT",
+            "AZURE_OPENAI_DEPLOYMENT",
+            "AZURE_OPENAI_API_VERSION",
+        ]
     elif provider == "anthropic":
         cfg.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
         cfg.anthropic_base = os.getenv("ANTHROPIC_BASE", cfg.anthropic_base)
@@ -89,6 +99,8 @@ def load_llm_config() -> LLMConfig:
 
     # validation
     missing = [name for name in required if not os.getenv(name)]
+    if provider == "azure" and not cfg.azure_api_key:
+        missing.append("AZURE_OPENAI_KEY")
     cfg.missing = missing
     cfg.valid = (provider == "mock") or not missing
     if provider == "mock":

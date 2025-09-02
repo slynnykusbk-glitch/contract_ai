@@ -1,25 +1,39 @@
-from __future__ import annotations
+"""Lightweight LLM providers used by API layer tests.
+
+This module intentionally avoids heavy dependencies and implements just enough
+functionality for the mock and Azure backed providers.  For the Azure client we
+now support a unified environment variable matrix and expose a generic ``chat``
+method that is used by both ``/api/gpt-draft`` and ``/api/suggest_edits``
+endpoints.
+"""
 
 import os
 import requests
-from typing import Dict, Any
+from typing import Any, Dict, List
 
 
 class ProviderError(RuntimeError): ...
 
 
 class MockProvider:
+    """Deterministic mock used in tests."""
+
     name = "mock"
     model = "mock"
 
+    def chat(self, messages: List[Dict[str, str]], **opts: Any) -> Dict[str, Any]:
+        text = "\n".join(m.get("content", "") for m in messages)
+        usage = {"total_tokens": len(text.split())}
+        return {"content": f"[MOCK] {text}", "usage": usage}
+
+    # Backwards compatibility helpers
     def draft(self, prompt: str) -> Dict[str, Any]:
-        return {"text": f"[MOCK DRAFT]\n{prompt}"}
+        res = self.chat([{"role": "user", "content": prompt}])
+        return {"text": res["content"], "usage": res["usage"]}
 
     def suggest(self, text: str) -> Dict[str, Any]:
-        # trivial, deterministic
-        return {
-            "proposed_text": text.replace("Confidential", "Confidential (as defined)")
-        }
+        res = self.chat([{"role": "user", "content": text}])
+        return {"proposed_text": res["content"], "usage": res["usage"]}
 
     def ping(self):
         return {"ok": True}
@@ -30,7 +44,11 @@ class AzureProvider:
         ep = os.getenv("AZURE_OPENAI_ENDPOINT")
         dep = os.getenv("AZURE_OPENAI_DEPLOYMENT")
         ver = os.getenv("AZURE_OPENAI_API_VERSION")
-        key = os.getenv("AZURE_OPENAI_API_KEY")
+        key = (
+            os.getenv("AZURE_OPENAI_KEY")
+            or os.getenv("AZURE_OPENAI_API_KEY")
+            or os.getenv("OPENAI_API_KEY")
+        )
         if not (ep and dep and ver and key):
             raise ProviderError("Azure env is incomplete")
         self.endpoint = ep.rstrip("/")
@@ -39,14 +57,17 @@ class AzureProvider:
         self.key = key
         self.name = "azure"
         self.model = dep
+        # for trace diagnostics we expose first characters only
+        self.endpoint_hint = self.endpoint[:2]
+        self.deployment_hint = self.deployment[:2]
 
-    def _chat(
+    def chat(
         self,
-        messages: list[dict],
+        messages: List[Dict[str, str]],
         temperature: float = 0.0,
         max_tokens: int = 1024,
         timeout: int = 30,
-    ):
+    ) -> Dict[str, Any]:
         url = f"{self.endpoint}/openai/deployments/{self.deployment}/chat/completions"
         r = requests.post(
             f"{url}?api-version={self.api_version}",
@@ -61,16 +82,18 @@ class AzureProvider:
         if not r.ok:
             raise ProviderError(f"Azure HTTP {r.status_code}: {r.text[:300]}")
         data = r.json()
-        return data["choices"][0]["message"]["content"]
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        usage = data.get("usage") or {}
+        return {"content": content, "usage": usage}
 
-    def draft(self, prompt: str) -> Dict[str, Any]:
-        out = self._chat(
+    def draft(self, prompt: str) -> Dict[str, Any]:  # backwards compat
+        res = self.chat(
             [{"role": "user", "content": f"Draft a concise clause revision:\n{prompt}"}]
         )
-        return {"text": out}
+        return {"text": res["content"], "usage": res["usage"]}
 
     def suggest(self, text: str) -> Dict[str, Any]:
-        out = self._chat(
+        res = self.chat(
             [
                 {
                     "role": "system",
@@ -82,14 +105,14 @@ class AzureProvider:
                 },
             ]
         )
-        return {"proposed_text": out}
+        return {"proposed_text": res["content"], "usage": res["usage"]}
 
     def ping(self):
         # minimal 1-token chat; 5s timeout
         import time
 
         t0 = time.perf_counter()
-        _ = self._chat(
+        _ = self.chat(
             [{"role": "user", "content": "Reply with: pong"}],
             temperature=0.0,
             max_tokens=1,

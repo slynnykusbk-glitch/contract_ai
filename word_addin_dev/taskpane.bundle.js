@@ -233,6 +233,11 @@
 
   function setLLMMeta(meta){ applyMeta(meta); }
 
+  function apiUrl(p){
+    var base = backend();
+    return base + (p.startsWith('/') ? p : '/' + p);
+  }
+
   // Unified network wrapper
   async function callEndpoint(opts){
     opts = opts || {};
@@ -244,7 +249,7 @@
     var ctrl = new AbortController();
     var to = setTimeout(function(){ ctrl.abort("timeout"); }, timeoutMs);
     var build = window.__BUILD_ID__ || "dev";
-    var res = await fetch(path, {
+    var res = await fetch(apiUrl(path), {
       method: method,
       headers: Object.assign({ "Content-Type": "application/json", "X-Client-Build": build }, headers),
       body: body ? JSON.stringify(body) : undefined,

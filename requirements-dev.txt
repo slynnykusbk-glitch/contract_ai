@@ -7,3 +7,4 @@ SQLAlchemy>=2.0,<3
 numpy>=1.26
 cryptography>=42
 requests
+python-dotenv==1.0.1

@@ -19,9 +19,9 @@
   <SupportUrl DefaultValue="https://localhost:3000/help.html"/>
   <AppDomains>
     <AppDomain>https://localhost:3000</AppDomain>
-    <AppDomain>https://localhost:3000</AppDomain>
+    <AppDomain>https://127.0.0.1:3000</AppDomain>
     <AppDomain>https://localhost:9443</AppDomain>
-    <AppDomain>https://localhost:9443</AppDomain>
+    <AppDomain>https://127.0.0.1:9443</AppDomain>
   </AppDomains>
 
   <Hosts>

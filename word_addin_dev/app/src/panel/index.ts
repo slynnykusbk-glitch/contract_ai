@@ -17,10 +17,16 @@ async function callApi(endpoint: string) {
   }
 }
 
-(document.getElementById('btnAnalyze') as HTMLButtonElement).onclick = () => callApi('/api/analyze');
-(document.getElementById('btnSummary') as HTMLButtonElement).onclick = () => callApi('/api/summary');
-(document.getElementById('btnSuggest') as HTMLButtonElement).onclick = () => callApi('/api/suggest_edits');
-(document.getElementById('btnQA') as HTMLButtonElement).onclick = () => callApi('/api/qa-recheck');
+function onClick(id: string, handler: (ev: MouseEvent) => any) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('click', handler);
+}
+
+onClick('btnAnalyze', () => callApi('/api/analyze'));
+onClick('btnSummary', () => callApi('/api/summary'));
+onClick('btnSuggest', () => callApi('/api/suggest_edits'));
+onClick('btnQA', () => callApi('/api/qa-recheck'));
 
 async function pingHealth() {
   const badge = document.getElementById('health');

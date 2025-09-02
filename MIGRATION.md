@@ -254,3 +254,23 @@ For Azure integration set the following environment variables:
 * optional `AZURE_OPENAI_API_VERSION`
 
 The `/api/gpt-draft` endpoint resolves the provider lazily via `provider_from_env()`.
+
+# Block B8-S6 — `/api/analyze` usage
+
+Example request:
+
+```bash
+curl -s -X POST localhost:8000/api/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"Hello world"}'
+```
+
+Example response:
+
+```json
+{
+  "status": "ok",
+  "analysis": {"findings": []},
+  "meta": {"provider": "mock", "model": "mock"}
+}
+```

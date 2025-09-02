@@ -4,6 +4,8 @@ import subprocess
 import sys
 import pytest
 
+pytestmark = pytest.mark.slow
+
 
 def _run_doctor(tmp_path, monkeypatch):
     out_dir = tmp_path / "diag"

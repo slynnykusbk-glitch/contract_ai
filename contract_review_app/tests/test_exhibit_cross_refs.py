@@ -17,10 +17,11 @@ TEXT_MISSING_M = (
     "The Parties shall comply with UK GDPR."
 )
 
+
 def test_analyze_flags_missing_exhibit_m():
     r = client.post("/api/analyze", json={"text": TEXT_MISSING_M})
     assert r.status_code == 200
-    doc = r.json()["document"]
+    doc = r.json().get("analysis", {}).get("document", {})
     analyses = doc.get("analyses", [])
     ex_m = next(a for a in analyses if a["clause_type"] == "exhibits_M_present")
     assert ex_m["status"] == "FAIL"
@@ -35,10 +36,11 @@ def test_analyze_flags_missing_exhibit_m():
     assert out["status"] == "ok"
     assert isinstance(out.get("proposed_text"), str)
 
+
 def test_analyze_passes_when_exhibits_present():
     r = client.post("/api/analyze", json={"text": TEXT_POSITIVE})
     assert r.status_code == 200
-    analyses = r.json()["document"].get("analyses", [])
+    analyses = r.json().get("analysis", {}).get("document", {}).get("analyses", [])
     ex_l = next(a for a in analyses if a["clause_type"] == "exhibits_L_present")
     ex_m = next(a for a in analyses if a["clause_type"] == "exhibits_M_present")
     assert ex_l["status"] == "OK"

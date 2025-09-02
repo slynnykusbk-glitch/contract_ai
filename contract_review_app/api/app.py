@@ -33,7 +33,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
@@ -46,6 +46,8 @@ from .models import (
     ProblemDetail,
     Finding,
     Span,
+    Segment,
+    SearchHit,
     SCHEMA_VERSION,
 )
 
@@ -388,6 +390,20 @@ PROVIDER_META = {
 }
 
 
+class AnalyzeRequest(BaseModel):
+    text: Optional[str] = None
+    clause: Optional[str] = None
+    body: Optional[str] = None
+    language: Optional[str] = None
+
+
+class AnalyzeResponse(BaseModel):
+    status: str
+    analysis: Dict[str, Any]
+
+    model_config = ConfigDict(extra="allow")
+
+
 def _custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
@@ -401,6 +417,16 @@ def _custom_openapi():
     schemas["ProblemDetail"] = ProblemDetail.model_json_schema(
         ref_template="#/components/schemas/{model}"
     )
+    schemas["AnalyzeRequest"] = AnalyzeRequest.model_json_schema(
+        ref_template="#/components/schemas/{model}"
+    )
+    schemas["AnalyzeResponse"] = AnalyzeResponse.model_json_schema(
+        ref_template="#/components/schemas/{model}"
+    )
+    for _m in [Finding, Span, Segment, SearchHit, Citation]:
+        schemas[_m.__name__] = _m.model_json_schema(
+            ref_template="#/components/schemas/{model}"
+        )
     headers = components.setdefault("headers", {})
     headers["XSchemaVersion"] = {
         "schema": {"type": "string"},
@@ -999,22 +1025,58 @@ async def api_trace_index(response: Response):
     return {"status": "ok", "cids": list(_TRACE.keys())}
 
 
-@app.post("/api/analyze")
-def api_analyze(payload: dict, request: Request):
-    text = (
-        payload.get("text") or payload.get("clause") or payload.get("body") or ""
-    ).strip()
-    if not text:
+@app.post("/api/analyze", response_model=AnalyzeResponse)
+def api_analyze(req: AnalyzeRequest, request: Request):
+    txt = req.text or req.clause or req.body or ""
+    txt = txt.strip()
+    if not txt:
         raise HTTPException(status_code=422, detail="text is empty")
-    analysis = analyze_document(text)
-    out = {
-        "status": "ok",
-        "analysis": analysis if isinstance(analysis, dict) else {"findings": analysis},
+    debug = request.query_params.get("debug")
+
+    cid = compute_cid(request)
+    cached = IDEMPOTENCY_CACHE.get(cid)
+    if cached is not None:
+        resp = JSONResponse(cached)
+        _set_std_headers(resp, cid=cid, xcache="hit", schema=SCHEMA_VERSION)
+        return resp
+
+    # existing internal function
+    analysis = _analyze_document(txt)
+    if asyncio.iscoroutine(analysis):
+        analysis = asyncio.run(analysis)
+    if str(debug) == "1" and isinstance(analysis, dict):
+        analysis["findings"] = [f.model_dump() for f in _make_basic_findings(txt)]
+        analysis["issues"] = analysis["findings"].copy()
+    if os.getenv("CONTRACTAI_INTAKE_NORMALIZE") == "1" and isinstance(analysis, dict):
+        analysis["segments"] = [
+            {
+                "span": seg["span"],
+                "text": txt[seg["span"]["start"] : seg["span"]["end"]],
+                "lang": seg["lang"],
+            }
+            for seg in _make_segments(txt)
+        ]
+
+    # status passthrough (do not force to "ok")
+    if isinstance(analysis, dict):
+        status_out = str(analysis.get("status", "ok")).upper()
+        analysis_out = analysis
+        analysis_out["status"] = status_out
+    else:
+        status_out = "OK"
+        analysis_out = {"findings": analysis, "status": status_out}
+
+    envelope = {
+        "status": status_out,
+        "analysis": analysis_out,
         "meta": PROVIDER_META,
+        "schema_version": SCHEMA_VERSION,
     }
-    if "findings" in out["analysis"]:
-        out["findings"] = out["analysis"]["findings"]
-    return out
+    IDEMPOTENCY_CACHE.set(cid, envelope)
+
+    resp = JSONResponse(envelope)
+    _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+    return resp
 
 
 # --------------------------------------------------------------------

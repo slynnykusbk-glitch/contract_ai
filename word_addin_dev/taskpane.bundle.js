@@ -1301,14 +1301,16 @@
     });
   }
 
-  function boot() {
-    wire();
-    ensureOfficeBadge();
-    status("📦 Bundle ready (" + BUILD + "). Set backend and click Test.");
-    try { window.__CAI_WIRED__ = "ready"; } catch (_) {}
-  }
+    function boot() {
+      ensureOfficeBadge();
+      status("📦 Bundle ready (" + BUILD + "). Set backend and click Test.");
+      try { window.__CAI_WIRED__ = "ready"; } catch (_) {}
+    }
 
-  document.addEventListener("DOMContentLoaded", boot, { once: true });
+    document.addEventListener("DOMContentLoaded", function(){
+      try { wire(); } catch (e) { status("wire() failed: " + e); }
+      try { boot(); } catch (e) { status("boot() failed: " + e); }
+    }, { once: true });
 
   window.addEventListener("error", function (e) {
     try { var n = $("console"); if (n) { n.appendChild(document.createTextNode("[JS ERROR] " + (e.message || e.error || e) + "\n")); n.scrollTop = n.scrollHeight; } } catch (_) {}
@@ -1317,24 +1319,7 @@
     try { var n = $("console"); if (n) { n.appendChild(document.createTextNode("[PROMISE REJECTION] " + (e.reason && (e.reason.message || e.reason)) + "\n")); n.scrollTop = n.scrollHeight; } } catch (_) {}
   });
 
-  document.getElementById("btnAnalyze").onclick = async function(){
-    var text = await resolveTextFromUI();
-    if(!text) return showErr("text is empty");
-    var r = await callEndpoint({ method:"POST", path:"/api/analyze", body:{ text:text } });
-    if(r.meta) setLLMMeta(r.meta);
-    renderAnalyze(r);
-  };
-
-  document.getElementById("btnSuggest").onclick = async function(){
-    var text = await resolveTextFromUI();
-    if(!text) return showErr("text is empty");
-    var r = await callEndpoint({ method:"POST", path:"/api/suggest_edits", body:{ text:text, mode:"friendly" } });
-    if(r.meta) setLLMMeta(r.meta);
-    window._orig = text; window._prop = r.proposed_text;
-    renderDiff(window._orig, window._prop);
-  };
-
-})();
+  })();
 
 (function(){
   function attachSafeFill(){

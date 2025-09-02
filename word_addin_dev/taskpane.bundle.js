@@ -231,94 +231,43 @@
     }
   }
 
-  // Unified network wrapper (per passport)
-  async function callEndpoint(opts) {
+  function setLLMMeta(meta){ applyMeta(meta); }
+
+  // Unified network wrapper
+  async function callEndpoint(opts){
     opts = opts || {};
     var method = (opts.method || "GET").toUpperCase();
     var path = String(opts.path || "/");
     var body = opts.body || null;
-    var timeoutMs = opts.timeoutMs || (method === "GET" ? 8000 : 30000);
-
-    var base = backend();
-    if (!base) throw new Error("backend not set");
-
-    // Anti-cache for GET: add ?t=now
-    var url = base + path;
-    if (method === "GET") {
-      url += (url.indexOf("?") === -1 ? "?" : "&") + "t=" + Date.now();
-    }
-
-    return new Promise(function (resolve, reject) {
-      var x = new XMLHttpRequest();
-      var t0 = (performance && performance.now) ? performance.now() : Date.now();
-      var payload = (method === "POST" || method === "PUT" || method === "PATCH") ? JSON.stringify(body || {}) : null;
-
-      x.open(method, url, true);
-      x.setRequestHeader("x-panel-build", BUILD);
-      x.setRequestHeader("x-manifest-src", _manifestSrc());
-      x.setRequestHeader("x-cid", window.__CLIENT_CID__ || "");
-      x.setRequestHeader("x-schema-version", "1.3");
-      if (payload != null) x.setRequestHeader("Content-Type", "application/json");
-      // pass-through custom headers (e.g., x-idempotency-key)
-      if (opts.headers && typeof opts.headers === "object") {
-        for (var hk in opts.headers) {
-          if (Object.prototype.hasOwnProperty.call(opts.headers, hk)) {
-            try { x.setRequestHeader(hk, String(opts.headers[hk])); } catch (_) {}
-          }
-        }
-      }
-
-      x.timeout = timeoutMs;
-      x.onreadystatechange = function () {
-        if (x.readyState === 4) {
-          var t1 = (performance && performance.now) ? performance.now() : Date.now();
-          var headers = readRespHeaders(x);
-          var text = x.responseText || "";
-          var json = null; try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
-          var latency = Math.max(0, Math.round(t1 - t0));
-          applyHeadersToBadgesAndStore(headers, latency);
-          state.cid = headers.cid || state.cid;
-          console.info("[HTTP]", method, path, "→", x.status, "cid=", headers.cid || "—", "latency=", latency + "ms", "schema=", headers.schema || "—");
-          if (!(x.status >= 200 && x.status < 300) || (json && json.status === "error")) {
-            var tmsg = json && (json.title || json.error || json.error_code || "");
-            var dmsg = json && (json.detail || json.message || "");
-            if (tmsg || dmsg) console.warn("[ERROR]", tmsg, dmsg);
-          }
-          recordDoctor({
-            method: method, path: path, status: x.status, ok: (x.status >= 200 && x.status < 300),
-            cid: headers.cid || (window.__CLIENT_CID__ || ""),
-            latencyMs: latency, bytes: (payload ? payload.length : 0)
-          });
-          resolve({
-            ok: (x.status >= 200 && x.status < 300),
-            status: x.status,
-            json: json,
-            headers: headers,
-            latencyMs: latency,
-            xcid: headers.cid,
-            xcache: headers.xcache,
-            xschema: headers.schema
-          });
-        }
-      };
-      x.onerror = function () { reject(new Error("network error")); };
-      x.ontimeout = function () { reject(new Error("timeout")); };
-      x.send(payload);
+    var timeoutMs = opts.timeoutMs != null ? opts.timeoutMs : 30000;
+    var headers = opts.headers || {};
+    var ctrl = new AbortController();
+    var to = setTimeout(function(){ ctrl.abort("timeout"); }, timeoutMs);
+    var build = window.__BUILD_ID__ || "dev";
+    var res = await fetch(path, {
+      method: method,
+      headers: Object.assign({ "Content-Type": "application/json", "X-Client-Build": build }, headers),
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctrl.signal
     });
+    clearTimeout(to);
+    var data = await res.json().catch(function(){ return {}; });
+    if (!res.ok) throw new Error("HTTP " + res.status + ": " + (data.detail || res.statusText));
+    if (data.status && data.status !== "ok") throw new Error(data.detail || "API error");
+    return data;
   }
 
   // ===== API functions (contracts) =====
 
   async function doHealth() {
-    var res;
     try {
-      res = await callEndpoint({ method: "GET", path: "/health", timeoutMs: 8000 });
-      txt(els.connBadge, "Conn: " + res.status);
+      var res = await callEndpoint({ method: "GET", path: "/health", timeoutMs: 8000 });
+      txt(els.connBadge, "Conn: 200");
       return res;
     } catch (e) {
       txt(els.connBadge, "Conn: 0");
       status("✖ Health failed: " + (e && e.message ? e.message : e));
-      return { ok: false, status: 0, json: null, headers: {} };
+      return {};
     }
   }
 
@@ -458,6 +407,14 @@
 
   function readSelection() { return getSelectionText(); }
   function readWholeDoc() { return getWholeDocText(); }
+
+  async function resolveTextFromUI(){
+    var ta = document.getElementById("input");
+    var text = ta && ta.value ? ta.value.trim() : "";
+    if (!text) text = await getSelectionText();
+    if (!text) text = await getWholeDocText();
+    return text.trim();
+  }
 
   async function copySelection() {
     if (!window.Word || !Word.run) { status("⚠️ Word API not available"); return; }
@@ -615,6 +572,10 @@
     if (els.rawJson) {
       try { els.rawJson.textContent = JSON.stringify(analysis, null, 2); } catch (_) { els.rawJson.textContent = "Unable to stringify analysis."; }
     }
+  }
+
+  function renderAnalyze(resp){
+    if(resp && resp.analysis) renderAnalysis(resp.analysis);
   }
 
   function pickDocType(summary) {
@@ -1333,6 +1294,23 @@
     try { var n = $("console"); if (n) { n.appendChild(document.createTextNode("[PROMISE REJECTION] " + (e.reason && (e.reason.message || e.reason)) + "\n")); n.scrollTop = n.scrollHeight; } } catch (_) {}
   });
 
+  document.getElementById("btnAnalyze").onclick = async function(){
+    var text = await resolveTextFromUI();
+    if(!text) return showErr("text is empty");
+    var r = await callEndpoint({ method:"POST", path:"/api/analyze", body:{ text:text } });
+    if(r.meta) setLLMMeta(r.meta);
+    renderAnalyze(r);
+  };
+
+  document.getElementById("btnSuggest").onclick = async function(){
+    var text = await resolveTextFromUI();
+    if(!text) return showErr("text is empty");
+    var r = await callEndpoint({ method:"POST", path:"/api/suggest_edits", body:{ text:text, mode:"friendly" } });
+    if(r.meta) setLLMMeta(r.meta);
+    window._orig = text; window._prop = r.proposed_text;
+    renderDiff(window._orig, window._prop);
+  };
+
 })();
 
 (function(){
@@ -1392,3 +1370,5 @@
     attachSafeFill();
   }
 })();
+
+window.__BUILD_ID__ = "panel-dev-" + new Date().toISOString().slice(0,10);

@@ -17,6 +17,8 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import urlparse
 from functools import partial
 
+import httpx
+
 # ---------------------------
 # MIME types (ensure .js etc.)
 # ---------------------------
@@ -249,6 +251,59 @@ class NoCacheHandler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
 
+class ProxyingHandler(NoCacheHandler):
+    BACKEND = "https://127.0.0.1:9443"
+
+    def _should_proxy(self, path: str) -> bool:
+        p = urlparse(path)
+        path_only = p.path or "/"
+        return path_only == "/health" or path_only.startswith("/api/")
+
+    def _proxy(self):
+        url = f"{self.BACKEND}{self.path}"
+        method = self.command
+        headers = {k: v for k, v in self.headers.items() if k.lower() != "host"}
+        body = None
+        if "Content-Length" in self.headers:
+            try:
+                length = int(self.headers["Content-Length"])
+                body = self.rfile.read(length)
+            except Exception:
+                body = self.rfile.read()
+        try:
+            with httpx.Client(verify=False) as client:
+                resp = client.request(method, url, headers=headers, content=body)
+        except Exception as e:
+            self.send_error(502, f"Bad gateway: {e}")
+            return
+
+        self.send_response(resp.status_code)
+        for k, v in resp.headers.items():
+            lk = k.lower()
+            if lk in ("content-length", "transfer-encoding", "connection"):
+                continue
+            self.send_header(k, v)
+        self.send_header("Content-Length", str(len(resp.content)))
+        self.end_headers()
+        if resp.content:
+            self.wfile.write(resp.content)
+
+    def do_OPTIONS(self):
+        if self._should_proxy(self.path):
+            return self._proxy()
+        return super().do_GET()
+
+    def do_GET(self):
+        if self._should_proxy(self.path):
+            return self._proxy()
+        return super().do_GET()
+
+    def do_POST(self):
+        if self._should_proxy(self.path):
+            return self._proxy()
+        self.send_error(501, "Unsupported method ('POST')")
+
+
 def _build_ssl_context(cert_file: Path, key_file: Path) -> ssl.SSLContext:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ctx.minimum_version = ssl.TLSVersion.TLSv1_2
@@ -324,7 +379,7 @@ def main(argv=None):
         sys.exit(1)
 
     # Prepare handler with fixed root
-    Handler = partial(NoCacheHandler, directory=str(root))
+    Handler = partial(ProxyingHandler, directory=str(root))
 
     # Bind HTTPS server
     try:

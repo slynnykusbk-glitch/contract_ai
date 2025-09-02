@@ -31,15 +31,13 @@ from fastapi import (
     Response,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
 from .models import (
-    AnalyzeRequest,
-    AnalyzeResponse,
     Citation,
     CitationResolveRequest,
     CitationResolveResponse,
@@ -130,7 +128,6 @@ from contract_review_app.analysis.extract_summary import extract_document_snapsh
 from contract_review_app.api.calloff_validator import validate_calloff
 
 # SSOT DTO imports
-from contract_review_app.core.schemas import AnalyzeIn
 from contract_review_app.core.citation_resolver import resolve_citation
 from contract_review_app.gpt.config import load_llm_config
 from contract_review_app.gpt.service import (
@@ -303,6 +300,10 @@ def _analyze_document(text: str) -> Dict[str, Any]:
         "document": {"analyses": doc_analyses} if doc_analyses else {},
         "summary": {"len": len(text or "")},
     }
+
+
+# expose for API handler
+analyze_document = _analyze_document
 
 
 def _finding_to_issue(f: dict) -> dict:
@@ -998,174 +999,22 @@ async def api_trace_index(response: Response):
     return {"status": "ok", "cids": list(_TRACE.keys())}
 
 
-@app.post(
-    "/api/analyze",
-    response_model=AnalyzeResponse,
-    response_model_exclude_none=True,
-)
-async def api_analyze(
-    payload: AnalyzeRequest, request: Request, x_cid: Optional[str] = Header(None)
-):
-    t0 = _now_ms()
-    try:
-        model = AnalyzeIn(**payload.model_dump())
-    except Exception as ex:
-        return _problem_response(422, "Validation error", str(ex))
-
-    cid = x_cid or _idempotency_key(
-        model.text or "", getattr(model, "policy_pack", getattr(model, "policy", None))
-    )
-
-    cached = IDEMPOTENCY_CACHE.get(cid)
-    if cached is not None:
-        resp = Response(content=cached, media_type="application/json")
-        _set_std_headers(
-            resp,
-            cid=cid,
-            xcache="hit",
-            schema=SCHEMA_VERSION,
-            latency_ms=_now_ms() - t0,
-        )
-        _set_llm_headers(resp, PROVIDER_META)
-        return resp
-
-    result = _analyze_document(model.text or "")
-    if asyncio.iscoroutine(result):  # allow async monkeypatches
-        result = await result
-    if hasattr(result, "model_dump"):
-        result = result.model_dump()
-
-    analysis = result.setdefault("analysis", {}) if isinstance(result, dict) else {}
-    analysis.setdefault("clause_type", "document")
-    findings_raw: list[Any] = []
-    if isinstance(result, dict):
-        if isinstance(result.get("findings"), list) and result["findings"]:
-            findings_raw = result["findings"]
-        elif isinstance(analysis.get("findings"), list) and analysis["findings"]:
-            findings_raw = analysis["findings"]
-
-    findings_models: list[Finding] = []
-    if findings_raw:
-        for f in findings_raw:
-            try:
-                findings_models.append(Finding.model_validate(f))
-            except Exception:
-                continue
-    debug = (
-        bool(request.query_params.get("debug"))
-        if hasattr(request, "query_params")
-        else False
-    )
-    if not findings_models and debug:
-        findings_models = _make_basic_findings(model.text or "")
-
-    findings_out = [f.model_dump(exclude_none=True) for f in findings_models]
-    if isinstance(result, dict):
-        result["findings"] = findings_out
-    analysis["findings"] = findings_out
-
-    result = _normalize_analyze_response(result)
-
-    normalize_on = os.getenv("CONTRACTAI_INTAKE_NORMALIZE", "").lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
-    if normalize_on:
-        result.setdefault("results", {}).setdefault("analysis", {})["segments"] = (
-            _make_segments(model.text or "")
-        )
-
-    status = "OK"
-    if isinstance(result, dict):
-        status = str(result.get("status", "ok")).upper()
-        result["status"] = status
-        # ensure results/summary exists
-        results = result.setdefault("results", {})
-        summary_block = results.setdefault("summary", {})
-        # --- MERGE root summary (from analyzer) into results.summary ---
-        pre_sum = result.get("summary")
-        if isinstance(pre_sum, dict) and pre_sum:
-            merged = pre_sum.copy()
-            merged.update(summary_block)  # keep any fields already in results.summary
-            results["summary"] = summary_block = merged
-        # fill type info if absent
-        if not isinstance(summary_block.get("type"), str) or not summary_block.get(
-            "type"
-        ):
-            snap = extract_document_snapshot(model.text or "")
-            snap_dict = snap.model_dump()
-            if hasattr(snap, "debug"):
-                snap_dict["debug"] = getattr(snap, "debug")
-            summary_block.update(snap_dict)
-        # safe defaults if snapshot missing
-        summary_block.setdefault("type", "Unknown")
-        summary_block.setdefault("type_confidence", 0.0)
-    else:
-        snap = extract_document_snapshot(model.text or "")
-        snap_dict = snap.model_dump()
-        if hasattr(snap, "debug"):
-            snap_dict["debug"] = getattr(snap, "debug")
-        status = "OK"
-        result = {
-            "status": status,
-            "results": {"summary": snap_dict},
-        }
-
-    # guaranteed summary on root (copy from results.summary after merge)
-    if isinstance(result, dict):
-        if "document" in result and isinstance(result.get("document"), dict):
-            result["summary"] = result["document"].get(
-                "summary", result.get("summary", {})
-            )
-        if "results" in result and isinstance(result.get("results"), dict):
-            rs = result["results"].get("summary", {})
-            # merge, preserving any pre-existing root fields (e.g., from analyzer)
-            root = (result.get("summary") or {}).copy()
-            root.update(rs or {})
-            result["summary"] = root
-        # Mirror findings into legacy ``issues``
-        analysis_block = (
-            result.get("analysis")
-            if isinstance(result, dict) and isinstance(result.get("analysis"), dict)
-            else result
-        )
-        if not analysis_block.get("issues"):
-            analysis_block["issues"] = [
-                _finding_to_issue(f) for f in analysis_block.get("findings", [])
-            ]
-        if analysis_block is not result:
-            result["analysis"] = analysis_block
-    envelope = {
-        "status": status,
-        "analysis": (
-            result.get("analysis")
-            if isinstance(result, dict) and isinstance(result.get("analysis"), dict)
-            else result
-        ),
-        "results": result.get("results", {}),
-        "clauses": result.get("clauses", []),
-        "document": result.get("document", {}),
-        "summary": result.get("summary", {}),
-        "schema_version": SCHEMA_VERSION,
+@app.post("/api/analyze")
+def api_analyze(payload: dict, request: Request):
+    text = (
+        payload.get("text") or payload.get("clause") or payload.get("body") or ""
+    ).strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="text is empty")
+    analysis = analyze_document(text)
+    out = {
+        "status": "ok",
+        "analysis": analysis if isinstance(analysis, dict) else {"findings": analysis},
         "meta": PROVIDER_META,
     }
-    _ensure_legacy_doc_type(envelope.get("summary"))
-
-    normalized = _normalize_analyze_response(envelope)
-    resp_bytes = json.dumps(_ok(normalized)).encode("utf-8")
-    IDEMPOTENCY_CACHE.set(cid, resp_bytes)
-    resp = Response(content=resp_bytes, media_type="application/json")
-    _set_std_headers(
-        resp,
-        cid=cid,
-        xcache="miss",
-        schema=SCHEMA_VERSION,
-        latency_ms=_now_ms() - t0,
-    )
-    _set_llm_headers(resp, PROVIDER_META)
-    return resp
+    if "findings" in out["analysis"]:
+        out["findings"] = out["analysis"]["findings"]
+    return out
 
 
 # --------------------------------------------------------------------
@@ -1579,6 +1428,27 @@ async def api_citation_resolve(
         latency_ms=_now_ms() - t0,
     )
     return resp_model
+
+
+# --------------------------------------------------------------------
+# Static panel files with strict no-cache headers
+# --------------------------------------------------------------------
+
+
+@app.get("/panel/taskpane.html")
+def panel_html():
+    resp = FileResponse("word_addin_dev/taskpane.html", media_type="text/html")
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    return resp
+
+
+@app.get("/panel/taskpane.bundle.js")
+def panel_js():
+    resp = FileResponse(
+        "word_addin_dev/taskpane.bundle.js", media_type="application/javascript"
+    )
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    return resp
 
 
 # --------------------------------------------------------------------

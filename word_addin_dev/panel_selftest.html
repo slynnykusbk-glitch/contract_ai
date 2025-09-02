@@ -132,6 +132,13 @@
     let clientCid = genCid();
     let lastCid = ""; // from response headers
 
+    function showMeta(meta){
+      const prov = document.getElementById("llmProv");
+      const model = document.getElementById("llmModel");
+      prov.textContent = (meta && meta.provider) || "—";
+      model.textContent = (meta && meta.model) || "—";
+    }
+
     function pickDocType(summary) {
       summary = summary || {};
       let list = [];
@@ -266,25 +273,23 @@
       return r;
     }
     function getSampleText(){
-      const area = document.getElementById("testText");
-      return (area.value || "").trim() || SAMPLE;
+      return SAMPLE;
     }
 
     async function testAnalyze(){
-      const text = getSampleText();
       const r = await callEndpoint({
         name:"analyze", method:"POST", path:"/api/analyze",
-        body:{ text }
+        body:{ text: SAMPLE }
       });
       setStatusRow("row-analyze", r);
       showResp(r);
+      showMeta(r.body && r.body.meta || {});
       return r;
     }
     async function testSummary(){
-      const text = getSampleText();
       const r = await callEndpoint({
         name:"summary", method:"POST", path:"/api/summary",
-        body:{ text }
+        body:{ text: SAMPLE }
       });
       setStatusRow("row-summary", r);
       if(!r.ok || (r.body && r.body.status !== "ok")){
@@ -321,43 +326,37 @@
     }
 
     async function testDraft(){
-      const text = getSampleText();
       const r = await callEndpoint({
         name:"draft", method:"POST", path:DRAFT_PATH,
-        body:{ text }
+        body:{ text: SAMPLE }
       });
       const ok = r.ok && r.body && r.body.status === "ok";
       setStatusRow("row-draft", Object.assign({}, r, { ok: !!ok }));
       showResp(r);
-      const meta = r.body && r.body.meta ? r.body.meta : {};
-      document.getElementById("llmProv").textContent = meta.provider || "—";
-      document.getElementById("llmModel").textContent = meta.model || "—";
-      document.getElementById("llmMode").textContent = meta.mode || "—";
+      showMeta(r.body && r.body.meta || {});
       const badge = document.getElementById("llmBadge");
+      const meta = r.body && r.body.meta ? r.body.meta : {};
       if (meta.mode === "mock") { badge.style.display = "inline-block"; } else { badge.style.display = "none"; }
       return r;
     }
     async function testSuggest(){
-      const text = getSampleText();
       const r = await callEndpoint({
         name:"suggest", method:"POST", path:"/api/suggest_edits",
-        body:{ text }
+        body:{ text: SAMPLE }
       });
       setStatusRow("row-suggest", r);
       showResp(r);
-      const meta = r.body && r.body.meta ? r.body.meta : {};
-      document.getElementById("llmProv").textContent = meta.provider || "—";
-      document.getElementById("llmModel").textContent = meta.model || "—";
+      showMeta(r.body && r.body.meta || {});
       return r;
     }
     async function testQA(){
-      const text = getSampleText();
       const r = await callEndpoint({
         name:"qa", method:"POST", path:"/api/qa-recheck",
-        body:{ text, applied_changes:[] }
+        body:{ text: SAMPLE, applied_changes:[] }
       });
       setStatusRow("row-qa", r);
       showResp(r);
+      showMeta(r.body && r.body.meta || {});
       return r;
     }
     async function testCalloff(){

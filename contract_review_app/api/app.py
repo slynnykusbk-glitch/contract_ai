@@ -2,6 +2,13 @@
 # ruff: noqa: E402
 from __future__ import annotations
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except Exception:  # pragma: no cover - best effort only
+    pass
+
 import asyncio
 import hashlib
 import json
@@ -996,7 +1003,9 @@ async def api_trace_index(response: Response):
     response_model=AnalyzeResponse,
     response_model_exclude_none=True,
 )
-async def api_analyze(payload: AnalyzeRequest, request: Request, x_cid: Optional[str] = Header(None)):
+async def api_analyze(
+    payload: AnalyzeRequest, request: Request, x_cid: Optional[str] = Header(None)
+):
     t0 = _now_ms()
     try:
         model = AnalyzeIn(**payload.model_dump())
@@ -1042,7 +1051,11 @@ async def api_analyze(payload: AnalyzeRequest, request: Request, x_cid: Optional
                 findings_models.append(Finding.model_validate(f))
             except Exception:
                 continue
-    debug = bool(request.query_params.get("debug")) if hasattr(request, "query_params") else False
+    debug = (
+        bool(request.query_params.get("debug"))
+        if hasattr(request, "query_params")
+        else False
+    )
     if not findings_models and debug:
         findings_models = _make_basic_findings(model.text or "")
 
@@ -1396,7 +1409,10 @@ async def api_qa_recheck(
     return {"status": "ok", "qa": result.items, "meta": meta}
 
 
-@router.post("/api/suggest_edits", responses={400: {"model": ProblemDetail}, 422: {"model": ProblemDetail}})
+@router.post(
+    "/api/suggest_edits",
+    responses={400: {"model": ProblemDetail}, 422: {"model": ProblemDetail}},
+)
 async def api_suggest_edits(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
@@ -1414,10 +1430,17 @@ async def api_suggest_edits(
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
     _set_llm_headers(response, PROVIDER_META)
     result = PROVIDER.suggest(text)
-    return {"status": "ok", "proposed_text": result["proposed_text"], "meta": PROVIDER_META}
+    return {
+        "status": "ok",
+        "proposed_text": result["proposed_text"],
+        "meta": PROVIDER_META,
+    }
 
 
-@router.post("/api/gpt-draft", responses={400: {"model": ProblemDetail}, 422: {"model": ProblemDetail}})
+@router.post(
+    "/api/gpt-draft",
+    responses={400: {"model": ProblemDetail}, 422: {"model": ProblemDetail}},
+)
 async def api_gpt_draft(request: Request):
     started = time.perf_counter()
     try:
@@ -1430,7 +1453,9 @@ async def api_gpt_draft(request: Request):
         raise HTTPException(status_code=400, detail="prompt is required")
 
     result = PROVIDER.draft(prompt)
-    resp = JSONResponse({"status": "ok", "draft": {"text": result["text"]}, "meta": PROVIDER_META})
+    resp = JSONResponse(
+        {"status": "ok", "draft": {"text": result["text"]}, "meta": PROVIDER_META}
+    )
     apply_std_headers(resp, request, started)
     _set_llm_headers(resp, PROVIDER_META)
     return resp

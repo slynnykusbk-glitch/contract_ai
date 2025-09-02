@@ -1,12 +1,8 @@
-import os
-import sys
-
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
 from fastapi.testclient import TestClient
 from contract_review_app.api.app import app
 
 client = TestClient(app)
+
 
 def test_health_ok():
     r = client.get("/health")
@@ -14,11 +10,13 @@ def test_health_ok():
     r2 = client.get("/api/health")
     assert r2.status_code == 200
 
+
 def test_llm_ping_ok():
     r = client.get("/api/llm/ping")
     assert r.status_code == 200
     r2 = client.get("/llm/ping")
     assert r2.status_code == 200
+
 
 def test_analyze_ok():
     payload = {"text": "Hello world"}
@@ -27,12 +25,14 @@ def test_analyze_ok():
     r2 = client.post("/analyze", json=payload)
     assert r2.status_code == 200
 
+
 def test_suggest_ok():
     payload = {"text": "Hello world"}
     r = client.post("/api/suggest_edits", json=payload)
     assert r.status_code == 200
     r2 = client.post("/suggest_edits", json=payload)
     assert r2.status_code == 200
+
 
 def test_gpt_draft_ok():
     payload = {"prompt": "Draft confidentiality clause"}

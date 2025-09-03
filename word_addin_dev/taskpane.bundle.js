@@ -78,6 +78,61 @@
   }
   function status(s) { log("[STATUS] " + s); }
 
+  function setText(id, v){ var el=document.getElementById(id); if(el) el.textContent=(v==null?"":String(v)); }
+  function getText(id){ var el=document.getElementById(id); return el?el.textContent:""; }
+  function byId(id){ return document.getElementById(id); }
+  function escapeHtml(s){ return esc(s); }
+
+  function getOriginalClauseText(){ return getPanelTextOrFetch(); }
+  function getRiskMode(){ return getModeOrDefault(); }
+  function getDraftMode(){ return getModeOrDefault(); }
+
+  // ---- Schema 1.3 mappers
+  function mapAnalysis(resp) {
+    const a = resp && resp.data && resp.data.analysis || null;
+    if (!a) return { ok:false, reason:"no-analysis" };
+    return {
+      ok: true,
+      clause_type: a.clause_type || "unknown",
+      findings: Array.isArray(a.findings) ? a.findings : [],
+      recommendations: Array.isArray(a.recommendations) ? a.recommendations : [],
+      issues: Array.isArray(a.issues) ? a.issues : [],
+      raw: a
+    };
+  }
+  function mapDraft(resp) {
+    const d = resp && resp.data || {};
+    return {
+      ok: !!(resp && resp.ok),
+      proposed: d.proposed_text || d.after_text || "",
+      before: d.before_text || "",
+      after:  d.after_text  || "",
+      diff:   (d.diff && d.diff.value) ? d.diff.value : ""
+    };
+  }
+
+  // ---- Meta badges render
+  function renderMeta() {
+    const m = CAI.Store.get().meta;
+    setText("cidBadge", m.cid || "—");
+    setText("xcacheBadge", m.cache || "—");
+    setText("latencyBadge", String(m.latencyMs || "—"));
+    setText("schemaBadge", m.schema || "—");
+    setText("providerBadge", m.provider || "—");
+    setText("modelBadge", m.model || "—");
+    setText("modeBadge", m.llm_mode || "—");
+  }
+
+  // ---- Base URL init on load
+  (function initBaseUrlField(){
+    const el = document.getElementById("backendUrl");
+    if (el) {
+      const base = (localStorage.getItem("backendUrl") || (CAI && CAI.Store && CAI.Store.DEFAULT_BASE) || "https://localhost:9443");
+      el.value = base;
+      CAI.Store.setBase(base);
+    }
+  })();
+
   // LS keys (canonical + legacy fallback)
   var LS_KEY = "panel:backendUrl";
   var LS_KEY_OLD = "contract_ai_backend";
@@ -152,7 +207,7 @@
 
   // Getter function (do NOT shadow with element reference)
   function backend() {
-    var def = "https://127.0.0.1:9443";
+    var def = "https://localhost:9443";
     var fromUI = val(els.backend);
     var fromLS = readLS(LS_KEY);
     var fromOld = readLS(LS_KEY_OLD);
@@ -218,36 +273,6 @@
     txt(els.xcacheBadge, CAI_STORE.status.xcache || "—");
     txt(els.schemaBadge, CAI_STORE.status.schemaVersion || "—");
     if (CAI_STORE.status.latencyMs != null) txt(els.latencyBadge, CAI_STORE.status.latencyMs + " ms");
-  }
-
-  function applyMeta(meta){
-    if(!meta) return;
-    txt(els.providerBadge, meta.provider || "—");
-    txt(els.modelBadge, meta.model || "—");
-    txt(els.modeBadge, meta.mode || "—");
-    if (els.providerMeta) txt(els.providerMeta, meta.provider || "—");
-    if (els.mockModeBadge) {
-      els.mockModeBadge.style.display = meta.mode === "mock" ? "inline-block" : "none";
-    }
-  }
-
-  function setLLMMeta(meta){ applyMeta(meta); }
-
-  function setMeta(k, v) {
-    var ids = { cid:"cidBadge", xcache:"xcacheBadge", latency:"latencyBadge", schema:"schemaBadge", provider:"providerBadge", model:"modelBadge", mode:"modeBadge" };
-    var el = document.getElementById(ids[k]);
-    if (el) el.textContent = v == null || v === "" ? "—" : String(v);
-  }
-
-  function renderMeta() {
-    var m = CAI.Store.get().meta;
-    setMeta("cid", m.cid);
-    setMeta("xcache", m.cache);
-    setMeta("latency", m.latencyMs);
-    setMeta("schema", m.schema);
-    setMeta("provider", m.provider);
-    setMeta("model", m.model);
-    setMeta("mode", m.llm_mode);
   }
 
   function renderApiError(prefix, r) {
@@ -400,6 +425,10 @@
     });
   }
 
+  async function insertTextIntoWordWithTrackedChanges(text, comment){
+    return applyTracked(text, comment);
+  }
+
   async function acceptAll() {
     if (!window.Word || !Word.run) throw new Error("Word API not available");
     return Word.run(function (ctx) { try { ctx.document.acceptAllChanges(); } catch (_) {} return ctx.sync(); });
@@ -441,7 +470,7 @@
     txt(els.resClauseType, "—");
     txt(els.resFindingsCount, "—");
     if (els.findingsList) els.findingsList.innerHTML = "";
-    if (els.recsList) els.recsList.innerHTML = "";
+    if (els.recoList) els.recoList.innerHTML = "";
     if (els.rawJson) { els.rawJson.textContent = ""; els.rawJson.style.display = "none"; }
     if (els.docSnap) { els.docSnap.innerHTML = ""; els.docSnap.classList.add("hidden"); }
   }
@@ -489,15 +518,15 @@
       }
     }
 
-    if (els.recsList) {
-      els.recsList.innerHTML = "";
+    if (els.recoList) {
+      els.recoList.innerHTML = "";
       if (!recs.length) {
         var li2 = document.createElement("li"); li2.textContent = "No recommendations.";
-        els.recsList.appendChild(li2);
+        els.recoList.appendChild(li2);
       } else {
         recs.forEach(function (r) {
           var li = document.createElement("li"); li.textContent = String(r);
-          els.recsList.appendChild(li);
+          els.recoList.appendChild(li);
         });
       }
     }
@@ -641,8 +670,8 @@
   }
 
   function enableDraftApply(on) {
-    en(els.btnPreview, on);
-    en(els.btnApply, on);
+    en(els.btnPreviewDiff, on);
+    en(els.btnApplyTracked, on);
     en(els.btnAcceptAll, on);
     en(els.btnRejectAll, on);
   }
@@ -792,25 +821,58 @@
   }
 
   async function analyzeDoc() {
-    var text = (state.docText || val(els.clause) || "").trim();
-    if (!text) text = await getSelectionText();
-    if (!text) text = await getWholeDocText();
-    if (!text) { toast("Document is empty"); return; }
-    status("Analyzing document…");
-    try {
-      CAI.Store.setBase(backend());
-      var r = await CAI.API.analyze(text, getModeOrDefault());
-      CAI.Store.setMeta({ cid:r.meta.headers.cid, cache:r.meta.headers.cache, latencyMs:r.meta.latencyMs, schema:r.meta.schema, provider:r.meta.headers.provider, model:r.meta.headers.model, llm_mode:r.meta.headers.llm_mode, usage:r.meta.headers.usage });
-      renderMeta();
-      if (r.ok) {
-        state.analysis = r.data.analysis || null;
-        CAI.Store.get().last.analyze = r.data.analysis || null;
-        CAI_STORE.analysis.analysis = state.analysis;
-        console.info("[STATUS] Analyze OK • cid=" + (r.meta.headers.cid || ""));
-      } else {
-        renderApiError("Analyze", r);
-      }
-    } catch (e) { status("✖ Analyze error: " + (e && e.message ? e.message : e)); }
+    const text = getOriginalClauseText && await getOriginalClauseText();
+    if (!text || !text.trim()) { toast("⚠️ Paste or copy text first."); return; }
+
+    const r = await CAI.API.analyze(text, getRiskMode());
+    CAI.Store.setMeta({
+      cid: r.meta.headers.cid, cache: r.meta.headers.cache, latencyMs: r.meta.latencyMs,
+      schema: r.meta.schema, provider: r.meta.headers.provider, model: r.meta.headers.model,
+      llm_mode: r.meta.headers.llm_mode, usage: r.meta.headers.usage
+    });
+    renderMeta();
+
+    const A = mapAnalysis(r);
+    CAI.Store.get().last.analyze = A.raw;
+
+    if (!r.ok || !A.ok) { renderApiError("Analyze", r); return; }
+
+    setText("resClauseType", A.clause_type || "—");
+    renderFindingsList(A.findings || []);
+    renderRecommendationsList(A.recommendations || []);
+
+    const btn = document.getElementById("btnShowRawJson");
+    if (btn) {
+      btn.onclick = () => {
+        const pretty = JSON.stringify(A.raw, null, 2);
+        if (typeof showModal === 'function') showModal("Raw analysis JSON", pretty); else alert(pretty);
+      };
+    }
+  }
+
+  function renderFindingsList(items){
+    const c = document.getElementById("findingsList");
+    if (!c) return;
+    c.innerHTML = "";
+    if (!items.length) { c.innerHTML = "<div class='muted'>—</div>"; return; }
+    for (const f of items) {
+      const li = document.createElement("div");
+      li.className = "kv";
+      li.innerHTML = `<strong>${f.clause_type || f.rule_id || "rule"}</strong><span>${f.severity || ""}</span><div>${escapeHtml(f.advice || f.snippet || "")}</div>`;
+      c.appendChild(li);
+    }
+  }
+  function renderRecommendationsList(items){
+    const c = document.getElementById("recoList");
+    if (!c) return;
+    c.innerHTML = "";
+    if (!items.length) { c.innerHTML = "<div class='muted'>—</div>"; return; }
+    for (const r of items) {
+      const li = document.createElement("div");
+      li.className = "kv";
+      li.innerHTML = `<div>${escapeHtml(r.text || r.advice || "")}</div>`;
+      c.appendChild(li);
+    }
   }
 
   async function onSuggest() {
@@ -833,52 +895,45 @@
     } catch (e) { status("✖ Suggest error: " + (e && e.message ? e.message : e)); }
   }
 
-  async function onPreview() {
-    var text = await getPanelTextOrFetch();
-    if (!text) { toast("Document is empty"); return; }
-    try {
-      var r = await doGptDraft(text, getModeOrDefault());
-      var env = r.data || {};
-      state.draftResp = env;
-      var diff = env && env.diff && env.diff.value;
-      if (!r.ok || !diff) { status("✖ Draft error"); return; }
-      if (els.diffOutput && els.diffContainer) {
-        els.diffOutput.textContent = diff;
-        els.diffContainer.style.display = "block";
-      }
-      status("Diff ready");
-    } catch (e) { status("✖ Draft error: " + (e && e.message ? e.message : e)); }
+  async function doGptDraft() {
+    const text = getOriginalClauseText && await getOriginalClauseText();
+    if (!text || !text.trim()) { toast("⚠️ Paste or copy text first."); return; }
+
+    const r = await CAI.API.gptDraft(text, getDraftMode());
+    CAI.Store.setMeta({
+      cid: r.meta.headers.cid, cache: r.meta.headers.cache, latencyMs: r.meta.latencyMs,
+      schema: r.meta.schema, provider: r.meta.headers.provider, model: r.meta.headers.model,
+      llm_mode: r.meta.headers.llm_mode, usage: r.meta.headers.usage
+    });
+    renderMeta();
+
+    const D = mapDraft(r);
+    CAI.Store.get().last.draft = r.data;
+
+    if (!D.ok) { renderApiError("Draft", r); return; }
+
+    const t = document.getElementById("draftText");
+    if (t) t.value = D.proposed || D.after || "";
+
+    const btnPrev = document.getElementById("btnPreviewDiff");
+    if (btnPrev) {
+      btnPrev.onclick = () => {
+        const diff = D.diff || "";
+        if (diff) showModal("Unified diff", diff);
+        else showModal("Unified diff", "No diff provided by backend.");
+      };
+    }
+
+    toast("Draft OK");
   }
 
-  async function onApply() {
-    if (window._prop) {
-      try {
-        await Word.run(async (ctx) => {
-          const sel = ctx.document.getSelection();
-          sel.insertText(window._prop, "Replace");
-          const range = ctx.document.getSelection();
-          range.insertComment("Applied by Contract AI (mode: " + getModeOrDefault() + ")");
-          await ctx.sync();
-        });
-        toast("Applied");
-      } catch (e) {
-        showErr("Apply failed");
-      }
-      return;
-    }
-    var resp = state.draftResp || null;
-    var t = resp && resp.after_text;
-    if (!t) { status("Nothing to apply."); return; }
-    if (!window.Word || !Word.run) { status("⚠️ Word API not available"); return; }
-    try {
-      await applyTracked(t, resp && resp.rationale);
-      console.info("[STATUS] Apply OK (len=" + t.length + ")");
-      status("Apply OK (len=" + t.length + ")");
-    } catch (e) {
-      console.error("[ERROR] Apply failed: " + (e && e.message ? e.message : e));
-      status("✖ Apply failed: " + (e && e.message ? e.message : e));
-    }
-  }
+  document.getElementById("btnApplyTracked").onclick = async function(){
+    const t = document.getElementById("draftText");
+    const proposed = (t && t.value) ? t.value : "";
+    if (!proposed.trim()) { toast("⚠️ No draft to apply."); return; }
+    await insertTextIntoWordWithTrackedChanges(proposed, "Contract AI (mode: " + (getDraftMode()||"friendly") + ")");
+    toast("Applied");
+  };
 
   async function doAnalyze() {
     var text = await getPanelTextOrFetch();
@@ -912,26 +967,6 @@
         renderApiError("Analyze", r);
       }
     } catch (e) { status("✖ Analyze error: " + (e && e.message ? e.message : e)); }
-  }
-
-  async function doDraft() {
-    var analysis = CAI_STORE.analysis.analysis;
-    var text = await getPanelTextOrFetch();
-    if (!analysis && !text) { toast("Document is empty"); return; }
-    status("Drafting…");
-    try {
-      var r = await doGptDraft(text, getModeOrDefault());
-      if (r.ok) {
-        var env = r.data || {};
-        var draft = String(env.proposed_text || "");
-        setVal(els.draft, draft);
-        state.proposedText = draft;
-        state.draftResp = env;
-        window.LAST_DRAFT = draft;
-        enableDraftApply(!!draft);
-        status(draft ? "Draft OK" : "Draft empty");
-      }
-    } catch (e) { status("✖ Draft error: " + (e && e.message ? e.message : e)); }
   }
 
   async function doAnnotate() {
@@ -1027,7 +1062,7 @@
   // ===== Wiring =====
 
   function wire() {
-    els.backend = $("backendInput");
+    els.backend = $("backendUrl");
     els.btnSave = $("btnSave");
     els.btnTest = $("btnTest");
     els.buildInfo = $("buildInfo");
@@ -1075,7 +1110,7 @@
     els.resClauseType = $("resClauseType");
     els.resFindingsCount = $("resFindingsCount");
     els.findingsList = $("findingsList");
-    els.recsList = $("recsList");
+    els.recoList = $("recoList");
     els.toggleRaw = $("toggleRaw");
     els.rawJson = $("rawJson");
 
@@ -1084,9 +1119,9 @@
     els.sugBtn = $("btnSuggest");
     els.sugList = $("cai-suggest-list");
 
-    els.draft = $("draftBox");
-    els.btnPreview = $("btnPreview");
-    els.btnApply = $("btnApply");
+    els.draft = $("draftText");
+    els.btnPreviewDiff = $("btnPreviewDiff");
+    els.btnApplyTracked = $("btnApplyTracked");
     els.btnAcceptAll = $("btnAcceptAll");
     els.btnRejectAll = $("btnRejectAll");
     els.diffContainer = $("diffContainer");
@@ -1102,12 +1137,7 @@
       } catch (_) { els.buildInfo.textContent = "Build: " + BUILD; }
     }
 
-    // Fill backend input from LS (canonical, then legacy), fallback to HTTPS default
-    try {
-      var v = readLS(LS_KEY) || readLS(LS_KEY_OLD) || "https://127.0.0.1:9443";
-      if (els.backend) els.backend.value = v;
-      CAI.Store.setBase(v);
-    } catch (_) {}
+    // Base URL field initialized on load by Store
 
     if (els.btnSave) els.btnSave.addEventListener("click", function () {
       var v = backend(); if (!v) { status("⚠️ Enter backend URL first"); return; }
@@ -1122,7 +1152,7 @@
     if (els.useSel) els.useSel.addEventListener("click", copySelection);
     if (els.useDoc) els.useDoc.addEventListener("click", copyWholeDoc);
 
-    if (els.draftBtn) els.draftBtn.addEventListener("click", function () { doDraft(); });
+    if (els.draftBtn) els.draftBtn.addEventListener("click", function () { doGptDraft(); });
     if (els.copyBtn) els.copyBtn.addEventListener("click", function () {
       try { navigator.clipboard && navigator.clipboard.writeText(val(els.draft) || ""); status("Draft copied to clipboard"); } catch (_) {}
     });
@@ -1149,12 +1179,8 @@
       } catch (e) { status("✖ Insert failed: " + (e && e.message ? e.message : e)); }
     });
 
-    if (els.btnApply) els.btnApply.addEventListener("click", onApply);
-
-    if (els.btnPreview) els.btnPreview.addEventListener("click", onPreview);
-
     if (els.btnAcceptAll) els.btnAcceptAll.addEventListener("click", function () {
-      var btn = document.getElementById("btnApply");
+      var btn = document.getElementById("btnApplyTracked");
       if (btn) btn.click();
     });
 

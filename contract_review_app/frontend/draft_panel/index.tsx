@@ -131,9 +131,13 @@ const DraftAssistantPanel: React.FC = () => {
     try {
       const env = await postJSON<DraftEnvelope>(DRAFT_PATH, {
         analysis,
+        text: analysis.text,
         mode: "friendly",
       });
-      setDraft({ ...env, draft_text: String(env?.draft_text || "") });
+      setDraft({
+        ...env,
+        draft_text: String(env?.draft?.text ?? env?.draft_text ?? ""),
+      });
     } catch (e: any) {
       setError(e?.message || "Draft failed");
     } finally {

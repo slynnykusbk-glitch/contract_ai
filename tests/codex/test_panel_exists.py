@@ -1,12 +1,24 @@
-from pathlib import Path
-from contract_review_app.api.app import app
+import httpx
+import ssl
 
 
-def test_panel_route_and_bundle_exists():
-    paths = {getattr(r, 'path', None) for r in app.routes}
-    assert '/panel' in paths
+def _client():
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return httpx.Client(verify=False, base_url="https://localhost:9443")
 
-    builds = sorted(Path('word_addin_dev/app').glob('build-*'))
-    assert builds, 'no panel build found'
-    latest = builds[-1]
-    assert (latest / 'taskpane.bundle.js').exists(), 'bundle missing'
+
+def test_health_ok():
+    r = _client().get("/health")
+    assert r.status_code == 200
+    j = r.json()
+    assert j.get("status", "").lower() == "ok"
+
+
+def test_panel_assets_served():
+    c = _client()
+    r1 = c.get("/panel/app/assets/api-client.js")
+    r2 = c.get("/panel/app/assets/store.js")
+    assert r1.status_code == 200 and len(r1.text) > 50
+    assert r2.status_code == 200 and len(r2.text) > 10

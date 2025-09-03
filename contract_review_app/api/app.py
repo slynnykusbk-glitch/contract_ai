@@ -15,11 +15,34 @@ import json
 import os
 import re
 import time
+import logging
 from collections import OrderedDict
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+log = logging.getLogger("contract_ai")
+
+# корень репо: .../contract_ai
+REPO_DIR = Path(__file__).resolve().parents[2]
+PANEL_DIR = REPO_DIR / "word_addin_dev"
+PANEL_ASSETS_DIR = PANEL_DIR / "app" / "assets"
+
+
+def _validate_env_vars() -> None:
+    key = os.getenv("AZURE_OPENAI_API_KEY", "")
+    # если ключ указан, он должен быть чистым ASCII
+    if key and any(ord(ch) > 127 for ch in key):
+        msg = (
+            "AZURE_OPENAI_API_KEY contains non-ASCII characters (looks like a placeholder). "
+            "Replace with a real Azure key."
+        )
+        log.error(msg)
+        # Поднимем управляемую ошибка для LLM-эндпоинтов
+        os.environ["AZURE_KEY_INVALID"] = "1"
+
+
+_validate_env_vars()
 
 from fastapi import (
     APIRouter,
@@ -31,7 +54,7 @@ from fastapi import (
     Response,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from fastapi.openapi.utils import get_openapi
@@ -372,6 +395,18 @@ app = FastAPI(
     responses=_default_responses,
 )
 register_error_handlers(app)
+
+# сначала более "длинный" префикс, потом корень панели
+app.mount(
+    "/panel/app/assets",
+    StaticFiles(directory=str(PANEL_ASSETS_DIR), html=False),
+    name="panel_assets",
+)
+app.mount(
+    "/panel",
+    StaticFiles(directory=str(PANEL_DIR), html=True),
+    name="panel",
+)
 
 # instantiate LLM provider once
 PROVIDER = get_provider()
@@ -1195,6 +1230,11 @@ async def summary_post_alias(
 async def api_qa_recheck(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
+    if os.getenv("AZURE_KEY_INVALID") == "1":
+        raise HTTPException(
+            status_code=500,
+            detail="Azure key is invalid (non-ASCII placeholder). Set a real AZURE_OPENAI_API_KEY.",
+        )
     t0 = _now_ms()
     _set_schema_headers(response)
     try:
@@ -1374,6 +1414,11 @@ async def api_qa_recheck(
 async def api_suggest_edits(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
+    if os.getenv("AZURE_KEY_INVALID") == "1":
+        raise HTTPException(
+            status_code=500,
+            detail="Azure key is invalid (non-ASCII placeholder). Set a real AZURE_OPENAI_API_KEY.",
+        )
     _set_schema_headers(response)
     try:
         payload = await request.json()
@@ -1437,6 +1482,11 @@ class DraftOut(BaseModel):
     responses={422: {"model": ProblemDetail}},
 )
 async def gpt_draft(inp: DraftIn, request: Request):
+    if os.getenv("AZURE_KEY_INVALID") == "1":
+        raise HTTPException(
+            status_code=500,
+            detail="Azure key is invalid (non-ASCII placeholder). Set a real AZURE_OPENAI_API_KEY.",
+        )
     started = time.perf_counter()
     text = inp.text.strip()
     if not text:
@@ -1647,75 +1697,6 @@ async def api_citation_resolve(
         latency_ms=_now_ms() - t0,
     )
     return resp_model
-
-
-# --------------------------------------------------------------------
-# Static panel files with strict no-cache headers
-# --------------------------------------------------------------------
-
-
-@app.get("/panel/taskpane.html")
-def panel_html():
-    resp = FileResponse("word_addin_dev/taskpane.html", media_type="text/html")
-    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
-    return resp
-
-
-@app.get("/panel/taskpane.bundle.js")
-def panel_js():
-    resp = FileResponse(
-        "word_addin_dev/taskpane.bundle.js", media_type="application/javascript"
-    )
-    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
-    return resp
-
-
-# --- STATIC: panel assets -----------------------------------------------------
-_ASSETS_DIR = Path(__file__).resolve().parents[2] / "word_addin_dev" / "app" / "assets"
-
-
-@app.get("/panel/app/assets/{asset_path:path}")
-def panel_assets(asset_path: str):
-    base = _ASSETS_DIR
-    fp = (base / asset_path).resolve()
-    # защита от выхода вверх по каталогу и 404
-    if not str(fp).startswith(str(base)) or not fp.exists() or not fp.is_file():
-        raise HTTPException(status_code=404, detail="asset not found")
-    mt = "application/javascript" if fp.suffix == ".js" else "text/plain"
-    return FileResponse(fp, media_type=mt)
-
-
-# --------------------------------------------------------------------
-# Static panel mount (/panel) with no-store headers and version endpoint
-# --------------------------------------------------------------------
-panel_app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
-
-
-@panel_app.middleware("http")
-async def _panel_no_store_mw(request: Request, call_next):
-    resp: Response = await call_next(request)
-    resp.headers["Cache-Control"] = "no-store, must-revalidate"
-    resp.headers["Pragma"] = "no-cache"
-    resp.headers["Expires"] = "0"
-    return resp
-
-
-@panel_app.get("/version.json")
-async def panel_version():
-    ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    return {"schema_version": "1.0", "build": ts}
-
-
-def _panel_static_dir() -> str:
-    base = Path("word_addin_dev/app")
-    builds = sorted([p for p in base.glob("build-*") if p.is_dir()])
-    return str(builds[-1]) if builds else "word_addin_dev"
-
-
-panel_app.mount(
-    "/", StaticFiles(directory=_panel_static_dir(), html=True), name="panel-static"
-)
-app.mount("/panel", panel_app)
 
 
 @app.on_event("startup")

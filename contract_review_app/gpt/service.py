@@ -101,7 +101,17 @@ class LLMService:
         if profile == "smart" and not rules_context:
             raise ValueError("qa_prompt_invalid: missing rules context")
         prompt_tpl = self._read_prompt("qa")
-        prompt = self._safe_format_prompt(prompt_tpl, text=text, rules=rules_context)
+        safe_rules = []
+        for r in rules_context.get("rules", []):
+            safe_rules.append(
+                {
+                    "id": str(r.get("id", "")),
+                    "status": str(r.get("status", "")).lower(),
+                    "note": r.get("note", ""),
+                }
+            )
+        rules_ctx = {"rules": safe_rules}
+        prompt = self._safe_format_prompt(prompt_tpl, text=text, rules=rules_ctx)
         to = timeout or self.cfg.timeout_s
         result = self.client.qa_recheck(prompt, to)
         result.meta["profile"] = profile

@@ -1,4 +1,4 @@
-# Check the clause against the provided rules context and respond with a JSON array of objects ({id, status (ok|warn|fail), note}).
+# Check the clause against the provided rules context and respond with a JSON array of objects ({{id, status, note}}).
 You are a contract QA checker.
 
 Context rules:
@@ -6,7 +6,7 @@ Context rules:
 
 Task:
 Review the clause below and produce JSON with an "issues" array.
-Each element: id, status (ok|warn|fail), note.
+Each element: id, status, note.
 
 Clause:
 {text}

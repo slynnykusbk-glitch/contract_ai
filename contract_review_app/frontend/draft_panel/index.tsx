@@ -7,6 +7,9 @@ const DEFAULT_BACKEND = "http://127.0.0.1:9000";
 const LS_KEY = "contract_ai_backend";
 const DRAFT_PATH = "/api/gpt-draft";
 
+const isOk = (s: any) => String(s).toLowerCase() === "ok";
+const getSchemaVer = (b: any) => b?.x_schema_version || b?.schema_version || null;
+
 function getBackend(): string {
   try {
     const v = (localStorage.getItem(LS_KEY) || "").trim();
@@ -109,6 +112,10 @@ const DraftAssistantPanel: React.FC = () => {
         text: clauseText,
         clause_type: clauseType || undefined,
       });
+      getSchemaVer(env);
+      if (!isOk(env?.status) || !isOk(env?.analysis?.status)) {
+        throw new Error("API error");
+      }
       const a = (env?.analysis ?? env) as AnalysisOutput;
       // Backfill minimal fields
       a.clause_type = a.clause_type || clauseType || undefined;

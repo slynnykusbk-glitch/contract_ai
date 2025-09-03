@@ -33,7 +33,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
@@ -375,6 +375,7 @@ register_error_handlers(app)
 
 # instantiate LLM provider once
 PROVIDER = get_provider()
+LLM_PROVIDER = PROVIDER
 PROVIDER_META = {
     "provider": getattr(PROVIDER, "name", "?"),
     "model": getattr(PROVIDER, "model", "?"),
@@ -500,7 +501,7 @@ def _custom_openapi():
         "x-latency-ms": 12,
         "x-cid": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     }
-    for p in ["/api/analyze", "/api/gpt/draft"]:
+    for p in ["/api/analyze", "/api/gpt-draft"]:
         op = openapi_schema.get("paths", {}).get(p, {}).get("post")
         if not op:
             continue
@@ -1407,45 +1408,86 @@ async def api_suggest_edits(
     }
 
 
+class DraftIn(BaseModel):
+    text: str = Field(..., min_length=1)
+    mode: str = Field("friendly", pattern="^(friendly|medium|strict)$")
+
+
+class DraftOut(BaseModel):
+    status: str
+    mode: str
+    proposed_text: str
+    rationale: str
+    evidence: list | dict
+    before_text: str
+    after_text: str
+    diff: dict
+    x_schema_version: str
+
+
 @router.post(
     "/api/gpt-draft",
-    responses={400: {"model": ProblemDetail}, 422: {"model": ProblemDetail}},
+    response_model=DraftOut,
+    responses={422: {"model": ProblemDetail}},
 )
-async def api_gpt_draft(request: Request):
+@router.post(
+    "/api/gpt/draft",
+    response_model=DraftOut,
+    responses={422: {"model": ProblemDetail}},
+)
+async def gpt_draft(inp: DraftIn, request: Request):
     started = time.perf_counter()
+    text = inp.text.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="text is required")
+
     try:
-        payload = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Request body is not valid JSON")
-
-    prompt = (payload or {}).get("prompt") or (payload or {}).get("text") or ""
-    profile = (payload or {}).get("profile", "smart")
-    if not prompt.strip():
-        raise HTTPException(status_code=400, detail="prompt is required")
-
-    cid = request.headers.get("x-cid") or _sha256_hex("draft" + str(_now_ms()))
-    res = _provider_chat(
-        [{"role": "user", "content": f"Draft a concise clause revision:\n{prompt}"}],
-        cid,
-    )
-    meta = {**PROVIDER_META, "usage": res.get("usage", {}), "profile": profile}
-    resp = JSONResponse(
-        {"status": "ok", "draft": {"text": res.get("content", "")}, "meta": meta}
-    )
-    _set_std_headers(
+        result = LLM_PROVIDER.draft(text=text, mode=inp.mode)
+        proposed_text = result.proposed_text
+        rationale = result.rationale
+        evidence = result.evidence
+        before_text = result.before_text
+        after_text = result.after_text
+        diff_unified = result.diff_unified
+        provider = result.provider
+        model = result.model
+        mode_used = result.mode
+        usage = result.usage
+    except TypeError:
+        legacy = LLM_PROVIDER.draft(text)
+        proposed_text = legacy.get("text") or legacy.get("proposed_text", "")
+        rationale = legacy.get("rationale", "")
+        evidence = legacy.get("evidence", [])
+        before_text = text
+        after_text = proposed_text
+        diff_unified = legacy.get("diff", "")
+        provider = getattr(LLM_PROVIDER, "name", "")
+        model = getattr(LLM_PROVIDER, "model", "")
+        mode_used = inp.mode
+        usage = legacy.get("usage", {})
+    out = {
+        "status": "ok",
+        "mode": inp.mode,
+        "proposed_text": proposed_text,
+        "rationale": rationale,
+        "evidence": evidence,
+        "before_text": before_text,
+        "after_text": after_text,
+        "diff": {"type": "unified", "value": diff_unified},
+        "x_schema_version": SCHEMA_VERSION,
+    }
+    resp = JSONResponse(out)
+    _set_llm_headers(
         resp,
-        cid=cid,
-        xcache="miss",
-        schema=SCHEMA_VERSION,
-        latency_ms=int((time.perf_counter() - started) * 1000),
+        {
+            "provider": provider,
+            "model": model,
+            "mode": mode_used,
+            "usage": usage,
+        },
     )
-    _set_llm_headers(resp, meta)
+    apply_std_headers(resp, request, started)
     return resp
-
-
-@router.post("/api/gpt/draft")
-async def gpt_draft_alias(request: Request):
-    return await api_gpt_draft(request)
 
 
 # --- Aliases to be robust wrt panel/client paths ---
@@ -1473,14 +1515,22 @@ def llm_ping_alias():
     return llm_ping()
 
 
-@router.post("/api/gpt_draft")
-async def gpt_draft_underscore_alias(request: Request):
-    return await api_gpt_draft(request)
+@router.post(
+    "/api/gpt_draft",
+    response_model=DraftOut,
+    responses={422: {"model": ProblemDetail}},
+)
+async def gpt_draft_underscore_alias(inp: DraftIn, request: Request):
+    return await gpt_draft(inp, request)
 
 
-@router.post("/gpt-draft")
-async def gpt_draft_plain_alias(request: Request):
-    return await api_gpt_draft(request)
+@router.post(
+    "/gpt-draft",
+    response_model=DraftOut,
+    responses={422: {"model": ProblemDetail}},
+)
+async def gpt_draft_plain_alias(inp: DraftIn, request: Request):
+    return await gpt_draft(inp, request)
 
 
 @router.post("/api/calloff/validate")

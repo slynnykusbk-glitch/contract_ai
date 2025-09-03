@@ -525,7 +525,7 @@ class Suggestion(AppBaseModel):
 
 class GPTDraftResponse(AppBaseModel):
     """
-    Minimal LLM/proxy draft response (used by /api/gpt/draft).
+    Minimal LLM/proxy draft response (used by /api/gpt-draft).
     """
 
     draft_text: str
@@ -975,11 +975,11 @@ class AnalyzeOut(AppBaseModel):
 
 
 # ============================================================================
-# Step 4: Public DTOs for /api/gpt/draft, /api/suggest, /api/qa-recheck
+# Step 4: Public DTOs for /api/gpt-draft, /api/suggest, /api/qa-recheck
 # ============================================================================
 class DraftIn(AppBaseModel):
     """
-    Request DTO for /api/gpt/draft.
+    Request DTO for /api/gpt-draft.
     At least one of (text, analysis) must be provided.
     If clause_type is missing, it is derived from analysis (if present).
     """
@@ -1013,7 +1013,7 @@ class DraftIn(AppBaseModel):
 
 class DraftOut(AppBaseModel):
     """
-    Response DTO for /api/gpt/draft.
+    Response DTO for /api/gpt-draft.
     """
 
     draft_text: str

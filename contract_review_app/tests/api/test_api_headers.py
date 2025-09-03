@@ -10,7 +10,7 @@ from contract_review_app.api.models import SCHEMA_VERSION
 client = TestClient(app)
 
 
-@pytest.mark.parametrize("path", ["/api/analyze", "/api/gpt/draft"])
+@pytest.mark.parametrize("path", ["/api/analyze", "/api/gpt-draft"])
 def test_std_headers_present_and_valid(path):
     payload1 = {"text": "hello"}
     payload2 = {"text": "world"}

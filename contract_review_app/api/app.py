@@ -1670,6 +1670,21 @@ def panel_js():
     return resp
 
 
+# --- STATIC: panel assets -----------------------------------------------------
+_ASSETS_DIR = Path(__file__).resolve().parents[2] / "word_addin_dev" / "app" / "assets"
+
+
+@app.get("/panel/app/assets/{asset_path:path}")
+def panel_assets(asset_path: str):
+    base = _ASSETS_DIR
+    fp = (base / asset_path).resolve()
+    # защита от выхода вверх по каталогу и 404
+    if not str(fp).startswith(str(base)) or not fp.exists() or not fp.is_file():
+        raise HTTPException(status_code=404, detail="asset not found")
+    mt = "application/javascript" if fp.suffix == ".js" else "text/plain"
+    return FileResponse(fp, media_type=mt)
+
+
 # --------------------------------------------------------------------
 # Static panel mount (/panel) with no-store headers and version endpoint
 # --------------------------------------------------------------------

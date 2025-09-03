@@ -55,7 +55,18 @@
     draftResp: null
   };
 
-  var REQ_LOG = [];
+var REQ_LOG = [];
+
+  let __lastCopiedWhole = false;
+  function lastCopiedWasWhole(){ return __lastCopiedWhole; }
+  function setOriginalText(t){
+    setVal(els.clause, t);
+    state.clauseText = t;
+  }
+  function getDraftText(){
+    const t = document.getElementById("draftText");
+    return (t && t.value) ? t.value : "";
+  }
 
   function $(id) { return document.getElementById(id); }
   function val(e) { return e ? (e.value || "") : ""; }
@@ -123,15 +134,17 @@
     setText("modeBadge", m.llm_mode || "—");
   }
 
-  // ---- Base URL init on load
-  (function initBaseUrlField(){
-    const el = document.getElementById("backendUrl");
-    if (el) {
-      const base = (localStorage.getItem("backendUrl") || (CAI && CAI.Store && CAI.Store.DEFAULT_BASE) || "https://localhost:9443");
-      el.value = base;
-      CAI.Store.setBase(base);
-    }
-  })();
+  // при старте UI
+  const backendInput = document.getElementById("backendUrl");
+  if (backendInput) {
+    backendInput.value = (window.CAI?.Store?.get()?.baseUrl) || "https://localhost:9443";
+    backendInput.addEventListener("change", function(e){ CAI.Store.setBase(e.target.value); });
+  }
+  const riskSel = document.getElementById("riskSelect");
+  if (riskSel) {
+    riskSel.value = CAI.Store.get().risk || "medium";
+    riskSel.addEventListener("change", function(e){ CAI.Store.setRisk(e.target.value); });
+  }
 
   // LS keys (canonical + legacy fallback)
   var LS_KEY = "panel:backendUrl";
@@ -822,32 +835,27 @@
 
   async function analyzeDoc() {
     const text = getOriginalClauseText && await getOriginalClauseText();
+    const mode = CAI.Store.get().risk || "medium";
     if (!text || !text.trim()) { toast("⚠️ Paste or copy text first."); return; }
-
-    const r = await CAI.API.analyze(text, getRiskMode());
+    const r = await CAI.API.analyze(text, mode);
     CAI.Store.setMeta({
       cid: r.meta.headers.cid, cache: r.meta.headers.cache, latencyMs: r.meta.latencyMs,
       schema: r.meta.schema, provider: r.meta.headers.provider, model: r.meta.headers.model,
       llm_mode: r.meta.headers.llm_mode, usage: r.meta.headers.usage
     });
     renderMeta();
-
-    const A = mapAnalysis(r);
-    CAI.Store.get().last.analyze = A.raw;
-
-    if (!r.ok || !A.ok) { renderApiError("Analyze", r); return; }
-
-    setText("resClauseType", A.clause_type || "—");
-    renderFindingsList(A.findings || []);
-    renderRecommendationsList(A.recommendations || []);
-
-    const btn = document.getElementById("btnShowRawJson");
-    if (btn) {
-      btn.onclick = () => {
-        const pretty = JSON.stringify(A.raw, null, 2);
-        if (typeof showModal === 'function') showModal("Raw analysis JSON", pretty); else alert(pretty);
-      };
+    if (r.ok) {
+      CAI.Store.get().last.analyze = r.data.analysis;
+      renderFindings(r.data.analysis);
+    } else {
+      renderApiError("Analyze", r);
     }
+  }
+
+  function renderFindings(a){
+    setText("resClauseType", a && a.clause_type || "—");
+    renderFindingsList(a && a.findings || []);
+    renderRecommendationsList(a && a.recommendations || []);
   }
 
   function renderFindingsList(items){
@@ -927,13 +935,20 @@
     toast("Draft OK");
   }
 
-  document.getElementById("btnApplyTracked").onclick = async function(){
-    const t = document.getElementById("draftText");
-    const proposed = (t && t.value) ? t.value : "";
-    if (!proposed.trim()) { toast("⚠️ No draft to apply."); return; }
-    await insertTextIntoWordWithTrackedChanges(proposed, "Contract AI (mode: " + (getDraftMode()||"friendly") + ")");
+  document.getElementById("btnApplyTracked").addEventListener("click", async function(){
+    const draft = getDraftText();
+    if (!draft || !draft.trim()) { toast("Nothing to apply."); return; }
+    await Word.run(async (ctx) => {
+      const useWhole = lastCopiedWasWhole();
+      const sel = useWhole ? ctx.document.body.getRange() : ctx.document.getSelection();
+      sel.track();
+      await ctx.sync();
+      ctx.trackedRevisions.trackAll();
+      sel.insertText(draft, Word.InsertLocation.replace);
+      await ctx.sync();
+    });
     toast("Applied");
-  };
+  });
 
   async function doAnalyze() {
     var text = await getPanelTextOrFetch();
@@ -969,60 +984,25 @@
     } catch (e) { status("✖ Analyze error: " + (e && e.message ? e.message : e)); }
   }
 
-  async function doAnnotate() {
-    var analysis = CAI_STORE.analysis.analysis || null;
-    if (!analysis) { status("⚠️ Analyze first."); return; }
-    var thr = (val(els.riskThreshold) || CAI_STORE.settings.riskThreshold || "high").toLowerCase();
-    var thrOrd = _riskOrd(thr);
+  async function insertAnnotations(ann){
+    await Word.run(async (ctx) => {
+      const body = ctx.document.body;
+      const whole = body.getRange();
+      whole.load("text");
+      await ctx.sync();
 
-    var full = await readWholeDoc();
-    var items = Array.isArray(analysis.findings) ? analysis.findings : [];
-    var risky = items.filter(function (f) { return _riskOrd(f && (f.risk || f.risk_level)) >= thrOrd; });
-    if (!window.Word || !Word.run) { status("⚠️ Word API not available"); return; }
-
-    try {
-      await Word.run(function (ctx) {
-        try {
-          var comments = ctx.document.body.comments; comments.load("items");
-        } catch (_) {}
-        return ctx.sync().then(function () {
-          try {
-            if (comments && comments.items && comments.items.length) {
-              comments.items.forEach(function (c) { try { c.delete(); } catch (_) {} });
-            }
-          } catch (_) {}
-          return ctx.sync();
-        });
-      });
-
-      for (var i = 0; i < risky.length; i++) {
-        var f = risky[i];
-        var msg = (f && f.code ? ("[" + f.code + "] ") : "") + (f && f.message ? f.message : "Issue") + (f && (f.risk || f.risk_level) ? (" — risk:" + (f.risk || f.risk_level)) : "");
-        await addCommentAtSpan(full, f && f.span, msg);
+      const text = whole.text;
+      for (const x of ann) {
+        const found = whole.search(x.anchor || "", { matchCase:false, matchWholeWord:false, ignorePunct:true });
+        found.load("items");
+        await ctx.sync();
+        if (found.items.length > 0) {
+          const r = found.items[0];
+          ctx.trackedRevisions.trackAll();
+          r.insertComment(`[${x.severity}] ${x.title || "Issue"} — ${x.message}`);
+        }
       }
-      status("Annotated (" + risky.length + ")");
-    } catch (e) { status("✖ Annotate failed: " + (e && e.message ? e.message : e)); }
-  }
-
-  function addCommentAtSpan(fullText, span, message) {
-    if (!window.Word || !Word.run) return Promise.resolve();
-    var snippet = "";
-    try {
-      if (fullText && typeof fullText === "string" && span && typeof span.start === "number" && typeof span.length === "number") {
-        snippet = fullText.substr(span.start, Math.min(span.length, 64));
-      }
-    } catch (_) {}
-    return Word.run(function (ctx) {
-      var body = ctx.document.body;
-      var found = snippet ? body.search(snippet, { matchCase: false, matchWholeWord: false, ignorePunct: true, ignoreSpace: true }) : null;
-      if (found) found.load("items");
-      return ctx.sync().then(function () {
-        var rng = null;
-        if (found && found.items && found.items.length) rng = found.items[0];
-        else rng = ctx.document.getSelection();
-        try { rng.insertComment(String(message || "Contract AI")); } catch (_) {}
-        return ctx.sync();
-      });
+      await ctx.sync();
     });
   }
 
@@ -1089,8 +1069,8 @@
     els.analyzeBtn = $("analyzeBtn");
     els.draftBtn = $("draftBtn");
     els.copyBtn = $("copyResultBtn");
-    els.useSel = $("useSelection");
-    els.useDoc = $("useWholeDoc");
+    els.useDoc = $("btn-use-whole");
+    els.useSel = $("btn-use-selection");
     els.btnInsert = $("btnInsertIntoWord");
 
     els.btnAnalyzeDoc = $("btnAnalyzeDoc");
@@ -1149,8 +1129,19 @@
     if (els.analyzeBtn) els.analyzeBtn.addEventListener("click", function () { doAnalyze(); });
     if (els.btnAnalyzeDoc) els.btnAnalyzeDoc.addEventListener("click", analyzeDoc);
 
-    if (els.useSel) els.useSel.addEventListener("click", copySelection);
-    if (els.useDoc) els.useDoc.addEventListener("click", copyWholeDoc);
+    if (els.useDoc) els.useDoc.addEventListener("click", async function(){
+      const text = await getWholeDocText();
+      setOriginalText(text);
+      state.docText = text;
+      __lastCopiedWhole = true;
+      toast("Whole document copied.");
+    });
+    if (els.useSel) els.useSel.addEventListener("click", async function(){
+      const text = await getSelectionText();
+      setOriginalText(text);
+      __lastCopiedWhole = false;
+      toast("Selection copied.");
+    });
 
     if (els.draftBtn) els.draftBtn.addEventListener("click", function () { doGptDraft(); });
     if (els.copyBtn) els.copyBtn.addEventListener("click", function () {
@@ -1190,7 +1181,12 @@
       toast("Rejected");
     });
 
-    if (els.btnAnnotate) els.btnAnnotate.addEventListener("click", function () { doAnnotate(); });
+    if (els.btnAnnotate) els.btnAnnotate.addEventListener("click", async function () {
+      const a = CAI.Store.get().last.analyze;
+      if (!a || !a.annotations || !a.annotations.length) { toast("No annotations from last analyze."); return; }
+      await insertAnnotations(a.annotations);
+      toast("Annotations added.");
+    });
     if (els.btnClearAnnots) els.btnClearAnnots.addEventListener("click", async function () {
       if (!window.Word || !Word.run) { status("⚠️ Word API not available"); return; }
       try {

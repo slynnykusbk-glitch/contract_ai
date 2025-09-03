@@ -132,7 +132,7 @@
   <div class="row muted">Endpoints: <code>/health</code> · <code>/api/analyze</code> · <code>/api/gpt-draft</code> · <code>/api/qa-recheck</code></div>
 
   <div class="row card">
-    <div class="row"><input id="backendInput" placeholder="https://127.0.0.1:9443" /></div>
+    <div class="row"><input id="backendUrl" placeholder="https://localhost:9443" /></div>
     <div class="row flex">
       <button id="btnSave" class="btn-grey">Save</button>
       <button id="btnTest" class="btn-grey">Test</button>
@@ -157,9 +157,10 @@
   </div>
   <script>
   document.getElementById("btn-clear-storage").addEventListener("click", function(){
-    try { localStorage.clear(); } catch (e) {}
-    if (window.caches) { caches.keys().then(keys => keys.forEach(k => caches.delete(k))).finally(()=>location.reload()); }
-    else location.reload();
+    try { localStorage.clear(); } catch {}
+    try { if (window.caches) caches.keys().then(keys => keys.forEach(k => caches.delete(k))); } catch {}
+    try { CAI.Store.setBase(CAI.Store.DEFAULT_BASE); } catch {}
+    location.reload();
   });
   </script>
 
@@ -250,7 +251,7 @@
 
     <div class="row">
       <strong>Recommendations</strong>
-      <ul class="list" id="recsList"></ul>
+      <ul class="list" id="recoList"></ul>
     </div>
 
     <div class="row">
@@ -285,10 +286,10 @@
 
   <div class="row card">
     <div class="muted" style="margin-bottom:6px">Proposed draft (from analysis or edited manually):</div>
-    <textarea id="draftBox" placeholder="Will be filled from analysis.proposed_text if provided…"></textarea>
+    <textarea id="draftText" placeholder="Will be filled from analysis.proposed_text if provided…"></textarea>
     <div class="row flex" style="margin-top:8px">
-      <button id="btnPreview" class="btn-grey" disabled>Preview diff</button>
-      <button id="btnApply" class="btn" disabled title="Select text in Word before applying edits.">Apply (tracked + comment)</button>
+      <button id="btnPreviewDiff" class="btn-grey" disabled>Preview diff</button>
+      <button id="btnApplyTracked" class="btn" disabled title="Select text in Word before applying edits.">Apply (tracked + comment)</button>
       <button id="btnAcceptAll" class="btn-grey" disabled>Accept all</button>
       <button id="btnRejectAll" class="btn-grey" disabled>Reject all</button>
     </div>

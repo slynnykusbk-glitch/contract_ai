@@ -35,10 +35,12 @@ def test_suggest_ok():
 
 
 def test_gpt_draft_ok():
-    payload = {"prompt": "Draft confidentiality clause"}
+    payload = {"text": "Draft confidentiality clause"}
     r = client.post("/api/gpt-draft", json=payload)
     assert r.status_code == 200
     r2 = client.post("/gpt-draft", json=payload)
     assert r2.status_code == 200
-    r3 = client.post("/api/gpt_draft", json=payload)  # underscore alias
+    r3 = client.post("/api/gpt/draft", json=payload)
     assert r3.status_code == 200
+    r4 = client.post("/api/gpt_draft", json=payload)  # underscore alias
+    assert r4.status_code == 200

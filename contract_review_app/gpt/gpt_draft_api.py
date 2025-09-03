@@ -161,6 +161,11 @@ def api_gpt_draft_analysis_output(payload: Dict[str, Any]) -> Any:
 
 
 @router.post(
+    "/api/gpt-draft",
+    response_model=GPTDraftResponse,
+    responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
+)
+@router.post(
     "/api/gpt/draft",
     response_model=GPTDraftResponse,
     responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},

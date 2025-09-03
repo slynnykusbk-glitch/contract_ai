@@ -58,13 +58,13 @@ def fix_except_finally(lines: list[str]) -> int:
 def fix_try_json_blocks(lines: list[str]) -> int:
     """
     Для відомих ендпойнтів вирівнює тіло після 'try:' (payload = await req.json()).
-    Патерни шукаємо у функціях: /api/analyze, /api/gpt/draft, /api/suggest_edits, /api/qa-recheck.
+    Патерни шукаємо у функціях: /api/analyze, /api/gpt-draft, /api/suggest_edits, /api/qa-recheck.
     """
     cnt = 0
     # індекси початків функцій (приблизно; шукаємо сигнатури)
     fn_markers = [
         "async def analyze_doc",      # /api/analyze handler
-        "async def gpt_draft",        # /api/gpt/draft handler
+        "async def gpt_draft",        # /api/gpt-draft handler
         "async def suggest_edits",    # /api/suggest_edits handler
         "async def qa_recheck",       # /api/qa-recheck handler
     ]

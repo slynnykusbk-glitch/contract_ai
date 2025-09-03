@@ -1,6 +1,9 @@
 const input = document.getElementById('input') as HTMLTextAreaElement;
 const output = document.getElementById('output') as HTMLPreElement;
 
+const isOk = (s: any) => String(s).toLowerCase() === 'ok';
+const getSchemaVer = (b: any) => (b?.x_schema_version || b?.schema_version || null);
+
 async function callApi(endpoint: string) {
   output.textContent = '...';
   try {
@@ -10,7 +13,10 @@ async function callApi(endpoint: string) {
       body: JSON.stringify({text: input.value})
     });
     const data = await resp.json();
-    if (!resp.ok) throw new Error(JSON.stringify(data));
+    getSchemaVer(data);
+    if (!resp.ok || !isOk(data.status) || !isOk(data?.analysis?.status)) {
+      throw new Error(JSON.stringify(data));
+    }
     output.textContent = JSON.stringify(data, null, 2);
   } catch (err: any) {
     output.textContent = err.message || String(err);

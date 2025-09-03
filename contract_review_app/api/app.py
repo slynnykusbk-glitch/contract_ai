@@ -1089,22 +1089,23 @@ def api_analyze(req: AnalyzeRequest, request: Request):
 
     # status passthrough (do not force to "ok")
     if isinstance(analysis, dict):
-        status_out = str(analysis.get("status", "ok")).upper()
-        analysis_out = analysis
+        status_out = str(analysis.get("status", "ok")).lower()
+        analysis_out = dict(analysis)
         analysis_out["status"] = status_out
     else:
-        status_out = "OK"
+        status_out = "ok"
         analysis_out = {"findings": analysis, "status": status_out}
 
     envelope = {
         "status": status_out,
         "analysis": analysis_out,
         "meta": PROVIDER_META,
-        "schema_version": SCHEMA_VERSION,
+        "x_schema_version": SCHEMA_VERSION,
     }
     IDEMPOTENCY_CACHE.set(cid, envelope)
 
     resp = JSONResponse(envelope)
+    # x-schema-version header is set by _set_std_headers
     _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
     return resp
 

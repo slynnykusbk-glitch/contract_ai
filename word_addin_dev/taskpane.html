@@ -157,7 +157,7 @@
   </div>
   <script>
   document.getElementById("btn-clear-storage").addEventListener("click", function(){
-    try { localStorage.clear(); } catch(){}
+    try { localStorage.clear(); } catch (e) {}
     if (window.caches) { caches.keys().then(keys => keys.forEach(k => caches.delete(k))).finally(()=>location.reload()); }
     else location.reload();
   });

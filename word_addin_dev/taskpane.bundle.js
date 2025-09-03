@@ -302,7 +302,7 @@
   }
 
   function clearStorageAndReload(){
-    try { localStorage.clear(); } catch {}
+    try { localStorage.clear(); } catch (e) {}
     if (window.caches) { caches.keys().then(function(keys){ keys.forEach(function(k){ caches.delete(k); }); }); }
     location.reload();
   }

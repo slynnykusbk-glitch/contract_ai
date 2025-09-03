@@ -125,6 +125,7 @@
     <p class="small muted">Tip: For local dev, ensure the backend sends headers: x-cid, x-cache, x-schema-version="1.3".</p>
   </div>
 
+  <script src="./app/assets/api-client.js"></script>
   <script>
     // ---------------------- helpers ----------------------
     const LS_KEY = "panel:backendUrl";
@@ -188,11 +189,12 @@
       if (!path.startsWith("/")) path = "/" + path;
       return base.replace(/\/+$/, "") + path;
     }
-    function saveBase(){ try{ localStorage.setItem(LS_KEY, document.getElementById("backendInput").value.trim()); }catch{} }
+    function saveBase(){ try{ const v=document.getElementById("backendInput").value.trim(); localStorage.setItem(LS_KEY, v); localStorage.setItem("backendUrl", v); }catch{} }
     function loadBase(){
       let v = localStorage.getItem(LS_KEY) || document.getElementById("backendInput").value || "https://127.0.0.1:9443";
       v = normBase(v);
       document.getElementById("backendInput").value = v || "https://127.0.0.1:9443";
+      try{ localStorage.setItem("backendUrl", v); }catch{}
       return v;
     }
     function setCidLabels(){
@@ -244,38 +246,44 @@
     async function callEndpoint({name, method, path, body, dynamicPathFn}) {
       const base = normBase(document.getElementById("backendInput").value);
       if (!base) { alert("Please enter backend URL"); return { error:true }; }
-      const url = joinUrl(base, dynamicPathFn ? dynamicPathFn() : path);
-      const headers = { "content-type": "application/json", "x-cid": clientCid, "x-schema-version": "1.3" };
-      const t0 = performance.now();
-      let resp, json;
-      try{
-        resp = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
-      }catch(err){
-        console.warn("[HTTP]", method, path, "network error");
-        return { error:true, err, url };
+      try{ localStorage.setItem("backendUrl", base); }catch{}
+      let r;
+      if (path === "/health") {
+        r = await CAI.API.health();
+      } else if (path === "/api/analyze") {
+        r = await CAI.API.analyze(body && body.text);
+      } else if (path === "/api/summary") {
+        r = await CAI.API.summary(body && body.text);
+      } else if (path === DRAFT_PATH || path === "/api/gpt-draft") {
+        r = await CAI.API.gptDraft(body && body.text);
+      } else if (path === "/api/suggest_edits") {
+        r = await CAI.API.suggest(body && body.text);
+      } else if (path === "/api/qa-recheck") {
+        r = await CAI.API.qaRecheck(body && body.text, body && body.applied_changes || []);
+      } else if (name === "trace") {
+        const cid = dynamicPathFn ? dynamicPathFn().split("/").pop() : "";
+        r = await CAI.API.trace(cid);
+      } else {
+        const url = joinUrl(base, dynamicPathFn ? dynamicPathFn() : path);
+        const resp = await fetch(url, { method, headers:{"content-type":"application/json"}, body: body ? JSON.stringify(body) : undefined });
+        const text = await resp.text();
+        let json; try{ json = text ? JSON.parse(text) : {}; }catch{ json = {}; }
+        r = { ok: resp.ok && json.status === "ok", http: resp.status, data: json, meta:{ headers:{ cid: resp.headers.get("x-cid")||"", cache: resp.headers.get("x-cache")||"", schema: resp.headers.get("x-schema-version")||"" }, latencyMs:0, schema: resp.headers.get("x-schema-version")||"" } };
       }
-      const t1 = performance.now();
-      const hdrCid = resp.headers.get("x-cid") || "";
-      const hdrCache = resp.headers.get("x-cache") || "";
-      const hdrSchema = resp.headers.get("x-schema-version") || "";
-      const hdrLatency = resp.headers.get("x-latency-ms");
-      const latencyMs = hdrLatency ? parseInt(hdrLatency,10) : Math.round(t1 - t0);
-      if (hdrCid) lastCid = hdrCid;
+      const hdr = r.meta.headers || {};
+      if (hdr.cid) lastCid = hdr.cid;
       setCidLabels();
-      try{ json = await resp.json(); }catch{ json = {}; }
-      const ok = resp.ok && json && (json.status === "ok");
-      const error_code = json && json.status === "error" ? (json.error_code || "") : "";
-      const detail = json && json.status === "error" ? (json.detail || "") : "";
-      console.info("[HTTP]", method, path, "→", resp.status, "cid=", hdrCid || "—", "latency=", latencyMs + "ms", "schema=", hdrSchema || "—");
-      if (!resp.ok || json.status === "error") {
-        const title = json.title || error_code || "";
-        const det = json.detail || detail || "";
-        if (title || det) console.warn("[ERROR]", title, det);
-      }
       return {
-        url, code: resp.status, body: json,
-        xcid: hdrCid, xcache: hdrCache, xschema: hdrSchema, latencyMs, ok,
-        error_code, detail
+        url: path,
+        code: r.http,
+        body: r.data,
+        xcid: hdr.cid || "",
+        xcache: hdr.cache || "",
+        xschema: r.meta.schema || "",
+        latencyMs: r.meta.latencyMs,
+        ok: r.ok,
+        error_code: r.problem ? (r.problem.code || "") : "",
+        detail: r.problem ? (r.problem.detail || "") : ""
       };
     }
 
@@ -286,12 +294,12 @@
       latEl.textContent = "…";
       latEl.className = "";
       try{
-        const resp = await fetch(base + "/api/llm/ping");
-        const data = await resp.json();
-        showMeta(data.meta || {});
-        const ms = (data.latency_ms != null) ? data.latency_ms : 0;
+        try{ localStorage.setItem("backendUrl", base); }catch{}
+        const resp = await CAI.API.summary("ping");
+        showMeta(resp.meta.headers || {});
+        const ms = resp.meta.latencyMs || 0;
         latEl.textContent = ms + "ms";
-        latEl.className = (resp.ok && data.status === "ok") ? "ok" : "err";
+        latEl.className = resp.ok ? "ok" : "err";
       }catch(e){
         latEl.textContent = "ERR";
         latEl.className = "err";

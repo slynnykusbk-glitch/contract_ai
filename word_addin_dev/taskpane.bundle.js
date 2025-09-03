@@ -233,167 +233,78 @@
 
   function setLLMMeta(meta){ applyMeta(meta); }
 
-  function apiUrl(p){
-    var base = backend();
-    return base + (p.startsWith('/') ? p : '/' + p);
+  function setMeta(k, v) {
+    var ids = { cid:"cidBadge", xcache:"xcacheBadge", latency:"latencyBadge", schema:"schemaBadge", provider:"providerBadge", model:"modelBadge", mode:"modeBadge" };
+    var el = document.getElementById(ids[k]);
+    if (el) el.textContent = v == null || v === "" ? "—" : String(v);
   }
 
-  // Unified network wrapper
-  async function callEndpoint(opts){
-    opts = opts || {};
-    var method = (opts.method || "GET").toUpperCase();
-    var path = String(opts.path || "/");
-    var body = opts.body || null;
-    var timeoutMs = opts.timeoutMs != null ? opts.timeoutMs : 30000;
-    var headers = opts.headers || {};
-    var ctrl = new AbortController();
-    var to = setTimeout(function(){ ctrl.abort("timeout"); }, timeoutMs);
-    var build = window.__BUILD_ID__ || "dev";
-    var res = await fetch(apiUrl(path), {
-      method: method,
-      headers: Object.assign({ "Content-Type": "application/json", "X-Client-Build": build }, headers),
-      body: body ? JSON.stringify(body) : undefined,
-      signal: ctrl.signal
-    });
-    clearTimeout(to);
-    var data = await res.json().catch(function(){ return {}; });
-    if (!res.ok) throw new Error("HTTP " + res.status + ": " + (data.detail || res.statusText));
-    if (data.status && data.status !== "ok") throw new Error(data.detail || "API error");
-    return data;
+  function renderMeta() {
+    var m = CAI.Store.get().meta;
+    setMeta("cid", m.cid);
+    setMeta("xcache", m.cache);
+    setMeta("latency", m.latencyMs);
+    setMeta("schema", m.schema);
+    setMeta("provider", m.provider);
+    setMeta("model", m.model);
+    setMeta("mode", m.llm_mode);
   }
 
-  // ===== API functions (contracts) =====
+  function renderApiError(prefix, r) {
+    var msg = r.problem && (r.problem.title || r.problem.code) ? (r.problem.title + (r.problem.detail ? ": " + r.problem.detail : "")) : ("HTTP " + r.http);
+    status("✖ " + prefix + " error: " + msg);
+  }
 
   async function doHealth() {
-    try {
-      var res = await callEndpoint({ method: "GET", path: "/health", timeoutMs: 8000 });
-      txt(els.connBadge, "Conn: 200");
-      return res;
-    } catch (e) {
-      txt(els.connBadge, "Conn: 0");
-      status("✖ Health failed: " + (e && e.message ? e.message : e));
-      return {};
-    }
+    CAI.Store.setBase(backend());
+    var r = await CAI.API.health();
+    CAI.Store.setMeta({ cid:r.meta.headers.cid, cache:r.meta.headers.cache, latencyMs:r.meta.latencyMs, schema:r.meta.schema, provider:r.meta.headers.provider, model:r.meta.headers.model, llm_mode:r.meta.headers.llm_mode, usage:r.meta.headers.usage });
+    renderMeta();
+    toast(r.ok ? "Conn: 200" : "Conn error: " + r.http);
+    return r;
   }
 
-  async function pingLLM() {
-    try {
-      var r = await callEndpoint({ method: "GET", path: "/api/llm/ping", timeoutMs: 8000 });
-      var meta = (r.body && r.body.meta) || {};
-      applyMeta(meta);
-      if (r.ok && r.body && r.body.status === "ok") {
-        toast("LLM: " + (meta.provider || "?") + "/" + (meta.model || "?") + " " + r.body.latency_ms + " ms");
-      } else {
-        toast("LLM ping error");
-      }
-      return r;
-    } catch (e) {
-      toast("LLM ping error");
-      return {};
-    }
+  async function doSummary(text) {
+    CAI.Store.setBase(backend());
+    var r = await CAI.API.summary(text);
+    CAI.Store.setMeta({ cid:r.meta.headers.cid, cache:r.meta.headers.cache, latencyMs:r.meta.latencyMs, schema:r.meta.schema, provider:r.meta.headers.provider, model:r.meta.headers.model, llm_mode:r.meta.headers.llm_mode, usage:r.meta.headers.usage });
+    renderMeta();
+    if (r.ok) CAI.Store.get().last.summary = r.data;
+    else renderApiError("Summary", r);
+    return r;
   }
 
-  async function apiAnalyze(opts) {
-    opts = opts || {};
-    var text = opts.text || "";
-    var mode = opts.mode || getModeOrDefault();
-    var threshold = opts.threshold || getThresholdOrDefault();
-    var policyPack = null;
-    var norm = normalizeText(text);
-    var pol = "{}";
-    var idem = await sha256Hex(norm + "|" + pol);
-    try {
-      return await callEndpoint({
-        method: "POST",
-        path: "/api/analyze",
-        body: { text: text, mode: mode, threshold: threshold, policy_pack: policyPack },
-        timeoutMs: 30000,
-        headers: { "x-idempotency-key": idem }
-      });
-    } catch (e) {
-      status("✖ Analyze error: " + (e && e.message ? e.message : e));
-      return { ok: false, status: 0, json: null, headers: {} };
-    }
+  async function doGptDraft(text, mode) {
+    CAI.Store.setBase(backend());
+    var r = await CAI.API.gptDraft(text, mode || getModeOrDefault());
+    CAI.Store.setMeta({ cid:r.meta.headers.cid, cache:r.meta.headers.cache, latencyMs:r.meta.latencyMs, schema:r.meta.schema, provider:r.meta.headers.provider, model:r.meta.headers.model, llm_mode:r.meta.headers.llm_mode, usage:r.meta.headers.usage });
+    renderMeta();
+    if (r.ok) CAI.Store.get().last.draft = r.data; else renderApiError("Draft", r);
+    return r;
   }
 
-  // Back-compat wrapper (old signature)
-  async function apiAnalyze_legacy(text) { return apiAnalyze({ text: text }); }
-
-  async function apiSummary(text) {
-    text = text || "";
-    var norm = normalizeText(text);
-    var idem = await sha256Hex(norm + "|summary");
-    try {
-      return await callEndpoint({
-        method: "POST",
-        path: "/api/summary",
-        body: { text: text },
-        timeoutMs: 20000,
-        headers: { "x-idempotency-key": idem }
-      });
-    } catch (e) {
-      status("✖ Summary error: " + (e && e.message ? e.message : e));
-      return { ok: false, status: 0, json: null, headers: {} };
-    }
+  async function doSuggest(text, mode) {
+    CAI.Store.setBase(backend());
+    var r = await CAI.API.suggest(text, mode || getModeOrDefault());
+    CAI.Store.setMeta({ cid:r.meta.headers.cid, cache:r.meta.headers.cache, latencyMs:r.meta.latencyMs, schema:r.meta.schema, provider:r.meta.headers.provider, model:r.meta.headers.model, llm_mode:r.meta.headers.llm_mode, usage:r.meta.headers.usage });
+    renderMeta();
+    if (r.ok) CAI.Store.get().last.suggest = r.data; else renderApiError("Suggest", r);
+    return r;
   }
 
-  async function apiGptDraft(opts) {
-    opts = opts || {};
-    var body = {};
-    if (opts.analysis) body.analysis = opts.analysis;
-    if (opts.text) body.text = opts.text;
-    body.mode = opts.mode || "friendly";
-    try {
-      return await callEndpoint({ method: "POST", path: DRAFT_PATH, body: body, timeoutMs: 25000 });
-    } catch (e) {
-      status("✖ Draft error: " + (e && e.message ? e.message : e));
-      return { ok: false, status: 0, json: null, headers: {} };
-    }
+  async function apiQARecheck(text, rules) {
+    CAI.Store.setBase(backend());
+    var r = await CAI.API.qaRecheck(text, rules || []);
+    CAI.Store.setMeta({ cid:r.meta.headers.cid, cache:r.meta.headers.cache, latencyMs:r.meta.latencyMs, schema:r.meta.schema, provider:r.meta.headers.provider, model:r.meta.headers.model, llm_mode:r.meta.headers.llm_mode, usage:r.meta.headers.usage });
+    renderMeta();
+    if (!r.ok) renderApiError("QA", r);
+    return r;
   }
 
-  // Back-compat wrapper (old name)
-  async function apiDraft(input) { return apiGptDraft(input || {}); }
-
-  async function apiSuggestEdits(opts) {
-    opts = opts || {};
-    var body = {
-      text: opts.text || "",
-      clause: opts.clause || "",
-      mode: opts.mode || "friendly",
-      threshold: opts.threshold || getThresholdOrDefault()
-    };
-    try {
-      return await callEndpoint({ method: "POST", path: "/api/suggest_edits", body: body, timeoutMs: 25000 });
-    } catch (e) {
-      status("✖ Suggest error: " + (e && e.message ? e.message : e));
-      return { ok: false, status: 0, json: null, headers: {} };
-    }
-  }
-
-  // Back-compat wrapper (old signature)
-  async function apiSuggestEdits_legacy(text, clauseId, mode, topK) {
-    return apiSuggestEdits({ text: text, clause: clauseId, mode: mode, top_k: topK });
-  }
-
-  async function apiQARecheck(fullText, residual) {
-    var body = { text: fullText || "", mode: getModeOrDefault(), threshold: getThresholdOrDefault(), applied_changes: Array.isArray(residual) ? residual : [] };
-    try {
-      return await callEndpoint({ method: "POST", path: "/api/qa-recheck", body: body, timeoutMs: 20000 });
-    } catch (e) {
-      status("✖ QA error: " + (e && e.message ? e.message : e));
-      return { ok: false, status: 0, json: null, headers: {} };
-    }
-  }
-
-  async function apiLearningLog(events) {
-    try {
-      return await callEndpoint({
-        method: "POST",
-        path: "/api/learning/log",
-        body: { events: Array.isArray(events) ? events.slice(0, 100) : [] },
-        timeoutMs: 15000
-      });
-    } catch (e) { return { ok: false, status: 0, json: null, headers: {} }; }
+  function clearStorageAndReload(){
+    try { localStorage.clear(); } catch {}
+    if (window.caches) { caches.keys().then(function(keys){ keys.forEach(function(k){ caches.delete(k); }); }); }
+    location.reload();
   }
 
   // ===== Office helpers =====
@@ -877,10 +788,7 @@
 
   async function doHealthFlow() {
     txt(els.connBadge, "Conn: …");
-    var r = await doHealth();
-    await pingLLM();
-    // Badges are applied by callEndpoint; just echo status result here
-    return r;
+    return await doHealth();
   }
 
   async function analyzeDoc() {
@@ -890,14 +798,18 @@
     if (!text) { toast("Document is empty"); return; }
     status("Analyzing document…");
     try {
-      var r = await apiAnalyze({ text: text });
-      if (!r.ok) { status("Analyze HTTP " + r.status); return; }
-      state.analysis = r.json || null;
-      applyMeta((r.json && (r.json.meta || (r.json.data && r.json.data.meta))) || {});
-      CAI_STORE.analysis.analysis = state.analysis;
-      var cid = r.headers && r.headers.cid;
-      if (cid) console.info("[STATUS] Analyze OK • cid=" + cid);
-      else console.info("[STATUS] Analyze OK");
+      CAI.Store.setBase(backend());
+      var r = await CAI.API.analyze(text, getModeOrDefault());
+      CAI.Store.setMeta({ cid:r.meta.headers.cid, cache:r.meta.headers.cache, latencyMs:r.meta.latencyMs, schema:r.meta.schema, provider:r.meta.headers.provider, model:r.meta.headers.model, llm_mode:r.meta.headers.llm_mode, usage:r.meta.headers.usage });
+      renderMeta();
+      if (r.ok) {
+        state.analysis = r.data.analysis || null;
+        CAI.Store.get().last.analyze = r.data.analysis || null;
+        CAI_STORE.analysis.analysis = state.analysis;
+        console.info("[STATUS] Analyze OK • cid=" + (r.meta.headers.cid || ""));
+      } else {
+        renderApiError("Analyze", r);
+      }
     } catch (e) { status("✖ Analyze error: " + (e && e.message ? e.message : e)); }
   }
 
@@ -905,26 +817,19 @@
     var mode = getModeOrDefault();
     var text = await getPanelTextOrFetch();
     if (!text) { toast("Document is empty"); return; }
-    var clause = (state.clauseText || val(els.clause) || "").trim();
-    if (!clause) clause = text;
     try {
-      var r = await apiSuggestEdits({ text: text, clause: clause, mode: mode, threshold: getThresholdOrDefault() });
-      var payload = r.json || {};
-      applyMeta(payload.meta || {});
-      if (!r.ok || payload.status === "error") {
-        var msg = payload && payload.detail ? payload.detail : ("HTTP " + r.status);
-        status("✖ Suggest error: " + msg);
-        return;
+      var r = await doSuggest(text, mode);
+      if (r.ok) {
+        var payload = r.data || {};
+        var prop = payload.proposed_text || payload.suggested_text || payload.text || "";
+        setVal(els.draft, prop);
+        state.proposedText = prop;
+        setApplyEnabled(!!prop);
+        window._orig = text;
+        window._prop = prop;
+        renderDiff(window._orig, window._prop);
+        status(prop ? "Suggest OK" : "Nothing to suggest for this clause");
       }
-      var prop = payload.proposed_text || payload.suggested_text || payload.text || "";
-      setVal(els.draft, prop);
-      state.proposedText = prop;
-      setApplyEnabled(!!prop);
-      window._orig = text;
-      window._prop = prop;
-      renderDiff(window._orig, window._prop);
-      if (prop) { status("Suggest OK"); console.info("[STATUS] Suggest OK"); }
-      else { status("Nothing to suggest for this clause"); }
     } catch (e) { status("✖ Suggest error: " + (e && e.message ? e.message : e)); }
   }
 
@@ -932,8 +837,8 @@
     var text = await getPanelTextOrFetch();
     if (!text) { toast("Document is empty"); return; }
     try {
-      var r = await apiGptDraft({ text: text, mode: getModeOrDefault() });
-      var env = r.json || {};
+      var r = await doGptDraft(text, getModeOrDefault());
+      var env = r.data || {};
       state.draftResp = env;
       var diff = env && env.diff && env.diff.value;
       if (!r.ok || !diff) { status("✖ Draft error"); return; }
@@ -981,38 +886,31 @@
     status("Analyzing…");
     clearResults();
     try {
-      var s = await apiSummary(text);
-      if (s && s.ok) {
-      var senv = (s.json && (s.json.data || s.json)) || {};
-      // Тягнем лише summary, якщо він є, інакше — всю відповідь
-      var ssum = senv.summary || senv;
-      CAI_STORE.analysis.snapshot = ssum;
-      renderDocSnapshot(ssum);
-        applyMeta((s.json && (s.json.meta || (s.json.data && s.json.data.meta))) || {});
-        status("Summary OK");
+      var s = await doSummary(text);
+      if (s.ok) {
+        var senv = s.data.summary || s.data;
+        CAI_STORE.analysis.snapshot = senv;
+        renderDocSnapshot(senv);
       } else {
-        console.warn("summary failed", s);
-        status("Summary error");
         renderDocSnapshot(null);
       }
-      var r = await apiAnalyze({ text: text, mode: getModeOrDefault(), threshold: getThresholdOrDefault() });
-      if (!r.ok) { status("Analyze HTTP " + r.status); return; }
-      var payload = r.json || {};
-      var env = payload.data || payload;
-      applyMeta(payload.meta || {});
-      CAI_STORE.analysis.analysis = env.analysis || env;
-      CAI_STORE.analysis.results = env.results || null;
-      CAI_STORE.analysis.clauses = Array.isArray(env.clauses) ? env.clauses : [];
-      CAI_STORE.analysis.document = env.document || null;
-
-      txt(els.cidBadge, CAI_STORE.status.cid || "—");
-      txt(els.xcacheBadge, CAI_STORE.status.xcache || "—");
-      if (CAI_STORE.status.latencyMs != null) txt(els.latencyBadge, CAI_STORE.status.latencyMs + " ms");
-      txt(els.schemaBadge, CAI_STORE.status.schemaVersion || "—");
-
-      fillClauseSelect(env);
-      renderAnalysis(CAI_STORE.analysis.analysis);
-      status("Analyze OK • cid=" + (CAI_STORE.status.cid || "—") + " cache=" + (CAI_STORE.status.xcache || "—"));
+      CAI.Store.setBase(backend());
+      var r = await CAI.API.analyze(text, getModeOrDefault());
+      CAI.Store.setMeta({ cid:r.meta.headers.cid, cache:r.meta.headers.cache, latencyMs:r.meta.latencyMs, schema:r.meta.schema, provider:r.meta.headers.provider, model:r.meta.headers.model, llm_mode:r.meta.headers.llm_mode, usage:r.meta.headers.usage });
+      renderMeta();
+      if (r.ok) {
+        var env = r.data;
+        CAI_STORE.analysis.analysis = env.analysis || env;
+        CAI_STORE.analysis.results = env.results || null;
+        CAI_STORE.analysis.clauses = Array.isArray(env.clauses) ? env.clauses : [];
+        CAI_STORE.analysis.document = env.document || null;
+        CAI.Store.get().last.analyze = env.analysis || null;
+        fillClauseSelect(env);
+        renderAnalysis(CAI_STORE.analysis.analysis);
+        status("Analyze OK");
+      } else {
+        renderApiError("Analyze", r);
+      }
     } catch (e) { status("✖ Analyze error: " + (e && e.message ? e.message : e)); }
   }
 
@@ -1022,21 +920,17 @@
     if (!analysis && !text) { toast("Document is empty"); return; }
     status("Drafting…");
     try {
-      var input = analysis ? { analysis: analysis, mode: getModeOrDefault() } : { text: text, mode: getModeOrDefault() };
-      var r = await apiGptDraft(input);
-      var env = r.json || {};
-      if (!r.ok || env.status !== "ok") {
-        var msg = env && env.detail ? env.detail : ("HTTP " + r.status);
-        status("✖ Draft error: " + msg);
-        return;
+      var r = await doGptDraft(text, getModeOrDefault());
+      if (r.ok) {
+        var env = r.data || {};
+        var draft = String(env.proposed_text || "");
+        setVal(els.draft, draft);
+        state.proposedText = draft;
+        state.draftResp = env;
+        window.LAST_DRAFT = draft;
+        enableDraftApply(!!draft);
+        status(draft ? "Draft OK" : "Draft empty");
       }
-      var draft = String(env.proposed_text || "");
-      setVal(els.draft, draft);
-      state.proposedText = draft;
-      state.draftResp = env;
-      window.LAST_DRAFT = draft;
-      enableDraftApply(!!draft);
-      status(draft ? "Draft OK" : "Draft empty");
     } catch (e) { status("✖ Draft error: " + (e && e.message ? e.message : e)); }
   }
 
@@ -1103,36 +997,30 @@
     status("QA recheck…");
     try {
       var r = await apiQARecheck(full, []);
-      var payload = r.json || {};
-      if (!r.ok || payload.status !== "ok") {
-        var msg = payload && payload.detail ? payload.detail : ("HTTP " + r.status);
-        status("✖ QA error: " + msg);
-        applyMeta(payload.meta || {});
-        return;
-      }
-      var env = (payload && (payload.data || payload)) || {};
-      var d = (env && (env.deltas || env)) || {};
-      var scoreDelta = d.score_delta || 0;
-      var riskDelta = d.risk_delta || 0;
-      var badge = "Δ: s" + (scoreDelta >= 0 ? "+" : "") + (scoreDelta || 0) +
-        " r" + (riskDelta >= 0 ? "+" : "") + (riskDelta || 0) +
-        " " + (d.status_from || "") + "→" + (d.status_to || "");
-      txt(els.qaDeltaBadge, badge);
+      if (r.ok) {
+        var env = r.data || {};
+        var d = env.deltas || env || {};
+        var scoreDelta = d.score_delta || 0;
+        var riskDelta = d.risk_delta || 0;
+        var badge = "Δ: s" + (scoreDelta >= 0 ? "+" : "") + (scoreDelta || 0) +
+          " r" + (riskDelta >= 0 ? "+" : "") + (riskDelta || 0) +
+          " " + (d.status_from || "") + "→" + (d.status_to || "");
+        txt(els.qaDeltaBadge, badge);
 
-      var res = (env && env.residual_risks) || [];
-      els.qaResidualList.innerHTML = "";
-      if (res.length) {
-        els.qaResiduals.style.display = "block";
-        res.forEach(function (it) {
-          var li = document.createElement("li");
-          li.textContent = (it.code ? ("[" + it.code + "] ") : "") + (it.message || "risk");
-          els.qaResidualList.appendChild(li);
-        });
-      } else {
-        els.qaResiduals.style.display = "none";
+        var res = env.residual_risks || [];
+        els.qaResidualList.innerHTML = "";
+        if (res.length) {
+          els.qaResiduals.style.display = "block";
+          res.forEach(function (it) {
+            var li = document.createElement("li");
+            li.textContent = (it.code ? ("[" + it.code + "] ") : "") + (it.message || "risk");
+            els.qaResidualList.appendChild(li);
+          });
+        } else {
+          els.qaResiduals.style.display = "none";
+        }
+        status("QA OK");
       }
-      applyMeta(payload.meta || {});
-      status("QA OK");
     } catch (e) { status("✖ QA error: " + (e && e.message ? e.message : e)); }
   }
 
@@ -1218,11 +1106,12 @@
     try {
       var v = readLS(LS_KEY) || readLS(LS_KEY_OLD) || "https://127.0.0.1:9443";
       if (els.backend) els.backend.value = v;
+      CAI.Store.setBase(v);
     } catch (_) {}
 
     if (els.btnSave) els.btnSave.addEventListener("click", function () {
       var v = backend(); if (!v) { status("⚠️ Enter backend URL first"); return; }
-      writeLS(LS_KEY, v); status("Saved: " + v);
+      writeLS(LS_KEY, v); CAI.Store.setBase(v); status("Saved: " + v);
     });
 
     if (els.btnTest) els.btnTest.addEventListener("click", function () { doHealthFlow(); });

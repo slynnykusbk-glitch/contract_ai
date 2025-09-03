@@ -114,6 +114,10 @@
   <!-- Guard to avoid double wiring; bundle will set 'ready' -->
   <script>window.__CAI_WIRED__ = false;</script>
 
+  <!-- Shared modules (UMD) -->
+  <script src="./app/assets/api-client.js"></script>
+  <script src="./app/assets/store.js"></script>
+
   <!-- Anti-cache bundle include -->
   <script src="taskpane.bundle.js?v=DEV" defer></script>
 </head>
@@ -147,7 +151,17 @@
         <span>mode:</span><span class="badge" id="modeBadge">—</span><span id="mockModeBadge" class="badge" style="display:none;background:#facc15;color:#000;">MOCK</span>
       </span>
     </div>
+    <div class="row" style="margin-top:6px">
+      <button id="btn-clear-storage" class="btn btn-sm">Clear storage & reload</button>
+    </div>
   </div>
+  <script>
+  document.getElementById("btn-clear-storage").addEventListener("click", function(){
+    try { localStorage.clear(); } catch(){}
+    if (window.caches) { caches.keys().then(keys => keys.forEach(k => caches.delete(k))).finally(()=>location.reload()); }
+    else location.reload();
+  });
+  </script>
 
   <div id="doc-snapshot" class="row card hidden">
     <div class="grid">

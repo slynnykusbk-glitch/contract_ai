@@ -20,6 +20,8 @@ window.CAI = window.CAI || {};
 CAI.store = CAI.store || {};
 CAI.store.get = CAI.store.get || ((k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } });
 CAI.store.set = CAI.store.set || ((k, v) => { localStorage.setItem(k, JSON.stringify(v)); });
+CAI.store.setLastInput = (inp) => CAI.store.set("lastInput", inp);
+CAI.store.getLastInput = () => CAI.store.get("lastInput", null);
 CAI.store.updateSuggestion = (id, patch) => {
   const arr = CAI.store.get("cai:suggestions", []);
   const ix = arr.findIndex(x => x.id === id);

@@ -250,6 +250,21 @@
       <span class="badge" id="statusBadge">status: —</span>
       <span class="badge" id="severityBadge">severity: —</span>
     </div>
+    <div class="row flex" style="margin-top:8px">
+      <button id="btnViewTrace" class="btn-grey js-disable-while-busy" disabled>View Trace</button>
+      <button id="btnExportHtml" class="btn-grey js-disable-while-busy" disabled>Export HTML</button>
+      <button id="btnExportPdf" class="btn-grey js-disable-while-busy" disabled>Export PDF</button>
+    </div>
+  </div>
+
+  <div id="traceModal" class="card" style="display:none">
+    <div class="row flex" style="margin-bottom:6px">
+      <button id="traceTabJson" class="btn-grey">JSON</button>
+      <button id="traceTabReadable" class="btn-grey">Readable</button>
+      <button id="traceClose" class="btn-grey right">Close</button>
+    </div>
+    <pre id="traceJson" class="pre" style="max-height:260px"></pre>
+    <div id="traceReadable" class="pre" style="display:none;max-height:260px"></div>
   </div>
 
   <section id="doc-risk-summary" hidden>

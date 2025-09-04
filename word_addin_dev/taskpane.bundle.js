@@ -1163,22 +1163,98 @@ var REQ_LOG = [];
   }
 
   async function onReplayLast() {
-    const last = getLastAnalyze();
+    const last = CAI.store.getLastInput();
     if (!last) { toast("Nothing to replay yet."); return; }
-    const { body, headers } = await replayAnalyze({ cid: last.cid, hash: last.docHash });
-    CAI.Store.setMeta({
-      cid: headers["x-cid"] || "",
-      cache: headers["x-cache"] || "",
-      latencyMs: Number(headers["x-latency-ms"]) || 0,
-      schema: headers["x-schema-version"] || "",
-      provider: headers["x-provider"] || "",
-      model: headers["x-model"] || "",
-      llm_mode: headers["x-llm-mode"] || "",
-      usage: headers["x-usage-total"] || ""
-    });
-    renderMeta();
-    renderAnalyze(body);
-    toast("Replayed cached analysis");
+    try {
+      var mode = last.mode || getModeOrDefault();
+      var r = await CAI.API.analyze(last.text, mode);
+      CAI.store.setLastInput({ text: last.text, mode });
+      CAI.store.set("lastCid", r.meta.headers.cid);
+      CAI.Store.setMeta({ cid:r.meta.headers.cid, cache:r.meta.headers.cache, latencyMs:r.meta.latencyMs, schema:r.meta.schema, provider:r.meta.headers.provider, model:r.meta.headers.model, llm_mode:r.meta.headers.llm_mode, usage:r.meta.headers.usage });
+      renderMeta();
+      if (r.ok) {
+        var env = r.data;
+        CAI_STORE.analysis.analysis = env.analysis || env;
+        CAI_STORE.analysis.results = env.results || null;
+        CAI_STORE.analysis.clauses = Array.isArray(env.clauses) ? env.clauses : [];
+        CAI_STORE.analysis.document = env.document || null;
+        CAI.Store.get().last.analyze = env.analysis || null;
+        const findings = CAI.pickFindings(env);
+        const summary = CAI.summary.build(findings);
+        const idx = {};
+        for (const f of findings) {
+          const sn = f.snippet || f.excerpt;
+          if (sn) {
+            const id = f.rule_id || "-";
+            (idx[id] = idx[id] || []).push(sn);
+          }
+        }
+        CAI.store.set("cai:last-summary", summary);
+        CAI.store.set("cai:last-index", idx);
+        CAI.ui.renderDocSummary(summary);
+        if (els.commentOnAnalyze && els.commentOnAnalyze.checked) {
+          await CAI.commentAllFindings((env.analysis || env)?.findings, r.meta.headers);
+        }
+        fillClauseSelect(env);
+        renderAnalysis(CAI_STORE.analysis.analysis);
+        if (els.btnViewTrace) els.btnViewTrace.disabled = false;
+        if (els.btnExportHtml) els.btnExportHtml.disabled = false;
+        if (els.btnExportPdf) els.btnExportPdf.disabled = false;
+        toast("Replayed last input");
+      } else {
+        renderApiError("Analyze", r);
+      }
+    } catch (e) {
+      status("✖ Analyze error: " + (e && e.message ? e.message : e));
+    }
+  }
+
+  function showTraceTab(which){
+    if (!els.traceJson || !els.traceReadable) return;
+    els.traceJson.style.display = which === "json" ? "block" : "none";
+    els.traceReadable.style.display = which === "readable" ? "block" : "none";
+  }
+
+  async function openTrace(){
+    const cid = CAI.store.get("lastCid", CAI.Store.get().meta.cid);
+    if (!cid) { toast("No CID yet"); return; }
+    try {
+      const r = await CAI.API.trace(cid);
+      if (!r.ok) { toast("Trace error"); return; }
+      if (els.traceJson) els.traceJson.textContent = JSON.stringify(r.data, null, 2);
+      if (els.traceReadable) {
+        const findings = (r.data.analysis && r.data.analysis.findings) || [];
+        let rows = findings.map(f => `<tr><td>${f.severity||f.severity_level||""}</td><td>${f.rule_id||f.code||""}</td><td>${f.excerpt||f.text||""}</td><td>${f.advice||f.recommendation||""}</td></tr>`).join("");
+        if (!rows) rows = "<tr><td colspan='4'>No findings</td></tr>";
+        els.traceReadable.innerHTML = `<table><thead><tr><th>Severity</th><th>Rule</th><th>Excerpt</th><th>Advice</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+      if (els.traceModal) els.traceModal.style.display = "block";
+      showTraceTab("json");
+    } catch { toast("Trace fetch failed"); }
+  }
+
+  async function exportReport(fmt){
+    const cid = CAI.store.get("lastCid", CAI.Store.get().meta.cid);
+    if (!cid) { toast("No CID yet"); return; }
+    const base = backend();
+    const url = `${base}/api/report/${cid}.${fmt}`;
+    if (fmt === "pdf") {
+      try {
+        const res = await fetch(url);
+        if (res.status === 501) {
+          const j = await res.json().catch(() => ({}));
+          toast(j.detail || "PDF export not enabled");
+          return;
+        }
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, "_blank");
+      } catch {
+        toast("Export failed");
+      }
+    } else {
+      window.open(url, "_blank");
+    }
   }
 
   function renderFindings(a){
@@ -1283,9 +1359,12 @@ var REQ_LOG = [];
       } else {
         renderDocSnapshot(null);
       }
-      CAI.Store.setBase(backend());
-      var r = await CAI.API.analyze(text, getModeOrDefault());
-      CAI.Store.setMeta({ cid:r.meta.headers.cid, cache:r.meta.headers.cache, latencyMs:r.meta.latencyMs, schema:r.meta.schema, provider:r.meta.headers.provider, model:r.meta.headers.model, llm_mode:r.meta.headers.llm_mode, usage:r.meta.headers.usage });
+        CAI.Store.setBase(backend());
+        var mode = getModeOrDefault();
+        var r = await CAI.API.analyze(text, mode);
+        CAI.store.setLastInput({ text, mode });
+        CAI.store.set("lastCid", r.meta.headers.cid);
+        CAI.Store.setMeta({ cid:r.meta.headers.cid, cache:r.meta.headers.cache, latencyMs:r.meta.latencyMs, schema:r.meta.schema, provider:r.meta.headers.provider, model:r.meta.headers.model, llm_mode:r.meta.headers.llm_mode, usage:r.meta.headers.usage });
       renderMeta();
       if (r.ok) {
         var env = r.data;
@@ -1312,6 +1391,9 @@ var REQ_LOG = [];
         }
         fillClauseSelect(env);
         renderAnalysis(CAI_STORE.analysis.analysis);
+        if (els.btnViewTrace) els.btnViewTrace.disabled = false;
+        if (els.btnExportHtml) els.btnExportHtml.disabled = false;
+        if (els.btnExportPdf) els.btnExportPdf.disabled = false;
         status("Analyze OK");
       } else {
         renderApiError("Analyze", r);
@@ -1433,6 +1515,15 @@ var REQ_LOG = [];
 
     els.sugSelect = $("cai-clause-select");
     els.sugMode = $("cai-mode");
+    els.btnViewTrace = $("btnViewTrace");
+    els.btnExportHtml = $("btnExportHtml");
+    els.btnExportPdf = $("btnExportPdf");
+    els.traceModal = $("traceModal");
+    els.traceJson = $("traceJson");
+    els.traceReadable = $("traceReadable");
+    els.traceTabJson = $("traceTabJson");
+    els.traceTabReadable = $("traceTabReadable");
+    els.traceClose = $("traceClose");
     els.sugBtn = $("btnSuggest");
     els.sugList = $("cai-suggest-list");
 
@@ -1472,6 +1563,19 @@ var REQ_LOG = [];
       const onReplay = debounce(() => withBusy("analyze", onReplayLast));
       els.btnReplay.addEventListener("click", onReplay);
     }
+    if (els.btnViewTrace) {
+      const onView = debounce(() => withBusy("trace", openTrace));
+      els.btnViewTrace.addEventListener("click", onView);
+    }
+    if (els.btnExportHtml) {
+      els.btnExportHtml.addEventListener("click", () => exportReport("html"));
+    }
+    if (els.btnExportPdf) {
+      els.btnExportPdf.addEventListener("click", () => exportReport("pdf"));
+    }
+    if (els.traceClose) els.traceClose.addEventListener("click", () => { if (els.traceModal) els.traceModal.style.display = "none"; });
+    if (els.traceTabJson) els.traceTabJson.addEventListener("click", () => showTraceTab("json"));
+    if (els.traceTabReadable) els.traceTabReadable.addEventListener("click", () => showTraceTab("readable"));
 
     if (els.useDoc) els.useDoc.addEventListener("click", debounce(() => withBusy("useDoc", async function(){
       const text = await getWholeDocText();

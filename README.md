@@ -24,3 +24,10 @@ LLM_TEMPERATURE=0.2
 ```
 
 Defaults use a deterministic mock model so the application works without keys. Set the relevant variables for live providers.
+
+## Word Add-in
+
+After running an analysis the task pane displays the current CID. You can open
+`/api/trace/{cid}` via the **View Trace** button or export the analysis using
+**Export HTML/PDF**. The **Replay last** button re-sends the previous input to
+`/api/analyze`.

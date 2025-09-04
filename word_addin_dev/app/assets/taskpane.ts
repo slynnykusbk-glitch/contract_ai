@@ -1,60 +1,36 @@
-import { metaFromResponse, applyMetaToBadges } from "./api-client";
+import { metaFromResponse, applyMetaToBadges, apiHealth, apiAnalyze, apiGptDraft, apiQaRecheck } from "./api-client";
 import { notifyOk, notifyErr } from "./notifier";
 import { getWholeDocText } from "./office"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
 
 type Mode = "live" | "friendly" | "doctor";
 
-function backendBase(): string {
-  const inp = document.getElementById("backendUrl") as HTMLInputElement | null;
-  return inp?.value?.trim() || "https://localhost:9443";
-}
-
-async function safeFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
-  const resp = await fetch(input, init);
-  // даже если тело 4xx/5xx — мету применяем: так заполнятся бейджи (cid/schema/provider/…)
-  try { applyMetaToBadges( metaFromResponse(resp) ); } catch {}
-  return resp;
-}
-
 async function doHealth() {
-  const r = await safeFetch(`${backendBase()}/health`);
-  const j = await r.json();
-  notifyOk(`Health: ${j.status} (schema ${j.schema})`);
+  const { json, meta } = await apiHealth();
+  try { applyMetaToBadges(meta); } catch {}
+  notifyOk(`Health: ${json.status} (schema ${json.schema})`);
 }
 
 async function doAnalyzeDoc() {
   const text = await getWholeDocText();
   if (!text || !text.trim()) { notifyErr("В документе нет текста"); return; }
-  const r = await safeFetch(`${backendBase()}/api/analyze`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, mode: "live" })
-  });
-  const j = await r.json();
-  (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.results", { detail: j }));
+  const { json, meta } = await apiAnalyze(text);
+  try { applyMetaToBadges(meta); } catch {}
+  (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.results", { detail: json }));
   notifyOk("Analyze OK");
 }
 
 async function doGptDraft() {
-  const r = await safeFetch(`${backendBase()}/api/gpt-draft`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: "Ping draft", mode: "friendly", before_text: "", after_text: "" })
-  });
-  const j = await r.json();
-  (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.draft", { detail: j }));
+  const { json, meta } = await apiGptDraft("Ping draft");
+  try { applyMetaToBadges(meta); } catch {}
+  (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.draft", { detail: json }));
   notifyOk("Draft OK");
 }
 
 async function doQARecheck() {
-  // Пустые rules разрешены, бекенд их нормализует (последний PR)
-  const r = await safeFetch(`${backendBase()}/api/qa-recheck`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text: await getWholeDocText(), rules: [] })
-  });
-  const j = await r.json();
-  (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: j }));
+  const text = await getWholeDocText();
+  const { json, meta } = await apiQaRecheck(text, []);
+  try { applyMetaToBadges(meta); } catch {}
+  (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
   notifyOk("QA recheck OK");
 }
 

@@ -509,7 +509,7 @@ var REQ_LOG = [];
   function toast(msg) {
     try { if (window.OfficeRuntime && OfficeRuntime.displayToastAsync) { OfficeRuntime.displayToastAsync(String(msg)); return; } }
     catch (_) {}
-    try { alert(String(msg)); } catch (_) {}
+    try { console.log(String(msg)); } catch (_) {}
     status(msg);
   }
 

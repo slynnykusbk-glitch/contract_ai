@@ -1,3 +1,6 @@
+# B9-S2
+- `/api/analyze` envelope now includes `schema_version`, `results.summary` and returns uppercase `status`.
+
 # Block B5 — Legal Corpus & Metadata
 
 ## Schema

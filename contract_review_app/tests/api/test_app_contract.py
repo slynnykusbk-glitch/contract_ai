@@ -22,7 +22,7 @@ def test_health_shape():
     r = client.get("/health")
     assert r.status_code == 200
     data = r.json()
-    assert data.get("status") == "ok"
+    assert data.get("status") == "OK"
     assert data.get("schema") == SCHEMA_VERSION
     assert isinstance(data.get("rules_count"), int)
     assert r.headers.get("x-schema-version") == SCHEMA_VERSION

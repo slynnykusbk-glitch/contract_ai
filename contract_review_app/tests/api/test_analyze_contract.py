@@ -17,7 +17,7 @@ async def test_analyze_ok_contract():
         r = await ac.post("/api/analyze", json=body)
         assert r.status_code == 200
         j = r.json()
-        assert j["status"] == "ok"
-        assert j["analysis"]["status"] == "ok"
-        assert j["x_schema_version"] in ("1.3", SCHEMA_VERSION)
-        assert r.headers.get("x-schema-version") == j["x_schema_version"]
+        assert j["status"] == "OK"
+        assert j["analysis"]["status"] == "OK"
+        assert j["schema_version"] in ("1.3", SCHEMA_VERSION)
+        assert r.headers.get("x-schema-version") == j["schema_version"]

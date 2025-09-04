@@ -118,7 +118,7 @@ function onClick(id, handler){
 
 async function callEndpoint({name, method, path, body, dynamicPathFn}) {
   const base = normBase(document.getElementById("backendInput").value);
-  if (!base) { alert("Please enter backend URL"); return { error:true }; }
+  if (!base) { console.log("Please enter backend URL"); return { error:true }; }
   try{ localStorage.setItem("backendUrl", base); }catch{}
   let r;
   if (path === "/health") {
@@ -163,7 +163,7 @@ async function callEndpoint({name, method, path, body, dynamicPathFn}) {
 async function pingLLM(){
   const base = normBase(document.getElementById("backendInput").value);
   const latEl = document.getElementById("llmLatency");
-  if (!base) { alert("Please enter backend URL"); return; }
+  if (!base) { console.log("Please enter backend URL"); return; }
   latEl.textContent = "…";
   latEl.className = "";
   try{
@@ -322,7 +322,7 @@ async function runAll(){
 }
 
 // ---------------------- init & events ----------------------
-onClick("saveBtn", () => { saveBase(); alert("Saved"); });
+onClick("saveBtn", () => { saveBase(); console.log("Saved"); });
 onClick("runAllBtn", runAll);
 onClick("pingBtn", pingLLM);
 onClick("btnHealth", testHealth);

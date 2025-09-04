@@ -1,50 +1,75 @@
-const input = document.getElementById('input') as HTMLTextAreaElement;
-const output = document.getElementById('output') as HTMLPreElement;
+import { notify } from '../../assets/notifier';
+import { metaFromResponse, applyMetaToBadges } from '../../assets/api-client';
 
-const isOk = (s: any) => String(s).toLowerCase() === 'ok';
-const getSchemaVer = (b: any) => (b?.x_schema_version || b?.schema_version || null);
+const backend = (window as any).CAI?.Store?.getBase?.() || 'https://localhost:9443';
 
-async function callApi(endpoint: string) {
-  output.textContent = '...';
-  try {
-    const resp = await fetch(endpoint, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({text: input.value})
-    });
-    const data = await resp.json();
-    getSchemaVer(data);
-    if (!resp.ok || !isOk(data.status) || !isOk(data?.analysis?.status)) {
-      throw new Error(JSON.stringify(data));
-    }
-    output.textContent = JSON.stringify(data, null, 2);
-  } catch (err: any) {
-    output.textContent = err.message || String(err);
+/** Достаём целиком текст документа Word */
+async function getWholeDocText(): Promise<string> {
+  return await Word.run(async ctx => {
+    const body = ctx.document.body;
+    body.load('text');
+    await ctx.sync();
+    return (body.text || '').trim();
+  });
+}
+
+async function postJson(path: string, body: any): Promise<Response> {
+  const resp = await fetch(`${backend}${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  applyMetaToBadges(metaFromResponse(resp));
+  return resp;
+}
+
+/** Кнопка Test — пинг модели */
+async function onTest(e: Event) {
+  e.preventDefault();
+  const resp = await postJson('/api/gpt-draft', { text: 'Ping draft', mode: 'friendly' });
+  const js = await resp.json();
+  notify.ok(`LLM: HTTP ${resp.status}`);
+  console.log('GPT-DRAFT resp:', js);
+}
+
+/** Analyze(doc) */
+async function onAnalyzeDoc(e: Event) {
+  e.preventDefault();
+  const text = await getWholeDocText();
+  if (!text) { notify.warn('В документе нет текста'); return; }
+  const resp = await postJson('/api/analyze', { text, mode: 'live' });
+  const js = await resp.json();
+  notify.ok(`ANALYZE: HTTP ${resp.status}`);
+  console.log('ANALYZE resp:', js);
+}
+
+/** QA Recheck — без правил (для smoke) */
+async function onQARecheck(e: Event) {
+  e.preventDefault();
+  const text = await getWholeDocText();
+  if (!text) { notify.warn('В документе нет текста'); return; }
+  const resp = await postJson('/api/qa-recheck', { text, rules: [] });
+  const js = await resp.json();
+  notify.ok(`QA: HTTP ${resp.status}`);
+  console.log('QA resp:', js);
+}
+
+function bindClick(sel: string, fn: (e: Event) => void) {
+  const b = document.querySelector(sel) as HTMLButtonElement | null;
+  if (!b) return;
+  b.addEventListener('click', fn);
+  b.classList.remove('btn-grey');
+  b.disabled = false;
+}
+
+/** Инициализация строго после Office.onReady */
+Office.onReady().then(() => {
+  // backend base может задаваться из store; резерв — localhost
+  if ((window as any).CAI?.Store?.setBase) {
+    (window as any).CAI.Store.setBase('https://localhost:9443');
   }
-}
-
-function onClick(id: string, handler: (ev: MouseEvent) => any) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.addEventListener('click', handler);
-}
-
-onClick('btnAnalyze', () => callApi('/api/analyze'));
-onClick('btnSummary', () => callApi('/api/summary'));
-onClick('btnSuggest', () => callApi('/api/suggest_edits'));
-onClick('btnQA', () => callApi('/api/qa-recheck'));
-
-async function pingHealth() {
-  const badge = document.getElementById('health');
-  if (!badge) return;
-  try {
-    const r = await fetch('/health');
-    badge.textContent = r.ok ? 'ok' : 'fail';
-    badge.className = r.ok ? 'ok' : 'fail';
-  } catch {
-    badge.textContent = 'fail';
-    badge.className = 'fail';
-  }
-}
-
-pingHealth();
+  bindClick('#btnTest', onTest);
+  bindClick('#btnAnalyzeDoc', onAnalyzeDoc);
+  bindClick('#btnQARecheck', onQARecheck);
+  notify.info('Panel init OK');
+});

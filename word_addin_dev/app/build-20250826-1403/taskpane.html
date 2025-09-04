@@ -23,6 +23,10 @@ pre{background:#f0f0f0;padding:8px;border-radius:4px;white-space:pre-wrap;}
 <button id="btnQA">QA</button>
 </div>
 <pre id="output"></pre>
-<script src="taskpane.bundle.js"></script>
+<script type="module" src="taskpane.bundle.js"></script>
+<script nomodule>
+  document.body.innerHTML =
+    '<div style=\"padding:12px;color:#f66\">Your runtime is too old for ES modules. Please update your browser.</div>';
+</script>
 </body>
 </html>

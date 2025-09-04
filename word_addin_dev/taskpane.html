@@ -115,17 +115,32 @@
   </style>
 
   <!-- Office.js -->
-  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js" defer></script>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
   <!-- Guard to avoid double wiring; bundle will set 'ready' -->
   <script>window.__CAI_WIRED__ = false;</script>
 
-  <!-- Shared modules (UMD) -->
-  <script src="./app/assets/api-client.js"></script>
-  <script src="./app/assets/store.js"></script>
+  <!-- Единый модульный загрузчик: ждём Office и только потом поднимаем приложение -->
+  <script type="module">
+    import './app/assets/store.js?v=DEV';
+    import './app/assets/api-client.js?v=DEV';
 
-  <!-- Anti-cache bundle include -->
-  <script src="taskpane.bundle.js?v=DEV" defer></script>
+    // Безопасная инициализация для Word (WebView2 поддерживает ES-модули)
+    Office.onReady(() => {
+      import('./taskpane.bundle.js?v=DEV')
+        .catch(err => {
+          console.error('Failed to load taskpane bundle', err);
+          const wrap = document.querySelector('.wrap');
+          wrap && (wrap.innerHTML = '<div style=\"color:#f66\">Failed to load UI bundle. See console.</div>');
+        });
+    });
+  </script>
+
+  <script nomodule>
+    document.body.innerHTML =
+      '<div style=\"padding:12px;color:#f66\">This Office runtime does not support ES modules. '+
+      'Please update Office to a recent build.</div>';
+  </script>
 </head>
 <body>
 <div class="wrap">

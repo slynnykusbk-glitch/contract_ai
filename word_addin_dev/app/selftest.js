@@ -1,0 +1,341 @@
+// word_addin_dev/app/selftest.js - extracted module from panel_selftest.html
+
+// ---------------------- helpers ----------------------
+const LS_KEY = "panel:backendUrl";
+const DRAFT_PATH = "/api/gpt-draft";
+const SAMPLE = "Governing law: England and Wales.";
+let clientCid = genCid();
+let lastCid = ""; // from response headers
+
+function showMeta(meta){
+  const prov = document.getElementById("llmProv");
+  const model = document.getElementById("llmModel");
+  prov.textContent = (meta && meta.provider) || "—";
+  model.textContent = (meta && meta.model) || "—";
+  const badge = document.getElementById("llmBadge");
+  if (badge) badge.style.display = (meta && meta.mode === "mock") ? "inline-block" : "none";
+}
+
+function pickDocType(summary) {
+  summary = summary || {};
+  let list = [];
+  if (Array.isArray(summary.doc_types)) list = summary.doc_types;
+  else if (summary.document && Array.isArray(summary.document.doc_types)) list = summary.document.doc_types;
+  // legacy: summary.doc_type = { top:{type,score}, confidence, candidates[] }
+  if (!list.length && summary.doc_type && (summary.doc_type.top || summary.doc_type.candidates)) {
+    const top = summary.doc_type.top || {};
+    const conf = (typeof summary.doc_type.confidence === 'number')
+      ? summary.doc_type.confidence
+      : (typeof top.score === 'number' ? top.score : null);
+    return { name: top.type || top.name || null, confidence: conf };
+  }
+  let best = null;
+  if (list && list.length) {
+    best = list.reduce((acc, cur) => {
+      const c = typeof cur.confidence === 'number' ? cur.confidence : (typeof cur.score === 'number' ? cur.score : 0);
+      const n = cur.name || cur.type || cur.slug || cur.id || null;
+      if (!acc || c > acc.confidence) return { name: n, confidence: c };
+      return acc;
+    }, null);
+  } else {
+    let n2 = summary.type || (summary.document && summary.document.type) || null;
+    let c2 = summary.type_confidence;
+    if (c2 == null && summary.document && summary.document.type_confidence != null) c2 = summary.document.type_confidence;
+    if (typeof c2 === 'string') { const f = parseFloat(c2); c2 = isNaN(f) ? null : f; }
+    best = { name: n2, confidence: c2 };
+  }
+  return best || { name: null, confidence: null };
+}
+
+function genCid(){ return "cid-" + Math.random().toString(16).slice(2) + "-" + Date.now().toString(16); }
+
+function normBase(u){
+  if (!u) return "";
+  let s = String(u).trim();
+  if (s.startsWith("//")) s = "https:" + s;
+  if (!/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(s)) s = "https://" + s;
+  s = s.replace(/^http:\/\/(127\.0\.0\.1|localhost)(:9443)(\/|$)/, "https://$1$2$3");
+  return s.replace(/\/+$/, "");
+}
+function joinUrl(base, path){
+  if (!base) throw new Error("backend base URL is empty");
+  if (!path.startsWith("/")) path = "/" + path;
+  return base.replace(/\/+$/, "") + path;
+}
+function saveBase(){ try{ const v=document.getElementById("backendInput").value.trim(); localStorage.setItem(LS_KEY, v); localStorage.setItem("backendUrl", v); }catch{} }
+function loadBase(){
+  let v = localStorage.getItem(LS_KEY) || document.getElementById("backendInput").value || "https://127.0.0.1:9443";
+  v = normBase(v);
+  document.getElementById("backendInput").value = v || "https://127.0.0.1:9443";
+  try{ localStorage.setItem("backendUrl", v); }catch{}
+  return v;
+}
+function setCidLabels(){
+  document.getElementById("cidLbl").textContent = clientCid;
+  document.getElementById("lastCidLbl").textContent = lastCid || "(none yet)";
+}
+function setJSON(elId, obj){
+  const el = document.getElementById(elId);
+  try { el.textContent = JSON.stringify(obj, null, 2); }
+  catch { el.textContent = String(obj); }
+}
+function setStatusRow(rowId, {code, xcid, xcache, xschema, latencyMs, ok, error_code, detail}){
+  const tr = document.getElementById(rowId);
+  const cells = tr.getElementsByTagName('td');
+  const latencyText = (latencyMs != null ? `${latencyMs} ms` : (xcid ? "" : ""));
+  cells[1].textContent = code ?? "";
+  cells[2].textContent = xcid ?? "";
+  cells[3].textContent = xcache ?? "";
+  cells[4].textContent = xschema ?? "";
+  cells[5].textContent = latencyText;
+  if (ok) {
+    cells[6].innerHTML = '<span class="ok">ok</span>';
+  } else {
+    const msg = error_code ? `${error_code}${detail ? ': ' + detail : ''}` : 'error';
+    cells[6].innerHTML = `<span class="err">${msg}</span>`;
+  }
+}
+
+function showResp(r){
+  const el = document.getElementById("resp");
+  if(!r.ok){
+    try{ el.textContent = `HTTP ${r.code}\n` + JSON.stringify(r.body, null, 2); }
+    catch{ el.textContent = `HTTP ${r.code}`; }
+    return;
+  }
+  if(r.body && r.body.status && r.body.status !== "ok"){
+    el.textContent = `API error: ${r.body.detail || r.body.error_code || ''}`;
+    return;
+  }
+  setJSON("resp", r.body);
+}
+
+function onClick(id, handler){
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('click', handler);
+}
+
+async function callEndpoint({name, method, path, body, dynamicPathFn}) {
+  const base = normBase(document.getElementById("backendInput").value);
+  if (!base) { alert("Please enter backend URL"); return { error:true }; }
+  try{ localStorage.setItem("backendUrl", base); }catch{}
+  let r;
+  if (path === "/health") {
+    r = await CAI.API.health();
+  } else if (path === "/api/analyze") {
+    r = await CAI.API.analyze(body && body.text);
+  } else if (path === "/api/summary") {
+    r = await CAI.API.summary(body && body.text);
+  } else if (path === DRAFT_PATH || path === "/api/gpt-draft") {
+    r = await CAI.API.gptDraft(body && body.text);
+  } else if (path === "/api/suggest_edits") {
+    r = await CAI.API.suggest(body && body.text);
+  } else if (path === "/api/qa-recheck") {
+    r = await CAI.API.qaRecheck(body && body.text, body && body.applied_changes || []);
+  } else if (name === "trace") {
+    const cid = dynamicPathFn ? dynamicPathFn().split("/").pop() : "";
+    r = await CAI.API.trace(cid);
+  } else {
+    const url = joinUrl(base, dynamicPathFn ? dynamicPathFn() : path);
+    const resp = await fetch(url, { method, headers:{"content-type":"application/json"}, body: body ? JSON.stringify(body) : undefined });
+    const text = await resp.text();
+    let json; try{ json = text ? JSON.parse(text) : {}; }catch{ json = {}; }
+    r = { ok: resp.ok && json.status === "ok", http: resp.status, data: json, meta:{ headers:{ cid: resp.headers.get("x-cid")||"", cache: resp.headers.get("x-cache")||"", schema: resp.headers.get("x-schema-version")||"" }, latencyMs:0, schema: resp.headers.get("x-schema-version")||"" } };
+  }
+  const hdr = r.meta.headers || {};
+  if (hdr.cid) lastCid = hdr.cid;
+  setCidLabels();
+  return {
+    url: path,
+    code: r.http,
+    body: r.data,
+    xcid: hdr.cid || "",
+    xcache: hdr.cache || "",
+    xschema: r.meta.schema || "",
+    latencyMs: r.meta.latencyMs,
+    ok: r.ok,
+    error_code: r.problem ? (r.problem.code || "") : "",
+    detail: r.problem ? (r.problem.detail || "") : ""
+  };
+}
+
+async function pingLLM(){
+  const base = normBase(document.getElementById("backendInput").value);
+  const latEl = document.getElementById("llmLatency");
+  if (!base) { alert("Please enter backend URL"); return; }
+  latEl.textContent = "…";
+  latEl.className = "";
+  try{
+    try{ localStorage.setItem("backendUrl", base); }catch{}
+    const resp = await CAI.API.summary("ping");
+    showMeta(resp.meta.headers || {});
+    const ms = resp.meta.latencyMs || 0;
+    latEl.textContent = ms + "ms";
+    latEl.className = resp.ok ? "ok" : "err";
+  }catch(e){
+    latEl.textContent = "ERR";
+    latEl.className = "err";
+  }
+}
+
+// ---------------------- individual tests ----------------------
+async function testHealth(){
+  const r = await callEndpoint({ name:"health", method:"GET", path:"/health" });
+  setStatusRow("row-health", r);
+  showResp(r);
+  return r;
+}
+function getSampleText(){
+  return SAMPLE;
+}
+
+async function testAnalyze(){
+  const r = await callEndpoint({
+    name:"analyze", method:"POST", path:"/api/analyze",
+    body:{ text: SAMPLE }
+  });
+  setStatusRow("row-analyze", r);
+  showResp(r);
+  showMeta(r.body && r.body.meta || {});
+  return r;
+}
+async function testSummary(){
+  const r = await callEndpoint({
+    name:"summary", method:"POST", path:"/api/summary",
+    body:{ text: SAMPLE }
+  });
+  setStatusRow("row-summary", r);
+  if(!r.ok || (r.body && r.body.status !== "ok")){
+    showResp(r);
+    return r;
+  }
+  const el = document.getElementById("resp");
+  try {
+    const s = JSON.stringify(r.body, null, 2)
+      .replace(/"schema_version"\s*:\s*"([^"]+)"/,'<span class="ok">"schema_version": "$1"</span>')
+      .replace(/"type"\s*:\s*"([^"]+)"/,'<span class="ok">"type": "$1"</span>')
+      .replace(/"has_cap"\s*:\s*(true|false)/,'<span class="ok">"has_cap": $1</span>')
+      .replace(/"has_conditions"\s*:\s*(true|false)/,'<span class="ok">"has_conditions": $1</span>')
+      .replace(/"has_warranties"\s*:\s*(true|false)/,'<span class="ok">"has_warranties": $1</span>');
+    el.innerHTML = s;
+  } catch {
+    setJSON("resp", r.body);
+  }
+  const snapEl = document.getElementById("docSnap");
+  const summary = r.body && (r.body.summary || r.body) || null;
+  const docType = pickDocType(summary || {});
+  const typeEl = document.querySelector('[data-snap-type]');
+  const confEl = document.querySelector('[data-snap-type-confidence]');
+  if (typeEl) typeEl.textContent = docType.name ?? '—';
+  if (confEl) confEl.textContent =
+    docType.confidence != null ? Math.round(docType.confidence * 100) + '%' : '—';
+  if (summary) {
+    try { snapEl.textContent = JSON.stringify(summary, null, 2); }
+    catch { snapEl.textContent = String(summary); }
+  } else {
+    snapEl.textContent = "";
+  }
+  return r;
+}
+
+async function testDraft(){
+  const r = await callEndpoint({
+    name:"draft", method:"POST", path:DRAFT_PATH,
+    body:{ text: SAMPLE }
+  });
+  const ok = r.ok && r.body && r.body.status === "ok";
+  setStatusRow("row-draft", Object.assign({}, r, { ok: !!ok }));
+  showResp(r);
+  showMeta(r.body && r.body.meta || {});
+  const badge = document.getElementById("llmBadge");
+  const meta = r.body && r.body.meta ? r.body.meta : {};
+  if (meta.mode === "mock") { badge.style.display = "inline-block"; } else { badge.style.display = "none"; }
+  return r;
+}
+async function testSuggest(){
+  const r = await callEndpoint({
+    name:"suggest", method:"POST", path:"/api/suggest_edits",
+    body:{ text: SAMPLE }
+  });
+  setStatusRow("row-suggest", r);
+  showResp(r);
+  showMeta(r.body && r.body.meta || {});
+  return r;
+}
+async function testQA(){
+  const r = await callEndpoint({
+    name:"qa", method:"POST", path:"/api/qa-recheck",
+    body:{ text: SAMPLE, applied_changes:[] }
+  });
+  setStatusRow("row-qa", r);
+  showResp(r);
+  showMeta(r.body && r.body.meta || {});
+  return r;
+}
+async function testCalloff(){
+  const r = await callEndpoint({
+    name:"calloff", method:"POST", path:"/api/calloff/validate",
+    body:{ description:"[●]" }
+  });
+  setStatusRow("row-calloff", r);
+  if(!r.ok || (r.body && r.body.status !== "ok")){
+    showResp(r);
+    return r;
+  }
+  const issues = (r.body && r.body.issues) ? r.body.issues.length : 0;
+  const tr = document.getElementById("row-calloff");
+  const cells = tr.getElementsByTagName('td');
+  cells[6].innerHTML = r.ok ? `<span class="ok">ok / issues ${issues}</span>` : '<span class="err">error</span>';
+  setJSON("resp", r.body);
+  return r;
+}
+async function testTrace(){
+  const cid = lastCid || clientCid || "cid-dummy";
+  const r = await callEndpoint({
+    name:"trace", method:"GET",
+    dynamicPathFn: () => `/api/trace/${encodeURIComponent(cid)}`
+  });
+  setStatusRow("row-trace", r);
+  setJSON("trace", r.body);
+  return r;
+}
+
+async function runAll(){
+  // reset table rows
+  for (const id of ["row-health","row-analyze","row-summary","row-draft","row-suggest","row-qa","row-calloff","row-trace"]) {
+    setStatusRow(id, {code:"",xcid:"",xcache:"",xschema:"",latencyMs:null,ok:false});
+  }
+  document.getElementById("resp").textContent = "";
+  document.getElementById("docSnap").textContent = "";
+  document.getElementById("trace").textContent = "";
+  clientCid = genCid();
+  setCidLabels();
+
+  await testHealth();
+  await testAnalyze();
+  await testSummary();
+  await testSuggest();
+  await testQA();
+  await testCalloff();
+  await testDraft();
+}
+
+// ---------------------- init & events ----------------------
+onClick("saveBtn", () => { saveBase(); alert("Saved"); });
+onClick("runAllBtn", runAll);
+onClick("pingBtn", pingLLM);
+onClick("btnHealth", testHealth);
+onClick("btnAnalyze", testAnalyze);
+onClick("btnDraft", testDraft);
+onClick("btnSummary", testSummary);
+onClick("btnSuggest", testSuggest);
+onClick("btnQA", testQA);
+onClick("btnCalloff", testCalloff);
+onClick("btnTrace", testTrace);
+
+// Load defaults on first paint
+window.addEventListener("DOMContentLoaded", () => {
+  loadBase();
+  setCidLabels();
+});

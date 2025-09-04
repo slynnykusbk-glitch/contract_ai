@@ -8,6 +8,8 @@
 - Export analysis reports via `GET /api/report/{cid}.html` (always on) and
   `GET /api/report/{cid}.pdf` (returns 501 if PDF backend missing).
 - Use the `x-cid` response header from `/api/analyze` as the identifier.
+- Trace middleware now persists up to 200 entries (configurable via `TRACE_MAX`)
+  and accepts CID values matching ``^[A-Za-z0-9\-:]{3,64}$``.
 
 # Block B5 — Legal Corpus & Metadata
 

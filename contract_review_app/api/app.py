@@ -17,10 +17,13 @@ import re
 import time
 from datetime import datetime, timezone
 import logging
-from collections import OrderedDict
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+from collections import OrderedDict
+
+from contract_review_app.core.trace import TraceStore
 
 log = logging.getLogger("contract_ai")
 
@@ -33,28 +36,7 @@ PANEL_ASSETS_DIR = PANEL_DIR / "app" / "assets"
 TRACE_MAX = int(os.getenv("TRACE_MAX", "200"))
 
 
-class _TraceStore:
-    def __init__(self, maxlen: int = 200):
-        self.maxlen = maxlen
-        self._d: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
-
-    def put(self, cid: str, item: Dict[str, Any]) -> None:
-        if not cid:
-            return
-        if cid in self._d:
-            self._d.move_to_end(cid)
-        self._d[cid] = item
-        while len(self._d) > self.maxlen:
-            self._d.popitem(last=False)
-
-    def get(self, cid: str) -> Dict[str, Any] | None:
-        return self._d.get(cid)
-
-    def list(self) -> list[str]:
-        return list(self._d.keys())
-
-
-TRACE = _TraceStore(TRACE_MAX)
+TRACE = TraceStore(TRACE_MAX)
 
 
 def _validate_env_vars() -> None:
@@ -672,8 +654,7 @@ app.add_middleware(
 _TRACE_MAX_CIDS = 200
 _TRACE_MAX_EVENTS = 500
 _TRACE: "OrderedDict[str, List[Dict[str, Any]]]" = OrderedDict()
-_TRACE_DATA: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
-_CID_RE = re.compile(r"^[0-9a-fA-F]{64}$")
+_CID_RE = re.compile(r"^[A-Za-z0-9\-:]{3,64}$")
 
 
 def _trace_push(cid: str, event: Dict[str, Any]) -> None:
@@ -708,22 +689,50 @@ async def add_response_headers(request: Request, call_next):
     response = await call_next(request)
     if "x-schema-version" not in response.headers:
         apply_std_headers(response, request, started_at)
-    cid = response.headers.get("x-cid")
-    try:
-        resp_json = json.loads(response.body.decode("utf-8"))
-    except Exception:
-        resp_json = None
-    trace_item: Dict[str, Any] = {
-        "ts": datetime.now(timezone.utc).isoformat(),
-        "path": request.url.path,
-        "status": response.status_code,
-        "headers": dict(response.headers),
-        "body": resp_json,
-    }
-    doc_hash = response.headers.get("x-doc-hash")
-    if doc_hash:
-        trace_item["doc_hash"] = doc_hash
-    TRACE.put(cid, trace_item)
+
+    resp_bytes = b""
+    async for chunk in response.body_iterator:
+        resp_bytes += chunk
+
+    async def _send_body():
+        yield resp_bytes
+
+    response.body_iterator = _send_body()
+
+    path = request.url.path
+    method = request.method
+    cid: str | None = None
+    if method == "POST" and path == "/api/analyze":
+        cid = response.headers.get("x-cid")
+    elif method == "GET" and path == "/health":
+        cid = "health"
+
+    if cid:
+        try:
+            req_json = json.loads(body.decode("utf-8")) if body else {}
+        except Exception:
+            req_json = {}
+        try:
+            resp_json = json.loads(resp_bytes.decode("utf-8"))
+        except Exception:
+            resp_json = {}
+        snapshot: Dict[str, Any] = {
+            "cid": cid,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "input": req_json if isinstance(req_json, dict) else {},
+            "analysis": resp_json if isinstance(resp_json, dict) else {},
+            "meta": {
+                "path": path,
+                "status": response.status_code,
+                "headers": {
+                    "x-cache": response.headers.get("x-cache"),
+                    "x-doc-hash": response.headers.get("x-doc-hash"),
+                    "x-cid": response.headers.get("x-cid"),
+                },
+            },
+            "x_schema_version": SCHEMA_VERSION,
+        }
+        TRACE.put(cid, snapshot)
     return response
 
 
@@ -1178,6 +1187,8 @@ async def health(response: Response) -> dict:
 
 @router.get("/api/trace/{cid}")
 async def get_trace_by_cid(cid: str):
+    if not _CID_RE.fullmatch(cid or ""):
+        raise HTTPException(status_code=422, detail="invalid cid")
     item = TRACE.get(cid)
     if not item:
         raise HTTPException(status_code=404, detail="trace not found")
@@ -1195,13 +1206,14 @@ async def api_report_html(cid: str):
         resp = _problem_response(422, "invalid cid", "invalid cid")
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         return resp
-    trace = _TRACE_DATA.get(cid)
+    trace = TRACE.get(cid)
     if not trace:
         raise HTTPException(status_code=404, detail="trace not found")
     html = render_html_report(trace)
     resp = Response(content=html, media_type="text/html; charset=utf-8")
     _set_schema_headers(resp)
     _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+    resp.headers["Cache-Control"] = "public, max-age=600"
     return resp
 
 
@@ -1211,7 +1223,7 @@ async def api_report_pdf(cid: str):
         resp = _problem_response(422, "invalid cid", "invalid cid")
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         return resp
-    trace = _TRACE_DATA.get(cid)
+    trace = TRACE.get(cid)
     if not trace:
         raise HTTPException(status_code=404, detail="trace not found")
     html = render_html_report(trace)
@@ -1222,10 +1234,12 @@ async def api_report_pdf(cid: str):
             501, "PDF export not enabled", "PDF export not enabled"
         )
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+        resp.headers["Cache-Control"] = "public, max-age=600"
         return resp
     resp = Response(content=pdf_bytes, media_type="application/pdf")
     _set_schema_headers(resp)
     _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+    resp.headers["Cache-Control"] = "public, max-age=600"
     return resp
 
 
@@ -1311,17 +1325,6 @@ def api_analyze(req: AnalyzeRequest, request: Request):
         "meta": PROVIDER_META,
         "summary": summary,
     }
-    trace_payload = {
-        "cid": cid,
-        "created_at": datetime.utcnow().isoformat() + "Z",
-        "input": {"text": txt, "mode": getattr(req, "mode", "analyze")},
-        "analysis": analysis_out,
-        "meta": PROVIDER_META,
-        "x_schema_version": SCHEMA_VERSION,
-    }
-    if len(_TRACE_DATA) >= _TRACE_MAX_CIDS:
-        _TRACE_DATA.popitem(last=False)
-    _TRACE_DATA[cid] = trace_payload
     IDEMPOTENCY_CACHE.set(cid, envelope)
     rec = {"resp": envelope, "cid": cid}
     an_cache.set(doc_hash, rec)

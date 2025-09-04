@@ -15,7 +15,9 @@ def register_error_handlers(app: FastAPI) -> None:
     async def _handle_validation_error(request: Request, exc: RequestValidationError):
         problem = ProblemDetail(title="Validation error", status=422)
         resp = JSONResponse(problem.model_dump(), status_code=422)
-        apply_std_headers(resp, request, getattr(request.state, "started_at", time.perf_counter()))
+        apply_std_headers(
+            resp, request, getattr(request.state, "started_at", time.perf_counter())
+        )
         return resp
 
     @app.exception_handler(HTTPException)
@@ -23,9 +25,11 @@ def register_error_handlers(app: FastAPI) -> None:
         if exc.status_code >= 500:
             logger.exception("HTTPException", exc_info=exc)
         title = exc.detail if isinstance(exc.detail, str) else "Error"
-        problem = ProblemDetail(title=title, status=exc.status_code)
+        problem = ProblemDetail(title=title, detail=title, status=exc.status_code)
         resp = JSONResponse(problem.model_dump(), status_code=exc.status_code)
-        apply_std_headers(resp, request, getattr(request.state, "started_at", time.perf_counter()))
+        apply_std_headers(
+            resp, request, getattr(request.state, "started_at", time.perf_counter())
+        )
         return resp
 
     @app.exception_handler(Exception)
@@ -33,5 +37,7 @@ def register_error_handlers(app: FastAPI) -> None:
         logger.exception("Unhandled exception", exc_info=exc)
         problem = ProblemDetail(title="Internal Server Error", status=500)
         resp = JSONResponse(problem.model_dump(), status_code=500)
-        apply_std_headers(resp, request, getattr(request.state, "started_at", time.perf_counter()))
+        apply_std_headers(
+            resp, request, getattr(request.state, "started_at", time.perf_counter())
+        )
         return resp

@@ -15,3 +15,18 @@
   root.CAI = root.CAI || {};
   root.CAI.Store = { setBase, setRisk, setMeta, get, DEFAULT_BASE };
 }(typeof self !== "undefined" ? self : this));
+
+window.CAI = window.CAI || {};
+CAI.store = CAI.store || {};
+CAI.store.get = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+CAI.store.set = (k, v) => { localStorage.setItem(k, JSON.stringify(v)); };
+CAI.store.updateSuggestion = (id, patch) => {
+  const arr = CAI.store.get("cai:suggestions", []);
+  const ix = arr.findIndex(x => x.id === id);
+  if (ix >= 0) {
+    arr[ix] = { ...arr[ix], ...patch };
+    CAI.store.set("cai:suggestions", arr);
+    return arr[ix];
+  }
+  return null;
+};

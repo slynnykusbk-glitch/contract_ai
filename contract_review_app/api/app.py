@@ -15,6 +15,7 @@ import json
 import os
 import re
 import time
+from datetime import datetime
 import logging
 from collections import OrderedDict
 from contextlib import asynccontextmanager
@@ -75,6 +76,8 @@ from .models import (
     SCHEMA_VERSION,
 )
 from contract_review_app.core.cache import TTLCache
+from contract_review_app.engine.report_html import render_html_report
+from contract_review_app.engine.report_pdf import html_to_pdf
 
 # --- LLM provider & limits (final resolution) ---
 from contract_review_app.llm.provider import get_provider
@@ -642,6 +645,8 @@ app.add_middleware(
 _TRACE_MAX_CIDS = 200
 _TRACE_MAX_EVENTS = 500
 _TRACE: "OrderedDict[str, List[Dict[str, Any]]]" = OrderedDict()
+_TRACE_DATA: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+_CID_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 
 
 def _trace_push(cid: str, event: Dict[str, Any]) -> None:
@@ -1131,15 +1136,63 @@ async def health(response: Response) -> dict:
 @router.get("/api/trace/{cid}")
 async def api_trace(cid: str, response: Response):
     _set_schema_headers(response)
+    if not _CID_RE.fullmatch(cid or ""):
+        resp = _problem_response(422, "invalid cid", "invalid cid")
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+        return resp
+    data = _TRACE_DATA.get(cid)
+    if not data:
+        raise HTTPException(status_code=404, detail="trace not found")
+    resp = dict(data)
+    resp["status"] = "ok"
+    resp["events"] = _TRACE.get(cid, [])
     _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
-    return {"status": "ok", "cid": cid, "events": _TRACE.get(cid, [])}
+    return resp
 
 
 @router.get("/api/trace")
 async def api_trace_index(response: Response):
     _set_schema_headers(response)
     _set_std_headers(response, cid="trace-index", xcache="miss", schema=SCHEMA_VERSION)
-    return {"status": "ok", "cids": list(_TRACE.keys())}
+    return {"status": "ok", "cids": list(_TRACE_DATA.keys())}
+
+
+@router.get("/api/report/{cid}.html")
+async def api_report_html(cid: str):
+    if not _CID_RE.fullmatch(cid or ""):
+        resp = _problem_response(422, "invalid cid", "invalid cid")
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+        return resp
+    trace = _TRACE_DATA.get(cid)
+    if not trace:
+        raise HTTPException(status_code=404, detail="trace not found")
+    html = render_html_report(trace)
+    resp = Response(content=html, media_type="text/html; charset=utf-8")
+    _set_schema_headers(resp)
+    _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+    return resp
+
+
+@router.get("/api/report/{cid}.pdf")
+async def api_report_pdf(cid: str):
+    if not _CID_RE.fullmatch(cid or ""):
+        resp = _problem_response(422, "invalid cid", "invalid cid")
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+        return resp
+    trace = _TRACE_DATA.get(cid)
+    if not trace:
+        raise HTTPException(status_code=404, detail="trace not found")
+    html = render_html_report(trace)
+    try:
+        pdf_bytes = html_to_pdf(html)
+    except NotImplementedError:
+        resp = _problem_response(501, "PDF export not enabled", "PDF export not enabled")
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+        return resp
+    resp = Response(content=pdf_bytes, media_type="application/pdf")
+    _set_schema_headers(resp)
+    _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+    return resp
 
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
@@ -1224,6 +1277,17 @@ def api_analyze(req: AnalyzeRequest, request: Request):
         "meta": PROVIDER_META,
         "summary": summary,
     }
+    trace_payload = {
+        "cid": cid,
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "input": {"text": txt, "mode": getattr(req, "mode", "analyze")},
+        "analysis": analysis_out,
+        "meta": PROVIDER_META,
+        "x_schema_version": SCHEMA_VERSION,
+    }
+    if len(_TRACE_DATA) >= _TRACE_MAX_CIDS:
+        _TRACE_DATA.popitem(last=False)
+    _TRACE_DATA[cid] = trace_payload
     IDEMPOTENCY_CACHE.set(cid, envelope)
     rec = {"resp": envelope, "cid": cid}
     an_cache.set(doc_hash, rec)

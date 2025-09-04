@@ -1,6 +1,14 @@
 # B9-S2
 - `/api/analyze` envelope now includes `schema_version`, `results.summary` and returns uppercase `status`.
 
+# B9-S6 — Trace & Report Export
+
+- `GET /api/trace/{cid}` returns a structured payload with keys `cid`, `created_at`,
+  `input`, `analysis`, `meta` and `x_schema_version`.
+- Export analysis reports via `GET /api/report/{cid}.html` (always on) and
+  `GET /api/report/{cid}.pdf` (returns 501 if PDF backend missing).
+- Use the `x-cid` response header from `/api/analyze` as the identifier.
+
 # Block B5 — Legal Corpus & Metadata
 
 ## Schema

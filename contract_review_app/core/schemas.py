@@ -65,6 +65,8 @@ __all__ = [
     "DeltaMetrics",
     "QARecheckIn",
     "QARecheckOut",
+    # trace
+    "TraceOut",
     # helpers (both long and short names)
     "risk_to_ordinal",
     "ordinal_to_risk",
@@ -1186,3 +1188,28 @@ class QARecheckOut(AppBaseModel):
             data.setdefault("status_from", d.get("status_from", "OK"))
             data.setdefault("status_to", d.get("status_to", "OK"))
         return data
+
+
+# ============================================================================
+# Trace export
+# ============================================================================
+class TraceOut(AppBaseModel):
+    """Trace payload returned by /api/trace/{cid}."""
+
+    cid: str
+    created_at: str
+    input: Dict[str, Any] = Field(default_factory=dict)
+    analysis: Dict[str, Any] = Field(default_factory=dict)
+    meta: Dict[str, Any] = Field(default_factory=dict)
+    x_schema_version: str = Field(default=SCHEMA_VERSION, alias="x_schema_version")
+    events: List[Dict[str, Any]] = Field(default_factory=list)
+
+    @field_validator("cid")
+    @classmethod
+    def _validate_cid(cls, v: str) -> str:
+        import re
+
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", v or ""):
+            raise ValueError("invalid cid")
+        return v
+

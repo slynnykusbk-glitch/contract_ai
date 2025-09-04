@@ -170,7 +170,9 @@ export async function replayAnalyze({ cid, hash }) {
     gptDraft: (text, mode="friendly") => request("/api/gpt-draft", { method:"POST", body:{ text, mode } }),
     suggest:  (text, mode="friendly") => request("/api/suggest_edits", { method:"POST", body:{ text, mode } }),
     qaRecheck:(text, rules=[]) => request("/api/qa-recheck", { method:"POST", body:{ text, rules } }),
-    trace:    (cid) => request(`/api/trace/${encodeURIComponent(cid)}`)
+    trace:    (cid) => request(`/api/trace/${encodeURIComponent(cid)}`),
+    reportHtml: (cid) => normBase(localStorage.getItem("backendUrl") || DEFAULT_BASE) + `/api/report/${cid}.html`,
+    reportPdf:  (cid) => normBase(localStorage.getItem("backendUrl") || DEFAULT_BASE) + `/api/report/${cid}.pdf`
   };
 
   return API;

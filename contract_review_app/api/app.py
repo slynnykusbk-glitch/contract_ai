@@ -22,8 +22,28 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from collections import OrderedDict
+import secrets
 
-from contract_review_app.core.trace import TraceStore
+
+class _TraceStore:
+    def __init__(self, maxlen: int = 200):
+        self.maxlen = maxlen
+        self._d: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+
+    def put(self, cid: str, item: Dict[str, Any]) -> None:
+        if not cid:
+            return
+        if cid in self._d:
+            self._d.move_to_end(cid)
+        self._d[cid] = item
+        while len(self._d) > self.maxlen:
+            self._d.popitem(last=False)
+
+    def get(self, cid: str):
+        return self._d.get(cid)
+
+    def list(self):
+        return list(self._d.keys())
 
 log = logging.getLogger("contract_ai")
 
@@ -36,7 +56,42 @@ PANEL_ASSETS_DIR = PANEL_DIR / "app" / "assets"
 TRACE_MAX = int(os.getenv("TRACE_MAX", "200"))
 
 
-TRACE = TraceStore(TRACE_MAX)
+TRACE = _TraceStore(TRACE_MAX)
+
+
+def _normalize_status(obj: Any) -> None:
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k == "status" and isinstance(v, str):
+                obj[k] = "ok" if v.lower() == "ok" else v
+            else:
+                _normalize_status(v)
+    elif isinstance(obj, list):
+        for x in obj:
+            _normalize_status(x)
+
+
+def _finalize_json(
+    path: str,
+    payload: Dict[str, Any],
+    headers: Dict[str, str] | None = None,
+    status_code: int = 200,
+):
+    _normalize_status(payload)
+    hdrs = dict(headers or {})
+    cid = hdrs.get("x-cid") or secrets.token_hex(32)
+    hdrs["x-cid"] = cid
+    TRACE.put(
+        cid,
+        {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "path": path,
+            "status": status_code,
+            "headers": hdrs,
+            "body": payload,
+        },
+    )
+    return JSONResponse(payload, status_code=status_code, headers=hdrs)
 
 
 def _validate_env_vars() -> None:
@@ -732,7 +787,8 @@ async def add_response_headers(request: Request, call_next):
             },
             "x_schema_version": SCHEMA_VERSION,
         }
-        TRACE.put(cid, snapshot)
+        if TRACE.get(cid) is None:
+            TRACE.put(cid, snapshot)
     return response
 
 
@@ -1168,10 +1224,9 @@ def _top3_residuals(after: Dict[str, Any]) -> List[Dict[str, Any]]:
 # Routes
 # --------------------------------------------------------------------
 @router.get("/health")
-async def health(response: Response) -> dict:
+async def health() -> JSONResponse:
     """Health endpoint with schema version and rule count."""
-    _set_schema_headers(response)
-    return {
+    payload = {
         "status": "OK",
         "schema": SCHEMA_VERSION,
         "rules_count": _discover_rules_count(),
@@ -1183,6 +1238,8 @@ async def health(response: Response) -> dict:
         },
         "provider": PROVIDER_META,
     }
+    headers = {"x-schema-version": SCHEMA_VERSION}
+    return _finalize_json("/health", payload, headers)
 
 
 @router.get("/api/trace/{cid}")
@@ -1267,22 +1324,30 @@ def api_analyze(req: AnalyzeRequest, request: Request):
     if cached:
         resp_json = cached["resp"]
         cid = cached["cid"]
-        resp = JSONResponse(resp_json)
-        resp.headers["x-cache"] = "hit"
-        resp.headers["x-cid"] = cid
-        resp.headers["x-doc-hash"] = doc_hash
-        resp.headers["x-schema-version"] = SCHEMA_VERSION
-        return resp
+        headers = {
+            "x-cache": "hit",
+            "x-cid": cid,
+            "x-doc-hash": doc_hash,
+            "x-schema-version": SCHEMA_VERSION,
+        }
+        tmp = Response()
+        _set_llm_headers(tmp, PROVIDER_META)
+        headers.update(tmp.headers)
+        return _finalize_json("/api/analyze", resp_json, headers)
 
     cid = compute_cid(request)
     cached_cid = IDEMPOTENCY_CACHE.get(cid)
     if cached_cid is not None:
-        resp = JSONResponse(cached_cid)
-        resp.headers["x-cache"] = "hit"
-        resp.headers["x-cid"] = cid
-        resp.headers["x-doc-hash"] = doc_hash
-        resp.headers["x-schema-version"] = SCHEMA_VERSION
-        return resp
+        headers = {
+            "x-cache": "hit",
+            "x-cid": cid,
+            "x-doc-hash": doc_hash,
+            "x-schema-version": SCHEMA_VERSION,
+        }
+        tmp = Response()
+        _set_llm_headers(tmp, PROVIDER_META)
+        headers.update(tmp.headers)
+        return _finalize_json("/api/analyze", cached_cid, headers)
 
     # existing internal function
     analysis = _analyze_document(txt)
@@ -1330,13 +1395,16 @@ def api_analyze(req: AnalyzeRequest, request: Request):
     an_cache.set(doc_hash, rec)
     cid_index.set(cid, {"hash": doc_hash})
 
-    resp = JSONResponse(envelope)
-    resp.headers["x-cache"] = "miss"
-    resp.headers["x-cid"] = cid
-    resp.headers["x-doc-hash"] = doc_hash
-    resp.headers["x-schema-version"] = SCHEMA_VERSION
-    _set_llm_headers(resp, PROVIDER_META)
-    return resp
+    headers = {
+        "x-cache": "miss",
+        "x-cid": cid,
+        "x-doc-hash": doc_hash,
+        "x-schema-version": SCHEMA_VERSION,
+    }
+    tmp = Response()
+    _set_llm_headers(tmp, PROVIDER_META)
+    headers.update(tmp.headers)
+    return _finalize_json("/api/analyze", envelope, headers)
 
 
 @router.get("/api/analyze/replay")
@@ -1769,8 +1837,8 @@ async def gpt_draft(inp: DraftIn, request: Request):
 
 
 @router.get("/api/health")
-async def health_alias(response: Response):
-    return await health(response)
+async def health_alias():
+    return await health()
 
 
 @app.post("/analyze")

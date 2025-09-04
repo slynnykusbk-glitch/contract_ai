@@ -30,3 +30,25 @@ CAI.store.updateSuggestion = (id, patch) => {
   }
   return null;
 };
+
+// === B9-S4: UI helpers ===
+const __busy = new Set();
+export function setBusy(key, on) {
+  if (on) __busy.add(key); else __busy.delete(key);
+  const busy = __busy.size > 0;
+  document.body.dataset.busy = busy ? "1" : "0";
+  // дизейблим все элементы с классом-хелпером
+  document.querySelectorAll(".js-disable-while-busy").forEach(el => {
+    el.toggleAttribute("disabled", busy);
+    if (busy) el.classList.add("is-busy"); else el.classList.remove("is-busy");
+  });
+}
+
+let __debounceTimers = new Map();
+export function debounce(fn, ms = 450) {
+  return (...args) => {
+    const key = fn; // один таймер на функцию
+    clearTimeout(__debounceTimers.get(key));
+    __debounceTimers.set(key, setTimeout(() => fn(...args), ms));
+  };
+}

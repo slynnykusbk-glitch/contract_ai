@@ -1,4 +1,35 @@
 /* eslint-disable */
+// === B9-S4: toast + fetch wrapper ===
+export function showToast(msg, detail=null, kind="error", ttlMs=6000) {
+  let host = document.getElementById("toast-host");
+  if (!host) {
+    host = document.createElement("div");
+    host.id = "toast-host";
+    host.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:99999;display:flex;flex-direction:column;gap:8px;max-width:420px;";
+    document.body.appendChild(host);
+  }
+  const card = document.createElement("div");
+  card.role = "status";
+  card.style.cssText = "padding:12px 14px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.12);background:#fff;font:13px/1.35 system-ui;";
+  card.innerHTML = `<div style="font-weight:600;color:${kind==="error"?"#b00020":"#0b6"}">${kind.toUpperCase()}</div>
+  <div style="margin-top:4px;color:#222">${msg}</div>${detail?`<pre style="white-space:pre-wrap;margin:6px 0 0;color:#555">${String(detail).slice(0,800)}</pre>`:""}`;
+  host.appendChild(card);
+  setTimeout(() => card.remove(), ttlMs);
+}
+
+// Обёртка над fetch: бросает Error с detail
+export async function safeFetch(input, init={}) {
+  const res = await fetch(input, init);
+  if (!res.ok) {
+    let detail = null;
+    try { detail = await res.json(); } catch { detail = await res.text(); }
+    const err = new Error(`HTTP ${res.status} ${res.statusText}`);
+    err.detail = detail;
+    throw err;
+  }
+  return res;
+}
+
 (function (root, factory) {
   if (typeof define === "function" && define.amd) {
     define([], factory);

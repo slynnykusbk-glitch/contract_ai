@@ -244,6 +244,29 @@
     </div>
   </div>
 
+  <section id="doc-risk-summary" hidden>
+    <header>
+      <h3>Document Risk Summary</h3>
+      <div class="badges">
+        <span class="badge risk-high">High: <b id="rs-high">0</b></span>
+        <span class="badge risk-med">Medium: <b id="rs-med">0</b></span>
+        <span class="badge risk-low">Low: <b id="rs-low">0</b></span>
+        <span class="badge risk-total">Total: <b id="rs-total">0</b></span>
+      </div>
+    </header>
+    <div class="table-wrap">
+      <table id="rs-table">
+        <thead><tr><th>Rule</th><th>Severity</th><th>Category</th><th>Clause</th><th>Count</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button id="rs-copy">Copy summary</button>
+      <button id="rs-export-md">Export .md</button>
+      <button id="rs-export-json">Export .json</button>
+    </div>
+  </section>
+
   <div class="row card" id="resultsCard">
     <div class="muted" style="margin-bottom:6px">Results</div>
     <div class="grid">

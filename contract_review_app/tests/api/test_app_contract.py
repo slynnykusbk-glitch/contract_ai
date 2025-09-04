@@ -77,14 +77,14 @@ def test_qa_recheck_fallback_payload_and_deltas():
 
 
 def test_trace_middleware_records_events():
-    # produce at least one event
     client.get("/health")
     tr = client.get("/api/trace/health")
     assert tr.status_code == 200
     payload = tr.json()
-    assert payload["status"] == "ok"
     assert payload["cid"] == "health"
-    assert isinstance(payload.get("events"), list)
+    assert payload.get("analysis", {}).get("status") == "OK"
+    assert payload.get("meta", {}).get("path") == "/health"
+    assert payload.get("x_schema_version") == SCHEMA_VERSION
 
 
 def test_panel_static_and_cache_headers():

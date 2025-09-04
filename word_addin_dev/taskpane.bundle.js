@@ -1,4 +1,113 @@
-﻿(function () {
+import { setBusy, debounce } from "./app/assets/store.js";
+import { safeFetch, showToast } from "./app/assets/api-client.js";
+
+// === B9-S4: busy wrapper ===
+async function withBusy(key, fn) {
+  try {
+    setBusy(key, true);
+    return await fn();
+  } catch (e) {
+    const msg = e?.message || "Unexpected error";
+    const detail = e?.detail || null;
+    showToast(msg, detail, "error");
+    throw e;
+  } finally {
+    setBusy(key, false);
+  }
+}
+
+// === B9-S4: batch Word.run for comments with 2 sync() ===
+async function commentAllFindingsBatch(findings, fullText = "") {
+  console.time("commentAllFindingsBatch"); /* B9-S4:perf */
+  try {
+    if (!findings?.length) return;
+    await Word.run(async (ctx) => {
+      const body = ctx.document.body;
+      // 1) подготовка поисков (без sync)
+      const searchResults = findings.map(f => {
+        const piece = (f.excerpt && String(f.excerpt).trim().slice(0, 200)) ||
+                      (fullText && String(fullText).substring(f.start ?? 0, Math.min((f.end ?? 0), (f.start ?? 0)+200))) ||
+                      "";
+        const r = body.search(piece, { matchWildcards: false, ignorePunct: true, ignoreSpace: true, matchCase: false });
+        r.load("items");
+        return { f, r, piece };
+      });
+
+      // 2) sync — получить items
+      await ctx.sync();
+
+      // 3) проставить комментарии (желательно за один проход; второй sync выполнит Word)
+      for (const { f, r, piece } of searchResults) {
+        let targetRange = null;
+        if (r.items && r.items.length > 0) {
+          targetRange = r.items[0]; // первый лучший матч
+        } else {
+          // fallback: ближайший длинный абзац, содержащий ≥70% слов из excerpt
+          const paras = body.paragraphs;
+          paras.load("items/text");
+          await ctx.sync();
+          const words = piece.split(/\s+/).filter(Boolean);
+          let best = null, bestScore = 0;
+          for (const p of paras.items) {
+            const txt = (p.text || "");
+            const hit = words.filter(w => txt.toLowerCase().includes(w.toLowerCase())).length;
+            const score = words.length ? hit / words.length : 0;
+            if (score >= 0.7 && score > bestScore) { best = p; bestScore = score; }
+          }
+          targetRange = best || body.getRange(); // совсем запасной
+        }
+        const badge = f.severity ? f.severity.toUpperCase() : "INFO";
+        const msg = [
+          `⚠️ ${badge} ${f.rule_id || ""}`.trim(),
+          f.title ? `— ${f.title}` : null,
+          f.message || null,
+          f.recommendation ? `Recommendation: ${f.recommendation}` : null
+        ].filter(Boolean).join(" ");
+        targetRange.insertComment(msg);
+      }
+      // 4) второй (финальный) sync — сохранить все комментарии
+      await ctx.sync();
+    });
+  } finally {
+    console.timeEnd("commentAllFindingsBatch"); /* B9-S4:perf */
+  }
+}
+
+// === B9-S4: batch apply edits with 2 sync() ===
+async function applyEditsBatch(edits, fullText = "") {
+  console.time("applyEditsBatch"); /* B9-S4:perf */
+  try {
+    if (!edits?.length) return;
+    await Word.run(async (ctx) => {
+      const body = ctx.document.body;
+      ctx.document.trackRevisions = true;
+
+      const matches = edits.map(e => {
+        const piece = (e.excerpt && String(e.excerpt).trim().slice(0, 200)) ||
+                      (fullText && String(fullText).substring(e.start ?? 0, Math.min((e.end ?? 0), (e.start ?? 0)+200))) || "";
+        const r = body.search(piece, { matchWildcards:false, ignorePunct:true, ignoreSpace:true, matchCase:false });
+        r.load("items");
+        return { e, r };
+      });
+
+      await ctx.sync();
+
+      for (const { e, r } of matches) {
+        const rng = (r.items && r.items[0]) ? r.items[0] : body.getRange();
+        if (e.replacement != null) {
+          rng.insertText(String(e.replacement), "Replace"); // tracked changes включены
+        }
+        // можно добавить комментарий к изменению
+        if (e.note) rng.insertComment(String(e.note));
+      }
+      await ctx.sync();
+    });
+  } finally {
+    console.timeEnd("applyEditsBatch"); /* B9-S4:perf */
+  }
+}
+
+(function () {
   if (window.__CAI_WIRED__ === true) return;
   window.__CAI_WIRED__ = true;
 
@@ -1017,35 +1126,37 @@ var REQ_LOG = [];
     const text = getOriginalClauseText && await getOriginalClauseText();
     const mode = CAI.Store.get().risk || "medium";
     if (!text || !text.trim()) { toast("⚠️ Paste or copy text first."); return; }
-    const r = await CAI.API.analyze(text, mode);
+    const res = await safeFetch("/api/analyze", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ text, mode }) });
+    const r = await res.json();
     CAI.Store.setMeta({
-      cid: r.meta.headers.cid, cache: r.meta.headers.cache, latencyMs: r.meta.latencyMs,
-      schema: r.meta.schema, provider: r.meta.headers.provider, model: r.meta.headers.model,
-      llm_mode: r.meta.headers.llm_mode, usage: r.meta.headers.usage
+      cid: res.headers.get("x-cid") || "",
+      cache: res.headers.get("x-cache") || "",
+      latencyMs: Number(res.headers.get("x-latency-ms")) || 0,
+      schema: res.headers.get("x-schema-version") || "",
+      provider: res.headers.get("x-provider") || "",
+      model: res.headers.get("x-model") || "",
+      llm_mode: res.headers.get("x-llm-mode") || "",
+      usage: res.headers.get("x-usage-total") || ""
     });
     renderMeta();
-    if (r.ok) {
-      CAI.Store.get().last.analyze = r.data.analysis;
-      const findings = CAI.pickFindings(r.data);
-      const summary = CAI.summary.build(findings);
-      const idx = {};
-      for (const f of findings) {
-        const sn = f.snippet || f.excerpt;
-        if (sn) {
-          const id = f.rule_id || "-";
-          (idx[id] = idx[id] || []).push(sn);
-        }
+    CAI.Store.get().last.analyze = r.analysis;
+    const findings = CAI.pickFindings(r);
+    const summary = CAI.summary.build(findings);
+    const idx = {};
+    for (const f of findings) {
+      const sn = f.snippet || f.excerpt;
+      if (sn) {
+        const id = f.rule_id || "-";
+        (idx[id] = idx[id] || []).push(sn);
       }
-      CAI.store.set("cai:last-summary", summary);
-      CAI.store.set("cai:last-index", idx);
-      CAI.ui.renderDocSummary(summary);
-      if (els.commentOnAnalyze && els.commentOnAnalyze.checked) {
-        await CAI.commentAllFindings(r.data?.analysis?.findings, r.meta.headers);
-      }
-      renderFindings(r.data.analysis);
-    } else {
-      renderApiError("Analyze", r);
     }
+    CAI.store.set("cai:last-summary", summary);
+    CAI.store.set("cai:last-index", idx);
+    CAI.ui.renderDocSummary(summary);
+    if (els.commentOnAnalyze && els.commentOnAnalyze.checked) {
+      await commentAllFindingsBatch(r?.analysis?.findings || [], text);
+    }
+    renderFindings(r.analysis);
   }
 
   function renderFindings(a){
@@ -1131,20 +1242,10 @@ var REQ_LOG = [];
     toast("Draft OK");
   }
 
-  document.getElementById("btnApplyTracked").addEventListener("click", async function(){
-    const draft = getDraftText();
-    if (!draft || !draft.trim()) { toast("Nothing to apply."); return; }
-    await Word.run(async (ctx) => {
-      const useWhole = lastCopiedWasWhole();
-      const sel = useWhole ? ctx.document.body.getRange() : ctx.document.getSelection();
-      sel.track();
-      await ctx.sync();
-      ctx.trackedRevisions.trackAll();
-      sel.insertText(draft, Word.InsertLocation.replace);
-      await ctx.sync();
-    });
-    toast("Applied");
-  });
+  document.getElementById("btnApplyTracked").addEventListener("click",
+    debounce(() => withBusy("apply", async () => {
+      await applyEditsBatch(window.CAI?.edits || [], window.CAI?.before_text || "");
+    })));
 
   async function doAnalyze() {
     var text = await getPanelTextOrFetch();
@@ -1339,29 +1440,32 @@ var REQ_LOG = [];
 
     if (els.btnTest) els.btnTest.addEventListener("click", function () { doHealthFlow(); });
 
-    if (els.analyzeBtn) els.analyzeBtn.addEventListener("click", function () { doAnalyze(); });
-    if (els.btnAnalyzeDoc) els.btnAnalyzeDoc.addEventListener("click", analyzeDoc);
+    if (els.analyzeBtn) els.analyzeBtn.addEventListener("click", debounce(() => withBusy("analyze", () => doAnalyze())));
+    if (els.btnAnalyzeDoc) {
+      const onAnalyzeDoc = debounce(() => withBusy("analyze", analyzeDoc));
+      els.btnAnalyzeDoc.addEventListener("click", onAnalyzeDoc);
+    }
 
-    if (els.useDoc) els.useDoc.addEventListener("click", async function(){
+    if (els.useDoc) els.useDoc.addEventListener("click", debounce(() => withBusy("useDoc", async function(){
       const text = await getWholeDocText();
       setOriginalText(text);
       state.docText = text;
       __lastCopiedWhole = true;
       toast("Whole document copied.");
-    });
-    if (els.useSel) els.useSel.addEventListener("click", async function(){
+    })));
+    if (els.useSel) els.useSel.addEventListener("click", debounce(() => withBusy("useSel", async function(){
       const text = await getSelectionText();
       setOriginalText(text);
       __lastCopiedWhole = false;
       toast("Selection copied.");
-    });
+    })));
 
-    if (els.draftBtn) els.draftBtn.addEventListener("click", function () { doGptDraft(); });
-    if (els.copyBtn) els.copyBtn.addEventListener("click", function () {
+    if (els.draftBtn) els.draftBtn.addEventListener("click", debounce(() => withBusy("draft", () => doGptDraft())));
+    if (els.copyBtn) els.copyBtn.addEventListener("click", debounce(() => withBusy("copy", function () {
       try { navigator.clipboard && navigator.clipboard.writeText(val(els.draft) || ""); status("Draft copied to clipboard"); } catch (_) {}
-    });
+    })));
 
-    if (els.sugBtn) els.sugBtn.addEventListener("click", onSuggest);
+    if (els.sugBtn) els.sugBtn.addEventListener("click", debounce(() => withBusy("suggest", onSuggest)));
 
     if (els.toggleRaw) els.toggleRaw.addEventListener("click", function () {
       if (!els.rawJson) return;
@@ -1383,24 +1487,24 @@ var REQ_LOG = [];
       } catch (e) { status("✖ Insert failed: " + (e && e.message ? e.message : e)); }
     });
 
-    if (els.btnAcceptAll) els.btnAcceptAll.addEventListener("click", function () {
+    if (els.btnAcceptAll) els.btnAcceptAll.addEventListener("click", debounce(() => withBusy("accept", function () {
       var btn = document.getElementById("btnApplyTracked");
       if (btn) btn.click();
-    });
+    })));
 
-    if (els.btnRejectAll) els.btnRejectAll.addEventListener("click", function () {
+    if (els.btnRejectAll) els.btnRejectAll.addEventListener("click", debounce(() => withBusy("reject", function () {
       window._prop = null;
       if (els.diffView) els.diffView.innerHTML = "";
       toast("Rejected");
-    });
+    })));
 
-    if (els.btnAnnotate) els.btnAnnotate.addEventListener("click", async function () {
+    if (els.btnAnnotate) els.btnAnnotate.addEventListener("click", debounce(() => withBusy("annotate", async function () {
       const a = CAI.Store.get().last.analyze;
       if (!a || !a.annotations || !a.annotations.length) { toast("No annotations from last analyze."); return; }
       await insertAnnotations(a.annotations);
       toast("Annotations added.");
-    });
-    if (els.btnClearAnnots) els.btnClearAnnots.addEventListener("click", async function () {
+    })));
+    if (els.btnClearAnnots) els.btnClearAnnots.addEventListener("click", debounce(() => withBusy("clearAnnots", async function () {
       if (!window.Word || !Word.run) { status("⚠️ Word API not available"); return; }
       try {
         await Word.run(function (ctx) {
@@ -1414,9 +1518,9 @@ var REQ_LOG = [];
         });
         status("Annotations cleared.");
       } catch (e) { status("✖ Clear annotations failed: " + (e && e.message ? e.message : e)); }
-    });
+    })));
 
-    if (els.btnQARecheck) els.btnQARecheck.addEventListener("click", function () { doQARecheck(); });
+    if (els.btnQARecheck) els.btnQARecheck.addEventListener("click", debounce(() => withBusy("qa", () => doQARecheck())));
 
     if (els.doctorToggle) els.doctorToggle.addEventListener("click", function () {
       var vis = els.doctorPanel && (els.doctorPanel.style.display !== "none");

@@ -57,6 +57,124 @@
 
 var REQ_LOG = [];
 
+  window.CAI = window.CAI || {};
+  CAI.summary = {
+    build(findings = []) {
+      const counts = { high: 0, medium: 0, low: 0 };
+      const rows = new Map();
+      for (const f of findings || []) {
+        const sev = String(f.severity || "").toLowerCase();
+        if (sev === "high" || sev === "medium" || sev === "low") counts[sev]++; else counts.low++;
+        const key = [
+          f.rule_id || "-",
+          (f.category || "-").toString().toLowerCase(),
+          (f.clause_type || "-").toString().toLowerCase(),
+          sev || "low"
+        ].join("|");
+        rows.set(key, (rows.get(key) || 0) + 1);
+      }
+      const total = (counts.high || 0) + (counts.medium || 0) + (counts.low || 0);
+      const weight = { high: 3, medium: 2, low: 1 };
+      const top = Array.from(rows.entries())
+        .map(([k, cnt]) => {
+          const [rule_id, category, clause_type, sev] = k.split("|");
+          return {
+            rule_id,
+            category,
+            clause_type,
+            severity: sev,
+            count: cnt,
+            score: (weight[sev] || 1) * 1000 + cnt
+          };
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10);
+      return { counts: { ...counts, total }, rows: top, rawRows: rows };
+    },
+    toMarkdown(summary) {
+      const { counts, rows } = summary;
+      const head = `# Document Risk Summary\n\n- High: **${counts.high}**\n- Medium: **${counts.medium}**\n- Low: **${counts.low}**\n- Total: **${counts.total}**\n\n## Top Risks\n\n| Rule | Severity | Category | Clause | Count |\n|---|---|---|---|---|\n`;
+      const body = rows.map(r => `| ${r.rule_id} | ${r.severity} | ${r.category} | ${r.clause_type} | ${r.count} |`).join("\n");
+      return head + body + "\n";
+    }
+  };
+
+  CAI.ui = CAI.ui || {};
+  CAI.ui.gotoRule = async function (rule) {
+    const index = CAI.store.get("cai:last-index", {});
+    const snippets = index[rule] || [];
+    if (!window.Word || !Word.run) { try { toast("⚠️ Location not found"); } catch (_) {} return; }
+    try {
+      await Word.run(async ctx => {
+        const comments = ctx.document.comments;
+        comments.load("items");
+        await ctx.sync();
+        const prefix = `[CAI][rule:${rule}]`;
+        const cm = comments.items.find(c => (c.text || "").startsWith(prefix) || (c.text || "").includes(prefix));
+        if (cm) { cm.getRange().select(); await ctx.sync(); return; }
+        const body = ctx.document.body;
+        for (const sn of snippets) {
+          const r = body.search(sn, { matchCase: false, matchWholeWord: false, ignorePunct: true, ignoreSpace: true });
+          r.load("items");
+          await ctx.sync();
+          if (r.items.length) { r.items[0].select(); await ctx.sync(); return; }
+        }
+        throw new Error("nf");
+      });
+    } catch (e) {
+      try { toast("⚠️ Location not found"); } catch (_) {}
+    }
+  };
+
+  CAI.ui.renderDocSummary = function (summary) {
+    const sec = document.getElementById("doc-risk-summary");
+    if (!sec) return;
+    if (!summary) { sec.hidden = true; return; }
+    sec.hidden = false;
+    const c = summary.counts || { high: 0, medium: 0, low: 0, total: 0 };
+    setText("rs-high", c.high || 0);
+    setText("rs-med", c.medium || 0);
+    setText("rs-low", c.low || 0);
+    setText("rs-total", c.total || 0);
+    const tb = sec.querySelector("#rs-table tbody");
+    if (tb) {
+      tb.innerHTML = "";
+      for (const r of summary.rows || []) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${esc(r.rule_id)}</td><td>${esc(r.severity)}</td><td>${esc(r.category)}</td><td>${esc(r.clause_type)}</td><td>${r.count}</td>`;
+        tr.dataset.rule = r.rule_id;
+        tr.addEventListener("click", function () { CAI.ui.gotoRule(r.rule_id); });
+        tb.appendChild(tr);
+      }
+    }
+    const copyBtn = document.getElementById("rs-copy");
+    if (copyBtn) copyBtn.onclick = function () {
+      try { navigator.clipboard && navigator.clipboard.writeText(CAI.summary.toMarkdown(summary)); toast("Summary copied"); } catch (_) {}
+    };
+    const mdBtn = document.getElementById("rs-export-md");
+    if (mdBtn) mdBtn.onclick = function () {
+      try {
+        const blob = new Blob([CAI.summary.toMarkdown(summary)], { type: "text/markdown" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "contractAI_risk_summary.md";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      } catch (_) {}
+    };
+    const jsonBtn = document.getElementById("rs-export-json");
+    if (jsonBtn) jsonBtn.onclick = function () {
+      try {
+        const blob = new Blob([JSON.stringify(summary, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "contractAI_risk_summary.json";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      } catch (_) {}
+    };
+  };
+
   let __lastCopiedWhole = false;
   function lastCopiedWasWhole(){ return __lastCopiedWhole; }
   function setOriginalText(t){
@@ -542,6 +660,12 @@ var REQ_LOG = [];
     if (els.recoList) els.recoList.innerHTML = "";
     if (els.rawJson) { els.rawJson.textContent = ""; els.rawJson.style.display = "none"; }
     if (els.docSnap) { els.docSnap.innerHTML = ""; els.docSnap.classList.add("hidden"); }
+    var ds = document.getElementById("doc-risk-summary");
+    if (ds) {
+      ds.hidden = true;
+      var tb = ds.querySelector("#rs-table tbody");
+      if (tb) tb.innerHTML = "";
+    }
   }
 
   function renderAnalysis(analysis) {
@@ -902,6 +1026,19 @@ var REQ_LOG = [];
     renderMeta();
     if (r.ok) {
       CAI.Store.get().last.analyze = r.data.analysis;
+      const findings = CAI.pickFindings(r.data);
+      const summary = CAI.summary.build(findings);
+      const idx = {};
+      for (const f of findings) {
+        const sn = f.snippet || f.excerpt;
+        if (sn) {
+          const id = f.rule_id || "-";
+          (idx[id] = idx[id] || []).push(sn);
+        }
+      }
+      CAI.store.set("cai:last-summary", summary);
+      CAI.store.set("cai:last-index", idx);
+      CAI.ui.renderDocSummary(summary);
       if (els.commentOnAnalyze && els.commentOnAnalyze.checked) {
         await CAI.commentAllFindings(r.data?.analysis?.findings, r.meta.headers);
       }
@@ -1034,6 +1171,19 @@ var REQ_LOG = [];
         CAI_STORE.analysis.clauses = Array.isArray(env.clauses) ? env.clauses : [];
         CAI_STORE.analysis.document = env.document || null;
         CAI.Store.get().last.analyze = env.analysis || null;
+        const findings = CAI.pickFindings(env);
+        const summary = CAI.summary.build(findings);
+        const idx = {};
+        for (const f of findings) {
+          const sn = f.snippet || f.excerpt;
+          if (sn) {
+            const id = f.rule_id || "-";
+            (idx[id] = idx[id] || []).push(sn);
+          }
+        }
+        CAI.store.set("cai:last-summary", summary);
+        CAI.store.set("cai:last-index", idx);
+        CAI.ui.renderDocSummary(summary);
         if (els.commentOnAnalyze && els.commentOnAnalyze.checked) {
           await CAI.commentAllFindings((env.analysis || env)?.findings, r.meta.headers);
         }
@@ -1273,6 +1423,8 @@ var REQ_LOG = [];
       els.doctorPanel.style.display = vis ? "none" : "block";
       els.doctorToggle.textContent = vis ? "Doctor ▾" : "Doctor ▸";
     });
+    var last = CAI.store.get("cai:last-summary", null);
+    if (last) { CAI.ui.renderDocSummary(last); }
   }
 
     function boot() {

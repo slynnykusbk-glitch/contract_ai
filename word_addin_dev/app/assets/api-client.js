@@ -134,3 +134,6 @@
 
   return API;
 }));
+
+window.CAI = window.CAI || {};
+CAI.pickFindings = (resp) => (resp?.analysis?.findings) || [];

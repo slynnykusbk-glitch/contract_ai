@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from collections import OrderedDict
 import secrets
+from starlette.middleware.base import BaseHTTPMiddleware
 
 
 class _TraceStore:
@@ -57,6 +58,51 @@ TRACE_MAX = int(os.getenv("TRACE_MAX", "200"))
 
 
 TRACE = _TraceStore(TRACE_MAX)
+
+_TRACE_STORE: dict[str, dict] = {}
+_TRACE_ORDER: list[str] = []
+_TRACE_LIMIT = 200
+
+
+def _remember_trace(cid: str, status_code: int, headers: dict, body: bytes) -> None:
+    try:
+        entry = {
+            "cid": cid,
+            "ts": int(time.time() * 1000),
+            "status_code": status_code,
+            "headers": headers,
+            "body": body.decode("utf-8", "replace"),
+        }
+        _TRACE_STORE[cid] = entry
+        _TRACE_ORDER.append(cid)
+        if len(_TRACE_ORDER) > _TRACE_LIMIT:
+            old = _TRACE_ORDER.pop(0)
+            _TRACE_STORE.pop(old, None)
+    except Exception:
+        pass
+
+
+class NormalizeAndTraceMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+
+        body, headers, media_type = await capture_response(response)
+        body = normalize_status_if_json(body, media_type)
+
+        new_resp = Response(
+            content=body,
+            status_code=response.status_code,
+            headers=headers,
+            media_type=media_type,
+        )
+
+        cid = headers.get("x-cid")
+        if not cid:
+            cid = hashlib.sha256(f"{time.time_ns()}".encode()).hexdigest()
+            new_resp.headers["x-cid"] = cid
+
+        _remember_trace(cid, response.status_code, dict(new_resp.headers), body)
+        return new_resp
 
 
 def _normalize_status(obj: Any) -> None:
@@ -126,6 +172,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
+from .mw_utils import capture_response, normalize_status_if_json
 from .models import (
     Citation,
     CitationResolveRequest,
@@ -464,6 +511,7 @@ app = FastAPI(
     responses=_default_responses,
 )
 register_error_handlers(app)
+app.add_middleware(NormalizeAndTraceMiddleware)
 
 # ---------------------------- Panel sub-app ----------------------------
 panel_app = FastAPI()
@@ -1227,7 +1275,7 @@ def _top3_residuals(after: Dict[str, Any]) -> List[Dict[str, Any]]:
 async def health() -> JSONResponse:
     """Health endpoint with schema version and rule count."""
     payload = {
-        "status": "OK",
+        "status": "ok",
         "schema": SCHEMA_VERSION,
         "rules_count": _discover_rules_count(),
         "llm": {
@@ -1242,19 +1290,16 @@ async def health() -> JSONResponse:
     return _finalize_json("/health", payload, headers)
 
 
-@router.get("/api/trace/{cid}")
-async def get_trace_by_cid(cid: str):
-    if not _CID_RE.fullmatch(cid or ""):
-        raise HTTPException(status_code=422, detail="invalid cid")
-    item = TRACE.get(cid)
-    if not item:
-        raise HTTPException(status_code=404, detail="trace not found")
-    return item
-
-
 @router.get("/api/trace")
-async def list_traces():
-    return {"cids": TRACE.list()}
+async def list_trace():
+    return {"cids": list(_TRACE_ORDER[-50:])}
+
+
+@router.get("/api/trace/{cid}")
+async def get_trace(cid: str):
+    if cid not in _TRACE_STORE:
+        raise HTTPException(status_code=404, detail="Not found")
+    return _TRACE_STORE[cid]
 
 
 @router.get("/api/report/{cid}.html")
@@ -1366,13 +1411,13 @@ def api_analyze(req: AnalyzeRequest, request: Request):
             for seg in _make_segments(txt)
         ]
 
-    # status passthrough (do not force to "ok")
+    # status passthrough (ensure lowercase)
     if isinstance(analysis, dict):
-        status_out = str(analysis.get("status", "OK")).upper()
+        status_out = str(analysis.get("status", "ok")).lower()
         analysis_out = dict(analysis)
         analysis_out["status"] = status_out
     else:
-        status_out = "OK"
+        status_out = "ok"
         analysis_out = {"findings": analysis, "status": status_out}
 
     snap = extract_document_snapshot(txt)

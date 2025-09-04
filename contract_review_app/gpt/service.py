@@ -18,6 +18,14 @@ from .interfaces import (
 from .clients.mock_client import MockClient
 
 
+def _normalize_rules_ctx(rules_ctx):
+    if rules_ctx is None:
+        return {"rules": []}
+    if isinstance(rules_ctx, list):
+        return {"rules": rules_ctx}
+    return rules_ctx
+
+
 def get_client(provider: str, cfg: LLMConfig) -> BaseClient:
     if provider == "openai" and cfg.valid:
         from .clients.openai_client import OpenAIClient
@@ -94,10 +102,11 @@ class LLMService:
     def qa(
         self,
         text: str,
-        rules_context: Dict[str, Any],
-        timeout: Optional[float] = None,
-        profile: str = "smart",
+        rules_context=None,
+        timeout_s: float = 30,
+        profile: str = "vanilla",
     ) -> QAResult:
+        rules_context = _normalize_rules_ctx(rules_context)
         if profile == "smart" and not rules_context:
             raise ValueError("qa_prompt_invalid: missing rules context")
         prompt_tpl = self._read_prompt("qa")
@@ -112,7 +121,7 @@ class LLMService:
             )
         rules_ctx = {"rules": safe_rules}
         prompt = self._safe_format_prompt(prompt_tpl, text=text, rules=rules_ctx)
-        to = timeout or self.cfg.timeout_s
+        to = timeout_s or self.cfg.timeout_s
         result = self.client.qa_recheck(prompt, to)
         result.meta["profile"] = profile
         return result

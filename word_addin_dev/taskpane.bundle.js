@@ -122,6 +122,62 @@ var REQ_LOG = [];
     };
   }
 
+  // ---- Comment utilities
+  CAI.buildCommentText = function(f, meta){
+    const cid = meta && meta.cid ? meta.cid : "n/a";
+    const rule = f && (f.rule_id || f.ruleId || "n/a");
+    const sev = f && f.severity || "n/a";
+    const title = f && (f.title || f.rule_id || f.ruleId || "" );
+    const msg = f && (f.message || f.advice || "");
+    const rec = f && (f.recommendation || "-");
+    return `[CAI][cid:${cid}][rule:${rule}][sev:${sev}]\n${title}\n${msg}\nRecommendation: ${rec}`;
+  };
+
+  CAI.addCommentForFinding = function(ctx, body, finding, meta){
+    const opts = { matchCase:false, matchWholeWord:false, ignorePunct:true, ignoreSpace:true };
+    const snippet = finding.snippet || finding.excerpt || "";
+    const words = String(finding.advice || "").toLowerCase().match(/[a-z0-9]+/gi) || [];
+    const fallback = words.filter(w => w.length >= 3).slice(0,3).join(" ");
+    const r1 = snippet ? body.search(snippet, opts) : null;
+    if (r1) r1.load("items");
+    const r2 = fallback ? body.search(fallback, opts) : null;
+    if (r2) r2.load("items");
+    if (!meta.queue) meta.queue = [];
+    meta.queue.push({ finding, r1, r2 });
+  };
+
+  CAI.commentAllFindings = async function(findings, headers){
+    const cid = headers && (headers['x-cid'] || headers['cid']) || (CAI.Store.get().meta && CAI.Store.get().meta.cid) || 'n/a';
+    if (!Array.isArray(findings) || findings.length === 0) return;
+    const meta = { cid, queue: [] };
+    try {
+      await Word.run(async ctx => {
+        const comments = ctx.document.comments;
+        comments.load("items/text");
+        const body = ctx.document.body;
+        for (const f of findings){
+          CAI.addCommentForFinding(ctx, body, f, meta);
+        }
+        await ctx.sync();
+        const existing = comments.items.map(c => c.text);
+        for (const item of meta.queue){
+          const f = item.finding;
+          const prefix = `[CAI][cid:${cid}][rule:${f.rule_id}]`;
+          if (existing.some(t => t.startsWith(prefix))) continue;
+          let range = null;
+          if (item.r1 && item.r1.items.length > 0) range = item.r1.items[0];
+          else if (item.r2 && item.r2.items.length > 0) range = item.r2.items[0];
+          if (!range) continue;
+          range.insertComment(CAI.buildCommentText(f, meta));
+        }
+        await ctx.sync();
+      });
+    } catch(e){
+      try { toast('⚠️ Failed to add comments'); } catch(_) {}
+      console.warn('CAI.commentAllFindings', cid, e);
+    }
+  };
+
   // ---- Meta badges render
   function renderMeta() {
     const m = CAI.Store.get().meta;
@@ -846,6 +902,9 @@ var REQ_LOG = [];
     renderMeta();
     if (r.ok) {
       CAI.Store.get().last.analyze = r.data.analysis;
+      if (els.commentOnAnalyze && els.commentOnAnalyze.checked) {
+        await CAI.commentAllFindings(r.data?.analysis?.findings, r.meta.headers);
+      }
       renderFindings(r.data.analysis);
     } else {
       renderApiError("Analyze", r);
@@ -975,6 +1034,9 @@ var REQ_LOG = [];
         CAI_STORE.analysis.clauses = Array.isArray(env.clauses) ? env.clauses : [];
         CAI_STORE.analysis.document = env.document || null;
         CAI.Store.get().last.analyze = env.analysis || null;
+        if (els.commentOnAnalyze && els.commentOnAnalyze.checked) {
+          await CAI.commentAllFindings((env.analysis || env)?.findings, r.meta.headers);
+        }
         fillClauseSelect(env);
         renderAnalysis(CAI_STORE.analysis.analysis);
         status("Analyze OK");
@@ -1081,6 +1143,7 @@ var REQ_LOG = [];
     els.qaResiduals = $("qaResiduals");
     els.qaResidualList = $("qaResidualList");
     els.riskThreshold = $("riskThreshold");
+    els.commentOnAnalyze = $("cai-comment-on-analyze");
 
     els.badgeScore = $("scoreBadge");
     els.badgeRisk = $("riskBadge");

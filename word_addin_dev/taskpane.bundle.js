@@ -1,5 +1,67 @@
-import { setBusy, debounce, saveLastAnalyze, getLastAnalyze } from "./app/assets/store.js";
-import { safeFetch, showToast, replayAnalyze } from "./app/assets/api-client.js";
+import { setBusy, debounce, saveLastAnalyze, getLastAnalyze, enqueueLearning, readQueue, dropFromQueue } from "./app/assets/store.js";
+import { safeFetch, showToast, replayAnalyze, logLearning } from "./app/assets/api-client.js";
+
+const RETRIES = 3;
+const BACKOFF_MS = [500, 1500, 4000];
+
+function buildLearningEvent({ action, rule, excerpt, note, selectionHash, docHash, docName, cid }) {
+  return {
+    action,
+    rule_id: rule?.rule_id || rule?.id || null,
+    severity: rule?.severity || null,
+    excerpt: excerpt || rule?.snippet || null,
+    note: note || null,
+    selection_hash: selectionHash || null,
+    doc_hash: docHash || window.CAI?.docHash || null,
+    doc_name: docName || window.CAI?.docName || null,
+    cid: cid || window.CAI?.cid || null,
+    ts: Date.now(),
+    x_schema_version: "1.3"
+  };
+}
+
+async function sendLearningEvent(evt, baseUrl) {
+  enqueueLearning(evt);
+  const id = readQueue().slice(-1)[0]?._id;
+  let lastErr = null;
+  for (let i = 0; i <= RETRIES; i++) {
+    try {
+      await logLearning(evt, baseUrl);
+      dropFromQueue([id]);
+      return true;
+    } catch (e) {
+      lastErr = e;
+      const s = (e && e.status) || 0;
+      if (s && s < 500) break;
+      await new Promise(r => setTimeout(r, BACKOFF_MS[Math.min(i, BACKOFF_MS.length - 1)]));
+    }
+  }
+  console.warn("[learning] queued (will retry later)", lastErr);
+  return false;
+}
+
+async function flushLearningQueue(baseUrl) {
+  const q = readQueue();
+  if (!q.length) return;
+  const doomed = [];
+  for (const item of q) {
+    try {
+      await logLearning(item, baseUrl);
+      doomed.push(item._id);
+    } catch (e) {
+      const s = (e && e.status) || 0;
+      if (s && s < 500) continue;
+    }
+  }
+  if (doomed.length) dropFromQueue(doomed);
+}
+
+async function initLearningFlush(baseUrl) {
+  try { await flushLearningQueue(baseUrl); } catch {}
+  window.addEventListener("online", () => flushLearningQueue(baseUrl));
+}
+
+initLearningFlush(window.CAI?.Store?.get?.().baseUrl);
 
 // === B9-S4: busy wrapper ===
 async function withBusy(key, fn) {
@@ -1718,10 +1780,57 @@ var REQ_LOG = [];
     const list = (CAI.store && CAI.store.get && CAI.store.get("cai:suggestions", [])) || [];
     const edit = list.find(x=>x.id===id);
     if(!edit) return;
-    applyTrackedEdit(edit).then(renderSuggestions).catch(e=>{ console.error(e); });
+    applyTrackedEdit(edit).then(()=>{
+      renderSuggestions();
+      const evt = buildLearningEvent({
+        action: "apply",
+        rule: { rule_id: edit.rule_id, severity: edit.severity, snippet: edit.excerpt || edit.before_text },
+        excerpt: edit.excerpt || null,
+        cid: window.CAI?.cid
+      });
+      sendLearningEvent(evt, window.CAI?.Store?.get?.().baseUrl);
+    }).catch(e=>{ console.error(e); });
   }
-  function onAccept(id){ CAI.store && CAI.store.updateSuggestion && CAI.store.updateSuggestion(id, {status:"accepted"}); renderSuggestions(); }
-  function onReject(id){ CAI.store && CAI.store.updateSuggestion && CAI.store.updateSuggestion(id, {status:"rejected"}); renderSuggestions(); }
+  function onAccept(id){
+    const list = (CAI.store && CAI.store.get && CAI.store.get("cai:suggestions", [])) || [];
+    const sugg = list.find(x=>x.id===id);
+    CAI.store && CAI.store.updateSuggestion && CAI.store.updateSuggestion(id, {status:"accepted"});
+    renderSuggestions();
+    if(sugg){
+      const evt = buildLearningEvent({
+        action: "accept",
+        rule: { rule_id: sugg.rule_id, severity: sugg.severity, snippet: sugg.excerpt || sugg.before_text },
+        excerpt: sugg.excerpt || sugg.before_text || null,
+        cid: window.CAI?.cid
+      });
+      sendLearningEvent(evt, window.CAI?.Store?.get?.().baseUrl);
+    }
+  }
+  function onReject(id){
+    const list = (CAI.store && CAI.store.get && CAI.store.get("cai:suggestions", [])) || [];
+    const sugg = list.find(x=>x.id===id);
+    CAI.store && CAI.store.updateSuggestion && CAI.store.updateSuggestion(id, {status:"rejected"});
+    renderSuggestions();
+    if(sugg){
+      const evt = buildLearningEvent({
+        action: "reject",
+        rule: { rule_id: sugg.rule_id, severity: sugg.severity, snippet: sugg.excerpt || sugg.before_text },
+        excerpt: sugg.excerpt || null,
+        cid: window.CAI?.cid
+      });
+      sendLearningEvent(evt, window.CAI?.Store?.get?.().baseUrl);
+    }
+  }
+
+  async function onManualEdit(rangeInfo){
+    const evt = buildLearningEvent({
+      action: "manual_edit",
+      rule: null,
+      excerpt: rangeInfo?.text || null,
+      cid: window.CAI?.cid
+    });
+    sendLearningEvent(evt, window.CAI?.Store?.get?.().baseUrl);
+  }
   function renderSuggestions(){
     const root = document.getElementById("suggestions");
     const tpl = document.getElementById("sugg-item");
@@ -1748,6 +1857,8 @@ var REQ_LOG = [];
     }
   }
   document.addEventListener("DOMContentLoaded", renderSuggestions);
+  window.CAI = window.CAI || {};
+  window.CAI.onManualEdit = onManualEdit;
 })();
 
 (function(){

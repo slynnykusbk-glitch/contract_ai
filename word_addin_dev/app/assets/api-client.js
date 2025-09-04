@@ -30,6 +30,24 @@ export async function safeFetch(input, init={}) {
   return res;
 }
 
+export async function logLearning(event, baseUrl) {
+  const url = `${baseUrl}/api/learning/log`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(event),
+    credentials: "omit",
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    const err = new Error(`learning/log ${res.status}`);
+    err.status = res.status;
+    err.body = text;
+    throw err;
+  }
+  return await res.json().catch(() => ({}));
+}
+
 export async function replayAnalyze({ cid, hash }) {
   const u = new URL("/api/analyze/replay", window.CONTRACTAI_BACKEND);
   if (cid) u.searchParams.set("cid", cid);

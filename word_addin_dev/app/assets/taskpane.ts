@@ -1,14 +1,17 @@
-import { metaFromResponse, applyMetaToBadges } from "./app/assets/api-client.js";
-import { notifyOk, notifyErr } from "./app/assets/notifier.js";
-import { getWholeDocText } from "./app/assets/office.js";
+import { metaFromResponse, applyMetaToBadges } from "./api-client";
+import { notifyOk, notifyErr } from "./notifier";
+import { getWholeDocText } from "./office"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
 
-function backendBase() {
-  const inp = document.getElementById("backendUrl");
-  return (inp?.value?.trim()) || "https://localhost:9443";
+type Mode = "live" | "friendly" | "doctor";
+
+function backendBase(): string {
+  const inp = document.getElementById("backendUrl") as HTMLInputElement | null;
+  return inp?.value?.trim() || "https://localhost:9443";
 }
 
-async function safeFetch(input, init) {
+async function safeFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
   const resp = await fetch(input, init);
+  // даже если тело 4xx/5xx — мету применяем: так заполнятся бейджи (cid/schema/provider/…)
   try { applyMetaToBadges( metaFromResponse(resp) ); } catch {}
   return resp;
 }
@@ -44,6 +47,7 @@ async function doGptDraft() {
 }
 
 async function doQARecheck() {
+  // Пустые rules разрешены, бекенд их нормализует (последний PR)
   const r = await safeFetch(`${backendBase()}/api/qa-recheck`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -54,32 +58,36 @@ async function doQARecheck() {
   notifyOk("QA recheck OK");
 }
 
-function bindClick(sel, fn) {
-  const el = document.querySelector(sel);
+function bindClick(sel: string, fn: () => void) {
+  const el = document.querySelector(sel) as HTMLElement | null;
   if (!el) return;
   el.addEventListener("click", (e) => { e.preventDefault(); fn(); });
-  el.classList.remove("js-disable-while-busy");
+  el.classList.remove("js-disable-while-busy"); // чтобы точно были кликабельны
 }
 
 function wireUI() {
   bindClick("#btnTest", doHealth);
   bindClick("#btnAnalyzeDoc", doAnalyzeDoc);
-  bindClick("#btnDraft", doGptDraft);
+  bindClick("#btnDraft", doGptDraft);            // если у вас id другой (Get AI Draft) — поправьте
   bindClick("#btnQARecheck", doQARecheck);
+  // При необходимости добавьте остальные кнопки: Use selection, Insert result into Word и т.д.
   console.log("Panel UI wired");
 }
 
 async function bootstrap() {
+  // 1) Ждём Office, если он есть. Если нет — ждём DOM.
   try {
-    if (window.Office?.onReady) {
-      await window.Office.onReady();
+    if ((window as any).Office?.onReady) {
+      await (window as any).Office.onReady();
     } else {
       if (document.readyState === "loading") {
-        await new Promise(res => document.addEventListener("DOMContentLoaded", () => res(), { once: true }));
+        await new Promise<void>(res => document.addEventListener("DOMContentLoaded", () => res(), { once: true }));
       }
     }
   } catch {}
+  // 2) Немедленно провязываем UI
   wireUI();
+  // 3) Пытаемся сразу применить мету хотя бы по /health
   try { await doHealth(); } catch {}
 }
 

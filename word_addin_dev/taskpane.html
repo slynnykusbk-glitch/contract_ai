@@ -121,20 +121,11 @@
   <!-- Guard to avoid double wiring; bundle will set 'ready' -->
   <script>window.__CAI_WIRED__ = false;</script>
 
-  <!-- Единый модульный загрузчик: ждём Office и только потом поднимаем приложение -->
+  <!-- Единый модульный загрузчик -->
   <script type="module">
     import './app/assets/store.js?v=DEV';
     import './app/assets/api-client.js?v=DEV';
-
-    // Безопасная инициализация для Word (WebView2 поддерживает ES-модули)
-    Office.onReady(() => {
-      import('./taskpane.bundle.js?v=DEV')
-        .catch(err => {
-          console.error('Failed to load taskpane bundle', err);
-          const wrap = document.querySelector('.wrap');
-          wrap && (wrap.innerHTML = '<div style=\"color:#f66\">Failed to load UI bundle. See console.</div>');
-        });
-    });
+    import './taskpane.bundle.js?v=DEV';
   </script>
 
   <script nomodule>
@@ -395,23 +386,5 @@
     <div id="console" class="console"></div>
   </div>
 </div>
-<script>
-async function getSelectionText() {
-  return Word.run(async (ctx) => {
-    const sel = ctx.document.getSelection();
-    sel.load("text");
-    await ctx.sync();
-    return (sel.text || "").trim();
-  });
-}
-async function getWholeDocText() {
-  return Word.run(async (ctx) => {
-    const body = ctx.document.body;
-    body.load("text");
-    await ctx.sync();
-    return (body.text || "").trim();
-  });
-}
-</script>
 </body>
 </html>

@@ -9,6 +9,10 @@
   <div id="root"></div>
 
   <!-- Це підключення зібраного коду з index.tsx -->
-  <script src="bundle.js"></script>
+  <script type="module" src="bundle.js"></script>
+  <script nomodule>
+    document.body.innerHTML =
+      '<div style=\"padding:12px;color:#f66\">Your runtime is too old for ES modules. Please update your browser.</div>';
+  </script>
 </body>
 </html>

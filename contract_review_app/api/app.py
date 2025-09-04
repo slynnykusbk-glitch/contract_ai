@@ -15,7 +15,7 @@ import json
 import os
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from collections import OrderedDict
 from contextlib import asynccontextmanager
@@ -28,6 +28,33 @@ log = logging.getLogger("contract_ai")
 REPO_DIR = Path(__file__).resolve().parents[2]
 PANEL_DIR = REPO_DIR / "word_addin_dev"
 PANEL_ASSETS_DIR = PANEL_DIR / "app" / "assets"
+
+
+TRACE_MAX = int(os.getenv("TRACE_MAX", "200"))
+
+
+class _TraceStore:
+    def __init__(self, maxlen: int = 200):
+        self.maxlen = maxlen
+        self._d: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+
+    def put(self, cid: str, item: Dict[str, Any]) -> None:
+        if not cid:
+            return
+        if cid in self._d:
+            self._d.move_to_end(cid)
+        self._d[cid] = item
+        while len(self._d) > self.maxlen:
+            self._d.popitem(last=False)
+
+    def get(self, cid: str) -> Dict[str, Any] | None:
+        return self._d.get(cid)
+
+    def list(self) -> list[str]:
+        return list(self._d.keys())
+
+
+TRACE = _TraceStore(TRACE_MAX)
 
 
 def _validate_env_vars() -> None:
@@ -681,6 +708,22 @@ async def add_response_headers(request: Request, call_next):
     response = await call_next(request)
     if "x-schema-version" not in response.headers:
         apply_std_headers(response, request, started_at)
+    cid = response.headers.get("x-cid")
+    try:
+        resp_json = json.loads(response.body.decode("utf-8"))
+    except Exception:
+        resp_json = None
+    trace_item: Dict[str, Any] = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "path": request.url.path,
+        "status": response.status_code,
+        "headers": dict(response.headers),
+        "body": resp_json,
+    }
+    doc_hash = response.headers.get("x-doc-hash")
+    if doc_hash:
+        trace_item["doc_hash"] = doc_hash
+    TRACE.put(cid, trace_item)
     return response
 
 
@@ -1134,27 +1177,16 @@ async def health(response: Response) -> dict:
 
 
 @router.get("/api/trace/{cid}")
-async def api_trace(cid: str, response: Response):
-    _set_schema_headers(response)
-    if not _CID_RE.fullmatch(cid or ""):
-        resp = _problem_response(422, "invalid cid", "invalid cid")
-        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
-        return resp
-    data = _TRACE_DATA.get(cid)
-    if not data:
+async def get_trace_by_cid(cid: str):
+    item = TRACE.get(cid)
+    if not item:
         raise HTTPException(status_code=404, detail="trace not found")
-    resp = dict(data)
-    resp["status"] = "ok"
-    resp["events"] = _TRACE.get(cid, [])
-    _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
-    return resp
+    return item
 
 
 @router.get("/api/trace")
-async def api_trace_index(response: Response):
-    _set_schema_headers(response)
-    _set_std_headers(response, cid="trace-index", xcache="miss", schema=SCHEMA_VERSION)
-    return {"status": "ok", "cids": list(_TRACE_DATA.keys())}
+async def list_traces():
+    return {"cids": TRACE.list()}
 
 
 @router.get("/api/report/{cid}.html")
@@ -1186,7 +1218,9 @@ async def api_report_pdf(cid: str):
     try:
         pdf_bytes = html_to_pdf(html)
     except NotImplementedError:
-        resp = _problem_response(501, "PDF export not enabled", "PDF export not enabled")
+        resp = _problem_response(
+            501, "PDF export not enabled", "PDF export not enabled"
+        )
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         return resp
     resp = Response(content=pdf_bytes, media_type="application/pdf")

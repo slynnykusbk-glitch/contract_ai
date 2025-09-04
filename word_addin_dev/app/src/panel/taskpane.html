@@ -23,6 +23,25 @@ pre{background:#f0f0f0;padding:8px;border-radius:4px;white-space:pre-wrap;}
 <button id="btnQA">QA</button>
 </div>
 <pre id="output"></pre>
+<div id="suggestions"></div>
+<template id="sugg-item">
+  <div class="sugg-item" data-id="">
+    <div class="sugg-head">
+      <span class="rule"></span>
+      <span class="sev"></span>
+      <span class="badge status"></span>
+    </div>
+    <div class="sugg-body">
+      <div class="before"></div>
+      <div class="after"></div>
+    </div>
+    <div class="sugg-actions">
+      <button class="btn-apply">Apply (tracked)</button>
+      <button class="btn-accept">Accept</button>
+      <button class="btn-reject">Reject</button>
+    </div>
+  </div>
+</template>
 <script src="taskpane.bundle.js"></script>
 </body>
 </html>

@@ -1296,6 +1296,74 @@ var REQ_LOG = [];
   })();
 
 (function(){
+  function withWord(fn){ return Word.run(async ctx => { try{ await fn(ctx); }catch(e){ console.error(e); throw e; } }); }
+  async function ensureTracking(ctx){ ctx.document.trackRevisions = true; }
+  function shortSig(s){ if(!s) return ""; const t = String(s).trim(); return t.length>80?t.slice(0,80):t; }
+  async function findRangeByExcerpt(ctx, excerpt){
+    const body = ctx.document.body;
+    const q = shortSig(excerpt);
+    let results = body.search(q, { matchCase:false, matchWholeWord:false, ignorePunct:true, ignoreSpace:true });
+    results.load("items");
+    await ctx.sync();
+    if(results.items.length) return results.items[0];
+    const q2 = shortSig(q.slice(0, Math.max(20, Math.floor(q.length/2))));
+    results = body.search(q2, { matchCase:false, matchWholeWord:false, ignorePunct:true, ignoreSpace:true });
+    results.load("items");
+    await ctx.sync();
+    return results.items[0] || null;
+  }
+  async function applyTrackedEdit(edit){
+    await withWord(async ctx => {
+      await ensureTracking(ctx);
+      const range = await findRangeByExcerpt(ctx, edit.excerpt || edit.before_text);
+      if(!range) throw new Error("Target text not found for edit " + edit.id);
+      range.insertText(edit.after_text, "Replace");
+      const cc = range.insertContentControl();
+      cc.tag = "cai:sugg:" + edit.id;
+      cc.title = "ContractAI Suggestion " + edit.id;
+      cc.appearance = "Tags";
+      range.insertComment("AI [" + edit.severity + "] " + edit.rule_id + (edit.title?" – "+edit.title:"") + (edit.recommendation?"\nRec: "+edit.recommendation:"") );
+      await ctx.sync();
+    });
+    CAI.store && CAI.store.updateSuggestion && CAI.store.updateSuggestion(edit.id, { status:"applied", tag:"cai:sugg:"+edit.id });
+  }
+  function onApplyClick(id){
+    const list = (CAI.store && CAI.store.get && CAI.store.get("cai:suggestions", [])) || [];
+    const edit = list.find(x=>x.id===id);
+    if(!edit) return;
+    applyTrackedEdit(edit).then(renderSuggestions).catch(e=>{ console.error(e); });
+  }
+  function onAccept(id){ CAI.store && CAI.store.updateSuggestion && CAI.store.updateSuggestion(id, {status:"accepted"}); renderSuggestions(); }
+  function onReject(id){ CAI.store && CAI.store.updateSuggestion && CAI.store.updateSuggestion(id, {status:"rejected"}); renderSuggestions(); }
+  function renderSuggestions(){
+    const root = document.getElementById("suggestions");
+    const tpl = document.getElementById("sugg-item");
+    if(!root || !tpl) return;
+    root.innerHTML = "";
+    const list = (CAI.store && CAI.store.get && CAI.store.get("cai:suggestions", [])) || [];
+    for(const s of list){
+      const node = tpl.content.cloneNode(true);
+      const el = node.querySelector(".sugg-item");
+      el.dataset.id = s.id;
+      el.querySelector(".rule").textContent = s.rule_id || s.title || "Suggestion";
+      el.querySelector(".sev").textContent = s.severity || "";
+      el.querySelector(".before").textContent = s.before_text ? ("– "+s.before_text) : "";
+      el.querySelector(".after").textContent = s.after_text ? ("→ "+s.after_text) : "";
+      const st = el.querySelector(".status");
+      st.textContent = s.status || "pending";
+      if(s.status === "applied") st.classList.add("badge-applied");
+      if(s.status === "accepted") st.classList.add("badge-accepted");
+      if(s.status === "rejected") st.classList.add("badge-rejected");
+      el.querySelector(".btn-apply").onclick = () => onApplyClick(s.id);
+      el.querySelector(".btn-accept").onclick = () => onAccept(s.id);
+      el.querySelector(".btn-reject").onclick = () => onReject(s.id);
+      root.appendChild(node);
+    }
+  }
+  document.addEventListener("DOMContentLoaded", renderSuggestions);
+})();
+
+(function(){
   function attachSafeFill(){
     const fill = (txt) => {
       try{

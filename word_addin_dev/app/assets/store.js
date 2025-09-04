@@ -69,3 +69,26 @@ export function getLastAnalyze() {
     return null;
   }
 }
+
+// === learning event queue ===
+const QKEY = "cai_learning_queue_v1";
+
+export function enqueueLearning(evt) {
+  try {
+    const q = JSON.parse(localStorage.getItem(QKEY) || "[]");
+    const id = `${evt.cid||"nocid"}|${evt.ts}|${evt.action}|${evt.rule_id||"norule"}`;
+    if (!q.find(x => x._id === id)) { q.push({ ...evt, _id: id }); }
+    localStorage.setItem(QKEY, JSON.stringify(q));
+  } catch {}
+}
+
+export function readQueue() {
+  try { return JSON.parse(localStorage.getItem(QKEY) || "[]"); } catch { return []; }
+}
+
+export function dropFromQueue(ids) {
+  try {
+    const q = readQueue().filter(x => !ids.includes(x._id));
+    localStorage.setItem(QKEY, JSON.stringify(q));
+  } catch {}
+}

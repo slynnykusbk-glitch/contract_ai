@@ -30,6 +30,16 @@ export async function safeFetch(input, init={}) {
   return res;
 }
 
+export async function replayAnalyze({ cid, hash }) {
+  const u = new URL("/api/analyze/replay", window.CONTRACTAI_BACKEND);
+  if (cid) u.searchParams.set("cid", cid);
+  if (hash) u.searchParams.set("hash", hash);
+  const r = await fetch(u, { method: "GET", credentials: "include" });
+  if (!r.ok) throw new Error(`Replay failed: ${r.status}`);
+  const body = await r.json();
+  return { body, headers: Object.fromEntries(r.headers.entries()) };
+}
+
 (function (root, factory) {
   if (typeof define === "function" && define.amd) {
     define([], factory);

@@ -52,3 +52,18 @@ export function debounce(fn, ms = 450) {
     __debounceTimers.set(key, setTimeout(() => fn(...args), ms));
   };
 }
+
+const KEY = "cai:last_analyze";
+export function saveLastAnalyze({ cid, docHash, risk }) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ cid, docHash, risk, ts: Date.now() }));
+  } catch {}
+}
+
+export function getLastAnalyze() {
+  try {
+    return JSON.parse(localStorage.getItem(KEY) || "null");
+  } catch {
+    return null;
+  }
+}

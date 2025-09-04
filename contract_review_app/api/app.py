@@ -1580,7 +1580,9 @@ async def api_qa_recheck(
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
     text = (payload or {}).get("text", "")
-    rules = (payload or {}).get("rules", {})
+    rules = (payload or {}).get("rules")
+    if isinstance(rules, list):
+        rules = {"rules": rules} if rules else None
     profile = (payload or {}).get("profile", "smart")
     cid = x_cid or _sha256_hex(str(t0) + text[:128])
     meta = LLM_CONFIG.meta()

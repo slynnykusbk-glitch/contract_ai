@@ -1,5 +1,5 @@
-import { setBusy, debounce } from "./app/assets/store.js";
-import { safeFetch, showToast } from "./app/assets/api-client.js";
+import { setBusy, debounce, saveLastAnalyze, getLastAnalyze } from "./app/assets/store.js";
+import { safeFetch, showToast, replayAnalyze } from "./app/assets/api-client.js";
 
 // === B9-S4: busy wrapper ===
 async function withBusy(key, fn) {
@@ -1139,6 +1139,9 @@ var REQ_LOG = [];
       usage: res.headers.get("x-usage-total") || ""
     });
     renderMeta();
+    const cid = res.headers.get("x-cid");
+    const docHash = res.headers.get("x-doc-hash");
+    if (cid && docHash) saveLastAnalyze({ cid, docHash, risk: mode });
     CAI.Store.get().last.analyze = r.analysis;
     const findings = CAI.pickFindings(r);
     const summary = CAI.summary.build(findings);
@@ -1157,6 +1160,25 @@ var REQ_LOG = [];
       await commentAllFindingsBatch(r?.analysis?.findings || [], text);
     }
     renderFindings(r.analysis);
+  }
+
+  async function onReplayLast() {
+    const last = getLastAnalyze();
+    if (!last) { toast("Nothing to replay yet."); return; }
+    const { body, headers } = await replayAnalyze({ cid: last.cid, hash: last.docHash });
+    CAI.Store.setMeta({
+      cid: headers["x-cid"] || "",
+      cache: headers["x-cache"] || "",
+      latencyMs: Number(headers["x-latency-ms"]) || 0,
+      schema: headers["x-schema-version"] || "",
+      provider: headers["x-provider"] || "",
+      model: headers["x-model"] || "",
+      llm_mode: headers["x-llm-mode"] || "",
+      usage: headers["x-usage-total"] || ""
+    });
+    renderMeta();
+    renderAnalyze(body);
+    toast("Replayed cached analysis");
   }
 
   function renderFindings(a){
@@ -1387,6 +1409,7 @@ var REQ_LOG = [];
     els.btnInsert = $("btnInsertIntoWord");
 
     els.btnAnalyzeDoc = $("btnAnalyzeDoc");
+    els.btnReplay = $("btnReplay");
     els.btnAnnotate = $("btnAnnotate");
     els.btnQARecheck = $("btnQARecheck");
     els.btnClearAnnots = $("btnClearAnnots");
@@ -1444,6 +1467,10 @@ var REQ_LOG = [];
     if (els.btnAnalyzeDoc) {
       const onAnalyzeDoc = debounce(() => withBusy("analyze", analyzeDoc));
       els.btnAnalyzeDoc.addEventListener("click", onAnalyzeDoc);
+    }
+    if (els.btnReplay) {
+      const onReplay = debounce(() => withBusy("analyze", onReplayLast));
+      els.btnReplay.addEventListener("click", onReplay);
     }
 
     if (els.useDoc) els.useDoc.addEventListener("click", debounce(() => withBusy("useDoc", async function(){

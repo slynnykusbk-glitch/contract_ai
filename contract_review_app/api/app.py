@@ -50,6 +50,7 @@ from fastapi import (
     FastAPI,
     Header,
     HTTPException,
+    Query,
     Request,
     Response,
 )
@@ -73,6 +74,7 @@ from .models import (
     SearchHit,
     SCHEMA_VERSION,
 )
+from contract_review_app.core.cache import TTLCache
 
 # --- LLM provider & limits (final resolution) ---
 from contract_review_app.llm.provider import get_provider
@@ -435,6 +437,40 @@ if hasattr(PROVIDER, "endpoint_hint"):
 if hasattr(PROVIDER, "deployment_hint"):
     PROVIDER_META["dep"] = getattr(PROVIDER, "deployment_hint")
 
+ANALYZE_CACHE_TTL_S = int(os.getenv("ANALYZE_CACHE_TTL_S", "900"))
+ANALYZE_CACHE_MAX = int(os.getenv("ANALYZE_CACHE_MAX", "128"))
+ENABLE_REPLAY = os.getenv("ANALYZE_REPLAY_ENABLED", "1") == "1"
+
+an_cache = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
+cid_index = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
+
+
+def _norm_text(s: str) -> str:
+    return re.sub(r"\s+", " ", (s or "")).strip()
+
+
+def _fingerprint(
+    *,
+    text: str,
+    risk: str,
+    schema: str,
+    provider: str,
+    model: str,
+    rules_version: str | None,
+    mode: str | None,
+) -> str:
+    payload = {
+        "text": _norm_text(text),
+        "risk": (risk or "").lower(),
+        "schema": schema,
+        "provider": (provider or "").lower(),
+        "model": (model or "").lower(),
+        "rules": rules_version or "",
+        "mode": (mode or "").lower() if mode else "",
+    }
+    raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
 
 def _provider_chat(
     messages: List[Dict[str, str]], cid: str, **opts: Any
@@ -475,6 +511,7 @@ class AnalyzeRequest(BaseModel):
     clause: Optional[str] = None
     body: Optional[str] = None
     language: Optional[str] = None
+    mode: Optional[str] = None
 
 
 class AnalyzeResponse(BaseModel):
@@ -1113,11 +1150,37 @@ def api_analyze(req: AnalyzeRequest, request: Request):
         raise HTTPException(status_code=422, detail="text is empty")
     debug = request.query_params.get("debug")
 
+    current_provider_name = PROVIDER_META.get("provider", "")
+    current_model_name = PROVIDER_META.get("model", "")
+    doc_hash = _fingerprint(
+        text=txt,
+        risk=getattr(req, "risk", getattr(req, "threshold", "medium")),
+        schema=SCHEMA_VERSION,
+        provider=current_provider_name,
+        model=current_model_name,
+        rules_version=getattr(pipeline, "rules_version", None),
+        mode=getattr(req, "mode", None),
+    )
+
+    cached = an_cache.get(doc_hash)
+    if cached:
+        resp_json = cached["resp"]
+        cid = cached["cid"]
+        resp = JSONResponse(resp_json)
+        resp.headers["x-cache"] = "hit"
+        resp.headers["x-cid"] = cid
+        resp.headers["x-doc-hash"] = doc_hash
+        resp.headers["x-schema-version"] = SCHEMA_VERSION
+        return resp
+
     cid = compute_cid(request)
-    cached = IDEMPOTENCY_CACHE.get(cid)
-    if cached is not None:
-        resp = JSONResponse(cached)
-        _set_std_headers(resp, cid=cid, xcache="hit", schema=SCHEMA_VERSION)
+    cached_cid = IDEMPOTENCY_CACHE.get(cid)
+    if cached_cid is not None:
+        resp = JSONResponse(cached_cid)
+        resp.headers["x-cache"] = "hit"
+        resp.headers["x-cid"] = cid
+        resp.headers["x-doc-hash"] = doc_hash
+        resp.headers["x-schema-version"] = SCHEMA_VERSION
         return resp
 
     # existing internal function
@@ -1162,10 +1225,46 @@ def api_analyze(req: AnalyzeRequest, request: Request):
         "summary": summary,
     }
     IDEMPOTENCY_CACHE.set(cid, envelope)
+    rec = {"resp": envelope, "cid": cid}
+    an_cache.set(doc_hash, rec)
+    cid_index.set(cid, {"hash": doc_hash})
 
     resp = JSONResponse(envelope)
-    # x-schema-version header is set by _set_std_headers
-    _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+    resp.headers["x-cache"] = "miss"
+    resp.headers["x-cid"] = cid
+    resp.headers["x-doc-hash"] = doc_hash
+    resp.headers["x-schema-version"] = SCHEMA_VERSION
+    _set_llm_headers(resp, PROVIDER_META)
+    return resp
+
+
+@router.get("/api/analyze/replay")
+def analyze_replay(
+    cid: Optional[str] = Query(default=None),
+    hash: Optional[str] = Query(default=None),
+):
+    if not ENABLE_REPLAY:
+        raise HTTPException(404, detail="Replay disabled")
+
+    rec = None
+    if cid:
+        meta = cid_index.get(cid)
+        if meta:
+            rec = an_cache.get(meta["hash"])
+    elif hash:
+        rec = an_cache.get(hash)
+    else:
+        raise HTTPException(400, detail="Pass cid or hash")
+
+    if not rec:
+        raise HTTPException(404, detail="Not found in cache")
+
+    out_json = rec["resp"]
+    resp = JSONResponse(out_json)
+    resp.headers["x-cache"] = "replay"
+    resp.headers["x-cid"] = rec["cid"]
+    resp.headers["x-doc-hash"] = hash or cid_index.get(rec["cid"])["hash"]
+    resp.headers["x-schema-version"] = SCHEMA_VERSION
     return resp
 
 

@@ -309,7 +309,7 @@ def _analyze_document(text: str) -> Dict[str, Any]:
     # ``issues`` historically mirrored ``findings``; keep behaviour
     issues = findings.copy()
     return {
-        "status": "ok",
+        "status": "OK",
         "clause_type": "document",
         "findings": findings,
         "issues": issues,
@@ -396,17 +396,32 @@ app = FastAPI(
 )
 register_error_handlers(app)
 
-# сначала более "длинный" префикс, потом корень панели
-app.mount(
-    "/panel/app/assets",
+# ---------------------------- Panel sub-app ----------------------------
+panel_app = FastAPI()
+
+
+@panel_app.middleware("http")
+async def _panel_no_cache(request: Request, call_next):
+    resp = await call_next(request)
+    resp.headers["Cache-Control"] = "no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
+
+@panel_app.get("/version.json")
+async def panel_version() -> dict:
+    return {"version": app.version, "schema_version": SCHEMA_VERSION}
+
+
+panel_app.mount(
+    "/app/assets",
     StaticFiles(directory=str(PANEL_ASSETS_DIR), html=False),
-    name="panel_assets",
+    name="assets",
 )
-app.mount(
-    "/panel",
-    StaticFiles(directory=str(PANEL_DIR), html=True),
-    name="panel",
-)
+panel_app.mount("/", StaticFiles(directory=str(PANEL_DIR), html=True), name="root")
+
+app.mount("/panel", panel_app, name="panel")
 
 # instantiate LLM provider once
 PROVIDER = get_provider()
@@ -1063,7 +1078,7 @@ async def health(response: Response) -> dict:
     """Health endpoint with schema version and rule count."""
     _set_schema_headers(response)
     return {
-        "status": "ok",
+        "status": "OK",
         "schema": SCHEMA_VERSION,
         "rules_count": _discover_rules_count(),
         "llm": {
@@ -1124,18 +1139,27 @@ def api_analyze(req: AnalyzeRequest, request: Request):
 
     # status passthrough (do not force to "ok")
     if isinstance(analysis, dict):
-        status_out = str(analysis.get("status", "ok")).lower()
+        status_out = str(analysis.get("status", "OK")).upper()
         analysis_out = dict(analysis)
         analysis_out["status"] = status_out
     else:
-        status_out = "ok"
+        status_out = "OK"
         analysis_out = {"findings": analysis, "status": status_out}
+
+    snap = extract_document_snapshot(txt)
+    snap.rules_count = _discover_rules_count()
+    summary = snap.model_dump()
+    _ensure_legacy_doc_type(summary)
 
     envelope = {
         "status": status_out,
         "analysis": analysis_out,
+        "results": {"summary": summary},
+        "clauses": analysis_out.get("findings", []),
+        "document": analysis_out.get("document", {}),
+        "schema_version": SCHEMA_VERSION,
         "meta": PROVIDER_META,
-        "x_schema_version": SCHEMA_VERSION,
+        "summary": summary,
     }
     IDEMPOTENCY_CACHE.set(cid, envelope)
 

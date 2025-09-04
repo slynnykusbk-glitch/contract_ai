@@ -54,3 +54,4 @@ class DocumentSnapshot(AppBaseModel):
     )
     hints: List[str] = Field(default_factory=list)
     rules_count: int = 0
+    debug: Dict[str, Any] | None = None

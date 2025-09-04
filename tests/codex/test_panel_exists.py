@@ -1,19 +1,17 @@
-import httpx
-import ssl
+from starlette.testclient import TestClient
+
+from contract_review_app.api.app import app
 
 
 def _client():
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return httpx.Client(verify=False, base_url="https://localhost:9443")
+    return TestClient(app, base_url="http://testserver")
 
 
 def test_health_ok():
     r = _client().get("/health")
     assert r.status_code == 200
     j = r.json()
-    assert j.get("status", "").lower() == "ok"
+    assert j.get("status") == "OK"
 
 
 def test_panel_assets_served():

@@ -367,7 +367,14 @@
 
   <div class="row card">
     <div class="muted" style="margin-bottom:6px">Proposed draft (from analysis or edited manually):</div>
-    <textarea id="draftText" placeholder="Will be filled from analysis.proposed_text if provided…"></textarea>
+    <textarea
+  id="proposedText"
+  name="proposed"
+  data-role="proposed-text"
+  class="form-control"
+  rows="8"
+  placeholder="Will be filled from analysis.proposed_text if provided…">
+</textarea>
     <div class="row flex" style="margin-top:8px">
       <button id="btnPreviewDiff" class="btn-grey" disabled>Preview diff</button>
       <button id="btnApplyTracked" class="btn js-disable-while-busy" disabled title="Select text in Word before applying edits.">Apply (tracked + comment)</button>

@@ -1,8 +1,84 @@
-import { metaFromResponse, applyMetaToBadges, apiHealth, apiAnalyze, apiGptDraft, apiQaRecheck } from "./api-client";
+import { applyMetaToBadges, apiHealth, apiAnalyze, apiQaRecheck } from "./api-client";
 import { notifyOk, notifyErr } from "./notifier";
 import { getWholeDocText } from "./office"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
 
 type Mode = "live" | "friendly" | "doctor";
+
+// --- helpers to locate and fill the "Proposed draft" textarea ---
+function findProposedTextarea(): HTMLTextAreaElement | null {
+  const primarySel = '#proposedText, textarea[name="proposed"], [data-role="proposed-text"]';
+  let el = document.querySelector(primarySel) as HTMLTextAreaElement | null;
+  if (el) return el;
+
+  // Фолбэк: ищем textarea по тексту окружения
+  const all = Array.from(document.querySelectorAll<HTMLTextAreaElement>('textarea'));
+  return all.find(t => {
+    const around =
+      (t.getAttribute('placeholder') || '') + ' ' +
+      (t.id || '') + ' ' + (t.name || '') + ' ' +
+      (t.closest('.card, .form-group, section')?.textContent || '');
+    return /proposed|suggest(ed)? edits|draft/i.test(around);
+  }) || null;
+}
+
+function injectProposedText(text: string) {
+  const target = findProposedTextarea();
+  if (!target) {
+    // мягкое уведомление: места для вставки не нашли
+    (window as any).toast?.('Draft created, but target field not found', 'warn');
+    return;
+  }
+  target.value = text || '';
+  target.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// --- handler for "Get AI Draft" ---
+async function onGetAIDraft(ev?: Event) {
+  ev?.preventDefault?.();
+
+  const original =
+    (document.getElementById('originalClause') as HTMLTextAreaElement | null)?.value?.trim() || '';
+
+  const body = {
+    text: original || 'Please propose a neutral confidentiality clause.',
+    mode: 'friendly',
+    before_text: '',
+    after_text: '',
+  };
+
+  const resp = await fetch('/api/gpt-draft', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  // применим мета-бейджи, если они есть
+  try {
+    // эти функции уже есть в api-client.js
+    // @ts-ignore
+    const { metaFromResponse, applyMetaToBadges } = await import('./api-client.js');
+    applyMetaToBadges(metaFromResponse(resp));
+  } catch {}
+
+  const json = await resp.json();
+  (window as any).__last = (window as any).__last || {};
+  (window as any).__last['/api/gpt-draft'] = { json };
+
+  if (json?.proposed_text) {
+    injectProposedText(json.proposed_text);
+    (window as any).toast?.('Draft ready', 'success');
+  } else {
+    (window as any).toast?.('Draft API returned no proposed_text', 'warn');
+  }
+}
+
+// навешиваем обработчик
+document.addEventListener('DOMContentLoaded', () => {
+  const btn =
+    document.getElementById('btnGetAIDraft') ||
+    Array.from(document.querySelectorAll('button')).find(b => /get ai draft/i.test(b.textContent || ''));
+  if (btn) btn.addEventListener('click', onGetAIDraft, { once: false });
+});
 
 async function doHealth() {
   const { json, meta } = await apiHealth();
@@ -17,13 +93,6 @@ async function doAnalyzeDoc() {
   try { applyMetaToBadges(meta); } catch {}
   (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.results", { detail: json }));
   notifyOk("Analyze OK");
-}
-
-async function doGptDraft() {
-  const { json, meta } = await apiGptDraft("Ping draft");
-  try { applyMetaToBadges(meta); } catch {}
-  (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.draft", { detail: json }));
-  notifyOk("Draft OK");
 }
 
 async function doQARecheck() {
@@ -44,7 +113,6 @@ function bindClick(sel: string, fn: () => void) {
 function wireUI() {
   bindClick("#btnTest", doHealth);
   bindClick("#btnAnalyzeDoc", doAnalyzeDoc);
-  bindClick("#btnDraft", doGptDraft);            // если у вас id другой (Get AI Draft) — поправьте
   bindClick("#btnQARecheck", doQARecheck);
   // При необходимости добавьте остальные кнопки: Use selection, Insert result into Word и т.д.
   console.log("Panel UI wired");

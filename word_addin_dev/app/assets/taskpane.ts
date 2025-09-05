@@ -32,14 +32,26 @@ export function buildParagraphIndex(paragraphs: string[]): { starts: number[]; t
   return { starts, texts };
 }
 
-export async function mapFindingToRange(f: AnalyzeFinding, index: { starts: number[]; texts: string[] }): Promise<Word.Range | null> {
+export async function mapFindingToRange(
+  f: AnalyzeFinding,
+): Promise<Word.Range | null> {
+  const last: string = (window as any).__lastAnalyzed || "";
+  const snippet = normalizeText(f.snippet || "");
+  const occIdx = (() => {
+    if (typeof f.start !== "number" || !snippet) return 0;
+    let idx = -1, n = 0;
+    while ((idx = last.indexOf(snippet, idx + 1)) !== -1 && idx < f.start) n++;
+    return n;
+  })();
+
   try {
     return await Word.run(async ctx => {
       const body = ctx.document.body;
-      const searchRes = body.search(normalizeText(f.snippet), { matchCase: false, matchWholeWord: false });
+      const searchRes = body.search(snippet, { matchCase: false, matchWholeWord: false });
       searchRes.load("items");
       await ctx.sync();
-      return searchRes.items.length ? searchRes.items[0] : null;
+      const items = searchRes.items || [];
+      return items[Math.min(occIdx, Math.max(0, items.length - 1))] || null;
     });
   } catch (e) {
     console.warn("mapFindingToRange fail", e);
@@ -48,14 +60,24 @@ export async function mapFindingToRange(f: AnalyzeFinding, index: { starts: numb
 }
 
 export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
+  const last: string = (window as any).__lastAnalyzed || "";
   for (const f of findings) {
+    const snippet = normalizeText(f.snippet || "");
+    const occIdx = (() => {
+      if (typeof f.start !== "number" || !snippet) return 0;
+      let idx = -1, n = 0;
+      while ((idx = last.indexOf(snippet, idx + 1)) !== -1 && idx < f.start) n++;
+      return n;
+    })();
+
     try {
       await Word.run(async ctx => {
         const body = ctx.document.body;
-        const searchRes = body.search(normalizeText(f.snippet), { matchCase: false, matchWholeWord: false });
+        const searchRes = body.search(snippet, { matchCase: false, matchWholeWord: false });
         searchRes.load("items");
         await ctx.sync();
-        const range = searchRes.items[0];
+        const items = searchRes.items || [];
+        const range = items[Math.min(occIdx, Math.max(0, items.length - 1))];
         if (range) {
           const msg = `${f.rule_id} (${f.severity})${f.advice ? ": " + f.advice : ""}`;
           range.insertComment(msg);
@@ -68,52 +90,44 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
   }
 }
 
-export async function applyOpsTracked(ops: { start: number; end: number; replacement: string }[]) {
+export async function applyOpsTracked(
+  ops: { start: number; end: number; replacement: string }[]
+) {
   if (!ops || !ops.length) return;
   const last: string = (window as any).__lastAnalyzed || "";
+
   await Word.run(async ctx => {
     const body = ctx.document.body;
     (ctx.document as any).trackRevisions = true;
+
     for (const op of ops) {
       const snippet = last.slice(op.start, op.end);
-      const ranges = body.search(snippet, { matchCase: false, matchWholeWord: false });
-      ranges.load("items");
+
+      const occIdx = (() => {
+        let idx = -1, n = 0;
+        while ((idx = last.indexOf(snippet, idx + 1)) !== -1 && idx < op.start) n++;
+        return n;
+      })();
+
+      const found = body.search(snippet, { matchCase: false, matchWholeWord: false });
+      found.load("items");
       await ctx.sync();
-      const range = ranges.items[0];
-      if (range) {
-        range.insertText(op.replacement, "Replace");
-        try { range.insertComment("AI edit"); } catch {}
+
+      const items = found.items || [];
+      const target = items[Math.min(occIdx, Math.max(0, items.length - 1))];
+
+      if (target) {
+        target.insertText(op.replacement, "Replace");
+        try { target.insertComment("AI edit"); } catch {}
+      } else {
+        console.warn("[applyOpsTracked] match not found", { snippet, occIdx });
       }
       await ctx.sync();
     }
   });
 }
 
-async function acceptAll() {
-  try {
-    await Word.run(async ctx => {
-      ctx.document.body.acceptAllChanges();
-      await ctx.sync();
-    });
-    notifyOk("Accepted all changes");
-  } catch (e) {
-    notifyWarn("Accept failed");
-    console.error(e);
-  }
-}
 
-async function rejectAll() {
-  try {
-    await Word.run(async ctx => {
-      ctx.document.body.rejectAllChanges();
-      await ctx.sync();
-    });
-    notifyOk("Rejected all changes");
-  } catch (e) {
-    notifyWarn("Reject failed");
-    console.error(e);
-  }
-}
 
 async function navComments(dir: number) {
   try {
@@ -391,8 +405,8 @@ function wireUI() {
   document.getElementById("btnGetAIDraft")?.addEventListener("click", onGetAIDraft);
   bindClick("#btnInsertIntoWord", onInsertIntoWord);
   bindClick("#btnApplyTracked", onApplyTracked);
-  bindClick("#btnAcceptAll", acceptAll);
-  bindClick("#btnRejectAll", rejectAll);
+  bindClick("#btnAcceptAll", onAcceptAll);
+  bindClick("#btnRejectAll", onRejectAll);
   bindClick("#btnPrevIssue", onPrevIssue);
   bindClick("#btnNextIssue", onNextIssue);
   bindClick("#btnAnnotate", () => {

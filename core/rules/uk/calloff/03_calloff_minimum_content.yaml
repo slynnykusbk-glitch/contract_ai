@@ -1,0 +1,46 @@
+rule:
+  id: "uk.calloff.minimum_content"
+  version: "1.0.0"
+  title: "Call-Off: minimum content must include parties, scope, price and schedule"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["call-off","orders","content"]
+  triggers:
+    any:
+      - regex: "(?i)Call[-\\s]?Off|Order\\b"
+  checks:
+    - id: "missing_minimum_elements"
+      when:
+        all:
+          - regex: "(?i)Call[-\\s]?Off|Order\\b"
+          - not_regex: "(?i)parties|between\\s+the\\s+Company\\s+and\\s+the\\s+Contractor"
+          - not_regex: "(?i)scope|description|Work|Goods"
+          - not_regex: "(?i)price|rates|compensation|charge"
+          - not_regex: "(?i)schedule|programme|delivery\\s+date"
+      finding:
+        message: "Call-Off definition lacks one or more minimum elements (parties/scope/price/schedule)."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Ensure each Call-Off states parties, scope/description, price/rates and schedule/delivery."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: CallOffContentGap
+    score: 80
+    problem: "Minimum content for Call-Off not enforced."
+    recommendation: "Add explicit list of mandatory elements."
+    law_reference: []
+    category: "Call-Off"
+    keywords: ["content","parties","scope","price","schedule"]
+metadata:
+  tags: ["call-off","content"]
+  tests:
+    positive:
+      - "Each Call-Off identifies the parties, describes the Work, sets the price/rates and includes a schedule."
+    negative:
+      - "Call-Off means an order issued by the Company."

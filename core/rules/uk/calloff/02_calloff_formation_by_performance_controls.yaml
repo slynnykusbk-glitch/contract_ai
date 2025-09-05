@@ -1,0 +1,43 @@
+rule:
+  id: "uk.calloff.formation_by_performance_controls"
+  version: "1.0.0"
+  title: "Call-Off: formation by performance requires explicit controls and precedence"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["call-off","orders","formation","precedence"]
+  triggers:
+    any:
+      - regex: "(?i)effective\\s+upon\\s+performance|acceptance\\s+by\\s+performance|upon\\s+commencement\\s+of\\s+Work"
+  checks:
+    - id: "no_controls_for_performance_acceptance"
+      when:
+        any:
+          - not_regex: "(?i)subject\\s+to\\s+Clause\\s*2\\.2|Order\\s+of\\s+Precedence"
+          - not_regex: "(?i)no\\s+other\\s+terms|exclude[s]?\\s+(all\\s+)?other\\s+terms|Contractor'?s?\\s+terms\\s+do\\s+not\\s+apply"
+      finding:
+        message: "Acceptance by performance without precedence control and exclusion of other terms."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "If performance forms a Call-Off, state it is subject to Clause 2.2 and excludes other T&Cs."
+        score_delta: -25
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: CallOffPerformanceFormationRisk
+    score: 80
+    problem: "Performance-based formation may import unintended terms."
+    recommendation: "Gate performance-formation by precedence and T&C exclusion."
+    law_reference: []
+    category: "Call-Off"
+    keywords: ["performance acceptance","precedence","exclusion"]
+metadata:
+  tags: ["call-off","formation"]
+  tests:
+    positive:
+      - "A Call-Off may be accepted by performance, provided it excludes all other terms and is subject to Clause 2.2 (Order of Precedence)."
+    negative:
+      - "A Call-Off becomes effective upon commencement of Work."

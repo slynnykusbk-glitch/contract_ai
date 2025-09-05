@@ -1,0 +1,74 @@
+rule:
+  id: "uk.def.bipr.perimeter_and_license"
+  version: "1.0.0"
+  title: "BIPR: perimeter tightness and licence to exploit results"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","ip","bipr","foreground","clause_17"]
+    industries: ["generic","oil_gas"]
+  triggers:
+    any:
+      - regex: "(?i)Background\\s+Intellectual\\s+Property|BIPR\\b"
+  checks:
+    - id: "foreground_excludes_bipr"
+      when:
+        all:
+          - regex: "(?i)Foreground"
+          - not_regex: "(?i)Foreground\\s+excludes\\s+Background|does\\s+not\\s+include\\s+BIPR"
+      finding:
+        message: "Foreground IPR does not explicitly exclude BIPR."
+        severity_level: "major"
+        risk: "high"
+        legal_basis:
+          - "Commercial certainty of title/licence split"
+        suggestion:
+          text: "State expressly that Foreground excludes Background IPR and modifications thereof unless agreed."
+        score_delta: -15
+    - id: "no_bipr_licence_for_exploitation"
+      when:
+        all:
+          - regex: "(?i)Background\\s+Intellectual\\s+Property|BIPR\\b"
+          - not_regex: "(?i)royalty[-\\s]?free|perpetual|worldwide|irrevocable"
+          - not_regex: "(?i)licen[cs]e\\s+to\\s+(use|copy|modify|maintain|repair|integrate)"
+      finding:
+        message: "No explicit licence over BIPR to operate/maintain/modify the results; lock-in risk."
+        severity_level: "major"
+        risk: "high"
+        legal_basis:
+          - "CDPA 1988 s.90 (assignment in writing)"
+          - "Database Regulations 1997 (database right)"
+        suggestion:
+          text: "Grant irrevocable, perpetual, worldwide, royalty-free licence over BIPR for use/support/repair/modification/integration within the Company Group."
+        score_delta: -25
+    - id: "mods_of_bipr_unclear"
+      when:
+        any:
+          - regex: "(?i)modif(ication|y|ications)\\s+of\\s+BIPR"
+          - regex: "(?i)adapt(ation|)\\s+of\\s+BIPR"
+      finding:
+        message: "Treatment of modifications/adaptations of BIPR during the Work is unclear."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Clarify whether Work-made modifications to BIPR remain BIPR (with broad licence) or become Foreground; align with clause 17 and Exhibit L."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: BIPRPerimeterAndLicenceGap
+    score: 80
+    problem: "BIPR/Foreground boundary or BIPR licence insufficiently defined."
+    recommendation: "Exclude BIPR from Foreground; grant broad BIPR licence; define treatment of modifications."
+    law_reference: ["CDPA 1988 s.90","Database Regs 1997"]
+    category: "Definitions"
+    keywords: ["BIPR","Foreground","licence","modifications","Company Group"]
+metadata:
+  tags: ["ip","bipr","licence"]
+  tests:
+    positive:
+      - "Foreground excludes Background Intellectual Property. Company has a perpetual, worldwide, royalty-free licence to use, maintain, modify and integrate BIPR within the Company Group."
+    negative:
+      - "Background Intellectual Property includes all IP and modifications. Foreground shall include all created during the Work."

@@ -1,0 +1,71 @@
+rule:
+  id: "uk.def.bribe.ukba_poca_fcpa"
+  version: "1.0.0"
+  title: "Bribe: UKBA s.1-2-6-7 & adequate procedures; POCA/FCPA; flow-down and audit/remedies"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","anti-bribery","compliance","audit","termination","subcontracting"]
+  triggers:
+    any:
+      - regex: "(?i)Bribe|Anti[-\\s]?Bribery"
+  checks:
+    - id: "ukba_core_missing"
+      when:
+        any:
+          - not_regex: "(?i)section\\s*7|failure\\s+to\\s+prevent"
+          - not_regex: "(?i)adequate\\s+procedures"
+          - not_regex: "(?i)facilitation\\s+payments?\\s+(are\\s+)?prohibit(ed|s)?"
+      finding:
+        message: "UKBA coverage weak: missing s.7 failure to prevent / adequate procedures / ban on facilitation payments."
+        severity_level: "major"
+        risk: "high"
+        legal_basis:
+          - "UK Bribery Act 2010 (s.1, s.2, s.6, s.7)"
+        suggestion:
+          text: "Add s.7 and adequate procedures; explicitly prohibit facilitation payments and regulate hospitality."
+        score_delta: -25
+    - id: "poca_fcpa_missing"
+      when:
+        any:
+          - not_regex: "(?i)Proceeds\\s+of\\s+Crime\\s+Act|POCA"
+          - not_regex: "(?i)FCPA|books\\s+and\\s+records|internal\\s+controls"
+      finding:
+        message: "POCA/FCPA not referenced (AML/confiscation; books & records/internal controls)."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Reference POCA AML/confiscation and FCPA books & records/internal controls obligations."
+        score_delta: -15
+    - id: "no_flowdown_audit_remedies"
+      when:
+        any:
+          - not_regex: "(?i)associated\\s+persons|flow[-\\s]?down|subcontractor"
+          - not_regex: "(?i)audit|inspect|withhold|suspend|termination\\s+for\\s+breach"
+      finding:
+        message: "No flow-down to associated persons or no audit/withholding/termination remedies."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Flow-down obligations to subcontractors/agents; add audit rights and termination/withholding on breach or investigation."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: BriberyCoverageGap
+    score: 80
+    problem: "Bribe/anti-bribery coverage incomplete."
+    recommendation: "Add UKBA s.7/adequate procedures, POCA/FCPA, flow-down and remedies."
+    law_reference: ["UKBA 2010","POCA 2002","FCPA"]
+    category: "Definitions"
+    keywords: ["bribe","UKBA s.7","POCA","FCPA","flow-down","audit"]
+metadata:
+  tags: ["compliance","anti-bribery"]
+  tests:
+    positive:
+      - "Anti-Bribery Laws include UKBA 2010 (including section 7 failure to prevent and adequate procedures), POCA 2002 and the US FCPA (books and records/internal controls), with flow-down to associated persons and audit/termination rights."
+    negative:
+      - "Bribe means any improper payment under applicable anti-corruption laws."

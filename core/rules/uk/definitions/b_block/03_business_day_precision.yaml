@@ -1,0 +1,69 @@
+rule:
+  id: "uk.def.business_day.precision"
+  version: "1.0.0"
+  title: "Business Day: jurisdictional calendar, cut-off time, and Notices link"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA","NDA"]
+    clauses: ["definitions","business day","notices","payments"]
+  triggers:
+    any:
+      - regex: "(?i)Business\\s+Day\\s+means"
+  checks:
+    - id: "no_jurisdiction_or_bank_holidays"
+      when:
+        any:
+          - not_regex: "(?i)England\\s+and\\s+Wales|Clause\\s*29\\.3|Company\\s+address"
+          - not_regex: "(?i)Banking\\s+and\\s+Financial\\s+Dealings\\s+Act\\s*1971|bank\\s+holiday"
+      finding:
+        message: "Business Day lacks clear jurisdictional calendar reference (E&W/bank holidays)."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Anchor to England and Wales bank holidays (Banking and Financial Dealings Act 1971) or Clause 29.3 address."
+        score_delta: -15
+    - id: "no_cutoff_time"
+      when:
+        all:
+          - regex: "(?i)Business\\s+Day"
+          - not_regex: "(?i)17:00|5\\.?00\\s*pm|close\\s+of\\s+business"
+      finding:
+        message: "Cut-off time for Business Day not specified (risk for deemed receipt/payments)."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Specify 17:00 UK time (or close of business) for notices/payments/deemed receipt."
+        score_delta: -15
+    - id: "no_notices_link"
+      when:
+        all:
+          - regex: "(?i)Business\\s+Day"
+          - not_regex: "(?i)Clause\\s*29|Notices"
+      finding:
+        message: "No link to Notices clause for deemed receipt mechanics."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Reference Clause 29 (Notices) so Business Day aligns with delivery mechanics."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: BusinessDayImprecision
+    score: 80
+    problem: "Business Day definition lacks jurisdiction, cut-off time or Notices link."
+    recommendation: "Anchor to E&W calendar, add 17:00 cut-off, cross-link to Clause 29."
+    law_reference: ["Banking and Financial Dealings Act 1971"]
+    category: "Definitions"
+    keywords: ["Business Day","bank holidays","cut-off","Notices"]
+metadata:
+  tags: ["timing","notices"]
+  tests:
+    positive:
+      - "Business Day means a day other than Saturday, Sunday or a public holiday in England and Wales (under the Banking and Financial Dealings Act 1971); ends at 17:00 UK time; references Clause 29 for deemed receipt."
+    negative:
+      - "Business Day means any day other than Saturday or Sunday."

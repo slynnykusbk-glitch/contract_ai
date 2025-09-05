@@ -1,0 +1,45 @@
+rule:
+  id: "uk.s4.ctr.appointment_and_limits"
+  version: "1.0.0"
+  title: "CTR appointed; operational scope only; cannot amend MSA"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off"]
+    clauses: ["representatives","clause 4"]
+  triggers:
+    any:
+      - regex: "(?i)Contractor\\s+Representative\\s*\\(|\\bCTR\\b"
+  checks:
+    - id: "ctr_not_named"
+      when:
+        not_regex: "(?i)Contractor\\s+Representative.+(name|named|appointed|designation)"
+      finding:
+        message: "CTR not expressly named/appointed in writing."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Name the CTR and attach appointment evidence."
+        score_delta: -20
+    - id: "ctr_may_modify"
+      when:
+        regex: "(?i)CTR\\s+may\\s+(amend|modify|waive)"
+      finding:
+        message: "CTR purported to amend/waive contract."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "State CTR has no power to amend; modifications via 3.12 only."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: CTRAppointmentOrScopeGap
+    score: 80
+    problem: "CTR appointment/scope gaps."
+    recommendation: "Appoint CTR; limit to operational instructions."
+    law_reference: []
+    category: "Section 4"
+    keywords: ["CTR","appointment","scope limits"]
+metadata:
+  tags: ["ctr","appointment"]

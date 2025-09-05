@@ -1,0 +1,35 @@
+rule:
+  id: "uk.s4.governance.chain_of_command"
+  version: "1.0.0"
+  title: "Clear chain of command; conflicting directions blocked"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off"]
+    clauses: ["representatives","governance"]
+  triggers:
+    any:
+      - regex: "(?i)conflicting\\s+instructions|two\\s+masters|dual\\s+reporting"
+  checks:
+    - id: "conflicting_directions"
+      when:
+        regex: "(?i)conflicting\\s+instructions|dual\\s+reporting|two\\s+masters"
+      finding:
+        message: "Conflicting directions detected; escalate to CR/CTR for resolution."
+        severity_level: "blocker"
+        risk: "high"
+        suggestion:
+          text: "Confirm single line authority via CR↔CTR; escalate conflicts; document resolution."
+        score_delta: -25
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S1
+    issue_type: ConflictingDirections
+    score: 60
+    problem: "Conflicting directions risk safety/contract control."
+    recommendation: "Enforce single chain via CR/CTR; block execution until resolved."
+    law_reference: []
+    category: "Section 4"
+    keywords: ["chain of command","conflict"]
+metadata:
+  tags: ["governance","conflicts"]

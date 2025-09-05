@@ -1,0 +1,49 @@
+rule:
+  id: "uk.s4.cr.apparent_authority_controls"
+  version: "1.0.0"
+  title: "Mitigate ostensible authority: minutes disclaimer, instruction register, VO routing"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off","Minutes"]
+    clauses: ["representatives","governance"]
+  triggers:
+    any:
+      - regex: "(?i)minutes\\s+of\\s+meeting|MoM|agreed\\s+in\\s+meeting"
+      - regex: "(?i)instruction\\s+register|delegation\\s+register"
+  checks:
+    - id: "no_minutes_disclaimer"
+      when:
+        all:
+          - regex: "(?i)minutes"
+          - not_regex: "(?i)Minutes\\s+are\\s+non\\-binding|do\\s+not\\s+constitute\\s+Variation"
+      finding:
+        message: "Meeting minutes lack disclaimer (non-binding / not a Variation)."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: ["Freeman & Lockyer (ostensible authority)"]
+        suggestion:
+          text: "Add minutes disclaimer: not binding; instructions with impact require VO."
+        score_delta: -15
+    - id: "no_instruction_register"
+      when:
+        not_regex: "(?i)Instruction\\s+Register"
+      finding:
+        message: "No Instruction Register reference to track CR/CTR directions."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Maintain Instruction Register with date/issuer/scope/VO link."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: ApparentAuthorityRisk
+    score: 86
+    problem: "Weak ostensible authority mitigations."
+    recommendation: "Insert minutes disclaimer and instruction register linkage."
+    law_reference: []
+    category: "Section 4"
+    keywords: ["ostensible authority","minutes","register"]
+metadata:
+  tags: ["apparent-authority","minutes","register"]

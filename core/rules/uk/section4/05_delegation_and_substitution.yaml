@@ -1,0 +1,57 @@
+rule:
+  id: "uk.s4.delegation.notice_and_register"
+  version: "1.0.0"
+  title: "Delegation/substitution by notice with scope & dates; maintain Delegation Register"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off","Notice"]
+    clauses: ["representatives","delegation","clause 4"]
+  triggers:
+    any:
+      - regex: "(?i)delegate|delegation|substitute|alternate\\s+representative"
+  checks:
+    - id: "no_notice_for_delegation"
+      when:
+        not_regex: "(?i)by\\s+notice|notice\\s+to\\s+the\\s+other\\s+party"
+      finding:
+        message: "Delegation/substitution without notice."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Require delegation by notice, stating scope and effective dates."
+        score_delta: -20
+    - id: "no_scope_or_dates"
+      when:
+        any:
+          - not_regex: "(?i)scope\\s+of\\s+authority"
+          - not_regex: "(?i)effective\\s+from|until|start\\s+date|end\\s+date"
+      finding:
+        message: "Delegation lacks scope and/or dates."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Define delegate’s scope, start/end dates."
+        score_delta: -15
+    - id: "no_delegation_register"
+      when:
+        not_regex: "(?i)Delegation\\s+Register"
+      finding:
+        message: "No Delegation Register reference."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Maintain Delegation Register mapping who/scope/dates."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: DelegationFormalitiesGap
+    score: 78
+    problem: "Delegation lacks notice/scope/dates/register."
+    recommendation: "Add formalities and register."
+    law_reference: []
+    category: "Section 4"
+    keywords: ["delegation","notice","register"]
+metadata:
+  tags: ["delegation","register"]

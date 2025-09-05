@@ -1,0 +1,50 @@
+rule:
+  id: "uk.def.personal_injury.scope_and_el_insurance"
+  version: "1.0.0"
+  title: "Personal Injury: broad scope incl. death/disease/mental distress; EL insurance linkage"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","liability","insurance","knock-for-knock"]
+  triggers:
+    any:
+      - regex: "(?i)Personal\\s+Injury"
+  checks:
+    - id: "scope_not_broad"
+      when:
+        any:
+          - not_regex: "(?i)death"
+          - not_regex: "(?i)disease|illness"
+          - not_regex: "(?i)mental\\s+(distress|anguish)"
+      finding:
+        message: "Personal Injury scope not broad enough for KFK/insurance alignment."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Include death, disease/illness and mental distress/anguish."
+        score_delta: -15
+    - id: "no_el_insurance_reference"
+      when:
+        all:
+          - regex: "(?i)Personal\\s+Injury"
+          - not_regex: "(?i)Employer[s]?['’]?s?\\s+Liability|EL\\s+insurance|1969|\\£\\s*5\\s*m|five\\s+million"
+      finding:
+        message: "No linkage to Employers’ Liability insurance statutory minimums."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Reference EL insurance (statutory minimum, policy evidence) if applicable."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: PersonalInjuryScopeGap
+    score: 85
+    problem: "Personal Injury may be too narrow or not tied to EL insurance."
+    recommendation: "Broaden scope and link to EL insurance requirements."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Personal Injury","EL insurance","knock-for-knock"]
+metadata:
+  tags: ["insurance","liability"]

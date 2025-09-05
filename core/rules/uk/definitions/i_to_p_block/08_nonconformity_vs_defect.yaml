@@ -1,0 +1,49 @@
+rule:
+  id: "uk.def.nonconformity.scope_and_priority"
+  version: "1.0.0"
+  title: "Nonconformity: align with Defect; priority of stricter standard (MT Højgaard)"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","quality","defect","acceptance","codes"]
+  triggers:
+    any:
+      - regex: "(?i)Nonconform(ity|ing)"
+  checks:
+    - id: "conflict_with_defect"
+      when:
+        all:
+          - regex: "(?i)Nonconform(ity|ing)"
+          - not_regex: "(?i)Nonconformity\\s+includes\\s+Defect|Defect\\s+includes\\s+Nonconformity|aligns?\\s+with\\s+Defect"
+      finding:
+        message: "Relationship of Nonconformity vs Defect not stated."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Define alignment (one includes the other) to avoid gaps."
+        score_delta: -15
+    - id: "no_priority_fitness_vs_codes"
+      when:
+        all:
+          - regex: "(?i)fitness\\s+for\\s+purpose|Codes?\\s+and\\s+Standards"
+          - not_regex: "(?i)stricter.*prevails|highest\\s+applicable\\s+standard"
+      finding:
+        message: "Priority between fitness-for-purpose and codes not stated."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "State that the stricter requirement prevails (per MT Højgaard logic)."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: NonconformityPriorityGap
+    score: 80
+    problem: "Nonconformity/Defect scope and priority unclear."
+    recommendation: "Align terms; specify priority of stricter standard."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Nonconformity","Defect","fitness","codes"]
+metadata:
+  tags: ["quality","defect"]

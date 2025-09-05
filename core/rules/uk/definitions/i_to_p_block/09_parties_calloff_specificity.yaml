@@ -1,0 +1,49 @@
+rule:
+  id: "uk.def.parties.calloff_specificity_crtpa"
+  version: "1.0.0"
+  title: "Parties: specific entities per Call-Off; agent scope; CRTPA carve-outs"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","parties","call-off","third party rights","agency"]
+  triggers:
+    any:
+      - regex: "(?i)Parties?|Party\\b"
+  checks:
+    - id: "calloff_entities_not_named"
+      when:
+        all:
+          - regex: "(?i)Call[-\\s]?Off"
+          - not_regex: "(?i)(the\\s+Company\\s+entity\\s+and\\s+the\\s+Contractor\\s+entity\\s+shall\\s+be\\s+named|names?\\s+the\\s+issuing\\s+Company\\s+entity\\s+and\\s+the\\s+Contractor\\s+entity)"
+      finding:
+        message: "Call-Off does not require naming specific Company/Contractor entities."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Mandate naming of the issuing Company entity and the Contractor entity in each Call-Off."
+        score_delta: -15
+    - id: "agency_scope_not_limited"
+      when:
+        all:
+          - regex: "(?i)acting\\s+as\\s+agent"
+          - not_regex: "(?i)limited\\s+to\\s+the\\s+issuing\\s+(?:Call[-\\s]?Off\\s+)?entity"
+      finding:
+        message: "Agency wording not limited to the Call-Off issuing entity."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Limit agency to the named issuing entity and align with CRTPA carve-outs."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: PartiesSpecificityGap
+    score: 85
+    problem: "Parties/agency not tight enough at Call-Off level."
+    recommendation: "Name entities; constrain agency; align with CRTPA clause."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Parties","Call-Off","agency","CRTPA"]
+metadata:
+  tags: ["parties","agency"]

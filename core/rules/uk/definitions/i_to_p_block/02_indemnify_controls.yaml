@@ -1,0 +1,61 @@
+rule:
+  id: "uk.def.indemnify.controls_and_negligence"
+  version: "1.0.0"
+  title: "Indemnify: include defend; defence control & settlement consent; negligence test"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","indemnity","liability","insurance","ip"]
+  triggers:
+    any:
+      - regex: "(?i)defend,?\\s*indemnif(y|ies)|hold\\s+harmless|release"
+  checks:
+    - id: "defend_missing"
+      when:
+        all:
+          - regex: "(?i)indemnif(y|ies)|hold\\s+harmless|release"
+          - not_regex: "(?i)defend"
+      finding:
+        message: "Indemnity lacks 'defend' obligation (control and funding of defence)."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add 'defend' and align with defence control, settlement consent and mitigation."
+        score_delta: -20
+    - id: "no_defence_control_or_consent"
+      when:
+        any:
+          - not_regex: "(?i)(control(?:s)?\\s+the\\s+defen[cs]e|control\\s+of\\s+defen[cs]e|conduct\\s+of\\s+defen[cs]e)"
+          - not_regex: "(?i)consent\\s+to\\s+any\\s+settlement|no\\s+settlement\\s+without\\s+(prior\\s+)?written\\s+consent"
+      finding:
+        message: "No express defence control or settlement consent mechanics."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Specify who controls defence and require prior written consent for settlement."
+        score_delta: -20
+    - id: "canada_steamship_negligence"
+      when:
+        all:
+          - regex: "(?i)indemnif(y|ies)"
+          - not_regex: "(?i)negligence|howsoever\\s+caused|own\\s+negligence"
+      finding:
+        message: "Indemnity may not clearly address beneficiary’s own negligence (Canada Steamship test)."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Clarify whether negligence is included/excluded to meet the Canada Steamship standard."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: IndemnityControlsGap
+    score: 80
+    problem: "Indemnity lacks defend/control/consent and clarity on negligence."
+    recommendation: "Add defend/control/consent; clarify negligence; align with caps, knock-for-knock and exclusions."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["indemnify","defend","settlement consent","negligence"]
+metadata:
+  tags: ["indemnity","liability"]

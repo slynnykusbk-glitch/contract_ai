@@ -1,0 +1,48 @@
+rule:
+  id: "uk.def.personnel.coverage_ir35_awr"
+  version: "1.0.0"
+  title: "Personnel: coverage (employees/temps/consultants/seconded); IR35/AWR; PAYE/visa responsibility"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA","NDA"]
+    clauses: ["definitions","personnel","tax","immigration"]
+  triggers:
+    any:
+      - regex: "(?i)Personnel"
+  checks:
+    - id: "coverage_too_narrow"
+      when:
+        any:
+          - not_regex: "(?i)agency|temps?|workers?|consultants?|contractors?|seconded"
+      finding:
+        message: "Personnel definition too narrow for compliance (IR35/AWR)."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Include employees, temps/agency workers, consultants and seconded personnel under Contractor control."
+        score_delta: -15
+    - id: "no_ir35_or_awr"
+      when:
+        any:
+          - not_regex: "(?i)IR35|off[-\\s]?payroll"
+          - not_regex: "(?i)Agency\\s+Workers\\s+Regulations|AWR\\s*2010|12\\s+weeks"
+      finding:
+        message: "No IR35/off-payroll or AWR 2010 linkage."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "State responsibility for PAYE/NI/visa; address IR35 status and AWR 12-week equal treatment where applicable."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: PersonnelComplianceGap
+    score: 80
+    problem: "Personnel scope/compliance incomplete."
+    recommendation: "Widen coverage; assign tax/visa duties; add IR35/AWR references."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Personnel","IR35","AWR 2010","PAYE","visa"]
+metadata:
+  tags: ["ir35","awr","immigration"]

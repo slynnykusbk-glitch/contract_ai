@@ -1,0 +1,63 @@
+rule:
+  id: "uk.def.ior.calloff_requirements"
+  version: "1.0.0"
+  title: "Importer of Record: assignment in each Call-Off; EORI; compliance duties"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","call-off","logistics","imports","tax"]
+    industries: ["generic","oil_gas"]
+  triggers:
+    any:
+      - regex: "(?i)Importer\\s+of\\s+Record|\\bIoR\\b"
+      - regex: "(?i)Call[-\\s]?Off"
+  checks:
+    - id: "ior_not_assigned_in_calloff"
+      when:
+        all:
+          - regex: "(?i)Importer\\s+of\\s+Record|\\bIoR\\b"
+          - not_regex: "(?i)Call[-\\s]?Off.*(?:assign|designat|specif)"
+      finding:
+        message: "IoR is defined but not expressly assigned per Call-Off."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "State that each Call-Off specifies the Importer of Record party."
+        score_delta: -20
+    - id: "eori_missing"
+      when:
+        all:
+          - regex: "(?i)Importer\\s+of\\s+Record|\\bIoR\\b"
+          - not_regex: "(?i)\\bGB[0-9]{9,15}\\b|\\bXI[0-9]{9,15}\\b|EORI"
+      finding:
+        message: "EORI not provided for IoR (GB… / XI…)."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Capture EORI (GB…; XI… when movement via NI), import jurisdiction, and who pays VAT/duties."
+        score_delta: -20
+    - id: "compliance_duties_missing"
+      when:
+        any:
+          - not_regex: "(?i)declarations|customs|SDE|simplified\\s+declaration"
+          - not_regex: "(?i)records?\\s+retention\\s*(?:of|for)?\\s*(?:at\\s+least\\s*)?4\\s*years?"
+      finding:
+        message: "IoR duties (declarations/SDE/records ≥4y) not articulated."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add duties: lodge declarations, SDE only if authorised, retain customs records ≥ 4 years."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: IoRComplianceGap
+    score: 80
+    problem: "IoR not fully specified at Call-Off level or lacks EORI/compliance duties."
+    recommendation: "Assign IoR per Call-Off; include EORI, duties, records retention and VAT/duties payer."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["IoR","EORI","Call-Off","SDE","customs","records 4y"]
+metadata:
+  tags: ["imports","tax","ior"]

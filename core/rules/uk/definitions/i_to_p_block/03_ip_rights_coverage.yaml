@@ -1,0 +1,49 @@
+rule:
+  id: "uk.def.iprights.coverage_and_moral_rights"
+  version: "1.0.0"
+  title: "IP Rights: full world-wide coverage; database right; assignment & moral rights"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA","NDA"]
+    clauses: ["definitions","ip","clause_17"]
+  triggers:
+    any:
+      - regex: "(?i)Intellectual\\s+Property\\s+Rights|IP\\s+Rights"
+  checks:
+    - id: "database_right_missing"
+      when:
+        all:
+          - regex: "(?i)database|databases"
+          - not_regex: "(?i)database\\s+right|1997"
+      finding:
+        message: "Definition mentions databases but omits UK database right."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add UK database right (1997 Regulations) to the list."
+        score_delta: -15
+    - id: "assignment_and_moral_rights_missing"
+      when:
+        any:
+          - not_regex: "(?i)assignment\\s+in\\s+writing|assign\\s+in\\s+writing"
+          - not_regex: "(?i)waiver\\s+of\\s+moral\\s+rights|moral\\s+rights\\s+waiv"
+      finding:
+        message: "Assignment in writing and/or waiver of moral rights not surfaced."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Ensure clause 17 requires assignment in writing (CDPA s.90) and waiver of moral rights (CDPA s.77–87)."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: IPRightsCoverageGap
+    score: 80
+    problem: "IPR definition lacks database right and/or assignment/moral rights mechanics."
+    recommendation: "Add database right; ensure assignment-in-writing and moral rights waiver are in clause 17."
+    law_reference: ["CDPA 1988 s.90","CDPA 1988 s.77–87"]
+    category: "Definitions"
+    keywords: ["IP Rights","database right","assignment","moral rights"]
+metadata:
+  tags: ["ip","database","assignment"]

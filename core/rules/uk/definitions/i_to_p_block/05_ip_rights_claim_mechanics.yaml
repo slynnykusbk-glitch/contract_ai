@@ -1,0 +1,60 @@
+rule:
+  id: "uk.def.ipclaim.mechanics_and_carveouts"
+  version: "1.0.0"
+  title: "IP Rights Claim: defence/notice/remedies; carve-outs; caps"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","ip","indemnity","remedies"]
+  triggers:
+    any:
+      - regex: "(?i)IP\\s+Rights?\\s+Claim|Intellectual\\s+Property\\s+Claim"
+  checks:
+    - id: "no_defence_or_notice"
+      when:
+        any:
+          - not_regex: "(?i)defend"
+          - not_regex: "(?i)notify\\s+within\\s+\\d+\\s+days|prompt\\s+notice"
+      finding:
+        message: "IP claim lacks defence obligation and/or prompt notice period."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add defence obligation and a defined notice window."
+        score_delta: -20
+    - id: "no_remedy_suite"
+      when:
+        all:
+          - not_regex: "(?i)replace|modify|procure\\s+a\\s+licen[cs]e"
+      finding:
+        message: "No remedy suite (replace/modify/licence) defined."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Provide standard remedies: replace, modify to avoid infringement, or procure a licence."
+        score_delta: -15
+    - id: "no_carveouts_for_combination_mod"
+      when:
+        all:
+          - not_regex: "(?i)combination|combined\\s+with\\s+non[-\\s]?Contractor"
+          - not_regex: "(?i)Company\\s+modif(y|ications?)|changes\\s+by\\s+Company"
+      finding:
+        message: "No carve-outs for combinations or Company modifications/spec changes."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Exclude liabilities where infringement arises from combinations or Company modifications/specs."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: IPClaimMechanicsGap
+    score: 80
+    problem: "IP claim mechanics incomplete."
+    recommendation: "Add defence/notice/remedies and carve-outs; align with caps/exclusions."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["IP claim","remedies","carve-outs"]
+metadata:
+  tags: ["ip","indemnity"]

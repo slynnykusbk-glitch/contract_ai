@@ -1,0 +1,45 @@
+rule:
+  id: "universal.performance.reporting_early_warning"
+  version: "1.0.0"
+  title: "Progress reporting cadence; early-warning events; shared risk register"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["reporting","risk","performance"]
+  triggers:
+    any:
+      - regex: "(?i)report|progress|early\\s+warning|risk\\s+register"
+  checks:
+    - id: "no_reporting_freq"
+      when:
+        not_regex: "(?i)weekly|biweekly|monthly\\s+progress\\s+report"
+      finding:
+        message: "No defined progress reporting frequency."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Define weekly/biweekly/monthly reporting cadence."
+        score_delta: -8
+    - id: "no_early_warning"
+      when:
+        not_regex: "(?i)early[-\\s]+warning|prompt\\s+notice\\s+of\\s+risk"
+      finding:
+        message: "No early-warning obligation."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Add early-warning triggers and shared risk register."
+        score_delta: -12
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: ReportingWeakness
+    score: 86
+    problem: "Reporting/early-warning not defined."
+    recommendation: "Add cadence, early-warning, risk register."
+    law_reference: []
+    category: "Performance"
+    keywords: ["reporting","early warning","risk register"]
+metadata:
+  tags: ["reporting"]

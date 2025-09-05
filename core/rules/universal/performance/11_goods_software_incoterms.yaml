@@ -1,0 +1,59 @@
+rule:
+  id: "universal.performance.goods_software_incoterms"
+  version: "1.0.0"
+  title: "Deliver software keys/licences & shipping docs; valid Incoterm with named place"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["goods","software","delivery","incoterms"]
+  triggers:
+    any:
+      - regex: "(?i)software|licen[cs]e|key|password|packing\\s+list|bill\\s+of\\s+lading|air\\s+waybill|incoterms|DDP|DAP|FCA|EXW"
+  checks:
+    - id: "no_software_keys"
+      when:
+        all:
+          - regex: "(?i)software|embedded"
+          - not_regex: "(?i)keys?|password|activation|licen[cs]e"
+      finding:
+        message: "Software-dependent goods but no keys/licences/passwords obligation."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Require delivery of keys/passwords/licences and O&M/manuals."
+        score_delta: -18
+    - id: "no_packing_docs"
+      when:
+        not_regex: "(?i)packing\\s+list|delivery\\s+note|certificate|manual"
+      finding:
+        message: "Shipping/packing documentation not specified."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "List required docs (packing list with PO, certificates, manuals)."
+        score_delta: -10
+    - id: "bad_incoterm"
+      when:
+        any:
+          - regex: "(?i)(DDP|DAP|FCA|EXW)(?![^\\n]*Named\\s+Place)"
+          - regex: "(?i)Incoterm(s)?(?!.*(DDP|DAP|FCA|EXW))"
+      finding:
+        message: "Incoterm missing or lacks Named Place."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Specify Incoterm 2020 with Named Place (e.g., DAP London DC, UK)."
+        score_delta: -18
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: DeliverySpecGap
+    score: 72
+    problem: "Keys/docs/incoterms incomplete."
+    recommendation: "Add software keys/docs and valid Incoterm with Named Place."
+    law_reference: []
+    category: "Performance"
+    keywords: ["software","incoterms","packing list"]
+metadata:
+  tags: ["goods","software","incoterms"]

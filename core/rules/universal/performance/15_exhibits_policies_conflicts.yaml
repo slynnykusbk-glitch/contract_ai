@@ -1,0 +1,45 @@
+rule:
+  id: "universal.performance.exhibits_policies_conflicts"
+  version: "1.0.0"
+  title: "All referenced exhibits/policies applicable; resolve conflicts by precedence"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["policies","exhibits","precedence"]
+  triggers:
+    any:
+      - regex: "(?i)policy|policies|exhibit|appendix|annex|order\\s+of\\s+precedence"
+  checks:
+    - id: "no_list_of_applicables"
+      when:
+        not_regex: "(?i)(applicable\\s+[^\\n]+\\s+include|the\\s+following\\s+apply)"
+      finding:
+        message: "No explicit list of applicable exhibits/policies."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "List applicable exhibits/policies for the order."
+        score_delta: -10
+    - id: "no_precedence_rule"
+      when:
+        not_regex: "(?i)order\\s+of\\s+precedence|shall\\s+prevail"
+      finding:
+        message: "No precedence rule to resolve conflicts."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add precedence rule (e.g., Conditions > Scope/Specs > Standards/Policies > Forms)."
+        score_delta: -18
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: PrecedenceGap
+    score: 74
+    problem: "Applicability/precedence unclear."
+    recommendation: "Add explicit list and precedence rule."
+    law_reference: []
+    category: "Performance"
+    keywords: ["policies","precedence"]
+metadata:
+  tags: ["precedence","exhibits"]

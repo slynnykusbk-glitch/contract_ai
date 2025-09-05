@@ -1,0 +1,45 @@
+rule:
+  id: "universal.performance.site_ptw_partial_occupation"
+  version: "1.0.0"
+  title: "Minimise interference; permit-to-work; partial occupation is not acceptance"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["site","worksite","HSE","acceptance"]
+  triggers:
+    any:
+      - regex: "(?i)site|worksite|permit\\-to\\-work|PTW|partial\\s+occupation|possession"
+  checks:
+    - id: "no_ptw_rule"
+      when:
+        not_regex: "(?i)permit\\-to\\-work|PTW"
+      finding:
+        message: "No permit-to-work requirement for site activities."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add PTW rule and compliance with site safety regime."
+        score_delta: -18
+    - id: "no_partial_occupation_clause"
+      when:
+        not_regex: "(?i)partial\\s+(occupation|possession)\\s+shall\\s+not\\s+constitute\\s+acceptance"
+      finding:
+        message: "No clause that partial occupation is not acceptance."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Clarify partial occupation/possession ≠ acceptance."
+        score_delta: -10
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: SiteControlGap
+    score: 72
+    problem: "Missing PTW and/or partial occupation clarification."
+    recommendation: "Add PTW and non-acceptance statement."
+    law_reference: []
+    category: "Performance"
+    keywords: ["PTW","partial occupation","HSE"]
+metadata:
+  tags: ["site","ptw"]

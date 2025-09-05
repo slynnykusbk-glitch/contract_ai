@@ -1,0 +1,50 @@
+rule:
+  id: "universal.performance.rsc_vs_ffp_priority"
+  version: "1.0.0"
+  title: "Reasonable skill and care vs fitness for purpose — stricter requirement prevails"
+  scope:
+    jurisdiction: ["UK","Any"]
+    doc_types: ["Any"]
+    clauses: ["performance","services","work"]
+  triggers:
+    any:
+      - regex: "(?i)reasonable\\s+skill\\s+and\\s+care|RSC|fitness\\s+for\\s+purpose|fit\\s+for\\s+purpose|KPI|performance\\s+standard"
+  checks:
+    - id: "no_rsc_and_no_ffp"
+      when:
+        all:
+          - not_regex: "(?i)reasonable\\s+skill\\s+and\\s+care|RSC"
+          - not_regex: "(?i)fitness\\s+for\\s+purpose|fit\\s+for\\s+purpose"
+      finding:
+        message: "No explicit standard of care or fitness requirement."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add RSC for services and specify fitness/output KPIs where applicable. Declare priority: specific output/fitness overrides general RSC."
+        score_delta: -25
+    - id: "conflict_no_priority_rule"
+      when:
+        all:
+          - regex: "(?i)reasonable\\s+skill\\s+and\\s+care"
+          - regex: "(?i)fitness\\s+for\\s+purpose|output\\s+parameter|KPI"
+          - not_regex: "(?i)(in\\s+case\\s+of\\s+|if\\s+)(a\\s+)?conflict.*(fitness|specific|stricter).*shall\\s+prevail"
+      finding:
+        message: "RSC + fitness present but no explicit priority rule."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "State: if conflict, stricter/specific fitness or output KPIs prevail."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: ServiceStandardAmbiguity
+    score: 80
+    problem: "Missing/ambiguous performance standard."
+    recommendation: "Add RSC and explicit priority for stricter fitness/output."
+    law_reference: []
+    category: "Performance"
+    keywords: ["RSC","fitness","priority"]
+metadata:
+  tags: ["standard","priority"]

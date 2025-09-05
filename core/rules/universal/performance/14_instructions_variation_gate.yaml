@@ -1,0 +1,47 @@
+rule:
+  id: "universal.performance.instructions_variation_gate"
+  version: "1.0.0"
+  title: "Customer instructions focus on result; any impact routes to Variation/Change"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["instructions","variation","change control"]
+  triggers:
+    any:
+      - regex: "(?i)instruction|direction|method|means|variation|change\\s+order|VO|VOR"
+  checks:
+    - id: "means_control"
+      when:
+        regex: "(?i)Customer\\s+may\\s+direct\\s+methods|means\\s+and\\s+methods"
+      finding:
+        message: "Customer attempts to control means/methods (risk of implied responsibility/variation)."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Limit to result; any impact to Scope/Price/Schedule -> formal Variation/Change."
+        score_delta: -15
+    - id: "impact_no_change_gate"
+      when:
+        all:
+          - regex: "(?i)(Scope|Price|Schedule|LD)"
+          - not_regex: "(?i)Variation|Change\\s+Order|VO|VOR"
+      finding:
+        message: "Instruction with impact but no Variation/Change gate."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Mandate VO/Change Order for any impact to scope/price/schedule/LD."
+        score_delta: -20
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: HiddenVariationRisk
+    score: 72
+    problem: "Means control and/or no change gate."
+    recommendation: "Limit to result; add Variation/Change routing."
+    law_reference: []
+    category: "Performance"
+    keywords: ["instructions","variation","change"]
+metadata:
+  tags: ["variation","instructions"]

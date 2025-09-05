@@ -1,0 +1,45 @@
+rule:
+  id: "universal.performance.permits_rtw"
+  version: "1.0.0"
+  title: "Permits/Authorisations matrix; right-to-work checks"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["permits","authorisations","immigration","performance"]
+  triggers:
+    any:
+      - regex: "(?i)permit|authorisation|authorization|licen[cs]e|visa|right\\-to\\-work|RTW"
+  checks:
+    - id: "no_permit_matrix"
+      when:
+        not_regex: "(?i)permit(s)?\\s+matrix|responsibility\\s+matrix|who\\s+obtains"
+      finding:
+        message: "No clear responsibility/timeframe for permits/licences."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add permit responsibility matrix (who/what/by when) and obligation to provide copies on request."
+        score_delta: -18
+    - id: "no_rtw_checks"
+      when:
+        not_regex: "(?i)right\\-to\\-work|immigration\\s+checks|sponsorship"
+      finding:
+        message: "No right-to-work / immigration compliance obligation."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Require RTW/immigration checks for all personnel before site access."
+        score_delta: -18
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: PermitImmigrationGap
+    score: 70
+    problem: "Permits/RTW control missing."
+    recommendation: "Add permit matrix + RTW checks."
+    law_reference: []
+    category: "Performance"
+    keywords: ["permits","RTW","immigration"]
+metadata:
+  tags: ["permits","rtw"]

@@ -3,6 +3,11 @@ import tarfile
 import zipfile
 import subprocess
 from pathlib import Path
+import importlib.util
+import pytest
+
+if importlib.util.find_spec("build") is None:  # pragma: no cover - optional dependency
+    pytest.skip("python -m build not available", allow_module_level=True)
 
 
 def test_packaging_manifest(tmp_path):

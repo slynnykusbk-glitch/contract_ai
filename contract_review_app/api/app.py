@@ -1286,6 +1286,11 @@ async def health() -> JSONResponse:
         },
         "provider": PROVIDER_META,
     }
+    try:
+        if rules_loader and hasattr(rules_loader, "loaded_packs"):
+            payload.setdefault("meta", {})["rules"] = rules_loader.loaded_packs()
+    except Exception:
+        payload.setdefault("meta", {})["rules"] = []
     headers = {"x-schema-version": SCHEMA_VERSION}
     return _finalize_json("/health", payload, headers)
 

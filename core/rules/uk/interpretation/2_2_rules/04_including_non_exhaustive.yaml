@@ -1,0 +1,37 @@
+rule:
+  id: "uk.int.2_2_1d.including_is_without_limitation"
+  version: "1.0.0"
+  title: "\"Including/in particular\" are illustrative, not limiting"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["interpretation","specifications","scope"]
+  triggers:
+    any:
+      - regex: "(?i)including|in\\s+particular"
+  checks:
+    - id: "closed_list_risk"
+      when:
+        all:
+          - regex: "(?i)including\\s+([\\s\\S]{0,60})\\b(and|or)\\b\\s+\\w+\\.?$"
+          - not_regex: "(?i)without\\s+limitation|without\\s+limit"
+      finding:
+        message: "‘Including’ appears limiting; add ‘without limitation’ to avoid closed list."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Use ‘including, without limitation’ unless a closed list is intended."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: IncludingMayLimit
+    score: 88
+    problem: "‘Including’ may be read as limiting."
+    recommendation: "Add ‘without limitation’ or restructure list."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["including","non-exhaustive"]
+metadata:
+  tags: ["including"]

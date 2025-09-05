@@ -1,0 +1,37 @@
+rule:
+  id: "uk.int.2_2_1i.writing_email_esign_alignment"
+  version: "1.0.0"
+  title: "‘Writing’ excludes email: ensure e-sign/portal carve-outs else process risk"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["interpretation","notices","variation","approvals"]
+  triggers:
+    any:
+      - regex: "(?i)writing|written"
+  checks:
+    - id: "email_excluded_but_needed"
+      when:
+        all:
+          - regex: "(?i)email\\s+shall\\s+not\\s+constitute\\s+writing"
+          - not_regex: "(?i)e-?signature|portal|platform|DocuSign|Adobe\\s+Sign"
+      finding:
+        message: "Email excluded as 'writing' but no e-sign/portal pathway specified."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Allow e-sign platforms/secure portal for VO/approvals; keep Notices email rules in Clause 29."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: WritingProcessRisk
+    score: 80
+    problem: "Operational dead-ends for VO/approvals if email excluded."
+    recommendation: "Add e-sign/portal carve-outs and align with Notices."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["writing","email","e-sign","Notices"]
+metadata:
+  tags: ["esign","process"]

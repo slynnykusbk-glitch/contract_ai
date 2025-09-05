@@ -1,0 +1,35 @@
+rule:
+  id: "uk.int.2_2_6.mutually_explanatory_scope_creep_guard"
+  version: "1.0.0"
+  title: "Correlative rule: no unpaid scope creep; route extras via VO"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA","Call-Off"]
+    clauses: ["interpretation","scope","variation","specifications"]
+  triggers:
+    any:
+      - regex: "(?i)mutually\\s+explanatory|correlative"
+  checks:
+    - id: "battery_limits_missing"
+      when:
+        not_regex: "(?i)battery\\s+limits|interfaces|exclusions"
+      finding:
+        message: "No boundaries to restrain correlative expansion of Work."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Define limits/interfaces/exclusions; require VO for extras."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: CorrelativeScopeCreep
+    score: 80
+    problem: "Correlative rule may inflate scope without VO."
+    recommendation: "Add boundaries and VO trigger."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["correlative","scope creep","VO"]
+metadata:
+  tags: ["scope","variation"]

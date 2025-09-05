@@ -1,0 +1,37 @@
+rule:
+  id: "uk.int.2_2_5.ambiguity_pre_dr_checks"
+  version: "1.0.0"
+  title: "Before DR: check stringency rule (2.2.7) and correlative rule (2.2.6)"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["interpretation","dispute resolution","precedence"]
+  triggers:
+    any:
+      - regex: "(?i)dispute\\s+resolution|escalation"
+  checks:
+    - id: "no_pre_dr_checks"
+      when:
+        all:
+          - not_regex: "(?i)stricter|stringency|fitness"
+          - not_regex: "(?i)mutually\\s+explanatory|correlative"
+      finding:
+        message: "No attempt to apply 2.2.6/2.2.7 before DR."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Apply correlative and stricter-of rules prior to escalation."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: DRPremature
+    score: 88
+    problem: "Escalation without applying interpretation tie-breakers."
+    recommendation: "Apply 2.2.6 and 2.2.7 first."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["DR","ambiguity","tie-breakers"]
+metadata:
+  tags: ["dr","tie-breakers"]

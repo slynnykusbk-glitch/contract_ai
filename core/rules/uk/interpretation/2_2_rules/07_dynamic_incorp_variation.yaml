@@ -1,0 +1,47 @@
+rule:
+  id: "uk.int.2_2_1g.dynamic_incorp_requires_variation"
+  version: "1.0.0"
+  title: "Dynamic incorporation triggers Variation/compensation (no unilateral uplift)"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["interpretation","policies","standards","variation"]
+  triggers:
+    any:
+      - regex: "(?i)as\\s+(amended|updated)\\s+from\\s+time\\s+to\\s+time"
+  checks:
+    - id: "no_variation_trigger"
+      when:
+        not_regex: "(?i)Variation|Clause\\s*14|Change\\s+Control"
+      finding:
+        message: "Dynamic updates lack Variation/Change Control trigger."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Subject dynamic updates to Clause 14 Variation and equitable adjustments."
+        score_delta: -20
+    - id: "company_policies_unilateral"
+      when:
+        all:
+          - regex: "(?i)Company\\s+Policies|Standards"
+          - not_regex: "(?i)cost|time|adjust(ment|s)|compensation"
+      finding:
+        message: "Company policies updated unilaterally without cost/time adjustments."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add adjustment mechanism or limit updates to non-material changes."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: DynamicIncorpWithoutVO
+    score: 80
+    problem: "Uncontrolled dynamic updates may reallocate risk."
+    recommendation: "Gate via VO/Change Control with adjustments."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["as amended","policies","VO"]
+metadata:
+  tags: ["variation","policies"]

@@ -1,0 +1,55 @@
+rule:
+  id: "uk.int.2_2_1a.xrefs_links_exist"
+  version: "1.0.0"
+  title: "Cross-references must exist and match 1.1 exhibits"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["interpretation","definitions","recitals"]
+  triggers:
+    any:
+      - regex: "(?i)Preamble|Recitals?|Clause\\s+\\d|Exhibit\\s+[A-Z]"
+  checks:
+    - id: "broken_clause_ref"
+      when:
+        regex: "(?i)Clause\\s+(\\d{2,}(?:\\.\\d+)*)"
+      finding:
+        message: "Clause reference present; engine must verify it resolves."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Ensure Clause numbering/titles kept updated; fix any broken references."
+        score_delta: -15
+    - id: "exhibit_not_listed_in_1_1"
+      when:
+        regex: "(?i)Exhibit\\s+([A-Z])"
+      finding:
+        message: "Exhibit referenced; verify it exists in Clause 1.1 exhibit list."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add missing exhibit to 1.1 list or correct the reference."
+        score_delta: -15
+    - id: "modified_numbers_titles"
+      when:
+        regex: "(?i)Clause\\s*3\\.12[\\s\\S]*?(amend|number(ing)?|title)"
+      finding:
+        message: "If modified under cl.3.12, cross-references must reflect updated number/title."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Synchronise numbering/titles after cl.3.12 modifications."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: CrossReferenceIntegrity
+    score: 85
+    problem: "Potential broken/unknown cross-references."
+    recommendation: "Validate against Clause 1.1 exhibit list and current numbering."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["cross-reference","exhibits","1.1 list","3.12"]
+metadata:
+  tags: ["xrefs","integrity"]

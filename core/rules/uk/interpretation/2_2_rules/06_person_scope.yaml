@@ -1,0 +1,35 @@
+rule:
+  id: "uk.int.2_2_1f.person_scope_broad"
+  version: "1.0.0"
+  title: "‘Person’ covers individuals, companies, bodies, authorities, associations"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["interpretation","definitions"]
+  triggers:
+    any:
+      - regex: "(?i)person\\s+includes"
+  checks:
+    - id: "gov_auth_alignment"
+      when:
+        not_regex: "(?i)Governmental\\s+Authorit(y|ies)|regulator"
+      finding:
+        message: "Definition of ‘person’ should align with Governmental Authority and Third Party."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Ensure ‘person’ encompasses public bodies and aligns with Third Party carve-outs."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: PersonScopeMismatch
+    score: 88
+    problem: "Person scope may not align with related definitions."
+    recommendation: "Harmonise definitions."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["person","authority","third party"]
+metadata:
+  tags: ["definitions"]

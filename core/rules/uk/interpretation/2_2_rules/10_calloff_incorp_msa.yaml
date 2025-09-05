@@ -1,0 +1,45 @@
+rule:
+  id: "uk.int.2_2_1j.calloff_incorporates_msa"
+  version: "1.0.0"
+  title: "Each Call-Off incorporates MSA and states precedence per 2.2.4"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA","Call-Off"]
+    clauses: ["interpretation","call-off","precedence"]
+  triggers:
+    any:
+      - regex: "(?i)Call[-\\s]?Off"
+  checks:
+    - id: "incorporation_missing"
+      when:
+        not_regex: "(?i)incorporat(ed|es)\\s+the\\s+MSA|this\\s+Agreement"
+      finding:
+        message: "Call-Off does not explicitly incorporate MSA terms."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "State that Call-Off incorporates MSA conditions."
+        score_delta: -20
+    - id: "precedence_missing"
+      when:
+        not_regex: "(?i)precedence|Clause\\s*2\\.2\\.4|order\\s+of\\s+precedence"
+      finding:
+        message: "Call-Off lacks precedence statement."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add precedence per 2.2.4."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: CallOffIncorporationGap
+    score: 80
+    problem: "Call-Off missing incorporation/precedence."
+    recommendation: "Add explicit incorporation and precedence."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["Call-Off","incorporation","precedence"]
+metadata:
+  tags: ["calloff","precedence"]

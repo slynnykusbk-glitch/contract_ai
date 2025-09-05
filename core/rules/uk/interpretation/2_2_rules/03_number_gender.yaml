@@ -1,0 +1,35 @@
+rule:
+  id: "uk.int.2_2_1c.number_gender_presumption"
+  version: "1.0.0"
+  title: "Presumption: singular includes plural; genders interchangeable unless defined otherwise"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["interpretation"]
+  triggers:
+    any:
+      - regex: "(?i)singular\\s+includes\\s+the\\s+plural|plural\\s+includes\\s+the\\s+singular"
+  checks:
+    - id: "local_definition_conflict"
+      when:
+        regex: "(?i)Personnel\\s+means|Invitees?\\s+means|Contractor\\s+Group\\s+means"
+      finding:
+        message: "Local definitions may narrow the presumption; ensure no contradiction."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Clarify that specific definitions override general presumption where necessary."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: NumberGenderConflict
+    score: 88
+    problem: "Potential conflict between general presumption and specific definitions."
+    recommendation: "Confirm precedence of specific defined terms where intended."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["singular","plural","gender","definitions"]
+metadata:
+  tags: ["interpretation"]

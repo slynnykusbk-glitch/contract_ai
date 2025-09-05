@@ -1,0 +1,47 @@
+rule:
+  id: "uk.int.2_2_1b.time_basis_calendar_vs_business"
+  version: "1.0.0"
+  title: "Time basis clarity (calendar days vs Business Days; timezone per Notices)"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["interpretation","notices","payments"]
+  triggers:
+    any:
+      - regex: "(?i)\\b\\d+\\s+days?\\b"
+  checks:
+    - id: "calendar_vs_business_ambiguous"
+      when:
+        all:
+          - regex: "(?i)\\b\\d+\\s+days?\\b"
+          - not_regex: "(?i)Business\\s+Days?|calendar\\s+days?"
+      finding:
+        message: "Day periods used without specifying calendar vs Business Days."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Specify 'Business Days' or 'calendar days' and align timezone with Notices (Clause 29)."
+        score_delta: -15
+    - id: "timezone_missing"
+      when:
+        not_regex: "(?i)UK\\s*time|GMT|BST|time\\s*zone|Clause\\s*29"
+      finding:
+        message: "Timezone/Notices alignment not stated for time calculations."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Tie cut-offs to UK time and Notices clause."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: TimeBasisAmbiguity
+    score: 85
+    problem: "Ambiguity between calendar and Business Days; timezone unclear."
+    recommendation: "State time basis and align with Notices."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["time","business day","timezone","Notices"]
+metadata:
+  tags: ["time","business-day"]

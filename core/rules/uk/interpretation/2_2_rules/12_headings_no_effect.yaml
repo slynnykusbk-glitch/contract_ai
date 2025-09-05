@@ -1,0 +1,25 @@
+rule:
+  id: "uk.int.2_2_2.headings_no_effect"
+  version: "1.0.0"
+  title: "Headings are for convenience only and do not affect interpretation"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["interpretation"]
+  triggers:
+    any:
+      - regex: "(?i)headings?\\s+are\\s+for\\s+convenience"
+  checks: []
+  outcome:
+    status: pass
+    risk_level: low
+    severity: S4
+    issue_type: None
+    score: 100
+    problem: ""
+    recommendation: ""
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["headings","no effect"]
+metadata:
+  tags: ["headings"]

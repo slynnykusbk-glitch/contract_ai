@@ -1,0 +1,38 @@
+rule:
+  id: "uk.int.2_2_1e.company_vs_Company_defined_term"
+  version: "1.0.0"
+  title: "Disambiguate generic 'company' vs defined 'Company'"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["interpretation","definitions","parties"]
+  triggers:
+    any:
+      - regex: "(?i)\\bcompany\\b"
+  checks:
+    - id: "case_mixing"
+      when:
+        all:
+          - regex: "(?i)\\bcompany\\b"
+          - regex: "\\bCompany\\b"
+          - not_regex: "(?i)generic|lower\\s+case"
+      finding:
+        message: "Both ‘company’ and defined ‘Company’ used; ensure no ambiguity."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Use capitalised ‘Company’ for the defined party; keep lowercase only for generic sense."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: CompanyDisambiguation
+    score: 88
+    problem: "Potential ambiguity between generic and defined term."
+    recommendation: "Consistent capitalisation per defined terms."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["Company","company","defined term"]
+metadata:
+  tags: ["defined-terms"]

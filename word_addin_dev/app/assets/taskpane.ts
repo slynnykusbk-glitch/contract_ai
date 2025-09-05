@@ -15,8 +15,32 @@ function slot(id: string, role: string): HTMLElement | null {
   ) || document.getElementById(id);
 }
 
-export function normalizeText(s: string): string {
-  return s.replace(/\r\n?/g, "\n").trim().replace(/[ \t]+/g, " ");
+export function normalizeText(s: string | undefined | null): string {
+  if (!s) return "";
+  return s
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+}
+
+function buildLegalComment(f: AnalyzeFinding): string {
+  const sev = (f.severity || "info").toUpperCase();
+  const rid = f.rule_id || "rule";
+  const ct = f.clause_type ? ` (${f.clause_type})` : "";
+  const adv = f.advice ? ` — ${f.advice}` : "";
+  const law = f.law_reference ? ` | Law: ${f.law_reference}` : "";
+  const cit = Array.isArray(f.citations) && f.citations.length ? ` | Sources: ${f.citations.join(", ")}` : "";
+  const xrf = f.conflict_with ? ` | Conflicts: ${f.conflict_with}` : "";
+  return `[${sev}] ${rid}${ct}${adv}${law}${xrf}${cit}`;
+}
+
+function nthOccurrenceIndex(hay: string, needle: string, startPos?: number): number {
+  if (!needle) return 0;
+  let idx = -1, n = 0;
+  const bound = typeof startPos === "number" ? Math.max(0, startPos) : Number.MAX_SAFE_INTEGER;
+  while ((idx = hay.indexOf(needle, idx + 1)) !== -1 && idx < bound) n++;
+  return n;
 }
 
 export function buildParagraphIndex(paragraphs: string[]): { starts: number[]; texts: string[] } {
@@ -36,13 +60,9 @@ export async function mapFindingToRange(
   f: AnalyzeFinding,
 ): Promise<Word.Range | null> {
   const last: string = (window as any).__lastAnalyzed || "";
+  const base = normalizeText(last);
   const snippet = normalizeText(f.snippet || "");
-  const occIdx = (() => {
-    if (typeof f.start !== "number" || !snippet) return 0;
-    let idx = -1, n = 0;
-    while ((idx = last.indexOf(snippet, idx + 1)) !== -1 && idx < f.start) n++;
-    return n;
-  })();
+  const occIdx = nthOccurrenceIndex(base, snippet, f.start);
 
   try {
     return await Word.run(async ctx => {
@@ -61,14 +81,12 @@ export async function mapFindingToRange(
 
 export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
   const last: string = (window as any).__lastAnalyzed || "";
+  const base = normalizeText(last);
+
   for (const f of findings) {
     const snippet = normalizeText(f.snippet || "");
-    const occIdx = (() => {
-      if (typeof f.start !== "number" || !snippet) return 0;
-      let idx = -1, n = 0;
-      while ((idx = last.indexOf(snippet, idx + 1)) !== -1 && idx < f.start) n++;
-      return n;
-    })();
+    if (!snippet) continue;
+    const occIdx = nthOccurrenceIndex(base, snippet, f.start);
 
     try {
       await Word.run(async ctx => {
@@ -76,16 +94,19 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
         const searchRes = body.search(snippet, { matchCase: false, matchWholeWord: false });
         searchRes.load("items");
         await ctx.sync();
+
         const items = searchRes.items || [];
-        const range = items[Math.min(occIdx, Math.max(0, items.length - 1))];
-        if (range) {
-          const msg = `${f.rule_id} (${f.severity})${f.advice ? ": " + f.advice : ""}`;
-          range.insertComment(msg);
+        const target = items[Math.min(occIdx, Math.max(0, items.length - 1))];
+        if (target) {
+          const msg = buildLegalComment(f);
+          target.insertComment(msg);
+        } else {
+          console.warn("[annotate] snippet not found", { snippet, occIdx, total: items.length });
         }
         await ctx.sync();
       });
     } catch (e) {
-      console.warn("annotate fail", e);
+      console.warn("annotate error", e);
     }
   }
 }
@@ -327,9 +348,14 @@ async function doAnalyze() {
     try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
     renderResults(json);
 
-    // сразу вставляем комментарии в Word
-    const findings = parseFindings(json);
-    await annotateFindingsIntoWord(findings);
+    try {
+      const findings = parseFindings(json);
+      if (Array.isArray(findings) && findings.length > 0) {
+        await annotateFindingsIntoWord(findings);
+      }
+    } catch (e) {
+      console.warn("auto-annotate after analyze failed", e);
+    }
 
     (document.getElementById("results") || document.body)
       .dispatchEvent(new CustomEvent("ca.results", { detail: json }));

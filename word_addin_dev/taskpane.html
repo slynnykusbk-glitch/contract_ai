@@ -302,23 +302,23 @@
   <div class="row card" id="resultsCard">
     <div class="muted" style="margin-bottom:6px">Results</div>
     <div class="grid">
-      <div class="kv"><strong>Clause type:</strong><span id="resClauseType">—</span></div>
-      <div class="kv"><strong>Findings:</strong><span id="resFindingsCount">—</span></div>
+      <div class="kv"><strong>Clause type:</strong><span id="resClauseType" data-role="clause-type">—</span></div>
+      <div class="kv"><strong>Findings:</strong><span id="resFindingsCount" data-role="findings-count">—</span></div>
     </div>
 
     <div class="row">
       <strong>Findings</strong>
-      <ul class="list" id="findingsList"></ul>
+      <ul class="list" id="findingsList" data-role="findings"></ul>
     </div>
 
     <div class="row">
       <strong>Recommendations</strong>
-      <ul class="list" id="recoList"></ul>
+      <ul class="list" id="recoList" data-role="recommendations"></ul>
     </div>
 
     <div class="row">
-      <span class="toggle" id="toggleRaw">Show raw JSON</span>
-      <pre id="rawJson" style="display:none"></pre>
+      <span class="toggle" id="toggleRaw" data-role="toggle-raw-json">Show raw JSON</span>
+      <pre id="rawJson" data-role="raw-json" style="display:none"></pre>
     </div>
   </div>
 

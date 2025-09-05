@@ -1,0 +1,47 @@
+rule:
+  id: "universal.inform.employer_info_nonreliance"
+  version: "1.0.0"
+  title: "Provided information disclaimers require fair non-reliance basis and fraud carve-out"
+  scope:
+    jurisdiction: ["UK","Any"]
+    doc_types: ["Any"]
+    clauses: ["information","non-reliance","misrepresentation"]
+  triggers:
+    any:
+      - regex: "(?i)(Customer|Employer|Company)\\s+Provided\\s+Information|provided\\s+by\\s+(Customer|Employer|Company)"
+  checks:
+    - id: "disclaimer_without_basis"
+      when:
+        all:
+          - regex: "(?i)no\\s+warranty|no\\s+representation"
+          - not_regex: "(?i)basis\\s+of\\s+contract|non\\-reliance|acknowledge\\s+not\\s+relied"
+      finding:
+        message: "Disclaimer present but no clear basis/non-reliance wording."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Add basis/non-reliance language consistent with reasonableness tests."
+        score_delta: -15
+    - id: "no_fraud_gross_carveout"
+      when:
+        not_regex: "(?i)(fraud|fraudulent|negligent)\\s+(misrepresentation|misstatement)|fraud\\s+carve\\-out"
+      finding:
+        message: "No carve-out for fraud/negligent misrep."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Insert explicit carve-out for fraud/negligent misrepresentation."
+        score_delta: -18
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: MisrepRisk
+    score: 78
+    problem: "Info disclaimers weak without fair non-reliance/fraud carve-out."
+    recommendation: "Add basis/non-reliance + fraud/negligence carve-out."
+    law_reference: []
+    category: "Inform & Diligence"
+    keywords: ["non-reliance","misrepresentation"]
+metadata:
+  tags: ["nonreliance","disclaimer"]

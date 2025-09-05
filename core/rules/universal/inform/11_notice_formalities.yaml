@@ -1,0 +1,45 @@
+rule:
+  id: "universal.inform.notice_formalities"
+  version: "1.0.0"
+  title: "Notices about discrepancies/claims: channel, addressee, required content"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["notice","communication","time bar"]
+  triggers:
+    any:
+      - regex: "(?i)notice|written\\s+notice|notify"
+  checks:
+    - id: "no_channel"
+      when:
+        not_regex: "(?i)(email|portal|courier|registered\\s+post|e\\-signature|PDF)"
+      finding:
+        message: "Notice channel not specified."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Specify accepted channels (e-signed PDF/portal/email/courier)."
+        score_delta: -12
+    - id: "no_addressee_content"
+      when:
+        not_regex: "(?i)addressed\\s+to|attn\\.|must\\s+state|include\\s+details"
+      finding:
+        message: "Addressee or required content for notice is missing."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Define addressee/title and required fields (issue, impact, evidence, requested instruction)."
+        score_delta: -18
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: NoticeMechanicsGap
+    score: 72
+    problem: "Notice mechanics incomplete."
+    recommendation: "Define channel, addressee and content."
+    law_reference: []
+    category: "Inform & Diligence"
+    keywords: ["notice","mechanics"]
+metadata:
+  tags: ["notice"]

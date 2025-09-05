@@ -1,0 +1,47 @@
+rule:
+  id: "universal.inform.discrepancy_notice_timebar"
+  version: "1.0.0"
+  title: "Scrutinise and notify discrepancies within a clear, fair window; state time-bar"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["inform itself","notice","discrepancies","time bar"]
+  triggers:
+    any:
+      - regex: "(?i)(discrepanc|inconsisten|error)\\s+notice|notify\\s+.*(discrepanc|error)"
+  checks:
+    - id: "no_window"
+      when:
+        not_regex: "(?i)within\\s+\\d+\\s+(Business\\s+)?Days|\\d+\\s+day\\s+notice"
+      finding:
+        message: "No concrete notice window for discrepancies."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Set an explicit window (e.g., 10 Business Days from discovery/receipt)."
+        score_delta: -12
+    - id: "unclear_timebar"
+      when:
+        all:
+          - regex: "(?i)time\\-bar|lose\\s+entitlement|waiver"
+          - not_regex: "(?i)(Contract\\s+Manager|Project\\s+Manager|addressed\\s+to|issue|impact|evidence|discovery|receipt)"
+      finding:
+        message: "Time-bar mentioned but mechanics are unclear (trigger/addressee/content)."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Define trigger (receipt/discovery), addressee, required content and delivery channel."
+        score_delta: -18
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: TimeBarUnclear
+    score: 72
+    problem: "Ambiguous discrepancy notice/time-bar."
+    recommendation: "Define fair window and clear mechanics."
+    law_reference: []
+    category: "Inform & Diligence"
+    keywords: ["notice","time-bar"]
+metadata:
+  tags: ["notice","timebar"]

@@ -1,0 +1,35 @@
+rule:
+  id: "universal.inform.deemed_scope_clarity"
+  version: "1.0.0"
+  title: "Deemed knowledge: scope must be clearly defined and referenced"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["pre-contract diligence","inform itself","scope","performance"]
+  triggers:
+    any:
+      - regex: "(?i)deemed\\s+to\\s+have\\s+(satisfied|informed)\\s+itself|contractor\\s+has\\s+informed\\s+itself"
+  checks:
+    - id: "no_scope_reference"
+      when:
+        not_regex: "(?i)(Scope|Statement\\s+of\\s+Work|Specifications|Employer|Customer\\s+Requirements)"
+      finding:
+        message: "Deemed knowledge present but scope documents not referenced explicitly."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Reference the exact scope/SoW/Specs set to avoid unintended fitness obligations."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: DeemedKnowledgeAmbiguity
+    score: 86
+    problem: "‘Deemed’ wording without crisp scope references."
+    recommendation: "Point the ‘deemed’ clause to named scope/SoW/Specs."
+    law_reference: []
+    category: "Inform & Diligence"
+    keywords: ["deemed knowledge","scope","SoW"]
+metadata:
+  tags: ["deemed","scope"]

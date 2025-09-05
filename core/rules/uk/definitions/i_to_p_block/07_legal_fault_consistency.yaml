@@ -1,0 +1,50 @@
+rule:
+  id: "uk.def.legal_fault.fm_indemnities_consistency"
+  version: "1.0.0"
+  title: "Legal Fault: consistency across Force Majeure and Indemnities/Knock-for-Knock"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","force majeure","indemnity","knock-for-knock"]
+  triggers:
+    any:
+      - regex: "(?i)Legal\\s+Fault|fault\\s+of\\s+a\\s+party"
+  checks:
+    - id: "fm_excludes_fault_missing"
+      when:
+        all:
+          - regex: "(?i)Force\\s+Majeure"
+          - not_regex: "(?i)shall\\s+not\\s+apply\\s+to\\s+events\\s+caused\\s+by\\s+the\\s+fault"
+      finding:
+        message: "FM does not clearly exclude events caused by a party’s own fault."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add carve-out: FM excludes events caused by the affected party’s fault."
+        score_delta: -15
+    - id: "indemnities_fault_irreconcilable"
+      when:
+        all:
+          - regex: "(?i)regardless\\s+of\\s+fault|without\\s+regard\\s+to\\s+fault"
+          - regex: "(?i)Force\\s+Majeure"
+          - not_regex: "(?i)for\\s+the\\s+avoidance\\s+of\\s+doubt|prevail(s)?"
+      finding:
+        message: "Potential inconsistency: indemnities apply regardless of fault while FM treats fault differently."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Clarify precedence and causal pathways between FM and knock-for-knock indemnities."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: LegalFaultInconsistency
+    score: 85
+    problem: "Fault concept may be inconsistent between FM and indemnities."
+    recommendation: "Align FM fault carve-out and KFK wording; add precedence note."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Force Majeure","fault","knock-for-knock"]
+metadata:
+  tags: ["fm","indemnity"]

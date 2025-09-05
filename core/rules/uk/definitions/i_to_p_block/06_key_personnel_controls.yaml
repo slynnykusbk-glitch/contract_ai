@@ -1,0 +1,49 @@
+rule:
+  id: "uk.def.key_personnel.list_ld_controls"
+  version: "1.0.0"
+  title: "Key Personnel: listed per Call-Off; removal consent; LDs proportional"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","call-off","personnel","ld","liquidated damages"]
+  triggers:
+    any:
+      - regex: "(?i)Key\\s+Personnel"
+  checks:
+    - id: "not_listed_in_calloff"
+      when:
+        all:
+          - regex: "(?i)Key\\s+Personnel"
+          - not_regex: "(?i)listed\\s+in\\s+each\\s+Call[-\\s]?Off|schedule\\s+of\\s+Key\\s+Personnel"
+      finding:
+        message: "Key Personnel not scheduled per Call-Off."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Attach list per Call-Off; require Company approval for changes."
+        score_delta: -15
+    - id: "no_consent_or_ld_rule"
+      when:
+        any:
+          - not_regex: "(?i)no\\s+removal|withdraw(al)?\\s+without\\s+prior\\s+written\\s+consent"
+          - not_regex: "(?i)liquidated\\s+damages|LDs"
+      finding:
+        message: "No removal consent and/or LDs not addressed."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Require consent for removal; if LDs apply, justify via legitimate interest and proportionality."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: KeyPersonnelControlsGap
+    score: 80
+    problem: "Key Personnel governance incomplete."
+    recommendation: "Schedule names; require consent; ensure LDs proportionate (Cavendish test)."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Key Personnel","LD","consent"]
+metadata:
+  tags: ["personnel","ld"]

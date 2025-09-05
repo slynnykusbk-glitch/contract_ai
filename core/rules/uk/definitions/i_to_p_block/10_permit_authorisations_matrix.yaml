@@ -1,0 +1,49 @@
+rule:
+  id: "uk.def.permit.authorisations_matrix"
+  version: "1.0.0"
+  title: "Permit: holder/responsibility matrix; evidence; ECJU/HSE links"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","permit","authorisations","compliance"]
+  triggers:
+    any:
+      - regex: "(?i)Permit(s)?\\b"
+  checks:
+    - id: "no_holder_or_evidence"
+      when:
+        any:
+          - not_regex: "(?i)holder|responsible\\s+for\\s+obtaining"
+          - not_regex: "(?i)evidence|copies(?:\\s+provided)?\\s+on\\s+request"
+      finding:
+        message: "Permit lacks holder assignment or evidence/copy obligation."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Assign holder, validity dates and provide copies on request."
+        score_delta: -15
+    - id: "no_authorisations_link"
+      when:
+        all:
+          - regex: "(?i)Permit"
+          - not_regex: "(?i)Authorisations|matrix|responsibility"
+      finding:
+        message: "No linkage of Permit to Authorisations responsibility matrix."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Reference Authorisations (umbrella) and responsibility matrix."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: PermitMatrixGap
+    score: 80
+    problem: "Permit responsibilities/evidence unclear."
+    recommendation: "Define holder/evidence/validity; link to Authorisations."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Permit","Authorisations","evidence"]
+metadata:
+  tags: ["permit","authorisations"]

@@ -1,0 +1,49 @@
+rule:
+  id: "uk.def.property.exclusions_title_risk"
+  version: "1.0.0"
+  title: "Property: exclusions (Company Items, Goods pre-acceptance, Agreement Documentation) and Title/Risk alignment"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","property","title","risk","insurance"]
+  triggers:
+    any:
+      - regex: "(?i)Property\\s+means"
+  checks:
+    - id: "exclusions_missing"
+      when:
+        any:
+          - not_regex: "(?i)Company\\s+Provided\\s+Items"
+          - not_regex: "(?i)Goods\\s+prior\\s+to\\s+delivery|acceptance"
+          - not_regex: "(?i)Agreement\\s+Documentation"
+      finding:
+        message: "Property definition missing key exclusions (Company Items, pre-acceptance Goods, Agreement Documentation)."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Exclude Company Provided Items, Goods before delivery/acceptance, and Agreement Documentation."
+        score_delta: -20
+    - id: "no_title_risk_alignment"
+      when:
+        any:
+          - not_regex: "(?i)Title|Risk|Clause\\s*18|Clause\\s*19|Insurance"
+      finding:
+        message: "No alignment with Title/Risk/Insurance sections."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Cross-reference Title (18), Risk (19) and Insurance (20) for transfer points and coverage."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: PropertyExclusionsGap
+    score: 80
+    problem: "Property definition too broad or not aligned with Title/Risk/Insurance."
+    recommendation: "Add exclusions and cross-links to Title/Risk/Insurance."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Property","Title","Risk","Insurance","Company Items"]
+metadata:
+  tags: ["property","title","risk"]

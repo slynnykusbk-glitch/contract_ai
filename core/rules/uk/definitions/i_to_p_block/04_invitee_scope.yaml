@@ -1,0 +1,51 @@
+rule:
+  id: "uk.def.invitee.scope_and_exclusions"
+  version: "1.0.0"
+  title: "Invitee: exclude regulators; do not conflate with tort categories"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","hse","site","liability"]
+    industries: ["oil_gas","generic"]
+  triggers:
+    any:
+      - regex: "(?i)Invitee"
+  checks:
+    - id: "regulators_as_invitees"
+      when:
+        all:
+          - regex: "(?i)Invitee"
+          - regex: "(?i)Regulator|Governmental\\s+Authority|Official"
+          - not_regex: "(?i)not\\s+an\\s+Invitee|excluded"
+      finding:
+        message: "Officials/Regulators must not be Invitees for risk allocation."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "State that Governmental Authorities/Officials are not Invitees of either party."
+        score_delta: -20
+    - id: "tort_conflation"
+      when:
+        all:
+          - regex: "(?i)invitee|licensee"
+          - not_regex: "(?i)Occupiers'?\\s+Liability\\s+Act\\s+1957|OLA\\s*1957|common\\s+duty\\s+of\\s+care"
+      finding:
+        message: "Contract term appears to rely on outdated tort categories."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Keep contractual 'Invitee' distinct; do not rely on common law invitee/licensee taxonomy."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: InviteeScopeGap
+    score: 85
+    problem: "Invitee definition risks including regulators or conflating tort categories."
+    recommendation: "Exclude regulators; keep separate from OLA 1957 tort framework."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Invitee","Regulator","OLA 1957"]
+metadata:
+  tags: ["hse","site","liability"]

@@ -1,4 +1,4 @@
-import { metaFromResponse, applyMetaToBadges, apiHealth, apiAnalyze, apiQaRecheck } from "./api-client";
+import { apiHealth, apiAnalyze, apiQaRecheck, apiGptDraft } from "./api-client";
 import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText } from "./office"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
 
@@ -8,6 +8,16 @@ const Q = {
   proposed: 'textarea#proposedText, textarea[name="proposed"], textarea[data-role="proposed-text"]',
   original: 'textarea#originalClause, textarea[name="original"], textarea[data-role="original-clause"]'
 };
+
+function setConnBadge(ok: boolean | null) {
+  const el = document.getElementById("connBadge");
+  if (el) el.textContent = `Conn: ${ok === null ? "—" : ok ? "✓" : "×"}`;
+}
+
+function setOfficeBadge(txt: string | null) {
+  const el = document.getElementById("officeBadge");
+  if (el) el.textContent = `Office: ${txt ?? "—"}`;
+}
 
 function $(sel: string): HTMLTextAreaElement | null {
   return document.querySelector(sel) as HTMLTextAreaElement | null;
@@ -89,28 +99,12 @@ async function onGetAIDraft(ev?: Event) {
     const modeSel = document.getElementById("cai-mode") as HTMLSelectElement | null;
     const mode = modeSel?.value || "friendly";
     const ctx = await getSelectionContext(200);
-
-    const body = {
-      text: "Please draft a neutral confidentiality clause.",
+    const { ok, json } = await apiGptDraft(
+      "Please draft a neutral confidentiality clause.",
       mode,
-      before_text: ctx.before,
-      after_text: ctx.after,
-    };
-
-    const resp = await fetch(`${(window as any).__cal_base__ ?? ""}/api/gpt-draft`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-
-    try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
-
-    if (!resp.ok) {
-      notifyWarn(`Draft failed (cid ${resp.headers.get('x-cid') || 'n/a'})`);
-      return;
-    }
-
-    const json = await resp.json();
+      { before_text: ctx.before, after_text: ctx.after }
+    );
+    if (!ok) { notifyWarn("Draft failed"); return; }
     const proposed = (json?.proposed_text ?? "").toString();
 
     if (dst) {
@@ -130,24 +124,28 @@ async function onGetAIDraft(ev?: Event) {
 }
 
 async function doHealth() {
-  const { json, meta } = await apiHealth();
-  try { applyMetaToBadges(meta); } catch {}
-  notifyOk(`Health: ${json.status} (schema ${json.schema})`);
+  try {
+    const { ok, json } = await apiHealth();
+    setConnBadge(ok);
+    notifyOk(`Health: ${json.status} (schema ${json.schema})`);
+  } catch (e) {
+    setConnBadge(false);
+    notifyWarn("Health failed");
+    console.error(e);
+  }
 }
 
 async function doAnalyzeDoc() {
   const text = await getWholeDocText();
   if (!text || !text.trim()) { notifyErr("В документе нет текста"); return; }
-  const { json, meta } = await apiAnalyze(text);
-  try { applyMetaToBadges(meta); } catch {}
+  const { json } = await apiAnalyze(text);
   (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.results", { detail: json }));
   notifyOk("Analyze OK");
 }
 
 async function doQARecheck() {
   const text = await getWholeDocText();
-  const { json, meta } = await apiQaRecheck(text, []);
-  try { applyMetaToBadges(meta); } catch {}
+  const { json } = await apiQaRecheck(text, []);
   (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
   notifyOk("QA recheck OK");
 }
@@ -193,20 +191,19 @@ function wireUI() {
 }
 
 async function bootstrap() {
-  // 1) Ждём Office, если он есть. Если нет — ждём DOM.
+  if (document.readyState === "loading") {
+    await new Promise<void>(res => document.addEventListener("DOMContentLoaded", () => res(), { once: true }));
+  }
+  wireUI();
+  try { await doHealth(); } catch {}
   try {
     if ((window as any).Office?.onReady) {
-      await (window as any).Office.onReady();
-    } else {
-      if (document.readyState === "loading") {
-        await new Promise<void>(res => document.addEventListener("DOMContentLoaded", () => res(), { once: true }));
-      }
+      const info = await (window as any).Office.onReady();
+      setOfficeBadge(`${info?.host || "Word"} ✓`);
     }
-  } catch {}
-  // 2) Немедленно провязываем UI
-  wireUI();
-  // 3) Пытаемся сразу применить мету хотя бы по /health
-  try { await doHealth(); } catch {}
+  } catch {
+    setOfficeBadge(null);
+  }
 }
 
 bootstrap();

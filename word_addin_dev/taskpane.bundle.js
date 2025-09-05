@@ -210,17 +210,15 @@ async function onUseSelection() {
   }
 }
 async function onUseWholeDoc() {
-  try {
-    const txt = await getWholeDocText();
-    const el = document.getElementById("originalClause");
-    if (el) {
-      el.value = txt;
-      el.setAttribute("data-role", "source-loaded");
-    }
-  } catch (e) {
-    notifyWarn("Failed to load document");
-    console.error(e);
+  const src = $(Q.original);
+  const raw = await getWholeDocText();
+  const text = normalizeText(raw || "");
+  if (src) {
+    src.value = text;
+    src.dispatchEvent(new Event("input", { bubbles: true }));
   }
+  window.__lastAnalyzed = text;
+  window.toast?.("Whole doc loaded");
 }
 async function onGetAIDraft(ev) {
   try {
@@ -285,20 +283,28 @@ async function doHealth() {
     console.error(e);
   }
 }
-async function doAnalyzeDoc() {
-  const text = await getWholeDocText();
-  if (!text || !text.trim()) {
-    notifyErr("\u0412 \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0435 \u043D\u0435\u0442 \u0442\u0435\u043A\u0441\u0442\u0430");
-    return;
-  }
-  const { json, resp } = await apiAnalyze(text);
+async function doAnalyze() {
   try {
-    applyMetaToBadges(metaFromResponse(resp));
-  } catch {
+    const cached = window.__lastAnalyzed;
+    const base = cached && cached.trim() ? cached : normalizeText(await getWholeDocText());
+    if (!base) {
+      notifyErr("\u0412 \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0435 \u043D\u0435\u0442 \u0442\u0435\u043A\u0441\u0442\u0430");
+      return;
+    }
+    window.__lastAnalyzed = base;
+    const { json, resp } = await apiAnalyze(base);
+    try {
+      applyMetaToBadges(metaFromResponse(resp));
+    } catch {}
+    renderResults(json);
+    const findings = parseFindings(json);
+    await annotateFindingsIntoWord(findings);
+    (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.results", { detail: json }));
+    notifyOk("Analyze OK");
+  } catch (e) {
+    notifyWarn("Analyze failed");
+    console.error(e);
   }
-  renderResults(json);
-  (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.results", { detail: json }));
-  notifyOk("Analyze OK");
 }
 async function doQARecheck() {
   const text = await getWholeDocText();
@@ -406,12 +412,11 @@ async function onRejectAll() {
   }
 }
 function wireUI() {
+  bindClick("#btnUseWholeDoc", onUseWholeDoc);
+  bindClick("#btnAnalyze", doAnalyze);
   bindClick("#btnTest", doHealth);
-  bindClick("#btnAnalyzeDoc", doAnalyzeDoc);
   bindClick("#btnQARecheck", doQARecheck);
   document.getElementById("btnGetAIDraft")?.addEventListener("click", onGetAIDraft);
-  bindClick("#btn-use-selection", onUseSelection);
-  bindClick("#btn-use-whole", onUseWholeDoc);
   bindClick("#btnInsertIntoWord", onInsertIntoWord);
   bindClick("#btnApplyTracked", onApplyTracked);
   bindClick("#btnAcceptAll", onAcceptAll);

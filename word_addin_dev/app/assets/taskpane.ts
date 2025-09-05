@@ -248,6 +248,18 @@ async function getSelectionContext(chars = 200): Promise<{ before: string; after
 }
 
 
+async function onUseWholeDoc() {
+  const src = $(Q.original);
+  const raw = await getWholeDocText();
+  const text = normalizeText(raw || "");
+  if (src) {
+    src.value = text;
+    src.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  (window as any).__lastAnalyzed = text;
+  (window as any).toast?.("Whole doc loaded");
+}
+
 async function onGetAIDraft(ev?: Event) {
   try {
     const src = $(Q.original);
@@ -304,17 +316,29 @@ async function doHealth() {
 }
 
 async function doAnalyze() {
-  const useSel = (document.getElementById("chkUseSelection") as HTMLInputElement | null)?.checked;
-  const raw = useSel ? await getSelectionAsync().catch(() => "") : await getWholeDocText();
-  const text = normalizeText(raw || "");
-  if (!text) { notifyErr("В документе нет текста"); return; }
-  (window as any).__lastAnalyzed = text;
-  const { json, resp } = await apiAnalyze(text);
-  try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
-  renderResults(json);
-  (document.getElementById("btnAnnotate") as HTMLButtonElement | null)?.removeAttribute("disabled");
-  (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.results", { detail: json }));
-  notifyOk("Analyze OK");
+  try {
+    const cached = (window as any).__lastAnalyzed as string | undefined;
+    const base = cached && cached.trim() ? cached : normalizeText(await getWholeDocText());
+    if (!base) { notifyErr("В документе нет текста"); return; }
+
+    (window as any).__lastAnalyzed = base;
+
+    const { json, resp } = await apiAnalyze(base);
+    try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
+    renderResults(json);
+
+    // сразу вставляем комментарии в Word
+    const findings = parseFindings(json);
+    await annotateFindingsIntoWord(findings);
+
+    (document.getElementById("results") || document.body)
+      .dispatchEvent(new CustomEvent("ca.results", { detail: json }));
+
+    notifyOk("Analyze OK");
+  } catch (e) {
+    notifyWarn("Analyze failed");
+    console.error(e);
+  }
 }
 
 async function doQARecheck() {
@@ -399,8 +423,9 @@ async function onRejectAll() {
 }
 
 function wireUI() {
-  bindClick("#btnTest", doHealth);
+  bindClick("#btnUseWholeDoc", onUseWholeDoc);
   bindClick("#btnAnalyze", doAnalyze);
+  bindClick("#btnTest", doHealth);
   bindClick("#btnQARecheck", doQARecheck);
   document.getElementById("btnGetAIDraft")?.addEventListener("click", onGetAIDraft);
   bindClick("#btnInsertIntoWord", onInsertIntoWord);

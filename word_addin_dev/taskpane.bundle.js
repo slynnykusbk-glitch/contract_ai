@@ -1,42 +1,34 @@
-// word_addin_dev/app/assets/api-client.js
-function metaFromResponse(res) {
-  const h = res?.headers || new Headers();
-  const pick = (name) => {
-    const v = h.get(name);
-    return v == null ? "" : v;
-  };
+// word_addin_dev/app/assets/api-client.ts
+function metaFromResponse(r) {
+  const h = r.headers;
+  const js = r.json || {};
+  const llm = js.llm || js;
   return {
-    provider: pick("x-provider"),
-    model: pick("x-model"),
-    mode: pick("x-llm-mode"),
-    usage: pick("x-usage-total"),
-    schema: pick("x-schema-version"),
-    latency: pick("x-latency-ms"),
-    cid: pick("x-cid"),
-    xcache: pick("x-cache"),
+    cid: h.get("x-cid"),
+    xcache: h.get("x-cache"),
+    latencyMs: h.get("x-latency-ms"),
+    schema: h.get("x-schema-version"),
+    provider: h.get("x-provider") || llm.provider || js.provider || null,
+    model: h.get("x-model") || llm.model || js.model || null,
+    llm_mode: h.get("x-llm-mode") || llm.mode || js.mode || null,
+    usage: h.get("x-usage-total"),
+    status: r.status != null ? String(r.status) : null
   };
 }
-function applyMetaToBadges(meta) {
+function applyMetaToBadges(m) {
   const set = (id, v) => {
     const el = document.getElementById(id);
     if (el) el.textContent = v && v.length ? v : "\u2014";
   };
-  set("cidBadge", meta.cid);
-  set("cid", meta.cid);
-  set("xcacheBadge", meta.xcache);
-  set("xcache", meta.xcache);
-  set("latencyBadge", meta.latency);
-  set("latency", meta.latency);
-  set("schemaBadge", meta.schema);
-  set("schema", meta.schema);
-  set("providerBadge", meta.provider);
-  set("provider", meta.provider);
-  set("modelBadge", meta.model);
-  set("model", meta.model);
-  set("modeBadge", meta.mode);
-  set("mode", meta.mode);
-  set("usageBadge", meta.usage);
-  set("usage", meta.usage);
+  set("status", m.status);
+  set("cid", m.cid);
+  set("xcache", m.xcache);
+  set("latency", m.latencyMs);
+  set("schema", m.schema);
+  set("provider", m.provider);
+  set("model", m.model);
+  set("mode", m.llm_mode);
+  set("usage", m.usage);
 }
 var DEFAULT_BASE = "https://localhost:9443";
 function base() {
@@ -54,19 +46,33 @@ async function req(path, { method = "GET", body = null, key = path } = {}) {
     credentials: "include"
   });
   const json = await r.json().catch(() => ({}));
+  const meta = metaFromResponse({ headers: r.headers, json, status: r.status });
+  try {
+    applyMetaToBadges(meta);
+  } catch {
+  }
   try {
     const w = window;
-    w.__last = w.__last || {};
+    if (!w.__last) w.__last = {};
     w.__last[key] = { status: r.status, req: { path, method, body }, json };
-  } catch {}
-  return { ok: r.ok, json, resp: r };
+  } catch {
+  }
+  return { ok: r.ok, json, resp: r, meta };
 }
-async function apiHealth() { return await req("/health", { key: "health" }); }
-async function apiAnalyze(text) { return await req("/api/analyze", { method: "POST", body: { text, mode: "live" }, key: "analyze" }); }
-async function apiGptDraft(text, mode = "friendly", extra = {}) { return await req("/api/gpt-draft", { method: "POST", body: { text, mode, ...extra }, key: "gpt-draft" }); }
-async function apiQaRecheck(text, rules = []) { return await req("/api/qa-recheck", { method: "POST", body: { text, rules }, key: "qa-recheck" }); }
+async function apiHealth() {
+  return req("/health", { key: "health" });
+}
+async function apiAnalyze(text) {
+  return req("/api/analyze", { method: "POST", body: { text, mode: "live" }, key: "analyze" });
+}
+async function apiGptDraft(text, mode = "friendly", extra = {}) {
+  return req("/api/gpt-draft", { method: "POST", body: { text, mode, ...extra }, key: "gpt-draft" });
+}
+async function apiQaRecheck(text, rules = []) {
+  return req("/api/qa-recheck", { method: "POST", body: { text, rules }, key: "qa-recheck" });
+}
 
-// word_addin_dev/app/assets/notifier.js
+// word_addin_dev/app/assets/notifier.ts
 function notifyOk(msg) {
   try {
     console.log("[OK]", msg);
@@ -86,7 +92,7 @@ function notifyWarn(msg) {
   }
 }
 
-// word_addin_dev/app/assets/office.js
+// word_addin_dev/app/assets/office.ts
 async function getWholeDocText() {
   return await Word.run(async (ctx) => {
     const body = ctx.document.body;
@@ -106,7 +112,7 @@ function slot(id, role) {
 }
 function renderResults(res) {
   const clause = slot("resClauseType", "clause-type");
-  if (clause) clause.textContent = (res?.clause_type) || "\u2014";
+  if (clause) clause.textContent = res?.clause_type || "\u2014";
   const findingsArr = Array.isArray(res?.findings) ? res.findings : [];
   const findingsList = slot("findingsList", "findings");
   if (findingsList) {
@@ -130,7 +136,7 @@ function renderResults(res) {
   const count = slot("resFindingsCount", "findings-count");
   if (count) count.textContent = String(findingsArr.length);
   const pre = slot("rawJson", "raw-json");
-  if (pre) pre.textContent = JSON.stringify(res || {}, null, 2);
+  if (pre) pre.textContent = JSON.stringify(res ?? {}, null, 2);
 }
 function wireResultsToggle() {
   const toggle = slot("toggleRaw", "toggle-raw-json");
@@ -144,7 +150,7 @@ function wireResultsToggle() {
 }
 function setConnBadge(ok) {
   const el = document.getElementById("connBadge");
-  if (el) el.textContent = `Conn: ${ok === null ? "\u2014" : ok ? "\u2713" : "\u00D7"}`;
+  if (el) el.textContent = `Conn: ${ok === null ? "\u2014" : ok ? "\u2713" : "\xD7"}`;
 }
 function setOfficeBadge(txt) {
   const el = document.getElementById("officeBadge");
@@ -225,7 +231,8 @@ async function onGetAIDraft(ev) {
       try {
         text = await getSelectionAsync();
         if (src) src.value = text;
-      } catch {}
+      } catch {
+      }
     }
     if (!text) {
       notifyWarn("No source text");
@@ -234,12 +241,19 @@ async function onGetAIDraft(ev) {
     const modeSel = document.getElementById("cai-mode");
     const mode = modeSel?.value || "friendly";
     const ctx = await getSelectionContext(200);
-    const { ok, json, resp } = await apiGptDraft(text, mode, { before_text: ctx.before, after_text: ctx.after });
+    const { ok, json, resp } = await apiGptDraft(
+      text,
+      mode,
+      { before_text: ctx.before, after_text: ctx.after }
+    );
     if (!ok) {
       notifyWarn("Draft failed");
       return;
     }
-    try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
+    try {
+      applyMetaToBadges(metaFromResponse(resp));
+    } catch {
+    }
     const proposed = (json?.proposed_text ?? "").toString();
     if (dst) {
       if (!dst.id) dst.id = "proposedText";
@@ -259,7 +273,10 @@ async function onGetAIDraft(ev) {
 async function doHealth() {
   try {
     const { ok, json, resp } = await apiHealth();
-    try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
+    try {
+      applyMetaToBadges(metaFromResponse(resp));
+    } catch {
+    }
     setConnBadge(ok);
     notifyOk(`Health: ${json.status} (schema ${json.schema})`);
   } catch (e) {
@@ -275,7 +292,10 @@ async function doAnalyzeDoc() {
     return;
   }
   const { json, resp } = await apiAnalyze(text);
-  try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
+  try {
+    applyMetaToBadges(metaFromResponse(resp));
+  } catch {
+  }
   renderResults(json);
   (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.results", { detail: json }));
   notifyOk("Analyze OK");
@@ -283,7 +303,10 @@ async function doAnalyzeDoc() {
 async function doQARecheck() {
   const text = await getWholeDocText();
   const { json, resp } = await apiQaRecheck(text, []);
-  try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
+  try {
+    applyMetaToBadges(metaFromResponse(resp));
+  } catch {
+  }
   (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
   notifyOk("QA recheck OK");
 }
@@ -321,6 +344,81 @@ async function onApplyTracked() {
     console.error(e);
   }
 }
+async function onAcceptAll() {
+  try {
+    const dst = $(Q.proposed);
+    const proposed = (dst?.value || "").trim();
+    if (!proposed) {
+      window.toast?.("Nothing to accept");
+      return;
+    }
+    const cid = (document.getElementById("cid")?.textContent || "").trim();
+    const base2 = (() => {
+      try {
+        return (localStorage.getItem("backendUrl") || "https://localhost:9443").replace(/\/+$/, "");
+      } catch {
+        return "https://localhost:9443";
+      }
+    })();
+    const link = cid && cid !== "\u2014" ? `${base2}/api/trace/${cid}` : "AI draft";
+    await Word.run(async (ctx) => {
+      const range = ctx.document.getSelection();
+      ctx.document.trackRevisions = true;
+      range.insertText(proposed, "Replace");
+      try {
+        range.insertComment(link);
+      } catch {
+      }
+      await ctx.sync();
+    });
+    window.toast?.("Accepted into Word");
+    console.log("[OK] Accepted into Word");
+  } catch (e) {
+    window.toast?.("Accept failed");
+    console.error(e);
+  }
+}
+async function onRejectAll() {
+  try {
+    const dst = $(Q.proposed);
+    if (dst) {
+      dst.value = "";
+      dst.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    await Word.run(async (ctx) => {
+      const range = ctx.document.getSelection();
+      const revs = range.revisions;
+      revs.load("items");
+      await ctx.sync();
+      (revs.items || []).forEach((r) => {
+        try {
+          r.reject();
+        } catch {
+        }
+      });
+      await ctx.sync();
+    });
+    window.toast?.("Rejected");
+    console.log("[OK] Rejected");
+  } catch (e) {
+    window.toast?.("Reject failed");
+    console.error(e);
+  }
+}
+function wireUI() {
+  bindClick("#btnTest", doHealth);
+  bindClick("#btnAnalyzeDoc", doAnalyzeDoc);
+  bindClick("#btnQARecheck", doQARecheck);
+  document.getElementById("btnGetAIDraft")?.addEventListener("click", onGetAIDraft);
+  bindClick("#btn-use-selection", onUseSelection);
+  bindClick("#btn-use-whole", onUseWholeDoc);
+  bindClick("#btnInsertIntoWord", onInsertIntoWord);
+  bindClick("#btnApplyTracked", onApplyTracked);
+  bindClick("#btnAcceptAll", onAcceptAll);
+  bindClick("#btnRejectAll", onRejectAll);
+  wireResultsToggle();
+  console.log("Panel UI wired");
+}
 async function onInsertIntoWord() {
   try {
     const dst = $(Q.proposed);
@@ -341,31 +439,23 @@ async function onInsertIntoWord() {
       notifyWarn("Not in Office environment; result copied to clipboard");
     }
   } catch (e) {
-    try { await navigator.clipboard.writeText($(Q.proposed)?.value || ""); } catch {}
+    try {
+      await navigator.clipboard.writeText($(Q.proposed)?.value || "");
+    } catch {
+    }
     notifyWarn("Not in Office environment; result copied to clipboard");
     console.error(e);
   }
-}
-function wireUI() {
-  bindClick("#btnTest", doHealth);
-  bindClick("#btnAnalyzeDoc", doAnalyzeDoc);
-  bindClick("#btnQARecheck", doQARecheck);
-  document.getElementById("btnGetAIDraft")?.addEventListener("click", onGetAIDraft);
-  bindClick("#btn-use-selection", onUseSelection);
-  bindClick("#btn-use-whole", onUseWholeDoc);
-  bindClick("#btnInsertIntoWord", onInsertIntoWord);
-  bindClick("#btnApplyTracked", onApplyTracked);
-  bindClick("#btnAcceptAll", () => notifyWarn("Not implemented"));
-  bindClick("#btnRejectAll", () => notifyWarn("Not implemented"));
-  wireResultsToggle();
-  console.log("Panel UI wired");
 }
 async function bootstrap() {
   if (document.readyState === "loading") {
     await new Promise((res) => document.addEventListener("DOMContentLoaded", () => res(), { once: true }));
   }
   wireUI();
-  try { await doHealth(); } catch {}
+  try {
+    await doHealth();
+  } catch {
+  }
   try {
     if (window.Office?.onReady) {
       const info = await window.Office.onReady();

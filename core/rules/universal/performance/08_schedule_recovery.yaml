@@ -1,0 +1,47 @@
+rule:
+  id: "universal.performance.schedule_recovery"
+  version: "1.0.0"
+  title: "Key dates; recovery plan on slippage; measures at contractor cost where agreed"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["schedule","recovery","performance"]
+  triggers:
+    any:
+      - regex: "(?i)key\\s+dates|milestone|slippage|recovery\\s+plan|accelerat"
+  checks:
+    - id: "no_key_dates"
+      when:
+        not_regex: "(?i)key\\s+dates|milestone|completion\\s+date"
+      finding:
+        message: "No key dates/milestones defined."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Define key dates/milestones tied to progress and LD (if any)."
+        score_delta: -18
+    - id: "no_recovery_plan"
+      when:
+        all:
+          - regex: "(?i)delay|slip|behind\\s+schedule"
+          - not_regex: "(?i)recovery\\s+plan|catch\\-up\\s+plan"
+      finding:
+        message: "No recovery plan obligation on delay."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Require recovery plan within X Business Days; additional resources at contractor cost if delay is contractor-caused."
+        score_delta: -15
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: ScheduleControlGap
+    score: 74
+    problem: "No key dates and/or recovery path."
+    recommendation: "Add milestones + recovery plan obligations."
+    law_reference: []
+    category: "Performance"
+    keywords: ["schedule","recovery"]
+metadata:
+  tags: ["schedule","recovery"]

@@ -1,0 +1,45 @@
+rule:
+  id: "universal.performance.inspection_acceptance_window"
+  version: "1.0.0"
+  title: "Define inspection window and rejection mechanism; avoid deemed acceptance"
+  scope:
+    jurisdiction: ["UK","Any"]
+    doc_types: ["Any"]
+    clauses: ["inspection","acceptance","goods","deliverables"]
+  triggers:
+    any:
+      - regex: "(?i)inspect|inspection|acceptance|reject|deemed"
+  checks:
+    - id: "no_inspection_window"
+      when:
+        not_regex: "(?i)inspection\\s+window\\s+of\\s+\\d+\\s+(Business\\s+)?Days|within\\s+\\d+\\s+(Business\\s+)?Days\\s+of\\s+delivery"
+      finding:
+        message: "No concrete inspection window."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Set inspection window (e.g., 10 Business Days) and rejection mechanics."
+        score_delta: -15
+    - id: "no_reject_mechanism"
+      when:
+        not_regex: "(?i)reject|non\\-conforming|remedy|replace|repair"
+      finding:
+        message: "No rejection/remedy mechanism."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add reject notice procedure with supplier remedy/replace/repair."
+        score_delta: -18
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: AcceptanceRisk
+    score: 70
+    problem: "Inspection window/remedy not defined."
+    recommendation: "Define window and rejection/remedy steps."
+    law_reference: []
+    category: "Performance"
+    keywords: ["inspection","acceptance"]
+metadata:
+  tags: ["acceptance"]

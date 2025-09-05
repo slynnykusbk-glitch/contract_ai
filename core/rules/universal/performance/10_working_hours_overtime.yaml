@@ -1,0 +1,45 @@
+rule:
+  id: "universal.performance.working_hours_overtime"
+  version: "1.0.0"
+  title: "Working hours policy; overtime only with written approval; cost allocation"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["working hours","overtime","performance"]
+  triggers:
+    any:
+      - regex: "(?i)working\\s+hours|overtime|out\\-of\\-hours"
+  checks:
+    - id: "no_overtime_approval"
+      when:
+        not_regex: "(?i)overtime\\s+requires\\s+(prior\\s+)?written\\s+approval"
+      finding:
+        message: "No rule that overtime requires prior written approval."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Add prior written approval and who bears the cost."
+        score_delta: -10
+    - id: "no_cost_allocation"
+      when:
+        not_regex: "(?i)(overtime\\s+)?costs?\\s+(borne\\s+by|borne|at)\\s+(the\\s+contractor|contractor’s)"
+      finding:
+        message: "No clear cost allocation for overtime."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "State cost allocation (default: contractor if it remedies own delay)."
+        score_delta: -8
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: OvertimeAmbiguity
+    score: 88
+    problem: "Overtime approvals/costs unclear."
+    recommendation: "Add approval + cost rules."
+    law_reference: []
+    category: "Performance"
+    keywords: ["overtime","hours"]
+metadata:
+  tags: ["overtime"]

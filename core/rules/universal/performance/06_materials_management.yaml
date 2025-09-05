@@ -1,0 +1,45 @@
+rule:
+  id: "universal.performance.materials_management"
+  version: "1.0.0"
+  title: "Materials management, non-conforming quarantine, CPI custody & risk"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["materials","warehouse","CPI"]
+  triggers:
+    any:
+      - regex: "(?i)materials|warehouse|inventory|non\\-conforming|quarantine|Company\\s+Provided"
+  checks:
+    - id: "no_mm_procedure"
+      when:
+        not_regex: "(?i)materials\\s+management\\s+procedure|MMP|WMS"
+      finding:
+        message: "No materials management/warehouse procedure."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Submit MMP/WMS incl. OS&D, quarantine, surplus/scrap flow."
+        score_delta: -12
+    - id: "no_cpi_liability"
+      when:
+        not_regex: "(?i)Company\\s+Provided\\s+(Items|Equipment).+custody|risk|loss|damage"
+      finding:
+        message: "No liability/custody terms for Company-Provided Items."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Define CPI custody, risk allocation and loss/damage responsibilities."
+        score_delta: -18
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: MaterialsControlGap
+    score: 80
+    problem: "Weak materials/CPI controls."
+    recommendation: "Add MMP/WMS and CPI custody/risk."
+    law_reference: []
+    category: "Performance"
+    keywords: ["materials","CPI","warehouse"]
+metadata:
+  tags: ["materials","cpi"]

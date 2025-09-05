@@ -1,0 +1,45 @@
+rule:
+  id: "universal.performance.document_control_handover"
+  version: "1.0.0"
+  title: "Latest revisions in use; complete handover docs as condition of completion"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["document control","handover","performance"]
+  triggers:
+    any:
+      - regex: "(?i)revision|latest\\s+issue|document\\s+control|handover|as\\-built|O\\&M|manual"
+  checks:
+    - id: "no_latest_revision_rule"
+      when:
+        not_regex: "(?i)(latest\\s+(approved\\s+)?(revision|issue)\\b|work\\s+only\\s+on\\s+latest\\s+(approved\\s+)?(revision|issue)|no\\s+work\\s+on\\s+outdated\\s+documents)"
+      finding:
+        message: "No rule to ensure latest revisions are in use."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add: work only on latest approved revision; otherwise stop-work until updated."
+        score_delta: -20
+    - id: "handover_not_condition"
+      when:
+        not_regex: "(?i)completion\\s+subject\\s+to\\s+delivery\\s+of\\s+.*(handover|as\\-built|O\\&M)"
+      finding:
+        message: "Handover documentation not a condition to completion."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Make full handover pack a condition precedent to completion/acceptance."
+        score_delta: -12
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: DocumentControlGap
+    score: 72
+    problem: "No latest-revision rule and/or handover condition."
+    recommendation: "Add latest-revision control and handover as CP."
+    law_reference: []
+    category: "Performance"
+    keywords: ["document control","handover"]
+metadata:
+  tags: ["doc-control","handover"]

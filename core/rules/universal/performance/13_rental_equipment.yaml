@@ -1,0 +1,45 @@
+rule:
+  id: "universal.performance.rental_equipment"
+  version: "1.0.0"
+  title: "Rental equipment: manuals, maintenance, risk & insurance"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["rental","equipment","hire"]
+  triggers:
+    any:
+      - regex: "(?i)rent|hire|leased\\s+equipment"
+  checks:
+    - id: "no_rental_docs"
+      when:
+        not_regex: "(?i)manual|maintenance|service\\s+records|instructions"
+      finding:
+        message: "Rental lacks manuals/maintenance instructions."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Require manuals/maintenance instructions and service logs."
+        score_delta: -10
+    - id: "no_risk_insurance"
+      when:
+        not_regex: "(?i)risk\\s+of\\s+loss|insurance|liability"
+      finding:
+        message: "No risk/insurance allocation for rental equipment."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Allocate risk and minimum insurance for rented assets."
+        score_delta: -18
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: RentalGap
+    score: 80
+    problem: "Rental docs or risk allocation missing."
+    recommendation: "Add manuals/maintenance and risk/insurance terms."
+    law_reference: []
+    category: "Performance"
+    keywords: ["rental","insurance"]
+metadata:
+  tags: ["rental"]

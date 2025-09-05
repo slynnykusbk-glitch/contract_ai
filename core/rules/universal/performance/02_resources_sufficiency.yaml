@@ -1,0 +1,47 @@
+rule:
+  id: "universal.performance.resources_sufficiency"
+  version: "1.0.0"
+  title: "Contractor to provide all resources; capacity planning where relevant"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["performance","resources"]
+  triggers:
+    any:
+      - regex: "(?i)resources|personnel|equipment|materials|capacity"
+  checks:
+    - id: "no_all_resources_commitment"
+      when:
+        not_regex: "(?i)provide\\s+all\\s+necessary\\s+(resources|personnel|equipment|materials)"
+      finding:
+        message: "No explicit obligation to provide all necessary resources."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Add obligation to provide all resources (people, tools, materials) at contractor’s cost unless stated otherwise."
+        score_delta: -15
+    - id: "no_capacity_plan_for_it"
+      when:
+        all:
+          - regex: "(?i)\\b(SaaS|IT|hosting|DR|RTO|RPO|availability)\\b"
+          - not_regex: "(?i)capacity\\s+plan|failover|RTO|RPO"
+      finding:
+        message: "Capacity/DR not addressed for IT/SaaS context."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Include capacity/failover with RTO/RPO metrics if service is IT/SaaS."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: ResourceGap
+    score: 86
+    problem: "Resource/capacity commitments unclear."
+    recommendation: "Add full resources + capacity/DR where relevant."
+    law_reference: []
+    category: "Performance"
+    keywords: ["resources","capacity","DR"]
+metadata:
+  tags: ["resources"]

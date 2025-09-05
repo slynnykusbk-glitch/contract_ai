@@ -1,0 +1,47 @@
+rule:
+  id: "universal.performance.cooperate_eot"
+  version: "1.0.0"
+  title: "Cooperate with others; include EOT mechanism for employer/third-party delay"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["performance","cooperation","schedule"]
+  triggers:
+    any:
+      - regex: "(?i)cooperate|coordination|third\\-party|interface|delay|extension\\s+of\\s+time|EOT"
+  checks:
+    - id: "no_cooperate_clause"
+      when:
+        not_regex: "(?i)cooperate|co-operation|coordinate"
+      finding:
+        message: "No duty to cooperate/coordinate with other parties."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Add duty to cooperate and an interface matrix."
+        score_delta: -12
+    - id: "no_eot_for_employer_delay"
+      when:
+        all:
+          - regex: "(?i)delay|late|hindrance|prevention"
+          - not_regex: "(?i)extension\\s+of\\s+time|EOT|time\\s+relief"
+      finding:
+        message: "No Extension of Time mechanism for employer/third-party delay (prevention principle risk)."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add EOT for delays caused by employer or other contractors."
+        score_delta: -20
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: PreventionPrincipleRisk
+    score: 72
+    problem: "No cooperate/EOT protections."
+    recommendation: "Add cooperate + EOT for employer-caused delays."
+    law_reference: []
+    category: "Performance"
+    keywords: ["EOT","cooperate"]
+metadata:
+  tags: ["eot","cooperation"]

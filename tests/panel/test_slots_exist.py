@@ -37,3 +37,11 @@ def test_btn_apply_tracked_exists():
 
 def test_btn_accept_reject_exist():
     assert 'id="btnAcceptAll"' in HTML and 'id="btnRejectAll"' in HTML
+
+
+def test_use_whole_doc_button_exists():
+    assert _exists('btnUseWholeDoc', '') or 'id="btnUseWholeDoc"' in HTML
+
+
+def test_analyze_button_exists():
+    assert _exists('btnAnalyze', '') or 'id="btnAnalyze"' in HTML

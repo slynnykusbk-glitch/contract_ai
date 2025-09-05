@@ -205,7 +205,9 @@
   <div id="officeTools" class="row card" style="display:block">
     <div class="muted" style="margin-bottom:6px">Office tools</div>
     <div class="flex">
-      <button id="btnInsertIntoWord" class="btn">Insert result into Word</button>
+      <button id="btnUseWholeDoc">Use whole doc →</button>
+      <button id="btnAnalyze">Analyze</button>
+      <button id="btnInsertIntoWord" class="btn" style="display:none">Insert result into Word</button>
     </div>
   </div>
 
@@ -222,9 +224,8 @@
       </div>
     </div>
     <div class="row flex" style="margin-top:6px">
-      <button id="btnAnalyze" class="btn-grey js-disable-while-busy">Analyze</button>
-      <label class="inline" style="gap:4px"><input type="checkbox" id="chkUseSelection"/>Use selection</label>
-      <small class="js-busy-indicator">⏳</small>
+      <label class="inline" style="gap:4px;display:none"><input type="checkbox" id="chkUseSelection"/>Use selection</label>
+      <small class="js-busy-indicator" style="display:none">⏳</small>
       <button id="btnAnnotate" class="btn2 js-disable-while-busy" disabled>Annotate</button>
       <button id="btnPrevIssue" class="btn-grey js-disable-while-busy">Prev issue</button>
       <button id="btnNextIssue" class="btn-grey js-disable-while-busy">Next issue</button>

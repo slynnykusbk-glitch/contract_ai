@@ -1,0 +1,68 @@
+rule:
+  id: "uk.parties.identity"
+  version: "1.0.0"
+  title: "Identity of Parties: full legal name, registration and address"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","NDA","MSA"]
+    clauses: ["preamble","parties","notices"]
+    industries: ["generic","oil_gas"]
+  triggers:
+    any:
+      - regex: "(?i)Company No\\."
+      - regex: "(?i)incorporated in (England and Wales|Scotland)"
+  checks:
+    - id: "placeholders_left"
+      when:
+        any:
+          - regex: "\\[●"
+          - regex: "\\[DELETE AS APPROPRIATE\\]"
+          - regex: "NOTES IN GREEN"
+      finding:
+        message: "Placeholders or editorial notes remain in party details."
+        severity_level: "high"
+        risk: "high"
+        legal_basis:
+          - "Economic Crime & Corporate Transparency Act 2023"
+        span:
+          find: "(?is).{0,40}(\\[●|DELETE AS APPROPRIATE|NOTES IN GREEN).{0,40}"
+        suggestion:
+          text: "Replace placeholders with actual company name, number, address and email."
+          reason: "Contracts must contain complete, accurate party details before execution."
+        score_delta: -30
+    - id: "missing_company_details"
+      when:
+        any:
+          - not_regex: "(?i)Company No\\."
+          - not_regex: "(?i)incorporated in (England and Wales|Scotland)"
+          - regex: "PO Box"
+      finding:
+        message: "Company number/jurisdiction/registered office invalid or missing."
+        severity_level: "medium"
+        risk: "medium"
+        legal_basis:
+          - "Companies House guidance – registered office address"
+          - "ECA 2023 – registered email requirement"
+        suggestion:
+          text: "Ensure Company No., jurisdiction, physical registered office (no PO Box), and Notices email are included."
+        score_delta: -20
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: S3
+    issue_type: IdentityMismatch
+    score: 70
+    problem: "Incomplete or placeholder party identity details."
+    recommendation: "Insert full legal name, registration number, jurisdiction, registered office and email. Remove placeholders."
+    law_reference:
+      - "Companies Act 2006 s.1159"
+      - "ECA 2023 registered office/email"
+    category: "Parties & Preamble"
+    keywords: ["company number","registered office","placeholders","notices email"]
+metadata:
+  tags: ["identity","parties","preamble"]
+  tests:
+    positive:
+      - "Chrysaor Production (U.K.) Limited (Company No. 00524868), a company incorporated in England and Wales with registered office in London"
+    negative:
+      - "[●] Contractor, a company incorporated in [●] with registered office at PO Box 123"

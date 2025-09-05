@@ -297,8 +297,14 @@ async function doAnalyze() {
       applyMetaToBadges(metaFromResponse(resp));
     } catch {}
     renderResults(json);
-    const findings = parseFindings(json);
-    await annotateFindingsIntoWord(findings);
+    try {
+      const findings = parseFindings(json);
+      if (Array.isArray(findings) && findings.length > 0) {
+        await annotateFindingsIntoWord(findings);
+      }
+    } catch (e) {
+      console.warn("auto-annotate after analyze failed", e);
+    }
     (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.results", { detail: json }));
     notifyOk("Analyze OK");
   } catch (e) {
@@ -471,8 +477,10 @@ async function bootstrap() {
   }
 }
 // Codex added helpers for nth occurrence targeting
-function normalizeText(s){return s.replace(/\r\n?/g,"\n").trim().replace(/[ \t]+/g," ");}
-async function mapFindingToRange(f){const last=window.__lastAnalyzed||"";const snippet=normalizeText(f.snippet||"");const occIdx=(()=>{if(typeof f.start!=="number"||!snippet)return 0;let idx=-1,n=0;while((idx=last.indexOf(snippet,idx+1))!==-1&&idx<f.start)n++;return n;})();try{return await Word.run(async ctx=>{const body=ctx.document.body;const searchRes=body.search(snippet,{matchCase:false,matchWholeWord:false});searchRes.load("items");await ctx.sync();const items=searchRes.items||[];return items[Math.min(occIdx,Math.max(0,items.length-1))]||null;});}catch(e){console.warn("mapFindingToRange fail",e);return null;}}
-async function annotateFindingsIntoWord(findings){const last=window.__lastAnalyzed||"";for(const f of findings){const snippet=normalizeText(f.snippet||"");const occIdx=(()=>{if(typeof f.start!=="number"||!snippet)return 0;let idx=-1,n=0;while((idx=last.indexOf(snippet,idx+1))!==-1&&idx<f.start)n++;return n;})();try{await Word.run(async ctx=>{const body=ctx.document.body;const searchRes=body.search(snippet,{matchCase:false,matchWholeWord:false});searchRes.load("items");await ctx.sync();const items=searchRes.items||[];const range=items[Math.min(occIdx,Math.max(0,items.length-1))];if(range){const msg=`${f.rule_id} (${f.severity})${f.advice?": "+f.advice:""}`;range.insertComment(msg);}await ctx.sync();});}catch(e){console.warn("annotate fail",e);}}}
+function normalizeText(s){return s? s.replace(/\r\n/g,"\n").replace(/\r/g,"\n").replace(/[ \t]+/g," ").trim():"";}
+function buildLegalComment(f){const sev=(f.severity||"info").toUpperCase();const rid=f.rule_id||"rule";const ct=f.clause_type?` (${f.clause_type})`:"";const adv=f.advice?` — ${f.advice}`:"";const law=f.law_reference?` | Law: ${f.law_reference}`:"";const cit=Array.isArray(f.citations)&&f.citations.length?` | Sources: ${f.citations.join(", ")}`:"";const xrf=f.conflict_with?` | Conflicts: ${f.conflict_with}`:"";return`[${sev}] ${rid}${ct}${adv}${law}${xrf}${cit}`;}
+function nthOccurrenceIndex(hay,needle,startPos){if(!needle)return 0;let idx=-1,n=0;const bound=typeof startPos==="number"?Math.max(0,startPos):Number.MAX_SAFE_INTEGER;while((idx=hay.indexOf(needle,idx+1))!==-1&&idx<bound)n++;return n;}
+async function mapFindingToRange(f){const last=window.__lastAnalyzed||"";const base=normalizeText(last);const snippet=normalizeText(f.snippet||"");const occIdx=nthOccurrenceIndex(base,snippet,f.start);try{return await Word.run(async ctx=>{const body=ctx.document.body;const searchRes=body.search(snippet,{matchCase:false,matchWholeWord:false});searchRes.load("items");await ctx.sync();const items=searchRes.items||[];return items[Math.min(occIdx,Math.max(0,items.length-1))]||null;});}catch(e){console.warn("mapFindingToRange fail",e);return null;}}
+async function annotateFindingsIntoWord(findings){const last=window.__lastAnalyzed||"";const base=normalizeText(last);for(const f of findings){const snippet=normalizeText(f.snippet||"");if(!snippet)continue;const occIdx=nthOccurrenceIndex(base,snippet,f.start);try{await Word.run(async ctx=>{const body=ctx.document.body;const searchRes=body.search(snippet,{matchCase:false,matchWholeWord:false});searchRes.load("items");await ctx.sync();const items=searchRes.items||[];const target=items[Math.min(occIdx,Math.max(0,items.length-1))];if(target){const msg=buildLegalComment(f);target.insertComment(msg);}else{console.warn("[annotate] snippet not found",{snippet,occIdx,total:items.length});}await ctx.sync();});}catch(e){console.warn("annotate error",e);}}}
 async function applyOpsTracked(ops){if(!ops||!ops.length)return;const last=window.__lastAnalyzed||"";await Word.run(async ctx=>{const body=ctx.document.body;ctx.document.trackRevisions=true;for(const op of ops){const snippet=last.slice(op.start,op.end);const occIdx=(()=>{let idx=-1,n=0;while((idx=last.indexOf(snippet,idx+1))!==-1&&idx<op.start)n++;return n;})();const found=body.search(snippet,{matchCase:false,matchWholeWord:false});found.load("items");await ctx.sync();const items=found.items||[];const target=items[Math.min(occIdx,Math.max(0,items.length-1))];if(target){target.insertText(op.replacement,"Replace");try{target.insertComment("AI edit");}catch{}}else{console.warn("[applyOpsTracked] match not found",{snippet,occIdx});}await ctx.sync();}});}
 bootstrap();

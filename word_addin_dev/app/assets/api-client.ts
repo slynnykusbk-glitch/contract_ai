@@ -12,16 +12,21 @@ export type Meta = {
 
 export type AnalyzeFinding = {
   rule_id: string;
-  clause_type: string;
-  severity: string;
-  start: number;
-  end: number;
-  snippet: string;
+  clause_type?: string;
+  severity?: "low" | "medium" | "high" | string;
+  start?: number;
+  end?: number;
+  snippet?: string;
   advice?: string;
+  law_reference?: string;
+  citations?: string[];
+  conflict_with?: string;
+  category?: string;
+  score?: number;
 };
 
 export type AnalyzeResponse = {
-  status: 'ok';
+  status: "ok" | "OK";
   analysis?: { findings?: AnalyzeFinding[] };
   findings?: AnalyzeFinding[];
   issues?: AnalyzeFinding[];

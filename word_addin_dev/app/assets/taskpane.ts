@@ -332,6 +332,58 @@ async function onApplyTracked() {
   }
 }
 
+async function onAcceptAll() {
+  try {
+    const dst = $(Q.proposed);
+    const proposed = (dst?.value || "").trim();
+    if (!proposed) { (window as any).toast?.("Nothing to accept"); return; }
+
+    const cid = (document.getElementById("cid")?.textContent || "").trim();
+    const base = (() => {
+      try { return (localStorage.getItem("backendUrl") || "https://localhost:9443").replace(/\/+$/, ""); }
+      catch { return "https://localhost:9443"; }
+    })();
+    const link = cid && cid !== "—" ? `${base}/api/trace/${cid}` : "AI draft";
+
+    await Word.run(async ctx => {
+      const range = ctx.document.getSelection();
+      (ctx.document as any).trackRevisions = true;
+      range.insertText(proposed, "Replace");
+      try { range.insertComment(link); } catch {}
+      await ctx.sync();
+    });
+
+    (window as any).toast?.("Accepted into Word");
+    console.log("[OK] Accepted into Word");
+  } catch (e) {
+    (window as any).toast?.("Accept failed");
+    console.error(e);
+  }
+}
+
+async function onRejectAll() {
+  try {
+    const dst = $(Q.proposed);
+    if (dst) {
+      dst.value = "";
+      dst.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    await Word.run(async ctx => {
+      const range = ctx.document.getSelection();
+      const revs = range.revisions;
+      revs.load("items");
+      await ctx.sync();
+      (revs.items || []).forEach(r => { try { r.reject(); } catch {} });
+      await ctx.sync();
+    });
+    (window as any).toast?.("Rejected");
+    console.log("[OK] Rejected");
+  } catch (e) {
+    (window as any).toast?.("Reject failed");
+    console.error(e);
+  }
+}
+
 function wireUI() {
   bindClick("#btnTest", doHealth);
   bindClick("#btnAnalyze", doAnalyze);
@@ -348,6 +400,7 @@ function wireUI() {
     const findings = parseFindings(data);
     annotateFindingsIntoWord(findings);
   });
+
   wireResultsToggle();
   console.log("Panel UI wired");
 }

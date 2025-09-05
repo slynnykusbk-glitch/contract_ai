@@ -1,0 +1,38 @@
+rule:
+  id: "uk.master.exhibitj.deed_formalities"
+  version: "1.0.0"
+  title: "Exhibit J deeds (PCG/Bond/LC) must satisfy s.44 CA 2006"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["exhibit_j","guarantee","bond","letter_of_credit"]
+  triggers:
+    any:
+      - regex: "(?i)Exhibit\\s+J|Parent\\s+Company\\s+Guarantee|Performance\\s+Bond|Letter\\s+of\\s+Credit"
+  checks:
+    - id: "missing_s44_elements"
+      when:
+        all:
+          - regex: "(?i)executed\\s+as\\s+a\\s+deed"
+          - not_regex: "(?i)(two\\s+directors|director\\s+and\\s+company\\s+secretary|witness)"
+      finding:
+        message: "Deed form lacks s.44 CA 2006 execution mechanics (signatories/witness)."
+        severity_level: "critical"
+        risk: "critical"
+        legal_basis:
+          - "Companies Act 2006 s.44"
+          - "Law Commission 2019 / GOV.UK IWG — e-execution"
+        suggestion:
+          text: "Provide execution blocks for two directors or a director and company secretary, or proper witnessing."
+        score_delta: -40
+  outcome:
+    status: fail
+    risk_level: critical
+    severity: S1
+    issue_type: DeedExecutionInvalid
+    score: 50
+    problem: "Deed may be unenforceable due to invalid execution."
+    recommendation: "Fix signatory blocks to comply with s.44, including e-sign best practice."
+    law_reference: ["CA 2006 s.44","Law Commission 2019"]
+    category: "Exhibits"
+    keywords: ["deed","PCG","Bond","LC","s.44"]

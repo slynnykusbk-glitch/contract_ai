@@ -1,0 +1,36 @@
+rule:
+  id: "uk.master.recitals.no_operational_shall"
+  version: "1.0.0"
+  title: "Recitals must not contain operative 'shall' obligations"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA","NDA"]
+    clauses: ["recitals","preamble"]
+  triggers:
+    any:
+      - regex: "(?i)recitals?|preamble"
+  checks:
+    - id: "operative_shall_in_recitals"
+      when:
+        any:
+          - regex: "(?i)\\bshall\\b"
+      finding:
+        message: "Recitals use 'shall' suggesting operative obligation."
+        severity_level: "major"
+        risk: "high"
+        legal_basis:
+          - "Interpretation: Arnold, Rainy Sky, Wood v Capita"
+        suggestion:
+          text: "Move obligations to Clauses/Call-Off; keep Recitals declarative."
+        score_delta: -20
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: OperativeObligationInRecitals
+    score: 70
+    problem: "Operative language in Recitals."
+    recommendation: "Recitals should be context only; obligations belong in Clauses."
+    law_reference: ["Wood v Capita [2017] UKSC 24"]
+    category: "Recitals"
+    keywords: ["shall","operative","recitals"]

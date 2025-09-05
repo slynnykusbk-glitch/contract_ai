@@ -1,0 +1,40 @@
+rule:
+  id: "uk.master.recitals.no_min_purchase"
+  version: "1.0.0"
+  title: "Recitals: no minimum purchase/volume commitment"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA","NDA"]
+    clauses: ["recitals","preamble"]
+    industries: ["generic","oil_gas"]
+  triggers:
+    any:
+      - regex: "(?i)therefore agree as follows"
+      - regex: "(?i)recitals?|preamble"
+  checks:
+    - id: "volume_commitment_in_recitals"
+      when:
+        any:
+          - regex: "(?i)minimum\\s+(purchase|commitment|order)"
+          - regex: "(?i)shall\\s+purchase\\s+at\\s+least"
+          - regex: "(?i)guarantee\\s+of\\s+(volume|work)"
+      finding:
+        message: "Recitals include a minimum purchase/volume commitment."
+        severity_level: "major"
+        risk: "high"
+        legal_basis:
+          - "Interpretation: Wood v Capita [2017] UKSC 24"
+        suggestion:
+          text: "Remove volume commitments from Recitals; operative commitments belong in Clauses/Call-Off and clause 3 should negate volume guarantees."
+        score_delta: -25
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: VolumeCommitmentInRecitals
+    score: 70
+    problem: "Minimum purchase/volume appears in Recitals."
+    recommendation: "Delete in Recitals; if needed, move to operative clauses with limits."
+    law_reference: ["Wood v Capita [2017] UKSC 24"]
+    category: "Recitals"
+    keywords: ["minimum purchase","guarantee of volume","recitals"]

@@ -1,0 +1,38 @@
+rule:
+  id: "uk.master.incorp.heavy_terms_notice"
+  version: "1.0.0"
+  title: "Incorporation: heavy/unusual terms require clear notice"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA","NDA"]
+    clauses: ["1.1","incorporation","exhibits","policies"]
+  triggers:
+    any:
+      - regex: "(?i)by reference (are|is) incorporated"
+  checks:
+    - id: "heavy_terms_without_notice"
+      when:
+        all:
+          - regex: "(?i)indemnity|limitation of liability|exclude(d)?\\s+liability|liquidated damages|termination\\s+for\\s+convenience"
+          - not_regex: "(?i)clear\\s+notice|highlight|prominently\\s+notified|subject\\s+to\\s+UCTA|reasonableness"
+      finding:
+        message: "Heavy/unusual terms incorporated by reference without clear notice / reasonableness."
+        severity_level: "major"
+        risk: "high"
+        legal_basis:
+          - "Interfoto v Stiletto [1989] QB 433"
+          - "UCTA 1977 (reasonableness)"
+        suggestion:
+          text: "Add explicit notice/summary of heavy terms and confirm UCTA reasonableness; avoid burying exclusions in referenced documents."
+        score_delta: -25
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: HeavyTermsWithoutNotice
+    score: 80
+    problem: "Potentially unenforceable heavy terms if not clearly notified."
+    recommendation: "Provide conspicuous notice and reasonableness statement."
+    law_reference: ["Interfoto [1989] QB 433","UCTA 1977"]
+    category: "Incorporation"
+    keywords: ["incorporation by reference","heavy terms","UCTA","Interfoto"]

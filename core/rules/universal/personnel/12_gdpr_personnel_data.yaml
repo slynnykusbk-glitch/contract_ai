@@ -1,0 +1,89 @@
+rule:
+  id: "universal.personnel.gdpr_personnel_data"
+  version: "1.1.0"
+  title: "Personnel data: lawful basis (Art.6), special category condition (Art.9) and DPIA if large-scale"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["privacy","data protection","personnel"]
+  triggers:
+    any:
+      - regex: "(?i)\\b(GDPR|data\\s+protection|personal\\s+data|special\\s+category|health\\s+data|biometric|genetic)\\b"
+  checks:
+    # A) Явная законность обработки: Art.6 или упоминание "lawful basis"
+    - id: "missing_art6_lawful_basis"
+      when:
+        not_regex: "(?i)\\b(Art(\\.|icle)?\\s*6|lawful\\s+basis)\\b"
+      finding:
+        message: "No explicit lawful basis for processing personnel data (Art.6)."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: ["UK GDPR Art.6 — Lawfulness of processing"]
+        suggestion:
+          text: "State a specific Art.6 lawful basis (e.g., contract, legal obligation, legitimate interests) for personnel data."
+        score_delta: -18
+
+    # B) Если фигурируют special category/health/biometric/genetic — должна быть Art.9 / условие обработки
+    - id: "special_category_without_art9"
+      when:
+        all:
+          - regex: "(?i)\\b(special\\s+category|health\\s+data|biometric|genetic)\\b"
+          - not_regex: "(?i)\\b(Art(\\.|icle)?\\s*9|special\\s+category\\s+(condition|basis)|Schedule\\s*1\\s*(DPA|Data\\s*Protection\\s*Act)\\s*2018)\\b"
+      finding:
+        message: "Special category data referenced without an Art.9 condition (or DPA 2018 Sch.1 condition)."
+        severity_level: "major"
+        risk: "high"
+        legal_basis:
+          - "UK GDPR Art.9 — Processing of special categories of personal data"
+          - "DPA 2018 Schedule 1 — Employment/health conditions"
+        suggestion:
+          text: "Add an explicit Art.9 condition (e.g., employment, health & safety) or a DPA 2018 Schedule 1 condition."
+        score_delta: -18
+
+    # C) Large-scale / системный мониторинг — нужен DPIA
+    - id: "large_scale_without_dpia"
+      when:
+        all:
+          - regex: "(?i)\\b(large\\-?scale|systematic\\s+(monitoring|profiling))\\b"
+          - not_regex: "(?i)\\b(DPIA|data\\s+protection\\s+impact\\s+assessment)\\b"
+      finding:
+        message: "Large-scale/systematic processing mentioned without a DPIA requirement."
+        severity_level: "major"
+        risk: "medium"
+        legal_basis: ["UK GDPR Art.35 — DPIA"]
+        suggestion:
+          text: "Include a requirement to perform a DPIA before large-scale/systematic processing of personnel data."
+        score_delta: -12
+
+    # D) Практические основы: минимизация и срок хранения (мягкое предупреждение)
+    - id: "no_minimisation_or_retention"
+      when:
+        not_regex: "(?i)(data\\s+minimi[sz]ation|minimi[sz]e\\s+data|minimum\\s+necessary|retention\\s+(period|schedule))"
+      finding:
+        message: "No mention of data minimisation and/or a retention period/schedule for personnel data."
+        severity_level: "minor"
+        risk: "medium"
+        legal_basis:
+          - "UK GDPR Art.5(1)(c) — Data minimisation"
+          - "UK GDPR Art.5(1)(e) — Storage limitation"
+        suggestion:
+          text: "Add data minimisation wording and a clear retention period/schedule for personnel records."
+        score_delta: -8
+
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: GDPRBasisGap
+    score: 74
+    problem: "Personnel data governance lacks explicit Art.6 basis, Art.9 condition and/or DPIA for large-scale processing."
+    recommendation: "Add Art.6 lawful basis; add Art.9/Schedule 1 condition where special category data is processed; require DPIA for large-scale/systematic processing; include minimisation and retention."
+    law_reference:
+      - "UK GDPR Art.6 — Lawfulness of processing"
+      - "UK GDPR Art.9 — Special categories"
+      - "UK GDPR Art.35 — DPIA"
+      - "UK GDPR Art.5 — Principles (minimisation; storage limitation)"
+    category: "Workforce Governance"
+    keywords: ["GDPR","Art.6","Art.9","DPIA","minimisation","retention"]
+metadata:
+  tags: ["gdpr","privacy","personnel"]

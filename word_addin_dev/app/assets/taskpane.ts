@@ -57,11 +57,11 @@ function buildLegalComment(f: AnalyzeFinding): string {
   const sev = (f.severity || "info").toUpperCase();
   const rid = f.rule_id || "rule";
   const ct = f.clause_type ? ` (${f.clause_type})` : "";
-  const adv = f.advice ? ` — ${f.advice}` : "";
-  const law = f.law_reference ? ` | Law: ${f.law_reference}` : "";
-  const cit = Array.isArray(f.citations) && f.citations.length ? ` | Sources: ${f.citations.join(", ")}` : "";
-  const xrf = f.conflict_with ? ` | Conflicts: ${f.conflict_with}` : "";
-  return `[${sev}] ${rid}${ct}${adv}${law}${xrf}${cit}`;
+  const advice = f.advice || "—";
+  const law = Array.isArray(f.law_refs) && f.law_refs.length ? f.law_refs.join('; ') : "—";
+  const conflict = Array.isArray(f.conflict_with) && f.conflict_with.length ? f.conflict_with.join('; ') : "—";
+  const fix = Array.isArray(f.ops) && f.ops.length ? 'See draft / applied ops' : '—';
+  return `[${sev}] ${rid}${ct}\nReason: ${advice}\nLaw: ${law}\nConflict: ${conflict}\nSuggested fix: ${fix}`;
 }
 
 function nthOccurrenceIndex(hay: string, needle: string, startPos?: number): number {

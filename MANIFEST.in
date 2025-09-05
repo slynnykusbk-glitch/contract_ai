@@ -1,1 +1,2 @@
 recursive-include contract_review_app/legal_rules/policy_packs *.yaml
+recursive-include core/rules *.yaml

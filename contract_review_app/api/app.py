@@ -370,16 +370,20 @@ LLM_CONFIG = load_llm_config()
 LLM_SERVICE = LLMService(LLM_CONFIG)
 
 
-def _analyze_document(text: str) -> Dict[str, Any]:
+def _analyze_document(text: str, risk: str = "medium") -> Dict[str, Any]:
     """Analyze ``text`` using the lightweight rule engine.
 
     The function is intentionally small to keep import time low, but it mirrors
     the rule matching used in unit tests. Tests may monkeypatch this function
     to provide custom behaviour.
     """
-    from contract_review_app.legal_rules import loader
+    from contract_review_app.legal_rules import loader, engine
 
-    findings = loader.match_text(text or "")
+    findings = engine.analyze(text or "", loader._RULES)
+
+    order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+    thr = order.get((risk or "medium").lower(), 1)
+    findings = [f for f in findings if order.get(str(f.get("severity")).lower(), 1) >= thr]
     doc_analyses: List[Dict[str, Any]] = []
     lower = text.lower() if text else ""
     if "exhibit l" in lower:
@@ -627,6 +631,7 @@ class AnalyzeRequest(BaseModel):
     body: Optional[str] = None
     language: Optional[str] = None
     mode: Optional[str] = None
+    risk: Optional[str] = None
 
 
 class AnalyzeResponse(BaseModel):
@@ -1357,12 +1362,13 @@ def api_analyze(req: AnalyzeRequest, request: Request):
     if not txt:
         raise HTTPException(status_code=422, detail="text is empty")
     debug = request.query_params.get("debug")
+    risk_param = request.query_params.get("risk") or req.risk or getattr(req, "threshold", None) or "medium"
 
     current_provider_name = PROVIDER_META.get("provider", "")
     current_model_name = PROVIDER_META.get("model", "")
     doc_hash = _fingerprint(
         text=txt,
-        risk=getattr(req, "risk", getattr(req, "threshold", "medium")),
+        risk=risk_param,
         schema=SCHEMA_VERSION,
         provider=current_provider_name,
         model=current_model_name,
@@ -1400,7 +1406,10 @@ def api_analyze(req: AnalyzeRequest, request: Request):
         return _finalize_json("/api/analyze", cached_cid, headers)
 
     # existing internal function
-    analysis = _analyze_document(txt)
+    try:
+        analysis = _analyze_document(txt, risk=risk_param)
+    except TypeError:  # back-compat for patched funcs
+        analysis = _analyze_document(txt)  # type: ignore[misc]
     if asyncio.iscoroutine(analysis):
         analysis = asyncio.run(analysis)
     if str(debug) == "1" and isinstance(analysis, dict):

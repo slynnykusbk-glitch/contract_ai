@@ -38,6 +38,9 @@ export function parseFindings(resp: AnalyzeResponse): AnalyzeFinding[] {
   return Array.isArray(arr) ? arr.filter(Boolean) : [];
 }
 
+// (dev aid; harmless in prod)
+;(window as any).parseFindings = parseFindings;
+
 export function metaFromResponse(r: { headers: Headers; json?: any; status?: number }): Meta {
   const h = r.headers;
   const js = r.json || {};

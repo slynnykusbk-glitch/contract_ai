@@ -1,0 +1,55 @@
+rule:
+  id: "uk.s3.coventurers.agent_model_cap"
+  version: "1.0.0"
+  title: "Company acts as agent for Coventurers; aggregated cap; no direct rights; no direct comms"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off"]
+    clauses: ["coventurers","liability","crpta"]
+  triggers:
+    any:
+      - regex: "(?i)Co-?venturers|joint\\s+operations|JV"
+  checks:
+    - id: "no_agent_model"
+      when:
+        not_regex: "(?i)acts\\s+as\\s+agent|in\\s+its\\s+own\\s+name\\s+for\\s+Co-?venturers"
+      finding:
+        message: "Agent model not stated."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "State Company acts as agent; Contractor looks only to Company."
+        score_delta: -20
+    - id: "no_aggregate_cap"
+      when:
+        not_regex: "(?i)aggregate(d)?\\s+cap|cumulative\\s+limit"
+      finding:
+        message: "No aggregated cap for Company+Coventurers."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Set cumulative cap aligned with Clause 36."
+        score_delta: -15
+    - id: "direct_comms_allowed"
+      when:
+        regex: "(?i)direct\\s+communications\\s+with\\s+Co-?venturers"
+      finding:
+        message: "Direct comms with Co-venturers allowed — governance risk."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Prohibit direct comms absent Company consent."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: CoventurerModelGap
+    score: 80
+    problem: "Agent model/cap/comms misaligned."
+    recommendation: "Enforce agent model; aggregate cap; block direct comms."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["coventurers","agent","cap"]
+metadata:
+  tags: ["coventurers"]

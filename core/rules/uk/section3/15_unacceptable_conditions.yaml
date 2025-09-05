@@ -1,0 +1,37 @@
+rule:
+  id: "uk.s3.calloff.unacceptable_conditions_3_11"
+  version: "1.0.0"
+  title: "Reject conditional signatures/subject to negotiation/supplier Ts&Cs (3.11)"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Call-Off"]
+    clauses: ["call-off","acceptance"]
+  triggers:
+    any:
+      - regex: "(?i)conditional\\s+signature|subject\\s+to\\s+negotiation|subject\\s+to\\s+supplier\\s+terms"
+  checks:
+    - id: "reject_condition"
+      when:
+        all:
+          - regex: "(?i)conditional\\s+signature|subject\\s+to\\s+negotiation|subject\\s+to\\s+supplier\\s+terms"
+          - not_regex: "(?i)no\\s+conditional\\s+signature"
+      finding:
+        message: "Unacceptable condition per 3.11."
+        severity_level: "blocker"
+        risk: "high"
+        suggestion:
+          text: "Remove conditional/subject-to wording; use 3.12 process."
+        score_delta: -30
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S1
+    issue_type: UnacceptableCondition
+    score: 60
+    problem: "Conditional/subject-to terms present."
+    recommendation: "Delete and re-issue."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["conditional","subject to","3.11"]
+metadata:
+  tags: ["3.11","blocker"]

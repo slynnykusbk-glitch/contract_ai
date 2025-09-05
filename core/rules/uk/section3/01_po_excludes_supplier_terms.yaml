@@ -1,0 +1,47 @@
+rule:
+  id: "uk.s3.po.exclude_supplier_terms"
+  version: "1.0.0"
+  title: "PO/Call-Off must exclude Supplier T&Cs; precedence per 2.2.4 (Tekdata)"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Call-Off","Master Agreement","MSA","PO"]
+    clauses: ["call-off","precedence","purchase order"]
+  triggers:
+    any:
+      - regex: "(?i)Supplier\\s+Terms\\s+apply|terms\\s+on\\s+(the\\s+)?back|subject\\s+to\\s+supplier\\s+terms"
+      - regex: "(?i)to\\s+the\\s+exclusion\\s+of\\s+all\\s+other\\s+terms"
+  checks:
+    - id: "supplier_terms_present"
+      when:
+        regex: "(?i)Supplier\\s+Terms\\s+apply|terms\\s+on\\s+(the\\s+)?back|subject\\s+to\\s+supplier\\s+terms"
+      finding:
+        message: "Supplier/boilerplate T&Cs attempt to apply (battle of forms risk)."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: ["Tekdata v Amphenol (CA, 2009)"]
+        suggestion:
+          text: "Insert: 'This Call-Off/PO incorporates the MSA to the exclusion of all other terms; precedence per Clause 2.2.4.'"
+        score_delta: -20
+    - id: "msa_precedence_missing"
+      when:
+        not_regex: "(?i)exclusion\\s+of\\s+all\\s+other\\s+terms|precedence|Clause\\s*2\\.2\\.4"
+      finding:
+        message: "No explicit exclusion of Supplier T&Cs/precedence."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add explicit exclusion and precedence statement (2.2.4)."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: BattleOfFormsRisk
+    score: 80
+    problem: "Supplier T&Cs may override MSA."
+    recommendation: "Exclude Supplier T&Cs; enforce 2.2.4."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["battle of forms","PO","precedence","Tekdata"]
+metadata:
+  tags: ["po","precedence","tekdata"]

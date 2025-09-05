@@ -1,0 +1,47 @@
+rule:
+  id: "uk.s3.order.acceptance_triggers_channels"
+  version: "1.0.0"
+  title: "Order acceptance via performance/signature/written confirmation must align with Clause 29"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Call-Off"]
+    clauses: ["call-off","acceptance","notices"]
+  triggers:
+    any:
+      - regex: "(?i)acceptance\\s+by\\s+performance|signature|written\\s+confirmation"
+  checks:
+    - id: "channels_misaligned"
+      when:
+        all:
+          - regex: "(?i)written\\s+confirmation"
+          - not_regex: "(?i)Clause\\s*29|Notices|e-?signature|portal"
+      finding:
+        message: "Written confirmation channel not aligned with Notices/writing policy."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Reference Clause 29 and allow e-signature/portal."
+        score_delta: -20
+    - id: "joint_liability_check"
+      when:
+        regex: "(?i)joint(ly)?\\s+and\\s+severally"
+      finding:
+        message: "Joint liability language conflicts with 3.6.2."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Confirm 'only own Order' liability."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: OrderAcceptanceProcessRisk
+    score: 80
+    problem: "Acceptance channels misaligned/joint liability risk."
+    recommendation: "Align channels; remove joint liability."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["acceptance","channels"]
+metadata:
+  tags: ["acceptance","channels"]

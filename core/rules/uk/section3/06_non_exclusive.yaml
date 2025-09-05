@@ -1,0 +1,35 @@
+rule:
+  id: "uk.s3.exclusivity.non_exclusive"
+  version: "1.0.0"
+  title: "Non-exclusive relationship; detect de-facto exclusivity"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off"]
+    clauses: ["section3","exclusivity"]
+  triggers:
+    any:
+      - regex: "(?i)exclusive\\s+supplier|right\\s+of\\s+first\\s+refusal|ROFR"
+  checks:
+    - id: "de_facto_exclusivity"
+      when:
+        regex: "(?i)exclusive\\s+supplier|right\\s+of\\s+first\\s+refusal|ROFR"
+      finding:
+        message: "De-facto exclusivity detected; conflicts with 3.2–3.3."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Remove exclusivity/ROFR or move to separate negotiated term."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: ExclusivityRisk
+    score: 88
+    problem: "Potential exclusivity."
+    recommendation: "Confirm non-exclusive status."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["exclusivity","ROFR"]
+metadata:
+  tags: ["exclusivity"]

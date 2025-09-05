@@ -1,0 +1,45 @@
+rule:
+  id: "uk.s3.ld.only_remedy_gates"
+  version: "1.0.0"
+  title: "LD as exclusive remedy for delay only with conditions/caps/termination link"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Call-Off","MSA"]
+    clauses: ["delay","ld","remedies"]
+  triggers:
+    any:
+      - regex: "(?i)only\\s+remedy\\s+for\\s+delay"
+  checks:
+    - id: "no_cap_or_threshold"
+      when:
+        not_regex: "(?i)cap|max(imum)?\\s+LD|percentage\\s+of\\s+price"
+      finding:
+        message: "Exclusive LD without cap/threshold reference."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add LD cap and termination threshold."
+        score_delta: -15
+    - id: "no_conditions_ref"
+      when:
+        not_regex: "(?i)subject\\s+to\\s+Clause\\s*3\\.10\\.(3|4|5)|conditions\\s+set\\s+out\\s+in\\s+Clause\\s*3\\.10"
+      finding:
+        message: "Exclusive LD lacks reference to gating conditions."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Reference gating subclauses (3.10.3–.5)."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: LDExclusiveRemedyRisk
+    score: 80
+    problem: "Exclusive LD without clear gates/caps."
+    recommendation: "Add caps and gating references."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["LD","exclusive remedy","cap"]
+metadata:
+  tags: ["ld","remedies"]

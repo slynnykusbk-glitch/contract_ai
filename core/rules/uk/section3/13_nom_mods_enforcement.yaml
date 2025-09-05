@@ -1,0 +1,55 @@
+rule:
+  id: "uk.s3.nom.mods_enforcement_3_12_3_13"
+  version: "1.0.0"
+  title: "Any modification of MSA in Call-Off must comply with 3.12; else null/void (3.13)"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Call-Off","MSA"]
+    clauses: ["modification","nom"]
+  triggers:
+    any:
+      - regex: "(?i)modify|amend|override|var(y|iation)"
+  checks:
+    - id: "mod_not_in_body"
+      when:
+        not_regex: "(?i)in\\s+the\\s+body\\s+of\\s+this\\s+Call[-\\s]?Off"
+      finding:
+        message: "Modification not placed in Call-Off body."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Place modification text in Call-Off body."
+        score_delta: -15
+    - id: "no_clause_citation"
+      when:
+        not_regex: "(?i)expressly\\s+modif(y|ies)\\s+Clause\\s+\\d+(?:\\.\\d+)*"
+      finding:
+        message: "No explicit citation of modified Clause number/title."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Cite exact Clause/Exhibit and change."
+        score_delta: -20
+    - id: "nullity_warning"
+      when:
+        not_regex: "(?i)null\\s+and\\s+void|Clause\\s*3\\.13"
+      finding:
+        message: "3.13 nullity safeguard not referenced."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Reference 3.13 nullity for non-compliant changes."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: NOMBreachRisk
+    score: 80
+    problem: "Modification doesn’t meet 3.12 formalities."
+    recommendation: "Comply with 3.12; enforce 3.13 nullity."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["NOM","modification","null and void"]
+metadata:
+  tags: ["nom","modification"]

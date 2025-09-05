@@ -1,0 +1,68 @@
+rule:
+  id: "uk.s3.calloff.minimum_contents"
+  version: "1.0.0"
+  title: "Call-Off must include parties, scope, price, schedule, MSA incorporation & exclusion of other T&Cs"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Call-Off"]
+    clauses: ["call-off"]
+  triggers:
+    any:
+      - regex: "(?i)Call[-\\s]?Off"
+  checks:
+    - id: "parties_missing"
+      when:
+        not_regex: "(?i)Company\\s+and\\s+Contractor"
+      finding:
+        message: "Parties not clearly defined."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Name Company and Contractor entities."
+        score_delta: -15
+    - id: "msa_incorp_missing"
+      when:
+        not_regex: "(?i)incorporat(es|ed)\\s+the\\s+MSA|this\\s+Agreement"
+      finding:
+        message: "MSA incorporation missing."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "State incorporation of MSA."
+        score_delta: -15
+    - id: "exclude_other_terms_missing"
+      when:
+        not_regex: "(?i)exclusion\\s+of\\s+all\\s+other\\s+terms"
+      finding:
+        message: "Exclusion of other terms missing."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add exclusion clause."
+        score_delta: -15
+    - id: "scope_price_schedule_missing"
+      when:
+        any:
+          - not_regex: "(?i)Scope|SoW"
+          - not_regex: "(?i)Price|rates|lump\\s+sum"
+          - not_regex: "(?i)Schedule|milestones|key\\s+dates"
+      finding:
+        message: "Scope/Price/Schedule incomplete."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Provide SoW, pricing basis, and schedule/key dates."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: CallOffContentGap
+    score: 78
+    problem: "Call-Off lacks mandatory elements."
+    recommendation: "Complete parties, MSA link, exclusion, SoW/price/schedule."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["contents","incorporation","exclusion"]
+metadata:
+  tags: ["calloff","contents"]

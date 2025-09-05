@@ -13,7 +13,12 @@ def _post(path, payload):
     )
     return urllib.request.urlopen(req, timeout=5)
 
-def test_gpt_draft_accepts_before_after():
+def test_gpt_draft_payload_and_response():
     payload = {"text":"Ping", "mode":"friendly", "before_text":"", "after_text":""}
     with _post("/api/gpt-draft", payload) as r:
         assert r.status == 200
+        data = json.load(r)
+    for k in ("text", "mode", "before_text", "after_text"):
+        assert k in payload and isinstance(payload[k], str)
+    assert isinstance(data.get("proposed_text"), str)
+    assert data["proposed_text"].strip() != ""

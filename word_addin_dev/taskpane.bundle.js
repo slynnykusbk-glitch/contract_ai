@@ -1,34 +1,42 @@
 // word_addin_dev/app/assets/api-client.js
-function metaFromResponse(r) {
-  const h = r.headers;
-  const js = r.json || {};
-  const llm = js.llm || js;
+function metaFromResponse(res) {
+  const h = res?.headers || new Headers();
+  const pick = (name) => {
+    const v = h.get(name);
+    return v == null ? "" : v;
+  };
   return {
-    cid: h.get("x-cid"),
-    xcache: h.get("x-cache"),
-    latencyMs: h.get("x-latency-ms"),
-    schema: h.get("x-schema-version"),
-    provider: h.get("x-provider") || llm.provider || js.provider || null,
-    model: h.get("x-model") || llm.model || js.model || null,
-    llm_mode: h.get("x-llm-mode") || llm.mode || js.mode || null,
-    usage: h.get("x-usage-total"),
-    status: r.status != null ? String(r.status) : null,
+    provider: pick("x-provider"),
+    model: pick("x-model"),
+    mode: pick("x-llm-mode"),
+    usage: pick("x-usage-total"),
+    schema: pick("x-schema-version"),
+    latency: pick("x-latency-ms"),
+    cid: pick("x-cid"),
+    xcache: pick("x-cache"),
   };
 }
-function applyMetaToBadges(m) {
+function applyMetaToBadges(meta) {
   const set = (id, v) => {
     const el = document.getElementById(id);
     if (el) el.textContent = v && v.length ? v : "\u2014";
   };
-  set("status", m.status);
-  set("cid", m.cid);
-  set("xcache", m.xcache);
-  set("latency", m.latencyMs);
-  set("schema", m.schema);
-  set("provider", m.provider);
-  set("model", m.model);
-  set("mode", m.llm_mode);
-  set("usage", m.usage);
+  set("cidBadge", meta.cid);
+  set("cid", meta.cid);
+  set("xcacheBadge", meta.xcache);
+  set("xcache", meta.xcache);
+  set("latencyBadge", meta.latency);
+  set("latency", meta.latency);
+  set("schemaBadge", meta.schema);
+  set("schema", meta.schema);
+  set("providerBadge", meta.provider);
+  set("provider", meta.provider);
+  set("modelBadge", meta.model);
+  set("model", meta.model);
+  set("modeBadge", meta.mode);
+  set("mode", meta.mode);
+  set("usageBadge", meta.usage);
+  set("usage", meta.usage);
 }
 var DEFAULT_BASE = "https://localhost:9443";
 function base() {
@@ -46,14 +54,12 @@ async function req(path, { method = "GET", body = null, key = path } = {}) {
     credentials: "include"
   });
   const json = await r.json().catch(() => ({}));
-  const meta = metaFromResponse({ headers: r.headers, json, status: r.status });
-  try { applyMetaToBadges(meta); } catch {}
   try {
     const w = window;
     w.__last = w.__last || {};
     w.__last[key] = { status: r.status, req: { path, method, body }, json };
   } catch {}
-  return { ok: r.ok, json, resp: r, meta };
+  return { ok: r.ok, json, resp: r };
 }
 async function apiHealth() { return await req("/health", { key: "health" }); }
 async function apiAnalyze(text) { return await req("/api/analyze", { method: "POST", body: { text, mode: "live" }, key: "analyze" }); }
@@ -95,6 +101,47 @@ var Q = {
   proposed: 'textarea#proposedText, textarea[name="proposed"], textarea[data-role="proposed-text"]',
   original: 'textarea#originalClause, textarea[name="original"], textarea[data-role="original-clause"]'
 };
+function slot(id, role) {
+  return document.querySelector(`[data-role="${role}"]`) || document.getElementById(id);
+}
+function renderResults(res) {
+  const clause = slot("resClauseType", "clause-type");
+  if (clause) clause.textContent = (res?.clause_type) || "\u2014";
+  const findingsArr = Array.isArray(res?.findings) ? res.findings : [];
+  const findingsList = slot("findingsList", "findings");
+  if (findingsList) {
+    findingsList.innerHTML = "";
+    findingsArr.forEach((f) => {
+      const li = document.createElement("li");
+      li.textContent = typeof f === "string" ? f : JSON.stringify(f);
+      findingsList.appendChild(li);
+    });
+  }
+  const recoArr = Array.isArray(res?.recommendations) ? res.recommendations : [];
+  const recoList = slot("recoList", "recommendations");
+  if (recoList) {
+    recoList.innerHTML = "";
+    recoArr.forEach((r) => {
+      const li = document.createElement("li");
+      li.textContent = typeof r === "string" ? r : JSON.stringify(r);
+      recoList.appendChild(li);
+    });
+  }
+  const count = slot("resFindingsCount", "findings-count");
+  if (count) count.textContent = String(findingsArr.length);
+  const pre = slot("rawJson", "raw-json");
+  if (pre) pre.textContent = JSON.stringify(res || {}, null, 2);
+}
+function wireResultsToggle() {
+  const toggle = slot("toggleRaw", "toggle-raw-json");
+  const pre = slot("rawJson", "raw-json");
+  if (toggle && pre) {
+    pre.style.display = "none";
+    toggle.addEventListener("click", () => {
+      pre.style.display = pre.style.display === "none" ? "block" : "none";
+    });
+  }
+}
 function setConnBadge(ok) {
   const el = document.getElementById("connBadge");
   if (el) el.textContent = `Conn: ${ok === null ? "\u2014" : ok ? "\u2713" : "\u00D7"}`;
@@ -173,7 +220,13 @@ async function onGetAIDraft(ev) {
   try {
     const src = $(Q.original);
     const dst = $(Q.proposed);
-    const text = (src?.value ?? "").trim();
+    let text = (src?.value ?? "").trim();
+    if (!text) {
+      try {
+        text = await getSelectionAsync();
+        if (src) src.value = text;
+      } catch {}
+    }
     if (!text) {
       notifyWarn("No source text");
       return;
@@ -181,11 +234,12 @@ async function onGetAIDraft(ev) {
     const modeSel = document.getElementById("cai-mode");
     const mode = modeSel?.value || "friendly";
     const ctx = await getSelectionContext(200);
-    const { ok, json } = await apiGptDraft("Please draft a neutral confidentiality clause.", mode, { before_text: ctx.before, after_text: ctx.after });
+    const { ok, json, resp } = await apiGptDraft(text, mode, { before_text: ctx.before, after_text: ctx.after });
     if (!ok) {
       notifyWarn("Draft failed");
       return;
     }
+    try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
     const proposed = (json?.proposed_text ?? "").toString();
     if (dst) {
       if (!dst.id) dst.id = "proposedText";
@@ -204,7 +258,8 @@ async function onGetAIDraft(ev) {
 }
 async function doHealth() {
   try {
-    const { ok, json } = await apiHealth();
+    const { ok, json, resp } = await apiHealth();
+    try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
     setConnBadge(ok);
     notifyOk(`Health: ${json.status} (schema ${json.schema})`);
   } catch (e) {
@@ -219,13 +274,16 @@ async function doAnalyzeDoc() {
     notifyErr("\u0412 \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0435 \u043D\u0435\u0442 \u0442\u0435\u043A\u0441\u0442\u0430");
     return;
   }
-  const { json } = await apiAnalyze(text);
+  const { json, resp } = await apiAnalyze(text);
+  try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
+  renderResults(json);
   (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.results", { detail: json }));
   notifyOk("Analyze OK");
 }
 async function doQARecheck() {
   const text = await getWholeDocText();
-  const { json } = await apiQaRecheck(text, []);
+  const { json, resp } = await apiQaRecheck(text, []);
+  try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
   (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
   notifyOk("QA recheck OK");
 }
@@ -263,6 +321,31 @@ async function onApplyTracked() {
     console.error(e);
   }
 }
+async function onInsertIntoWord() {
+  try {
+    const dst = $(Q.proposed);
+    const txt = (dst?.value || "").trim();
+    if (!txt) {
+      notifyWarn("No draft to insert");
+      return;
+    }
+    if (window.Office && window.Word) {
+      await Word.run(async (ctx) => {
+        const range = ctx.document.getSelection();
+        range.insertText(txt, "Replace");
+        await ctx.sync();
+      });
+      notifyOk("Inserted into Word");
+    } else {
+      await navigator.clipboard.writeText(txt);
+      notifyWarn("Not in Office environment; result copied to clipboard");
+    }
+  } catch (e) {
+    try { await navigator.clipboard.writeText($(Q.proposed)?.value || ""); } catch {}
+    notifyWarn("Not in Office environment; result copied to clipboard");
+    console.error(e);
+  }
+}
 function wireUI() {
   bindClick("#btnTest", doHealth);
   bindClick("#btnAnalyzeDoc", doAnalyzeDoc);
@@ -270,9 +353,11 @@ function wireUI() {
   document.getElementById("btnGetAIDraft")?.addEventListener("click", onGetAIDraft);
   bindClick("#btn-use-selection", onUseSelection);
   bindClick("#btn-use-whole", onUseWholeDoc);
+  bindClick("#btnInsertIntoWord", onInsertIntoWord);
   bindClick("#btnApplyTracked", onApplyTracked);
   bindClick("#btnAcceptAll", () => notifyWarn("Not implemented"));
   bindClick("#btnRejectAll", () => notifyWarn("Not implemented"));
+  wireResultsToggle();
   console.log("Panel UI wired");
 }
 async function bootstrap() {

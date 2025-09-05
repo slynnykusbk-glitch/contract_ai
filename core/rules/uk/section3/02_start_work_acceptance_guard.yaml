@@ -1,0 +1,38 @@
+rule:
+  id: "uk.s3.order.start_as_acceptance_guard"
+  version: "1.0.0"
+  title: "Start of performance as acceptance requires core terms locked; otherwise block"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Call-Off","MSA"]
+    clauses: ["call-off","formation"]
+  triggers:
+    any:
+      - regex: "(?i)commencement\\s+of\\s+performance\\s+constitutes\\s+acceptance|start\\s+work\\s+constitutes\\s+acceptance"
+  checks:
+    - id: "core_terms_not_locked"
+      when:
+        any:
+          - not_regex: "(?i)price|milestones?|LD|scope|IP|HSE"
+          - not_regex: "(?i)no\\s+work\\s+shall\\s+commence\\s+without\\s+a\\s+written\\s+Order"
+      finding:
+        message: "Start-work acceptance with core terms unset (RTS risk)."
+        severity_level: "blocker"
+        risk: "high"
+        legal_basis: ["RTS v Müller (UKSC, 2010)"]
+        suggestion:
+          text: "Add 'No work starts without signed Order or written confirmation covering Price/SoW/LD/IP/HSE.'"
+        score_delta: -30
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S1
+    issue_type: StartWorkAcceptanceRisk
+    score: 60
+    problem: "Work-as-acceptance without locked core terms."
+    recommendation: "Prohibit start without written order or lock core terms."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["acceptance","formation","RTS"]
+metadata:
+  tags: ["formation","rts"]

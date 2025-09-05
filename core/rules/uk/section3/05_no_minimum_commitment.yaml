@@ -1,0 +1,36 @@
+rule:
+  id: "uk.s3.volume.no_min_commit"
+  version: "1.0.0"
+  title: "No guarantee of volume; detect hidden minimums"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off"]
+    clauses: ["section3","volume","tender"]
+  triggers:
+    any:
+      - regex: "(?i)minimum\\s+(purchase|order|hours|commitment)|requirements\\s+contract"
+      - regex: "(?i)Nothing\\s+in\\s+this\\s+Agreement\\s+shall\\s+be\\s+construed\\s+as\\s+a\\s+guarantee"
+  checks:
+    - id: "hidden_minimum"
+      when:
+        regex: "(?i)minimum\\s+(purchase|order|hours|commitment)|requirements\\s+contract"
+      finding:
+        message: "Hidden minimum commitment contradicts 3.1."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Remove minimums or qualify via explicit framework exception."
+        score_delta: -20
+  outcome:
+    status: pass
+    risk_level: low
+    severity: S4
+    issue_type: None
+    score: 100
+    problem: ""
+    recommendation: ""
+    law_reference: []
+    category: "Section 3"
+    keywords: ["volume","minimum commitment"]
+metadata:
+  tags: ["volume"]

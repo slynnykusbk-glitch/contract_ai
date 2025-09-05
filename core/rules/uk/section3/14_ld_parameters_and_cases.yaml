@@ -1,0 +1,77 @@
+rule:
+  id: "uk.s3.ld.parameters_case_law"
+  version: "1.0.0"
+  title: "LD validity: rate, cap, accrual post-termination, sectional completion"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Call-Off","MSA"]
+    clauses: ["ld","schedule","termination"]
+  triggers:
+    any:
+      - regex: "(?i)liquidated\\s+damages|LDs?"
+  checks:
+    - id: "rate_missing"
+      when:
+        not_regex: "(?i)per\\s+day|per\\s+week|\\b%\\b|percent"
+      finding:
+        message: "LD rate missing/unclear."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Specify daily/weekly rate or %."
+        score_delta: -15
+    - id: "cap_missing"
+      when:
+        not_regex: "(?i)cap|max(imum)?\\s+LD|\\b%\\s+of\\s+Contract\\s+Price"
+      finding:
+        message: "LD cap missing."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Set LD cap."
+        score_delta: -15
+    - id: "post_termination_unspecified"
+      when:
+        not_regex: "(?i)post[-\\s]?termination|until\\s+termination|thereafter"
+      finding:
+        message: "LD accrual at/after termination not specified (Triple Point risk)."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Clarify LD accrual relative to termination."
+        score_delta: -15
+    - id: "partial_possession_missing"
+      when:
+        all:
+          - regex: "(?i)section(al)?\\s+completion|partial\\s+possession"
+          - not_regex: "(?i)LD\\s+apply\\s+notwithstanding\\s+partial\\s+possession"
+      finding:
+        message: "Sectional/partial possession interaction with LD not addressed (Eco World)."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "State LD allocation for sections/partial possession."
+        score_delta: -10
+    - id: "penalty_indicator"
+      when:
+        regex: "(?i)punitive|penal|penalty\\s+charge"
+      finding:
+        message: "Penalty-style wording (Cavendish risk)."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Reframe to protectable interest/genuine pre-estimate."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: LDParameterGap
+    score: 78
+    problem: "LD parameters incomplete/misaligned."
+    recommendation: "Specify rate, cap, post-termination, and sectional rules."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["LD","Triple Point","Cavendish","Eco World"]
+metadata:
+  tags: ["ld","case-law"]

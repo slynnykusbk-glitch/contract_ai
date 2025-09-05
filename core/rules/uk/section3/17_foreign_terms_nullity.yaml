@@ -1,0 +1,37 @@
+rule:
+  id: "uk.s3.nullity.foreign_terms_3_13"
+  version: "1.0.0"
+  title: "Foreign boilerplate terms in Call-Off are null/void unless compliant with 3.12"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Call-Off"]
+    clauses: ["modification","precedence"]
+  triggers:
+    any:
+      - regex: "(?i)Supplier\\s+Terms\\s+apply|General\\s+Terms\\s+and\\s+Conditions\\s+of\\s+Sale"
+  checks:
+    - id: "nullity_enforce"
+      when:
+        all:
+          - regex: "(?i)Supplier\\s+Terms\\s+apply|General\\s+Terms"
+          - not_regex: "(?i)expressly\\s+modif(y|ies)\\s+Clause"
+      finding:
+        message: "Foreign T&Cs detected; null/void under 3.13."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Delete foreign T&Cs or reissue via 3.12 formal modification."
+        score_delta: -25
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: ForeignTermsNullity
+    score: 78
+    problem: "Foreign boilerplate conflicts with 3.12/3.13."
+    recommendation: "Purge or formalise via 3.12."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["null and void","3.13","supplier terms"]
+metadata:
+  tags: ["nullity","foreign-terms"]

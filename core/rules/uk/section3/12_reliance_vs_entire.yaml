@@ -1,0 +1,38 @@
+rule:
+  id: "uk.s3.reliance.entire_nonreliance_alignment"
+  version: "1.0.0"
+  title: "Reliance on tender statements aligned with entire agreement / non-reliance"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off"]
+    clauses: ["reliance","entire","misrepresentation"]
+  triggers:
+    any:
+      - regex: "(?i)Company\\s+may\\s+rely\\s+on\\s+representations|tender|offer"
+      - regex: "(?i)entire\\s+agreement|non[-\\s]?reliance"
+  checks:
+    - id: "reliance_without_nonreliance"
+      when:
+        all:
+          - regex: "(?i)rely\\s+on\\s+representations"
+          - not_regex: "(?i)non[-\\s]?reliance|no\\s+representations"
+      finding:
+        message: "Reliance asserted without non-reliance/clarity (AXA risk)."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add clear non-reliance wording or carve agreed reliance."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: RelianceClauseRisk
+    score: 85
+    problem: "Reliance vs entire agreement misaligned."
+    recommendation: "Align with explicit non-reliance or carve-outs."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["reliance","entire agreement"]
+metadata:
+  tags: ["reliance"]

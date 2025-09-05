@@ -1,0 +1,36 @@
+rule:
+  id: "uk.s3.calloff.contract_execution_authority"
+  version: "1.0.0"
+  title: "Call-Off Contract: executed by authorised signatories; no 'subject to board approval'"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Call-Off","MSA"]
+    clauses: ["call-off","execution","authority"]
+  triggers:
+    any:
+      - regex: "(?i)subject\\s+to\\s+board\\s+approval"
+      - regex: "(?i)authorised\\s+signatory"
+  checks:
+    - id: "board_approval_subject_to"
+      when:
+        regex: "(?i)subject\\s+to\\s+board\\s+approval"
+      finding:
+        message: "Conditional board approval undermines formation."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Remove 'subject to board approval'; have authorised signatories execute."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: ExecutionFormalityRisk
+    score: 88
+    problem: "Conditional approval language present."
+    recommendation: "Execute with proper authority."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["authority","execution"]
+metadata:
+  tags: ["execution","authority"]

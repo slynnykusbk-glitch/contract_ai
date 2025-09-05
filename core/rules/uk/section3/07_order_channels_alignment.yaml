@@ -1,0 +1,37 @@
+rule:
+  id: "uk.s3.order.channels_align_29"
+  version: "1.0.0"
+  title: "Order acknowledgement channels must align with Notices/writing policy"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Call-Off","MSA"]
+    clauses: ["call-off","notices","interpretation"]
+  triggers:
+    any:
+      - regex: "(?i)written\\s+acknowledgement|acknowledgment|acknowledge\\s+in\\s+writing"
+  checks:
+    - id: "email_banned_no_portal"
+      when:
+        all:
+          - regex: "(?i)email\\s+shall\\s+not\\s+constitute\\s+writing"
+          - not_regex: "(?i)DocuSign|Adobe\\s+Sign|portal|e-?signature"
+      finding:
+        message: "Email excluded as 'writing' but no e-sign/portal path provided."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Permit e-signature platforms/portal for Order acks; keep Notices per Clause 29."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: ChannelMisalignment
+    score: 80
+    problem: "Operational dead-end for Order acks."
+    recommendation: "Allow e-sign/portal."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["writing","email","ack"]
+metadata:
+  tags: ["channels","notices"]

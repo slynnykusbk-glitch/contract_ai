@@ -1,0 +1,40 @@
+rule:
+  id: "uk.s3.editorial.typos_numbering_block"
+  version: "1.0.0"
+  title: "Editorial defects (broken cross-ref/typos) must be fixed pre-issue"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off"]
+    clauses: ["section3","ld","general"]
+  triggers:
+    any:
+      - regex: "(?i)Notwithstanding\\s+C\\s+Company"
+      - regex: "(?i)foregoing[\\s\\S]{0,40}of\\s+this\\s+Clause\\s+3\\.10\\.3"
+      - regex: "(?i)partrial\\s+shipment"
+  checks:
+    - id: "editorial_block"
+      when:
+        any:
+          - regex: "(?i)Notwithstanding\\s+C\\s+Company"
+          - regex: "(?i)foregoing[\\s\\S]{0,40}Clause\\s+3\\.10\\.3"
+          - regex: "(?i)partrial\\s+shipment"
+      finding:
+        message: "Editorial error (broken ref/typo) detected."
+        severity_level: "blocker"
+        risk: "high"
+        suggestion:
+          text: "Correct text and numbering before release."
+        score_delta: -40
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S1
+    issue_type: EditorialDefect
+    score: 50
+    problem: "Editorial defects in Section 3."
+    recommendation: "Fix before execution."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["typo","numbering","blocker"]
+metadata:
+  tags: ["editorial","blocker"]

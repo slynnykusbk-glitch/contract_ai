@@ -1,0 +1,35 @@
+rule:
+  id: "uk.s3.po.per_entity_responsibility"
+  version: "1.0.0"
+  title: "Each PO binds only the issuing Company; no joint liability across group"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["PO","Call-Off","MSA"]
+    clauses: ["call-off","purchase order"]
+  triggers:
+    any:
+      - regex: "(?i)joint(ly)?\\s+and\\s+severally\\s+liable|any\\s+Group\\s+entity\\s+shall\\s+be\\s+responsible"
+  checks:
+    - id: "joint_liability"
+      when:
+        regex: "(?i)joint(ly)?\\s+and\\s+severally\\s+liable|any\\s+Group\\s+entity\\s+shall\\s+be\\s+responsible"
+      finding:
+        message: "Cross-entity liability contradicts 3.5.2–3.5.7/3.6.2."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Clarify that Contractor looks only to the PO issuer."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: CrossEntityLiability
+    score: 80
+    problem: "Joint liability creep."
+    recommendation: "Tie obligations to issuer only."
+    law_reference: []
+    category: "Section 3"
+    keywords: ["PO","liability","issuer"]
+metadata:
+  tags: ["po","liability"]

@@ -3,11 +3,17 @@ requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "contract-ai"
+name = "contract_ai"
 version = "0.0.0"
+description = "Contract analysis engine + Word panel"
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "Proprietary"}
+dynamic = ["dependencies"]
 
 [tool.setuptools]
 include-package-data = true
 
-[tool.setuptools.package-data]
-"*" = ["*.yaml"]
+[tool.setuptools.packages.find]
+where = ["."]
+

@@ -18,7 +18,7 @@ import time
 from datetime import datetime, timezone
 import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Dict, List, Optional, Tuple
 
 from collections import OrderedDict
@@ -1293,7 +1293,12 @@ async def health() -> JSONResponse:
     }
     try:
         if rules_loader and hasattr(rules_loader, "loaded_packs"):
-            payload.setdefault("meta", {})["rules"] = rules_loader.loaded_packs()
+            packs = rules_loader.loaded_packs()
+            for pack in packs:
+                p = pack.get("path")
+                if p:
+                    pack["path"] = PurePosixPath(Path(p)).as_posix()
+            payload.setdefault("meta", {})["rules"] = packs
     except Exception:
         payload.setdefault("meta", {})["rules"] = []
     headers = {"x-schema-version": SCHEMA_VERSION}

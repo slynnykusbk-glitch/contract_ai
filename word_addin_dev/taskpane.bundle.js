@@ -1,26 +1,29 @@
 // word_addin_dev/app/assets/api-client.js
-function metaFromResponse(resp) {
-  const h = resp.headers;
-  const get = (n) => h.get(n) || null;
+function metaFromResponse(r) {
+  const h = r.headers;
+  const js = r.json || {};
+  const llm = js.llm || js;
   return {
-    cid: get("x-cid"),
-    xcache: get("x-cache"),
-    latencyMs: Number(get("x-latency-ms")) || null,
-    schema: get("x-schema-version"),
-    provider: get("x-provider"),
-    model: get("x-model"),
-    llm_mode: get("x-llm-mode"),
-    usage: get("x-usage-total")
+    cid: h.get("x-cid"),
+    xcache: h.get("x-cache"),
+    latencyMs: h.get("x-latency-ms"),
+    schema: h.get("x-schema-version"),
+    provider: h.get("x-provider") || llm.provider || js.provider || null,
+    model: h.get("x-model") || llm.model || js.model || null,
+    llm_mode: h.get("x-llm-mode") || llm.mode || js.mode || null,
+    usage: h.get("x-usage-total"),
+    status: r.status != null ? String(r.status) : null,
   };
 }
 function applyMetaToBadges(m) {
   const set = (id, v) => {
     const el = document.getElementById(id);
-    if (el) el.textContent = v ?? "\u2014";
+    if (el) el.textContent = v && v.length ? v : "\u2014";
   };
+  set("status", m.status);
   set("cid", m.cid);
   set("xcache", m.xcache);
-  set("latency", m.latencyMs == null ? "\u2014" : String(m.latencyMs));
+  set("latency", m.latencyMs);
   set("schema", m.schema);
   set("provider", m.provider);
   set("model", m.model);
@@ -35,7 +38,7 @@ function base() {
     return DEFAULT_BASE;
   }
 }
-async function req(path, { method = "GET", body = null } = {}) {
+async function req(path, { method = "GET", body = null, key = path } = {}) {
   const r = await fetch(base() + path, {
     method,
     headers: { "content-type": "application/json" },
@@ -43,20 +46,19 @@ async function req(path, { method = "GET", body = null } = {}) {
     credentials: "include"
   });
   const json = await r.json().catch(() => ({}));
-  return { ok: r.ok, json, resp: r };
+  const meta = metaFromResponse({ headers: r.headers, json, status: r.status });
+  try { applyMetaToBadges(meta); } catch {}
+  try {
+    const w = window;
+    w.__last = w.__last || {};
+    w.__last[key] = { status: r.status, req: { path, method, body }, json };
+  } catch {}
+  return { ok: r.ok, json, resp: r, meta };
 }
-async function apiHealth() {
-  const { ok, json, resp } = await req("/health");
-  return { ok, json, meta: metaFromResponse(resp) };
-}
-async function apiAnalyze(text) {
-  const { ok, json, resp } = await req("/api/analyze", { method: "POST", body: { text, mode: "live" } });
-  return { ok, json, meta: metaFromResponse(resp) };
-}
-async function apiQaRecheck(text, rules = []) {
-  const { ok, json, resp } = await req("/api/qa-recheck", { method: "POST", body: { text, rules } });
-  return { ok, json, meta: metaFromResponse(resp) };
-}
+async function apiHealth() { return await req("/health", { key: "health" }); }
+async function apiAnalyze(text) { return await req("/api/analyze", { method: "POST", body: { text, mode: "live" }, key: "analyze" }); }
+async function apiGptDraft(text, mode = "friendly", extra = {}) { return await req("/api/gpt-draft", { method: "POST", body: { text, mode, ...extra }, key: "gpt-draft" }); }
+async function apiQaRecheck(text, rules = []) { return await req("/api/qa-recheck", { method: "POST", body: { text, rules }, key: "qa-recheck" }); }
 
 // word_addin_dev/app/assets/notifier.js
 function notifyOk(msg) {
@@ -93,6 +95,14 @@ var Q = {
   proposed: 'textarea#proposedText, textarea[name="proposed"], textarea[data-role="proposed-text"]',
   original: 'textarea#originalClause, textarea[name="original"], textarea[data-role="original-clause"]'
 };
+function setConnBadge(ok) {
+  const el = document.getElementById("connBadge");
+  if (el) el.textContent = `Conn: ${ok === null ? "\u2014" : ok ? "\u2713" : "\u00D7"}`;
+}
+function setOfficeBadge(txt) {
+  const el = document.getElementById("officeBadge");
+  if (el) el.textContent = `Office: ${txt ?? "\u2014"}`;
+}
 function $(sel) {
   return document.querySelector(sel);
 }
@@ -171,26 +181,11 @@ async function onGetAIDraft(ev) {
     const modeSel = document.getElementById("cai-mode");
     const mode = modeSel?.value || "friendly";
     const ctx = await getSelectionContext(200);
-    const body = {
-      text: "Please draft a neutral confidentiality clause.",
-      mode,
-      before_text: ctx.before,
-      after_text: ctx.after
-    };
-    const resp = await fetch(`${window.__cal_base__ ?? ""}/api/gpt-draft`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-    try {
-      applyMetaToBadges(metaFromResponse(resp));
-    } catch {
-    }
-    if (!resp.ok) {
-      notifyWarn(`Draft failed (cid ${resp.headers.get("x-cid") || "n/a"})`);
+    const { ok, json } = await apiGptDraft("Please draft a neutral confidentiality clause.", mode, { before_text: ctx.before, after_text: ctx.after });
+    if (!ok) {
+      notifyWarn("Draft failed");
       return;
     }
-    const json = await resp.json();
     const proposed = (json?.proposed_text ?? "").toString();
     if (dst) {
       if (!dst.id) dst.id = "proposedText";
@@ -208,12 +203,15 @@ async function onGetAIDraft(ev) {
   }
 }
 async function doHealth() {
-  const { json, meta } = await apiHealth();
   try {
-    applyMetaToBadges(meta);
-  } catch {
+    const { ok, json } = await apiHealth();
+    setConnBadge(ok);
+    notifyOk(`Health: ${json.status} (schema ${json.schema})`);
+  } catch (e) {
+    setConnBadge(false);
+    notifyWarn("Health failed");
+    console.error(e);
   }
-  notifyOk(`Health: ${json.status} (schema ${json.schema})`);
 }
 async function doAnalyzeDoc() {
   const text = await getWholeDocText();
@@ -221,21 +219,13 @@ async function doAnalyzeDoc() {
     notifyErr("\u0412 \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0435 \u043D\u0435\u0442 \u0442\u0435\u043A\u0441\u0442\u0430");
     return;
   }
-  const { json, meta } = await apiAnalyze(text);
-  try {
-    applyMetaToBadges(meta);
-  } catch {
-  }
+  const { json } = await apiAnalyze(text);
   (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.results", { detail: json }));
   notifyOk("Analyze OK");
 }
 async function doQARecheck() {
   const text = await getWholeDocText();
-  const { json, meta } = await apiQaRecheck(text, []);
-  try {
-    applyMetaToBadges(meta);
-  } catch {
-  }
+  const { json } = await apiQaRecheck(text, []);
   (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
   notifyOk("QA recheck OK");
 }
@@ -286,20 +276,18 @@ function wireUI() {
   console.log("Panel UI wired");
 }
 async function bootstrap() {
-  try {
-    if (window.Office?.onReady) {
-      await window.Office.onReady();
-    } else {
-      if (document.readyState === "loading") {
-        await new Promise((res) => document.addEventListener("DOMContentLoaded", () => res(), { once: true }));
-      }
-    }
-  } catch {
+  if (document.readyState === "loading") {
+    await new Promise((res) => document.addEventListener("DOMContentLoaded", () => res(), { once: true }));
   }
   wireUI();
+  try { await doHealth(); } catch {}
   try {
-    await doHealth();
+    if (window.Office?.onReady) {
+      const info = await window.Office.onReady();
+      setOfficeBadge(`${info?.host || "Word"} \u2713`);
+    }
   } catch {
+    setOfficeBadge(null);
   }
 }
 bootstrap();

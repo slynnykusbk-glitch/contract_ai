@@ -13,16 +13,20 @@ export type Meta = {
 export type AnalyzeFinding = {
   rule_id: string;
   clause_type?: string;
-  severity?: "low" | "medium" | "high" | string;
+  severity?: "low" | "medium" | "high" | "critical" | string;
   start?: number;
   end?: number;
   snippet?: string;
   advice?: string;
-  law_reference?: string;
+  law_refs?: string[];
+  law_reference?: string; // legacy
   citations?: string[];
-  conflict_with?: string;
+  conflict_with?: string[];
   category?: string;
   score?: number;
+  ops?: { start?: number; end?: number; replacement?: string }[];
+  scope?: { unit?: string; nth?: number };
+  occurrences?: number;
 };
 
 export type AnalyzeResponse = {

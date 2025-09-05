@@ -1,0 +1,81 @@
+rule:
+  id: "uk.def.supplied_software.scope_licence_escrow"
+  version: "1.0.0"
+  title: "Supplied Software: full scope; broad licence; keys/docs/updates; escrow if critical"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","software","ip","licence","escrow"]
+  triggers:
+    any:
+      - regex: "(?i)Supplied\\s+Software\\s+means"
+  checks:
+    - id: "components_missing"
+      when:
+        any:
+          - not_regex: "(?i)executables?|embedded|utilities?|tools"
+          - not_regex: "(?i)keys|passwords|diagnostic|logs?"
+          - not_regex: "(?i)documentation|manuals?"
+          - not_regex: "(?i)updates|patch(es)?"
+      finding:
+        message: "Software scope omits executables/embedded/utilities, keys/passwords/diagnostics, docs or updates."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Enumerate executables/embedded/utilities, keys/passwords/diagnostics, documentation and updates/patches."
+        score_delta: -20
+    - id: "licence_too_narrow"
+      when:
+        any:
+          - not_regex: "(?i)modify|adapt|integrat|test|disaster\\s+recovery|backup"
+          - not_regex: "(?i)worldwide|perpetual|royalty[-\\s]?free"
+          - not_regex: "(?i)sub[-\\s]?licen[cs]e\\s+within\\s+the\\s+Company\\s+Group"
+      finding:
+        message: "Licence too narrow for operation/maintenance/integration/DR."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Grant worldwide, perpetual, royalty-free licence incl. modify/integrate/test/DR/backup; allow sub-licence within Company Group."
+        score_delta: -25
+    - id: "ipr_moral_db_rights"
+      when:
+        any:
+          - not_regex: "(?i)assignment\\s+in\\s+writing"
+          - not_regex: "(?i)(waiv.*moral\\s+rights|moral\\s+rights.*waiv)"
+          - not_regex: "(?i)database\\s+right"
+      finding:
+        message: "Missing assignment-in-writing / moral rights waiver / database right coverage."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Ensure clause 17 covers assignment in writing (CDPA s.90), waiver of moral rights, and database right."
+        score_delta: -20
+    - id: "escrow_missing"
+      when:
+        all:
+          - regex: "(?i)critical|mission\\s+critical|essential"
+          - not_regex: "(?i)escrow|source\\s+code\\s+escrow"
+      finding:
+        message: "Critical software without escrow arrangement."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Add source code escrow for critical software."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: SuppliedSoftwareLicenceGap
+    score: 80
+    problem: "Software scope/licence/IPR safeguards inadequate."
+    recommendation: "Broaden scope/licence; keys/docs/updates; IPR safeguards; escrow if critical."
+    law_reference: ["CDPA 1988 s.90","Database Regs 1997"]
+    category: "Definitions"
+    keywords: ["software","licence","escrow","keys","updates"]
+metadata:
+  tags: ["software","ip","escrow"]

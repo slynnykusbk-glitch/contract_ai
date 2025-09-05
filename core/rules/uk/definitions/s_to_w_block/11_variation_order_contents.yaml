@@ -1,0 +1,52 @@
+rule:
+  id: "uk.def.variation.order_contents"
+  version: "1.0.0"
+  title: "Variation Order: content checklist (scope delta, TIA, price build-up, interfaces, LD/warranty impacts)"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["variation","call-off","scope","price","schedule","risk"]
+  triggers:
+    any:
+      - regex: "(?i)Variation\\s+Order\\b"
+  checks:
+    - id: "contents_missing"
+      when:
+        any:
+          - not_regex: "(?i)scope\\s+change|delta"
+          - not_regex: "(?i)Time\\s+Impact\\s+Analysis|TIA"
+          - not_regex: "(?i)price\\s+build[-\\s]?up|rates"
+          - not_regex: "(?i)interfaces?"
+          - not_regex: "(?i)warrant(y|ies)|LDs?|liquidated\\s+damages"
+      finding:
+        message: "VO content incomplete (scope/TIA/price/interfaces/warranty/LD impacts)."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Include scope delta, TIA, price build-up, interfaces, impacts on warranties/LDs."
+        score_delta: -20
+    - id: "precedence_update_missing"
+      when:
+        not_regex: "(?i)order\\s+of\\s+precedence|Clause\\s*2\\.2"
+      finding:
+        message: "No statement how VO integrates with order of precedence."
+        severity_level: "medium"
+        risk: "medium"
+        legal_basis: []
+        suggestion:
+          text: "Reference Clause 2.2 and update precedence if needed."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: VariationOrderContentGap
+    score: 80
+    problem: "VO lacks mandatory content or precedence integration."
+    recommendation: "Add checklist and precedence reference."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["VO","scope delta","TIA","price","LD","precedence"]
+metadata:
+  tags: ["variation","vo"]

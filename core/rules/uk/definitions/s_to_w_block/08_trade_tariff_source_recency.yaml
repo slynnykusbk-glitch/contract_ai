@@ -1,0 +1,51 @@
+rule:
+  id: "uk.def.trade_tariff.source_recency"
+  version: "1.0.0"
+  title: "Trade Tariff: official UK source; HS link; recency stamp and measures"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","imports","customs","tax"]
+  triggers:
+    any:
+      - regex: "(?i)Trade\\s+Tariff"
+  checks:
+    - id: "source_or_hs_missing"
+      when:
+        any:
+          - not_regex: "(?i)GOV\\.UK|UK\\s+Trade\\s+Tariff|CDS"
+          - not_regex: "(?i)HS|Harmonized\\s+System|WCO"
+      finding:
+        message: "Trade Tariff lacks official UK source or HS linkage."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Reference UK Trade Tariff service and HS/WCO basis."
+        score_delta: -15
+    - id: "recency_measures_missing"
+      when:
+        any:
+          - not_regex: "(?i)last\\s+checked|date"
+          - not_regex: "(?i)measures|dut(y|ies)|prohibitions|licences"
+      finding:
+        message: "No last-checked date or applicable measures stated."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Record last-checked date and list measures (duties, licences, restrictions)."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: TradeTariffRecencyGap
+    score: 80
+    problem: "Trade Tariff reference not anchored to official source/HS and recency/measures."
+    recommendation: "Add official source + HS link and recency/measures fields."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Trade Tariff","CDS","HS","measures"]
+metadata:
+  tags: ["customs","tariff","recency"]

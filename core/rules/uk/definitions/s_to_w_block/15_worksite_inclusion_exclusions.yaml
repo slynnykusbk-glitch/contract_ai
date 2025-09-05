@@ -1,0 +1,49 @@
+rule:
+  id: "uk.def.worksite.inclusion_exclusions"
+  version: "1.0.0"
+  title: "Worksite: includes execution locations; excludes manufacturing/pre-delivery plants; HSE/insurance"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","worksite","site","hse","insurance"]
+  triggers:
+    any:
+      - regex: "(?i)Worksite\\s+means"
+  checks:
+    - id: "exclusions_missing"
+      when:
+        not_regex: "(?i)excluding\\s+manufactur(ing)?|pre[-\\s]?delivery|factory|plant"
+      finding:
+        message: "Worksite definition does not exclude manufacturing/pre-delivery facilities."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Exclude manufacturing/pre-delivery plants unless expressly listed as Worksites."
+        score_delta: -15
+    - id: "hse_insurance_missing"
+      when:
+        any:
+          - not_regex: "(?i)HSE|site\\s+rules|permit\\s+to\\s+work"
+          - not_regex: "(?i)insurance\\s+appl(ies|y|icability)"
+      finding:
+        message: "No HSE or insurance applicability statements for Worksites."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Reference HSE/site rules and whether insurance applies at Worksites."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: WorksiteExclusionGap
+    score: 80
+    problem: "Worksite scope does not handle factory exclusions or HSE/insurance."
+    recommendation: "Exclude factories unless listed; add HSE/insurance applicability."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Worksite","factory exclusion","HSE","insurance"]
+metadata:
+  tags: ["worksite","hse","insurance"]

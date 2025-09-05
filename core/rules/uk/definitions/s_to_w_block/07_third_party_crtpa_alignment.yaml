@@ -1,0 +1,47 @@
+rule:
+  id: "uk.def.third_party.crtpa_alignment"
+  version: "1.0.0"
+  title: "Third Party: exclude Company/Contractor Groups; align with CRTPA carve-outs"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","third party rights","crpta"]
+  triggers:
+    any:
+      - regex: "(?i)Third\\s+Party\\s+means"
+  checks:
+    - id: "groups_exclusion_missing"
+      when:
+        not_regex: "(?i)exclud(?:es|ing)\\s+the\\s+Company\\s+Group\\s+and\\s+the\\s+Contractor\\s+Group"
+      finding:
+        message: "Third Party definition does not exclude the parties’ Groups."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Explicitly exclude Company Group and Contractor Group."
+        score_delta: -15
+    - id: "crtpa_link_missing"
+      when:
+        not_regex: "(?i)Contracts\\s*\\(Rights\\s+of\\s+Third\\s+Parties\\)\\s*Act|CRTPA|Clause\\s*32"
+      finding:
+        message: "No alignment with CRTPA carve-outs."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Reference CRTPA clause/carve-outs to prevent unintended third-party rights."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: ThirdPartyScopeGap
+    score: 85
+    problem: "Third Party scope too wide or not aligned with CRTPA."
+    recommendation: "Exclude Groups and align with CRTPA carve-outs."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Third Party","CRTPA","Groups"]
+metadata:
+  tags: ["crpta","third-party"]

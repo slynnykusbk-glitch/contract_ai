@@ -1,0 +1,63 @@
+rule:
+  id: "uk.def.specs.versioning_and_variations"
+  version: "1.0.0"
+  title: "Specifications: version/DCC; no hidden updates; priority of stricter requirement"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","specifications","variation","codes","fitness"]
+  triggers:
+    any:
+      - regex: "(?i)Specifications?\\s+means"
+  checks:
+    - id: "dcc_version_missing"
+      when:
+        any:
+          - not_regex: "(?i)Document\\s+Control|DCC|revision|version"
+      finding:
+        message: "No DCC/reference/revision control for Specifications."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Reference DCC/Document Control and include revision/issue/date identifiers."
+        score_delta: -15
+    - id: "as_updated_without_variation"
+      when:
+        all:
+          - regex: "(?i)as\\s+updated\\s+from\\s+time\\s+to\\s+time"
+          - not_regex: "(?i)Variation|Clause\\s*14|Change\\s+Control"
+      finding:
+        message: "Dynamic updates to specifications without Variation/Change Control."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Require updates via Clause 14 Variation Order; clerical fixes only by notice."
+        score_delta: -20
+    - id: "no_fitness_priority_rule"
+      when:
+        all:
+          - regex: "(?i)Codes?\\s+and\\s+Standards|fitness\\s+for\\s+purpose"
+          - not_regex: "(?i)stricter\\s+requirement\\s+prevails|fitness\\s+takes\\s+priority"
+      finding:
+        message: "No priority rule between fitness-for-purpose and codes/standards."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "State that the stricter requirement prevails (MT Højgaard approach)."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: SpecsChangeControlGap
+    score: 80
+    problem: "Specs lack DCC/versioning; allow hidden updates; or miss priority rule."
+    recommendation: "Add DCC and VO gate; set stricter-of fitness/codes priority."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Specifications","DCC","Variation","fitness","codes"]
+metadata:
+  tags: ["specs","variation","dcc"]

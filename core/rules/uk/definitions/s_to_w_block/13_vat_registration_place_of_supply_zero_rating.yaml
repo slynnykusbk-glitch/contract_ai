@@ -1,0 +1,62 @@
+rule:
+  id: "uk.def.vat.registration_place_of_supply_zero_rating"
+  version: "1.0.0"
+  title: "VAT: VAT Act 1994; registration/invoicing; place of supply; reverse charge/zero-rating evidence"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","tax","vat","invoicing","imports"]
+  triggers:
+    any:
+      - regex: "(?i)VAT\\s+means|Value\\s+Added\\s+Tax"
+  checks:
+    - id: "vat_act_missing"
+      when:
+        not_regex: "(?i)Value\\s+Added\\s+Tax\\s+Act\\s+1994"
+      finding:
+        message: "VAT Act 1994 not referenced."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Reference VAT Act 1994 for charge/rates/place of supply."
+        score_delta: -10
+    - id: "registration_invoicing_missing"
+      when:
+        any:
+          - not_regex: "(?i)VAT\\s+registration|VAT\\s+number"
+          - not_regex: "(?i)valid\\s+invoice|tax\\s+invoice"
+      finding:
+        message: "VAT registration or invoicing requirements missing."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Require VAT registration/number and valid tax invoices."
+        score_delta: -15
+    - id: "place_of_supply_or_reverse_zero_missing"
+      when:
+        any:
+          - not_regex: "(?i)place\\s+of\\s+supply|reverse\\s+charge"
+          - not_regex: "(?i)zero[-\\s]?rating|export\\s+evidence"
+      finding:
+        message: "Place of supply/reverse charge or zero-rating evidence not addressed."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Address place of supply/reverse charge and require export/zero-rating evidence."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: VATComplianceGap
+    score: 80
+    problem: "VAT framework incomplete."
+    recommendation: "Cite VAT Act 1994, require registration/invoices, place of supply/reverse charge and evidence for zero-rating."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["VAT Act 1994","reverse charge","place of supply","zero-rating"]
+metadata:
+  tags: ["vat","tax"]

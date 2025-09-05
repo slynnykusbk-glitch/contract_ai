@@ -1,0 +1,60 @@
+rule:
+  id: "uk.def.tupe.eli_requirements"
+  version: "1.0.0"
+  title: "TUPE: cite 2006 regs; Employee Liability Information (Reg.11) deadlines and content"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","tupe","personnel","data protection"]
+  triggers:
+    any:
+      - regex: "(?i)TUPE|Transfer\\s+of\\s+Undertakings\\s+\\(Protection\\s+of\\s+Employment\\)"
+  checks:
+    - id: "citation_missing"
+      when:
+        not_regex: "(?i)2006"
+      finding:
+        message: "TUPE reference does not cite the 2006 Regulations (as amended)."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Refer to the Transfer of Undertakings (Protection of Employment) Regulations 2006 (as amended)."
+        score_delta: -10
+    - id: "eli_requirements_missing"
+      when:
+        any:
+          - not_regex: "(?i)Employee\\s+Liability\\s+Information|Reg\\.?\\s*11"
+          - not_regex: "(?i)\\b7\\s*days\\b|\\b14\\s*days\\b|deadline|snapshot"
+      finding:
+        message: "No ELI (Reg.11) snapshot/delivery deadlines/content."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Include ELI snapshot date and delivery by statutory deadlines with accuracy warranty."
+        score_delta: -15
+    - id: "dpa_data_transfer"
+      when:
+        not_regex: "(?i)Data\\s+Protection|lawful\\s+basis|anonymi[sz]e"
+      finding:
+        message: "No data protection safeguards around ELI transfer."
+        severity_level: "medium"
+        risk: "medium"
+        legal_basis: []
+        suggestion:
+          text: "Add lawful basis/anonymisation for ELI sharing."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: TUPEELIGap
+    score: 80
+    problem: "TUPE/ELI referencing and safeguards incomplete."
+    recommendation: "Cite 2006 regs; add ELI deadlines/content and DPA safeguards."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["TUPE","ELI Reg.11","DPA"]
+metadata:
+  tags: ["tupe","eli","privacy"]

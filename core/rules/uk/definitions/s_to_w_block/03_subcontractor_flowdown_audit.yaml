@@ -1,0 +1,62 @@
+rule:
+  id: "uk.def.subcontractor.flowdown_audit"
+  version: "1.0.0"
+  title: "Subcontractor: tier coverage; flow-down (HSE/ABC/export/IP/NDA); audit/approval"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","subcontractor","compliance","audit","anti-bribery","export","ip"]
+  triggers:
+    any:
+      - regex: "(?i)Subcontractor\\s+means"
+  checks:
+    - id: "tiers_not_covered"
+      when:
+        not_regex: "(?i)all\\s+tiers|tier[-\\s]?n|sub[-\\s]?tiers?"
+      finding:
+        message: "Definition does not cover multi-tier subcontracting."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Extend to all tiers (tier-n) including suppliers of equipment/materials."
+        score_delta: -15
+    - id: "flowdown_gaps"
+      when:
+        any:
+          - not_regex: "(?i)health\\s+and\\s+safety|HSE"
+          - not_regex: "(?i)anti[-\\s]?bribery|UKBA|sanctions|export"
+          - not_regex: "(?i)Intellectual\\s+Property|confidentiality"
+          - not_regex: "(?i)audit|inspect"
+      finding:
+        message: "Missing flow-downs (HSE/anti-bribery/sanctions/export/IP/NDA) and/or audit rights."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Mandate flow-down of HSE, ABC, sanctions/export, IP/confidentiality and audit/access rights."
+        score_delta: -20
+    - id: "approval_missing"
+      when:
+        not_regex: "(?i)prior\\s+written\\s+approval|right\\s+to\\s+approve|critical\\s+subcontractors?"
+      finding:
+        message: "No prior approval process for critical subcontractors."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Introduce approval/blacklist/right to require replacement of critical subs."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: SubcontractorFlowDownGap
+    score: 80
+    problem: "Subcontractor definition lacks tier coverage/flow-downs/audit/approval."
+    recommendation: "Cover all tiers; add flow-down matrix, audit and approval mechanics."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Subcontractor","flow-down","audit","tiers"]
+metadata:
+  tags: ["subs","compliance","audit"]

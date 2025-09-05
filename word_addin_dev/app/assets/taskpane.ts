@@ -1,5 +1,5 @@
 import { metaFromResponse, applyMetaToBadges, apiHealth, apiAnalyze, apiQaRecheck } from "./api-client";
-import { notifyOk, notifyErr } from "./notifier";
+import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText } from "./office"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
 
 type Mode = "live" | "friendly" | "doctor";
@@ -13,22 +13,88 @@ function $(sel: string): HTMLTextAreaElement | null {
   return document.querySelector(sel) as HTMLTextAreaElement | null;
 }
 
+function getSelectionAsync(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    try {
+      Office.context.document.getSelectedDataAsync(Office.CoercionType.Text, r => {
+        if (r.status === Office.AsyncResultStatus.Succeeded) {
+          resolve((r.value || "").toString().trim());
+        } else {
+          reject(r.error);
+        }
+      });
+    } catch (e) { reject(e); }
+  });
+}
+
+async function getSelectionContext(chars = 200): Promise<{ before: string; after: string; }> {
+  try {
+    return await Word.run(async ctx => {
+      const sel = ctx.document.getSelection();
+      const body = ctx.document.body;
+      sel.load("text");
+      body.load("text");
+      await ctx.sync();
+      const full = body.text || "";
+      const s = sel.text || "";
+      const idx = full.indexOf(s);
+      if (idx === -1) return { before: "", after: "" };
+      return {
+        before: full.slice(Math.max(0, idx - chars), idx),
+        after: full.slice(idx + s.length, idx + s.length + chars)
+      };
+    });
+  } catch (e) {
+    console.warn("context fail", e);
+    return { before: "", after: "" };
+  }
+}
+
+async function onUseSelection() {
+  try {
+    const txt = await getSelectionAsync();
+    const el = document.getElementById("originalClause") as HTMLTextAreaElement | null;
+    if (el) {
+      el.value = txt;
+      el.setAttribute("data-role", "source-loaded");
+    }
+  } catch (e) {
+    notifyWarn("Failed to load selection");
+    console.error(e);
+  }
+}
+
+async function onUseWholeDoc() {
+  try {
+    const txt = await getWholeDocText();
+    const el = document.getElementById("originalClause") as HTMLTextAreaElement | null;
+    if (el) {
+      el.value = txt;
+      el.setAttribute("data-role", "source-loaded");
+    }
+  } catch (e) {
+    notifyWarn("Failed to load document");
+    console.error(e);
+  }
+}
+
 async function onGetAIDraft(ev?: Event) {
   try {
     const src = $(Q.original);
     const dst = $(Q.proposed);
 
     const text = (src?.value ?? "").trim();
-    if (!text) {
-      console.info("[Draft] no source text");
-      return;
-    }
+    if (!text) { notifyWarn("No source text"); return; }
+
+    const modeSel = document.getElementById("cai-mode") as HTMLSelectElement | null;
+    const mode = modeSel?.value || "friendly";
+    const ctx = await getSelectionContext(200);
 
     const body = {
-      text,
-      mode: "friendly",
-      before_text: "",   // Word selection context not wired yet
-      after_text: ""
+      text: "Please draft a neutral confidentiality clause.",
+      mode,
+      before_text: ctx.before,
+      after_text: ctx.after,
     };
 
     const resp = await fetch(`${(window as any).__cal_base__ ?? ""}/api/gpt-draft`, {
@@ -37,12 +103,10 @@ async function onGetAIDraft(ev?: Event) {
       body: JSON.stringify(body)
     });
 
-    // Обновим бейджи из заголовков
     try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
 
     if (!resp.ok) {
-      const fail = await resp.text().catch(() => "");
-      console.warn("[Draft] HTTP", resp.status, fail);
+      notifyWarn(`Draft failed (cid ${resp.headers.get('x-cid') || 'n/a'})`);
       return;
     }
 
@@ -50,19 +114,18 @@ async function onGetAIDraft(ev?: Event) {
     const proposed = (json?.proposed_text ?? "").toString();
 
     if (dst) {
-      // стабилизируем селекторы и наполняем
       if (!dst.id) dst.id = "proposedText";
       if (!dst.name) dst.name = "proposed";
       (dst as any).dataset.role = "proposed-text";
-
       dst.value = proposed;
       dst.dispatchEvent(new Event("input", { bubbles: true }));
-      console.info("[Draft] proposed filled");
+      notifyOk("Draft ready");
     } else {
-      console.warn("[Draft] proposed textarea not found");
+      notifyWarn("Proposed textarea not found");
     }
   } catch (e) {
-    console.error("[Draft] error", e);
+    notifyWarn("Draft error");
+    console.error(e);
   }
 }
 
@@ -90,10 +153,30 @@ async function doQARecheck() {
 }
 
 function bindClick(sel: string, fn: () => void) {
-  const el = document.querySelector(sel) as HTMLElement | null;
+  const el = document.querySelector(sel) as HTMLButtonElement | null;
   if (!el) return;
   el.addEventListener("click", (e) => { e.preventDefault(); fn(); });
-  el.classList.remove("js-disable-while-busy"); // чтобы точно были кликабельны
+  el.classList.remove("js-disable-while-busy");
+  el.removeAttribute("disabled");
+}
+
+async function onApplyTracked() {
+  try {
+    const dst = $(Q.proposed);
+    const proposed = (dst?.value || "").trim();
+    if (!proposed) { notifyWarn("No draft to insert"); return; }
+    await Word.run(async ctx => {
+      let range = ctx.document.getSelection();
+      (ctx.document as any).trackRevisions = true;
+      range.insertText(proposed, "Replace");
+      try { range.insertComment("AI draft"); } catch {}
+      await ctx.sync();
+    });
+    notifyOk("Inserted into Word");
+  } catch (e) {
+    notifyWarn("Insert failed");
+    console.error(e);
+  }
 }
 
 function wireUI() {
@@ -101,7 +184,11 @@ function wireUI() {
   bindClick("#btnAnalyzeDoc", doAnalyzeDoc);
   bindClick("#btnQARecheck", doQARecheck);
   document.getElementById("btnGetAIDraft")?.addEventListener("click", onGetAIDraft);
-  // При необходимости добавьте остальные кнопки: Use selection, Insert result into Word и т.д.
+  bindClick("#btn-use-selection", onUseSelection);
+  bindClick("#btn-use-whole", onUseWholeDoc);
+  bindClick("#btnApplyTracked", onApplyTracked);
+  bindClick("#btnAcceptAll", () => notifyWarn("Not implemented"));
+  bindClick("#btnRejectAll", () => notifyWarn("Not implemented"));
   console.log("Panel UI wired");
 }
 

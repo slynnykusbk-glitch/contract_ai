@@ -1,0 +1,47 @@
+rule:
+  id: "uk.master.term.extensions_notice"
+  version: "1.0.0"
+  title: "1.2: fixed dates, defined extensions, and notice mechanism"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["1.2","term","extensions","survival"]
+  triggers:
+    any:
+      - regex: "(?i)initial\\s+term|extend(ed)?\\s+term|Effective\\s+Date"
+  checks:
+    - id: "missing_term_fields"
+      when:
+        any:
+          - regex: "\\[●"
+          - not_regex: "(?i)\\b(\\d{1,2}\\s+months|\\d{4})\\b"
+      finding:
+        message: "Term/extension fields appear incomplete (dates/durations)."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Populate end date and extension count/duration; avoid placeholders."
+        score_delta: -20
+    - id: "extension_without_notice_link"
+      when:
+        all:
+          - regex: "(?i)may\\s+extend"
+          - not_regex: "(?i)written\\s+notice|Clause\\s+29|Notices"
+      finding:
+        message: "Extension right lacks explicit written notice mechanism / Notices link."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Tie extensions to written notice under Clause 29 (Notices)."
+        score_delta: -15
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: TermFieldsIncomplete
+    score: 70
+    problem: "Term/extension data incomplete or missing notice link."
+    recommendation: "Fill dates and durations; reference Clause 29 for notice."
+    law_reference: []
+    category: "Term"
+    keywords: ["term","extensions","notice","Clause 29"]

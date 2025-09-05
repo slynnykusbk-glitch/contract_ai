@@ -1,0 +1,39 @@
+rule:
+  id: "uk.master.incorp.placeholders_clean"
+  version: "1.0.0"
+  title: "Incorporation: remove placeholders and editorial notes"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA","NDA"]
+    clauses: ["1.1","incorporation","exhibits","exhibit_j"]
+  triggers:
+    any:
+      - regex: "(?i)by reference (are|is) incorporated"
+      - regex: "(?i)Exhibit\\s+J|PCG|Performance\\s+Bond|Letter\\s+of\\s+Credit"
+  checks:
+    - id: "placeholder_or_editorial"
+      when:
+        any:
+          - regex: "\\[●"
+          - regex: "(?i)\\[DELETE AS APPROPRIATE\\]"
+          - regex: "(?i)\\[Amend prior to issuing externally\\]"
+      finding:
+        message: "Placeholders/editorial notes present in incorporated documents."
+        severity_level: "major"
+        risk: "high"
+        legal_basis:
+          - "Contract certainty"
+        suggestion:
+          text: "Resolve all placeholders and remove editorial notes before execution or external issue."
+        score_delta: -25
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: PlaceholdersLeft
+    score: 70
+    problem: "Unresolved placeholders in 1.1/Exhibits."
+    recommendation: "Replace [●]/notes with final details; re-issue clean exhibit files."
+    law_reference: []
+    category: "Incorporation"
+    keywords: ["Exhibit J","PCG","Bond","LC","placeholders"]

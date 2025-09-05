@@ -1,0 +1,46 @@
+rule:
+  id: "uk.master.supplemental.priority"
+  version: "1.0.0"
+  title: "1.3: supplemental docs act under Agreement and order of precedence"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["1.3","supplemental","purchase_orders","order_of_precedence"]
+  triggers:
+    any:
+      - regex: "(?i)supplemental\\s+document|purchase\\s+order|PO\\b"
+  checks:
+    - id: "missing_precedence_reference"
+      when:
+        all:
+          - regex: "(?i)shall\\s+continue\\s+to\\s+apply"
+          - not_regex: "(?i)subject\\s+to\\s+Clause\\s+2\\.2|order\\s+of\\s+precedence"
+      finding:
+        message: "Supplemental docs continuing post-Call-Off lack order-of-precedence reference."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add 'subject to Clause 2.2 (Order of Precedence)'; POs must not override Agreement."
+        score_delta: -20
+    - id: "po_changes_core_terms"
+      when:
+        any:
+          - regex: "(?i)PO\\s+may\\s+modify\\s+terms|purchase\\s+order\\s+prevails"
+      finding:
+        message: "PO purports to vary/override core Agreement terms."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Clarify POs are for scope/schedule/price only and subordinate to Agreement/Exhibits."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: SupplementalPriorityGap
+    score: 80
+    problem: "Risk of PO overriding Agreement or unclear precedence."
+    recommendation: "Reference Clause 2.2; limit PO to operational details."
+    law_reference: []
+    category: "Supplemental"
+    keywords: ["PO","order of precedence","Clause 2.2"]

@@ -1,0 +1,35 @@
+rule:
+  id: "uk.master.incorp.dynamic_refs_change_control"
+  version: "1.0.0"
+  title: "Incorporation: dynamic updates need Change Control"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["1.1","incorporation","standards","policies"]
+  triggers:
+    any:
+      - regex: "(?i)as\\s+may\\s+be\\s+updated\\s+from\\s+time\\s+to\\s+time"
+  checks:
+    - id: "no_change_control_reference"
+      when:
+        all:
+          - regex: "(?i)as\\s+may\\s+be\\s+updated\\s+from\\s+time\\s+to\\s+time"
+          - not_regex: "(?i)Change\\s+Control|Variation|Clause\\s+14"
+      finding:
+        message: "Dynamic reference without Change Control/Variation hook."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Tie updates to formal Change Control/Variation procedure (e.g., Clause 14)."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: DynamicRefWithoutChangeControl
+    score: 80
+    problem: "Unbounded one-sided updates via external docs."
+    recommendation: "Require Change Control for any update."
+    law_reference: []
+    category: "Incorporation"
+    keywords: ["dynamic reference","change control","variation"]

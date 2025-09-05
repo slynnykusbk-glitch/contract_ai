@@ -1,0 +1,35 @@
+rule:
+  id: "universal.inform.deemed_laws_change"
+  version: "1.0.0"
+  title: "Deemed knowledge of laws must exclude Change in Law"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["inform itself","law compliance","change in law"]
+  triggers:
+    any:
+      - regex: "(?i)deemed\\s+to\\s+be\\s+aware\\s+of\\s+all\\s+applicable\\s+laws|knows\\s+all\\s+laws"
+  checks:
+    - id: "no_change_in_law_exception"
+      when:
+        not_regex: "(?i)Change\\s+in\\s+Law|variation|adjustment\\s+for\\s+law\\s+changes"
+      finding:
+        message: "Deemed awareness of all laws but no Change in Law relief."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add Change in Law clause routing to Variation/time/price adjustment."
+        score_delta: -20
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: ChangeInLawRisk
+    score: 72
+    problem: "No relief for law changes."
+    recommendation: "Provide Change in Law mechanism (VO/time/price)."
+    law_reference: []
+    category: "Inform & Diligence"
+    keywords: ["Change in Law","deemed laws"]
+metadata:
+  tags: ["law","change"]

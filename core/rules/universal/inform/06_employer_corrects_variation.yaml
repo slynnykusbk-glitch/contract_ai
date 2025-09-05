@@ -1,0 +1,45 @@
+rule:
+  id: "universal.inform.employer_corrects_variation"
+  version: "1.0.0"
+  title: "Customer corrects its document errors; impacts go via Variation/EOT"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["discrepancies","variation","EOT"]
+  triggers:
+    any:
+      - regex: "(?i)Customer|Employer|Company.*(error|discrepanc|inconsisten)"
+  checks:
+    - id: "no_correction_obligation"
+      when:
+        not_regex: "(?i)shall\\s+(correct|clarify|instruct)[^\\n]*errors"
+      finding:
+        message: "No obligation on Customer to correct/clarify its errors."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Add explicit obligation to correct and instruct."
+        score_delta: -12
+    - id: "no_change_routing"
+      when:
+        not_regex: "(?i)(Variation|Change\\s+Order|VO|EOT)"
+      finding:
+        message: "No Variation/EOT routing when correction affects scope/time/price."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Route impacts through formal Variation/EOT."
+        score_delta: -18
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: CorrectionProcessGap
+    score: 74
+    problem: "No correction + change routing."
+    recommendation: "Mandate correction + VO/EOT routing."
+    law_reference: []
+    category: "Inform & Diligence"
+    keywords: ["errors","variation","EOT"]
+metadata:
+  tags: ["variation"]

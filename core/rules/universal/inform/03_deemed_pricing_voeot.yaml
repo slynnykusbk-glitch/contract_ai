@@ -1,0 +1,35 @@
+rule:
+  id: "universal.inform.deemed_pricing_voeot"
+  version: "1.0.0"
+  title: "Deemed sufficiency of rates/prices cannot block VO/EOT for new circumstances"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["pricing","inform itself","variations","EOT"]
+  triggers:
+    any:
+      - regex: "(?i)sufficient\\s+(rates|prices)|adequacy\\s+of\\s+pricing"
+  checks:
+    - id: "blocks_variation"
+      when:
+        regex: "(?i)no\\s+(adjustment|increase|extension)[^\\n]*in\\s+any\\s+circumstances"
+      finding:
+        message: "Pricing ‘sufficiency’ blocks all adjustment/extension."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Carve-out: bona fide Variations/EOT, Change in Law, Employer-caused delay."
+        score_delta: -20
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: PricingRigidity
+    score: 74
+    problem: "Absolute bar to adjustments."
+    recommendation: "Permit VO/EOT/Change in Law relief."
+    law_reference: []
+    category: "Inform & Diligence"
+    keywords: ["pricing","VO","EOT"]
+metadata:
+  tags: ["pricing"]

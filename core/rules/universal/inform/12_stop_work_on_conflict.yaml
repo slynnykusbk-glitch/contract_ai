@@ -1,0 +1,35 @@
+rule:
+  id: "universal.inform.stop_work_on_conflict"
+  version: "1.0.0"
+  title: "If discrepancy jeopardises safety or legal compliance, stop-work until instruction"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["HSE","compliance","discrepancies","instructions"]
+  triggers:
+    any:
+      - regex: "(?i)safety|legal\\s+compliance|stop\\-work|permit\\-to\\-work|PTW"
+  checks:
+    - id: "no_stop_work_right"
+      when:
+        not_regex: "(?i)may\\s+suspend|stop\\-work|halt\\s+work\\s+until\\s+instructions"
+      finding:
+        message: "No explicit right/duty to stop-work or suspend in safety/legal conflict."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Insert stop-work authority and non-retaliation; resume after written instruction."
+        score_delta: -20
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: SafetyStopWorkGap
+    score: 70
+    problem: "No stop-work authority for HSE/legal conflicts."
+    recommendation: "Add stop-work right/duty + restart conditions."
+    law_reference: []
+    category: "Inform & Diligence"
+    keywords: ["HSE","stop work","compliance"]
+metadata:
+  tags: ["safety","ptw"]

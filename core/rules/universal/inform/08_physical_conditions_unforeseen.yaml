@@ -1,0 +1,37 @@
+rule:
+  id: "universal.inform.physical_conditions_unforeseen"
+  version: "1.0.0"
+  title: "Physical conditions: foreseeability test and relief for unforeseen conditions"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["site conditions","physical conditions","risk","EOT","variation"]
+  triggers:
+    any:
+      - regex: "(?i)physical\\s+conditions|site\\s+conditions|ground\\s+conditions"
+  checks:
+    - id: "all_risk_contractor"
+      when:
+        all:
+          - regex: "(?i)contractor\\s+bears\\s+all\\s+risk"
+          - not_regex: "(?i)unforeseen|unforeseeable|latent|EOT|Variation"
+      finding:
+        message: "All physical condition risk on contractor with no unforeseen relief."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add relief for unforeseen/latent physical conditions (VO/EOT) and a foreseeability test."
+        score_delta: -22
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: UnforeseenConditionsRisk
+    score: 70
+    problem: "No relief for unforeseen conditions."
+    recommendation: "Add foreseeability test + VO/EOT relief."
+    law_reference: []
+    category: "Inform & Diligence"
+    keywords: ["physical conditions","unforeseen"]
+metadata:
+  tags: ["site","conditions"]

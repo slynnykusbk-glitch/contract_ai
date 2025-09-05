@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 import yaml
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from core.schemas import AnalysisInput
 
@@ -17,6 +17,12 @@ from core.schemas import AnalysisInput
 class Finding:
     """Simplified finding used in tests."""
     message: str
+    suggestion: Optional["Suggestion"] = None
+
+
+@dataclass
+class Suggestion:
+    text: str = ""
 
 
 @dataclass
@@ -72,7 +78,11 @@ def run_rule(spec: Dict[str, Any], inp: AnalysisInput) -> RuleResult | None:
             f_spec = check.get("finding", {})
             msg = f_spec.get("message", "")
             risk = f_spec.get("risk", "low")
-            findings.append(Finding(message=msg))
+            s_spec = f_spec.get("suggestion")
+            suggestion = None
+            if isinstance(s_spec, dict):
+                suggestion = Suggestion(text=s_spec.get("text", ""))
+            findings.append(Finding(message=msg, suggestion=suggestion))
             if _RISK_ORDER.get(risk, 0) > _RISK_ORDER.get(max_risk, 0):
                 max_risk = risk
 

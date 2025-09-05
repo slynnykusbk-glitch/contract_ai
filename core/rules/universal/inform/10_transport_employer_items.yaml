@@ -1,0 +1,35 @@
+rule:
+  id: "universal.inform.transport_employer_items"
+  version: "1.0.0"
+  title: "Transport of Customer-provided items: risk transfer point and Incoterms alignment"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["logistics","risk","company provided items"]
+  triggers:
+    any:
+      - regex: "(?i)(Company|Customer|Employer)\\s+Provided\\s+(Items|Equipment)|CPI"
+  checks:
+    - id: "no_risk_transfer_point"
+      when:
+        not_regex: "(?i)risk\\s+passes\\s+at\\s+(handover|collection|FOB|DAP|DDP)"
+      finding:
+        message: "No clear risk transfer point for transport of employer items."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Define risk transfer point and align with Incoterms 2020 if applicable."
+        score_delta: -12
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: TransportRiskGap
+    score: 86
+    problem: "Unclear risk transfer on CPI transport."
+    recommendation: "Define risk point; align with Incoterms."
+    law_reference: []
+    category: "Inform & Diligence"
+    keywords: ["CPI","Incoterms","risk"]
+metadata:
+  tags: ["logistics","cpi"]

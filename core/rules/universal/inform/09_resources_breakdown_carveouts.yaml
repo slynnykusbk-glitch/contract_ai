@@ -1,0 +1,37 @@
+rule:
+  id: "universal.inform.resources_breakdown_carveouts"
+  version: "1.0.0"
+  title: "Resource availability and equipment breakdown risks with fair carve-outs"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["resources","equipment","risk","force majeure"]
+  triggers:
+    any:
+      - regex: "(?i)availability\\s+of\\s+personnel|equipment\\s+breakdown|failure\\s+of\\s+equipment"
+  checks:
+    - id: "no_employer_delay_relief"
+      when:
+        all:
+          - regex: "(?i)contractor\\s+responsible\\s+for\\s+all\\s+availability|all\\s+breakdowns"
+          - not_regex: "(?i)Employer|Customer\\s+caused|EOT|Variation"
+      finding:
+        message: "No relief for employer-caused access/interference or mandated delays."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Add relief for employer/authority interference and FM; align with EOT."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: ResourceRiskImbalance
+    score: 82
+    problem: "Resource/breakdown risk allocated without carve-outs."
+    recommendation: "Add employer/FM carve-outs + EOT."
+    law_reference: []
+    category: "Inform & Diligence"
+    keywords: ["resources","breakdown","EOT"]
+metadata:
+  tags: ["resources"]

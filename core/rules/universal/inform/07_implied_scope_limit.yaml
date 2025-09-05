@@ -1,0 +1,35 @@
+rule:
+  id: "universal.inform.implied_scope_limit"
+  version: "1.0.0"
+  title: "‘Necessary to perform’ implied scope limited to incidental work; otherwise Variation"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["scope","variation","performance"]
+  triggers:
+    any:
+      - regex: "(?i)all\\s+things\\s+necessary|everything\\s+required\\s+to\\s+perform"
+  checks:
+    - id: "unlimited_implied_scope"
+      when:
+        not_regex: "(?i)incidental|minor|not\\s+material|Variation"
+      finding:
+        message: "Implied scope appears unlimited."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Limit to incidental/minor tasks; material additions require Variation."
+        score_delta: -20
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: ScopeCreepRisk
+    score: 72
+    problem: "Unlimited implied scope."
+    recommendation: "Limit and gate via Variation."
+    law_reference: []
+    category: "Inform & Diligence"
+    keywords: ["scope creep","implied scope"]
+metadata:
+  tags: ["scope"]

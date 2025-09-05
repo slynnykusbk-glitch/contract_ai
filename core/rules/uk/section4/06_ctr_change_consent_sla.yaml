@@ -1,0 +1,45 @@
+rule:
+  id: "uk.s4.ctr.change_consent_sla"
+  version: "1.0.0"
+  title: "CTR change requires Company consent; deemed approval SLA recommended"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off","Notice"]
+    clauses: ["representatives","clause 4"]
+  triggers:
+    any:
+      - regex: "(?i)change\\s+of\\s+CTR|replace\\s+the\\s+Contractor\\s+Representative"
+  checks:
+    - id: "no_company_consent"
+      when:
+        not_regex: "(?i)Company'?s?\\s+consent.*not\\s+unreasonably\\s+(withheld|delayed)"
+      finding:
+        message: "CTR change lacks Company consent reasonableness."
+        severity_level: "major"
+        risk: "medium"
+        suggestion:
+          text: "Add consent standard: not unreasonably withheld/delayed."
+        score_delta: -10
+    - id: "no_deemed_approval"
+      when:
+        not_regex: "(?i)deemed\\s+approved\\s+after\\s+\\d+\\s+Business\\s+Days"
+      finding:
+        message: "No deemed approval SLA—risk of resource leverage."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Add deemed approval after 5 Business Days silence."
+        score_delta: -8
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: CTRChangeProcessGap
+    score: 88
+    problem: "CTR change lacks consent/SLA safeguards."
+    recommendation: "Insert reasonableness + deemed approval."
+    law_reference: []
+    category: "Section 4"
+    keywords: ["CTR change","consent","SLA"]
+metadata:
+  tags: ["ctr","consent","sla"]

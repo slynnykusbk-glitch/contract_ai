@@ -1,0 +1,47 @@
+rule:
+  id: "uk.s4.reps.notice_channels_alignment"
+  version: "1.0.0"
+  title: "CR/CTR sending/receiving notices must align with Clause 29 and writing policy"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off","Notice"]
+    clauses: ["representatives","notices","clause 29","interpretation 2.2.1(i)"]
+  triggers:
+    any:
+      - regex: "(?i)send\\s+or\\s+receive\\s+notices|notice\\s+address|acknowledgement\\s+in\\s+writing"
+  checks:
+    - id: "email_banned_no_alt"
+      when:
+        all:
+          - regex: "(?i)email\\s+shall\\s+not\\s+constitute\\s+writing"
+          - not_regex: "(?i)e-?signature|portal|DocuSign|Adobe\\s+Sign|platform"
+      finding:
+        message: "Email excluded as 'writing' but no e-sign/portal path defined."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Whitelist e-sign/portal for CR/CTR notices; keep formal Notices per Clause 29."
+        score_delta: -20
+    - id: "no_clause29_ref"
+      when:
+        not_regex: "(?i)Clause\\s*29|Notices"
+      finding:
+        message: "No cross-reference to Clause 29 for channels."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Reference Clause 29 for valid channels and addresses."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: NoticeChannelMisalignment
+    score: 80
+    problem: "Notice channels for reps misaligned."
+    recommendation: "Align with Clause 29 and allow e-sign/portal."
+    law_reference: []
+    category: "Section 4"
+    keywords: ["notices","writing","channels"]
+metadata:
+  tags: ["notices","channels"]

@@ -1,0 +1,47 @@
+rule:
+  id: "uk.s4.cr.nom_shield"
+  version: "1.0.0"
+  title: "CR cannot amend/waive MSA/Call-Off; NOM enforced"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off"]
+    clauses: ["representatives","modification","clause 4","clause 3.12","clause 3.13"]
+  triggers:
+    any:
+      - regex: "(?i)Company\\s+Representative\\s+may\\s+(amend|modify|waive)"
+      - regex: "(?i)oral\\s+modification|email\\s+modification|verbal\\s+agreement"
+  checks:
+    - id: "cr_modifies_msa"
+      when:
+        regex: "(?i)CR\\s+may\\s+(amend|modify|waive)|Company\\s+Representative\\s+may\\s+(amend|modify|waive)"
+      finding:
+        message: "CR purported power to amend/waive contradicts NOM (3.12/3.13)."
+        severity_level: "blocker"
+        risk: "high"
+        legal_basis: ["Rock v MWB (UKSC, 2018)"]
+        suggestion:
+          text: "Delete/limit: modifications only via Clause 3.12; non-compliant changes null/void (3.13)."
+        score_delta: -30
+    - id: "off_channel_mod"
+      when:
+        regex: "(?i)oral\\s+modification|email\\s+modification|agreed\\s+in\\s+meeting\\s+minutes"
+      finding:
+        message: "Off-channel modification route detected; reinforce NOM."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "State explicitly: no oral/email modifications; minutes are non-binding; VO required."
+        score_delta: -20
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S1
+    issue_type: NOMBreachRisk
+    score: 60
+    problem: "CR modification/waiver powers or off-channel modifications."
+    recommendation: "Enforce NOM (3.12/3.13); remove CR amendment powers."
+    law_reference: []
+    category: "Section 4"
+    keywords: ["NOM","Rock v MWB","waiver","modification"]
+metadata:
+  tags: ["nom","rock"]

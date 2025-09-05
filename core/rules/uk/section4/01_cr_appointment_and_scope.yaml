@@ -1,0 +1,46 @@
+rule:
+  id: "uk.s4.cr.appointment_and_scope"
+  version: "1.0.0"
+  title: "CR appointed in writing; may issue operational instructions; not a Variation"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off"]
+    clauses: ["representatives","clause 4"]
+  triggers:
+    any:
+      - regex: "(?i)Company\\s+Representative\\s*\\(|\\bCR\\b"
+  checks:
+    - id: "cr_not_named"
+      when:
+        not_regex: "(?i)Company\\s+Representative.+(name|named|appointed|designation)"
+      finding:
+        message: "CR not expressly named/appointed in writing for the Call-Off."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: ["Best practice NEC/FIDIC: instructions only via appointed role"]
+        suggestion:
+          text: "Name the CR (name/title) and attach appointment evidence effective for this Call-Off."
+        score_delta: -20
+    - id: "instruction_vs_variation_guard_missing"
+      when:
+        not_regex: "(?i)Instruction\\s+does\\s+not\\s+constitute\\s+a\\s+Variation|changes\\s+to\\s+Scope/Price/Schedule\\s+require\\s+VO|Clause\\s*14"
+      finding:
+        message: "No guard: CR instructions must not act as Variations."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Insert guard: operational instruction ≠ Variation; any impact to Scope/Price/Schedule -> VO per Clause 14."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: CRAppointmentOrScopeGap
+    score: 80
+    problem: "CR not properly appointed and/or instruction≠variation guard missing."
+    recommendation: "Appoint CR in writing; add guard to route impacts via VO (Cl.14)."
+    law_reference: []
+    category: "Section 4"
+    keywords: ["CR","appointment","instructions","variation guard"]
+metadata:
+  tags: ["cr","appointment","variation-guard"]

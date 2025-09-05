@@ -1,0 +1,47 @@
+rule:
+  id: "uk.s4.hse.stop_work_authority"
+  version: "1.0.0"
+  title: "Stop-Work Authority policy present; no retaliation"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off","HSE Policy"]
+    clauses: ["representatives","HSE","safety"]
+  triggers:
+    any:
+      - regex: "(?i)Stop\\s*Work\\s*Authority|SWA|right\\s+to\\s+stop\\s+work"
+  checks:
+    - id: "no_swa_policy"
+      when:
+        not_regex: "(?i)Stop\\s*Work\\s*Authority|SWA"
+      finding:
+        message: "No Stop-Work Authority provision referenced."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Insert SWA: any worker may stop unsafe work; CR/CTR must respect; no retaliation."
+        score_delta: -10
+    - id: "no_no_retaliation"
+      when:
+        all:
+          - regex: "(?i)Stop\\s*Work"
+          - not_regex: "(?i)no\\s+retaliation|non\\-retaliation"
+      finding:
+        message: "SWA present but no explicit non-retaliation."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Add non-retaliation protection for SWA."
+        score_delta: -8
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: HSERuleGap
+    score: 88
+    problem: "SWA/non-retaliation gaps."
+    recommendation: "Add SWA + non-retaliation."
+    law_reference: []
+    category: "Section 4"
+    keywords: ["HSE","Stop Work","non-retaliation"]
+metadata:
+  tags: ["hse","swa"]

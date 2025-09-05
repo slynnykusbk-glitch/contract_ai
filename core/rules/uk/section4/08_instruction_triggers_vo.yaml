@@ -1,0 +1,38 @@
+rule:
+  id: "uk.s4.instructions.trigger_vo"
+  version: "1.0.0"
+  title: "Any CR/CTR instruction impacting Scope/Price/Schedule/LD must route to VO (Clause 14)"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["MSA","Call-Off","Instruction"]
+    clauses: ["representatives","variations","clause 14"]
+  triggers:
+    any:
+      - regex: "(?i)instruct|instruction|direction"
+  checks:
+    - id: "impact_no_vo"
+      when:
+        all:
+          - regex: "(?i)(Scope|Price|Schedule|LD)"
+          - not_regex: "(?i)Variation\\s+Order|VO|Clause\\s*14"
+      finding:
+        message: "Instruction with impact but no VO routing (NEC/FIDIC practice)."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: ["NEC4 compensation events; FIDIC 13.x Variations"]
+        suggestion:
+          text: "Add: any impact instruction requires VOR/VO per Clause 14."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: HiddenVariationRisk
+    score: 80
+    problem: "Impactful instruction lacks VO routing."
+    recommendation: "Mandate VOR/VO for impacts."
+    law_reference: []
+    category: "Section 4"
+    keywords: ["instruction","VO","variation"]
+metadata:
+  tags: ["variation","nec","fidic"]

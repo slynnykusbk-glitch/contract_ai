@@ -205,9 +205,6 @@
   <div id="officeTools" class="row card" style="display:block">
     <div class="muted" style="margin-bottom:6px">Office tools</div>
     <div class="flex">
-      <!-- Поменяли местами и усилили whole -->
-      <button id="btn-use-whole" class="btn btn-lg btn-primary js-disable-while-busy" style="margin-right:8px">Use whole doc →</button>
-      <button id="btn-use-selection" class="btn btn-sm js-disable-while-busy">Use selection →</button>
       <button id="btnInsertIntoWord" class="btn">Insert result into Word</button>
     </div>
   </div>
@@ -225,9 +222,12 @@
       </div>
     </div>
     <div class="row flex" style="margin-top:6px">
-      <button id="btnAnalyzeDoc" class="btn-grey js-disable-while-busy">Analyze (doc)</button>
+      <button id="btnAnalyze" class="btn-grey js-disable-while-busy">Analyze</button>
+      <label class="inline" style="gap:4px"><input type="checkbox" id="chkUseSelection"/>Use selection</label>
       <small class="js-busy-indicator">⏳</small>
-      <button id="btnAnnotate" class="btn2 js-disable-while-busy">Annotate</button>
+      <button id="btnAnnotate" class="btn2 js-disable-while-busy" disabled>Annotate</button>
+      <button id="btnPrevIssue" class="btn-grey js-disable-while-busy">Prev issue</button>
+      <button id="btnNextIssue" class="btn-grey js-disable-while-busy">Next issue</button>
       <button id="btnQARecheck" class="btn-grey js-disable-while-busy">QA Recheck</button>
       <button id="btnClearAnnots" class="btn-grey js-disable-while-busy" title="Select text in Word before applying edits.">Clear Annotations</button>
       <span class="pill right" id="qaDeltaBadge" title="QA deltas">Δ: —</span>

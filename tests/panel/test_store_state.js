@@ -2,7 +2,8 @@ const fs = require('fs');
 const vm = require('vm');
 const assert = require('assert');
 
-const code = fs.readFileSync(__dirname + '/../../word_addin_dev/app/assets/store.js', 'utf8');
+let code = fs.readFileSync(__dirname + '/../../word_addin_dev/app/assets/store.js', 'utf8');
+code = code.replace(/export\s+/g, '');
 const globalCAI = {};
 const sandbox = {
   window: { CAI: globalCAI },

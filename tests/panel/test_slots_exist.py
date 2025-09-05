@@ -25,3 +25,15 @@ def test_raw_json_toggle_slot_exists():
 
 def test_raw_json_pre_slot_exists():
     assert _exists('rawJson', 'raw-json')
+
+
+def test_btn_annotate_exists():
+    assert _exists('btnAnnotate', 'annotate') or 'id="btnAnnotate"' in HTML
+
+
+def test_btn_apply_tracked_exists():
+    assert _exists('btnApplyTracked', 'apply-tracked') or 'id="btnApplyTracked"' in HTML
+
+
+def test_btn_accept_reject_exist():
+    assert 'id="btnAcceptAll"' in HTML and 'id="btnRejectAll"' in HTML

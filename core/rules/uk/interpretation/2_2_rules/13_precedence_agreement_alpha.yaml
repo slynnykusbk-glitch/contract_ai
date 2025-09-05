@@ -1,0 +1,35 @@
+rule:
+  id: "uk.int.2_2_3.precedence_agreement_alpha_risk"
+  version: "1.0.0"
+  title: "Agreement precedence: Clauses over Exhibits; alphabetical exhibits flagged as risk"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["interpretation","precedence"]
+  triggers:
+    any:
+      - regex: "(?i)order\\s+of\\s+precedence|precedence"
+  checks:
+    - id: "alphabetical_exhibits_used"
+      when:
+        regex: "(?i)Exhibits?\\s+in\\s+alphabetical\\s+order"
+      finding:
+        message: "Alphabetical exhibit precedence is atypical and may cause accidental priority."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Replace with purpose-based precedence (Conditions > Scope/Specs > Standards/Codes > Templates)."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: S3
+    issue_type: PrecedenceAlphaRisk
+    score: 87
+    problem: "Alphabetical exhibit precedence can misallocate priority."
+    recommendation: "Adopt purpose-based precedence matrix."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["precedence","alphabetical","exhibits"]
+metadata:
+  tags: ["precedence"]

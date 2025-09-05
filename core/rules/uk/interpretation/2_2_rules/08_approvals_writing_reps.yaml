@@ -1,0 +1,45 @@
+rule:
+  id: "uk.int.2_2_1h.approvals_in_writing_by_reps"
+  version: "1.0.0"
+  title: "Approvals in writing by authorised Representatives; no silence=consent"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["interpretation","approvals","representatives","notices"]
+  triggers:
+    any:
+      - regex: "(?i)Approval\\s+must\\s+be\\s+in\\s+writing"
+  checks:
+    - id: "rep_role_unspecified"
+      when:
+        not_regex: "(?i)Representative(s)?|authorised"
+      finding:
+        message: "Approver role not restricted to authorised Representatives."
+        severity_level: "medium"
+        risk: "medium"
+        suggestion:
+          text: "Limit approvals to authorised Representatives per Clause 4."
+        score_delta: -10
+    - id: "silence_equals_approval"
+      when:
+        regex: "(?i)(deemed\\s+approved|silence(?!\\s+is\\s+not))"
+      finding:
+        message: "Deemed/silent approvals detected; risk of unintended consent."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Remove silence=approval; require explicit written approval."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: ApprovalAuthorityGap
+    score: 82
+    problem: "Approval authority or process unclear."
+    recommendation: "Restrict to authorised Reps; forbid silent approvals."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["approval","writing","Representatives"]
+metadata:
+  tags: ["approval","authority"]

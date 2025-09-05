@@ -1,0 +1,37 @@
+rule:
+  id: "uk.int.2_2_7.stringency_fitness_priority"
+  version: "1.0.0"
+  title: "Stricter-of rule: fitness/target prevails over codes; VO if cost/time rises"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA","Call-Off"]
+    clauses: ["interpretation","specifications","fitness","variation"]
+  triggers:
+    any:
+      - regex: "(?i)stricter|stringency|fitness\\s+for\\s+purpose"
+  checks:
+    - id: "vo_link_missing"
+      when:
+        all:
+          - regex: "(?i)stricter|fitness"
+          - not_regex: "(?i)Variation|Clause\\s*14|adjust(ment|s)|cost|time"
+      finding:
+        message: "Stricter-of rule present without VO/cost-time adjustment mechanism."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Link stricter-of to VO with cost/time adjustments."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: StringencyWithoutVO
+    score: 80
+    problem: "Stricter standard may impose extra cost/time without adjustment."
+    recommendation: "Bind to Clause 14 VO and adjustments."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["stringency","fitness","VO"]
+metadata:
+  tags: ["fitness","variation"]

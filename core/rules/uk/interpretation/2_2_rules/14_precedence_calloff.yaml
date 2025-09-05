@@ -1,0 +1,47 @@
+rule:
+  id: "uk.int.2_2_4.precedence_calloff"
+  version: "1.0.0"
+  title: "Call-Off precedence: (a) MSA Clauses (as modified 3.12) > (b) other Call-Off terms > (c) MSA Exhibits (alpha) > (d) Call-Off attachments > (e) POs/others"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Call-Off","Master Agreement","MSA"]
+    clauses: ["interpretation","call-off","precedence"]
+  triggers:
+    any:
+      - regex: "(?i)Call[-\\s]?Off"
+  checks:
+    - id: "modifies_msa_not_per_3_12"
+      when:
+        all:
+          - regex: "(?i)modify|amend|override"
+          - not_regex: "(?i)Clause\\s*3\\.12|expressly\\s+modif(y|ies)"
+      finding:
+        message: "Call-Off attempts to modify MSA without cl.3.12 compliance."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Require explicit 3.12 reference and pinpointed amendment."
+        score_delta: -20
+    - id: "po_terms_last_shot"
+      when:
+        regex: "(?i)(Supplier\\s+Terms\\s+apply|terms\\s+on\\s+PO\\s+apply)"
+      finding:
+        message: "PO/boilerplate terms attempt to override precedence (Tekdata risk)."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "State Supplier T&Cs are excluded; precedence follows 2.2.4."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: CallOffPrecedenceBreach
+    score: 80
+    problem: "Call-Off modifies MSA improperly or lets PO terms win."
+    recommendation: "Enforce cl.3.12 and exclude Supplier T&Cs."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["Call-Off","precedence","Tekdata","3.12"]
+metadata:
+  tags: ["precedence","battle-of-forms"]

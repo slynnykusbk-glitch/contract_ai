@@ -1,0 +1,47 @@
+rule:
+  id: "uk.int.2_2_1k.subcontracts_flowdown_audit"
+  version: "1.0.0"
+  title: "‘Subcontracts’ includes services/materials/equipment; flow-down & audit rights"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["interpretation","subcontracts","compliance","audit"]
+  triggers:
+    any:
+      - regex: "(?i)Subcontracts?\\s+means"
+  checks:
+    - id: "coverage_narrow"
+      when:
+        not_regex: "(?i)services?|materials?|equipment|Contractor\\s+Group\\s+Equipment"
+      finding:
+        message: "Subcontracts definition too narrow."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Include services, materials, equipment, Contractor Group Equipment."
+        score_delta: -15
+    - id: "flowdown_audit_missing"
+      when:
+        any:
+          - not_regex: "(?i)(flow[-\\s]?down|back[-\\s]?to[-\\s]?back)"
+          - not_regex: "(?i)audit|inspect"
+      finding:
+        message: "Flow-down/audit rights absent."
+        severity_level: "major"
+        risk: "high"
+        suggestion:
+          text: "Add mandatory flow-down and audit/access rights."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: SubcontractsFlowDownGap
+    score: 80
+    problem: "Subcontracts coverage/flow-down incomplete."
+    recommendation: "Broaden scope; include flow-down and audit."
+    law_reference: []
+    category: "Interpretation"
+    keywords: ["subcontracts","flow-down","audit"]
+metadata:
+  tags: ["subs","flowdown"]

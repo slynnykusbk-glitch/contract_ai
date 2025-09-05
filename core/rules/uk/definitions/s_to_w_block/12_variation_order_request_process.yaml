@@ -1,0 +1,39 @@
+rule:
+  id: "uk.def.vor.process"
+  version: "1.0.0"
+  title: "Variation Order Request: initiator, timelines, evaluation; no proceed on risk"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["variation","process"]
+  triggers:
+    any:
+      - regex: "(?i)Variation\\s+Order\\s+Request|\\bVOR\\b"
+  checks:
+    - id: "process_elements_missing"
+      when:
+        any:
+          - not_regex: "(?i)initiat(or|ed)\\s+by"
+          - not_regex: "(?i)response|evaluation|timeline|\\b\\d+\\s*(days|business\\s+days)"
+          - not_regex: "(?i)(no\\s+proceed(ing)?\\s+without\\s+(a\\s+)?(signed\\s+)?VO|proceed(ing)?\\s+without\\s+(a\\s+)?(signed\\s+)?VO\\s+is\\s+prohibited)"
+      finding:
+        message: "VOR lacks initiator, response/evaluation timelines, or proceed-on-risk ban."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Define initiator, response/evaluation timelines and ban proceeding without VO."
+        score_delta: -20
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: VORProcessGap
+    score: 80
+    problem: "VOR process incomplete."
+    recommendation: "Add initiator, timelines, and no-proceed safeguard."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["VOR","process","timeline","no proceed"]
+metadata:
+  tags: ["variation","vor"]

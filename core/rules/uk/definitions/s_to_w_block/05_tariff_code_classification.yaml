@@ -1,0 +1,51 @@
+rule:
+  id: "uk.def.tariff_code.classification"
+  version: "1.0.0"
+  title: "Tariff Code: UK Trade Tariff/HS basis; evidence and fiscal effects"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","imports","tax","customs"]
+  triggers:
+    any:
+      - regex: "(?i)Tariff\\s+Code|Commodity\\s+Code"
+  checks:
+    - id: "code_or_hs_missing"
+      when:
+        any:
+          - not_regex: "(?i)\\b\\d{6,10}\\b"
+          - not_regex: "(?i)HS\\s*20\\d{2}|Harmonized\\s+System"
+      finding:
+        message: "Commodity code or HS basis/version not stated."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Provide commodity code and HS version as classification basis."
+        score_delta: -15
+    - id: "no_evidence_or_fiscal_effects"
+      when:
+        any:
+          - not_regex: "(?i)evidence|classification\\s+note|ruling"
+          - not_regex: "(?i)dut(y|ies)|VAT"
+      finding:
+        message: "No evidence of classification and/or missing duty/VAT implications."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Attach classification evidence/ruling and list duty/VAT impacts."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: TariffCodeClassificationGap
+    score: 80
+    problem: "Tariff code lacks HS basis, evidence or fiscal effects."
+    recommendation: "Add HS basis, evidence and duty/VAT implications; verify via UK Trade Tariff."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Tariff Code","Commodity Code","HS","VAT","duty"]
+metadata:
+  tags: ["customs","tariff"]

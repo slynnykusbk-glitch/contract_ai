@@ -1,0 +1,62 @@
+rule:
+  id: "uk.def.taxes.matrix_withholding_grossup"
+  version: "1.0.0"
+  title: "Taxes: responsibility matrix; withholding/gross-up; IoR/Incoterms consistency"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","tax","payments","withholding","incoterms"]
+  triggers:
+    any:
+      - regex: "(?i)Taxes?\\s+means"
+  checks:
+    - id: "matrix_missing"
+      when:
+        not_regex: "(?i)responsibilit(y|ies)\\s+matrix|Contractor\\s+Group\\s+taxes"
+      finding:
+        message: "No clear allocation of Contractor Group taxes (payroll, NI, import/export duties/fees)."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Add responsibility matrix: Contractor bears own payroll/social, import/export duties and fees."
+        score_delta: -15
+    - id: "withholding_or_grossup_missing"
+      when:
+        any:
+          - not_regex: "(?i)withholding"
+          - not_regex: "(?i)gross[-\\s]?up"
+      finding:
+        message: "Withholding or gross-up mechanics absent."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Add withholding/gross-up clause and DTA relief procedures."
+        score_delta: -15
+    - id: "ior_incoterms_conflict"
+      when:
+        all:
+          - regex: "(?i)Incoterms|DDP|DAP|IoR|Importer\\s+of\\s+Record"
+          - not_regex: "(?i)consistent|align|in\\s+line\\s+with\\s+IoR"
+      finding:
+        message: "Potential conflict between Taxes allocation and IoR/Incoterms responsibilities."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Align Taxes with IoR/EoR and chosen Incoterms for VAT/duties payer."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: TaxesAllocationGap
+    score: 80
+    problem: "Tax allocation/withholding/gross-up or IoR/Incoterms alignment unclear."
+    recommendation: "Add matrix and withholding/gross-up; align with IoR/Incoterms."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Taxes","withholding","gross-up","Incoterms","IoR"]
+metadata:
+  tags: ["tax","payments"]

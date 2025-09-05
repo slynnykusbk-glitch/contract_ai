@@ -1,0 +1,52 @@
+rule:
+  id: "uk.def.work.scope_boundary_interfaces"
+  version: "1.0.0"
+  title: "Work: broad scope; enforce boundaries (battery limits/interfaces/exclusions); link QA/LD/Variation"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","work","scope","qa","variation","ld"]
+  triggers:
+    any:
+      - regex: "(?i)Work\\s+means"
+  checks:
+    - id: "boundaries_missing"
+      when:
+        any:
+          - not_regex: "(?i)battery\\s+limits|boundar(y|ies)"
+          - not_regex: "(?i)interfaces?"
+          - not_regex: "(?i)exclusions?"
+      finding:
+        message: "Work lacks explicit boundaries/interfaces/exclusions to prevent scope creep."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Add battery limits, interfaces and exclusions; tie changes to VO."
+        score_delta: -20
+    - id: "qa_ld_links_missing"
+      when:
+        any:
+          - not_regex: "(?i)QA|quality\\s+plan|inspection"
+          - not_regex: "(?i)liquidated\\s+damages|LDs"
+      finding:
+        message: "No linkage to QA/inspection and LDs for schedule/performance."
+        severity_level: "medium"
+        risk: "medium"
+        legal_basis: []
+        suggestion:
+          text: "Reference QA/inspection regime and any LDs applicable in Call-Off."
+        score_delta: -10
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: WorkBoundaryGap
+    score: 80
+    problem: "Work definition lacks boundaries/QA/LD links."
+    recommendation: "Define limits/interfaces/exclusions; link to QA and LD; route changes via VO."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Work","scope creep","interfaces","exclusions","QA","LD"]
+metadata:
+  tags: ["work","scope"]

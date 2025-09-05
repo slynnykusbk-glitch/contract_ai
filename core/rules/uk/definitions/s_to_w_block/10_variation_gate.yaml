@@ -1,0 +1,49 @@
+rule:
+  id: "uk.def.variation.gate"
+  version: "1.0.0"
+  title: "Variation: any change to Work/Price/Schedule only via Variation Order (Clause 14)"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","variation","change control"]
+  triggers:
+    any:
+      - regex: "(?i)Variation\\s+means"
+  checks:
+    - id: "vo_required_missing"
+      when:
+        all:
+          - regex: "(?i)change|amend|modify"
+          - not_regex: "(?i)Variation\\s+Order|Clause\\s*14"
+      finding:
+        message: "Variation defined without gating changes via a Variation Order."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "State that any change to Work/Price/Schedule only takes effect via a VO under Clause 14."
+        score_delta: -20
+    - id: "proceed_on_risk_not_banned"
+      when:
+        not_regex: "(?i)no\\s+proceed(ing)?\\s+without\\s+a\\s+signed\\s+VO"
+      finding:
+        message: "No explicit ban on proceeding without a signed VO."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Ban proceeding without a signed VO; emergency safety actions excepted."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: VariationGateGap
+    score: 80
+    problem: "Changes can bypass Clause 14 VO gate."
+    recommendation: "Enforce VO gate and ban proceed-without-VO."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Variation","VO","Clause 14"]
+metadata:
+  tags: ["variation","change-control"]

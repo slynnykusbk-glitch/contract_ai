@@ -1,0 +1,76 @@
+rule:
+  id: "uk.def.site.ownership_access_risk"
+  version: "1.0.0"
+  title: "Site: ownership/control; access/HSE; risk alignment with cl.19/20"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Master Agreement","MSA"]
+    clauses: ["definitions","site","worksite","risk","insurance","call-off"]
+  triggers:
+    any:
+      - regex: "(?i)\\bSite\\b\\s+means"
+  checks:
+    - id: "owner_control_missing"
+      when:
+        any:
+          - not_regex: "(?i)owned|leased|licensed|under\\s+the\\s+control\\s+of\\s+the\\s+Company|Affiliates?"
+      finding:
+        message: "No clear ownership/lease/licence/control basis for the Site."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "State Site is owned/leased/licensed or otherwise under control of Company or its Affiliates."
+        score_delta: -15
+    - id: "access_hse_missing"
+      when:
+        any:
+          - not_regex: "(?i)access\\s+rights|right\\s+of\\s+way|easements?"
+          - not_regex: "(?i)HSE|health\\s+and\\s+safety|permit\\s+to\\s+work"
+      finding:
+        message: "Access rights/HSE regime at Site not articulated."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Add access rights (easements/pass regime) and HSE controls (permit-to-work/site rules)."
+        score_delta: -15
+    - id: "risk_alignment_missing"
+      when:
+        any:
+          - not_regex: "(?i)Clause\\s*19|Risk"
+          - not_regex: "(?i)Clause\\s*20|Insurance"
+      finding:
+        message: "No cross-reference to risk (cl.19) and insurance (cl.20)."
+        severity_level: "medium"
+        risk: "medium"
+        legal_basis: []
+        suggestion:
+          text: "Cross-reference Clause 19 (Risk) and Clause 20 (Insurance) for third-party property at Site."
+        score_delta: -10
+    - id: "calloff_worksites_link"
+      when:
+        all:
+          - regex: "(?i)Call[-\\s]?Off|Worksites?"
+          - not_regex: "(?i)listed\\s+in\\s+(the|each)\\s+Call[-\\s]?Off"
+      finding:
+        message: "Worksites list not tied to each Call-Off."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: []
+        suggestion:
+          text: "Require Worksites to be listed in each Call-Off."
+        score_delta: -15
+  outcome:
+    status: warn
+    risk_level: high
+    severity: S2
+    issue_type: SiteAccessRiskGap
+    score: 80
+    problem: "Site ownership/control/access/HSE or risk/insurance links are unclear."
+    recommendation: "Define control basis, access & HSE, link to cl.19/20, and list Worksites per Call-Off."
+    law_reference: []
+    category: "Definitions"
+    keywords: ["Site","access","HSE","risk","insurance","Worksites"]
+metadata:
+  tags: ["site","hse","risk"]

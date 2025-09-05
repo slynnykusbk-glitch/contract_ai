@@ -1,6 +1,12 @@
 import { apiHealth, apiAnalyze, apiQaRecheck, apiGptDraft, metaFromResponse, applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
+const g: any = globalThis as any;
+g.parseFindings = g.parseFindings || parseFindings;
+g.apiAnalyze = g.apiAnalyze || apiAnalyze;
+g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
+g.metaFromResponse = g.metaFromResponse || metaFromResponse;
 import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText } from "./office"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
+g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 
 type Mode = "live" | "friendly" | "doctor";
 
@@ -22,6 +28,29 @@ export function normalizeText(s: string | undefined | null): string {
     .replace(/\r/g, "\n")
     .replace(/[ \t]+/g, " ")
     .trim();
+}
+
+function getRiskThreshold(): "low" | "medium" | "high" {
+  const sel = (document.getElementById("selectRiskThreshold") as HTMLSelectElement | null)
+    || (document.getElementById("riskThreshold") as HTMLSelectElement | null);
+  const v = sel?.value?.toLowerCase();
+  return (v === "low" || v === "medium" || v === "high") ? v : "medium";
+}
+
+function isAddCommentsOnAnalyzeEnabled(): boolean {
+  const cb = (document.getElementById("cai-comment-on-analyze") as HTMLInputElement | null)
+    || (document.getElementById("chkAddCommentsOnAnalyze") as HTMLInputElement | null);
+  return cb ? !!cb.checked : true; // default ON
+}
+
+function severityRank(s?: string): number {
+  const m = (s || "").toLowerCase();
+  return m === "high" ? 3 : m === "medium" ? 2 : 1;
+}
+
+function filterByThreshold(list: AnalyzeFinding[], thr: "low" | "medium" | "high"): AnalyzeFinding[] {
+  const min = severityRank(thr);
+  return (list || []).filter(f => severityRank(f.severity) >= min);
 }
 
 function buildLegalComment(f: AnalyzeFinding): string {
@@ -80,28 +109,48 @@ export async function mapFindingToRange(
 }
 
 export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
-  const last: string = (window as any).__lastAnalyzed || "";
-  const base = normalizeText(last);
-
+  const base = normalizeText((window as any).__lastAnalyzed || "");
   for (const f of findings) {
     const snippet = normalizeText(f.snippet || "");
     if (!snippet) continue;
-    const occIdx = nthOccurrenceIndex(base, snippet, f.start);
+
+    const occIdx = (() => {
+      if (typeof f.start !== "number" || !snippet) return 0;
+      let idx = -1, n = 0;
+      while ((idx = base.indexOf(snippet, idx + 1)) !== -1 && idx < (f.start as number)) n++;
+      return n;
+    })();
 
     try {
       await Word.run(async ctx => {
         const body = ctx.document.body;
-        const searchRes = body.search(snippet, { matchCase: false, matchWholeWord: false });
-        searchRes.load("items");
-        await ctx.sync();
 
-        const items = searchRes.items || [];
-        const target = items[Math.min(occIdx, Math.max(0, items.length - 1))];
+        const s1 = body.search(snippet, { matchCase: false, matchWholeWord: false });
+        s1.load("items");
+        await ctx.sync();
+        let target = s1.items?.[Math.min(occIdx, Math.max(0, (s1.items || []).length - 1))];
+
+        if (!target) {
+          const token = (() => {
+            const tokens = snippet.replace(/[^\p{L}\p{N} ]/gu, " ").split(" ").filter(x => x.length >= 12);
+            if (tokens.length) return tokens.sort((a, b) => b.length - a.length)[0].slice(0, 64);
+            const i = Math.max(0, (f.start ?? 0));
+            return base.slice(i, i + 40);
+          })();
+
+          if (token && token.trim()) {
+            const s2 = body.search(token, { matchCase: false, matchWholeWord: false });
+            s2.load("items");
+            await ctx.sync();
+            target = s2.items?.[Math.min(occIdx, Math.max(0, (s2.items || []).length - 1))];
+          }
+        }
+
         if (target) {
           const msg = buildLegalComment(f);
           target.insertComment(msg);
         } else {
-          console.warn("[annotate] snippet not found", { snippet, occIdx, total: items.length });
+          console.warn("[annotate] no match for snippet/anchor", { rid: f.rule_id, snippet: snippet.slice(0, 120) });
         }
         await ctx.sync();
       });
@@ -110,6 +159,8 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
     }
   }
 }
+
+g.annotateFindingsIntoWord = g.annotateFindingsIntoWord || annotateFindingsIntoWord;
 
 export async function applyOpsTracked(
   ops: { start: number; end: number; replacement: string }[]
@@ -339,19 +390,21 @@ async function doHealth() {
 async function doAnalyze() {
   try {
     const cached = (window as any).__lastAnalyzed as string | undefined;
-    const base = cached && cached.trim() ? cached : normalizeText(await getWholeDocText());
+    const base = cached && cached.trim() ? cached : normalizeText(await (globalThis as any).getWholeDocText());
     if (!base) { notifyErr("В документе нет текста"); return; }
 
     (window as any).__lastAnalyzed = base;
 
-    const { json, resp } = await apiAnalyze(base);
-    try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
+    const { json, resp } = await (globalThis as any).apiAnalyze(base);
+    try { (globalThis as any).applyMetaToBadges((globalThis as any).metaFromResponse(resp)); } catch {}
     renderResults(json);
 
     try {
-      const findings = parseFindings(json);
-      if (Array.isArray(findings) && findings.length > 0) {
-        await annotateFindingsIntoWord(findings);
+      const all = (globalThis as any).parseFindings(json);
+      const thr = getRiskThreshold();
+      const filtered = filterByThreshold(all, thr);
+      if (isAddCommentsOnAnalyzeEnabled() && filtered.length) {
+        await (globalThis as any).annotateFindingsIntoWord(filtered);
       }
     } catch (e) {
       console.warn("auto-annotate after analyze failed", e);
@@ -462,13 +515,15 @@ function wireUI() {
   bindClick("#btnNextIssue", onNextIssue);
   bindClick("#btnAnnotate", () => {
     const data = (window as any).__last?.analyze?.json || {};
-    const findings = parseFindings(data);
-    annotateFindingsIntoWord(findings);
+    const findings = (globalThis as any).parseFindings(data);
+    (globalThis as any).annotateFindingsIntoWord(findings);
   });
 
   wireResultsToggle();
   console.log("Panel UI wired");
 }
+
+g.wireUI = g.wireUI || wireUI;
 
 async function onInsertIntoWord() {
   try {

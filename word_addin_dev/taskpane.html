@@ -249,7 +249,7 @@
     <div class="row flex" style="margin-top:8px">
       <button id="analyzeBtn" class="btn-grey js-disable-while-busy">Analyze</button>
       <button id="btnReplay" class="btn-grey js-disable-while-busy">Replay last</button>
-      <button id="draftBtn" class="btn js-disable-while-busy">Get AI Draft</button>
+      <button id="btnGetAIDraft" class="btn btn-primary btn-sm">Get AI Draft</button>
       <button id="copyResultBtn" class="btn-grey js-disable-while-busy">Copy result</button>
     </div>
     <div class="row">
@@ -371,10 +371,9 @@
   id="proposedText"
   name="proposed"
   data-role="proposed-text"
-  class="form-control"
+  placeholder="Proposed draft…"
   rows="8"
-  placeholder="Will be filled from analysis.proposed_text if provided…">
-</textarea>
+></textarea>
     <div class="row flex" style="margin-top:8px">
       <button id="btnPreviewDiff" class="btn-grey" disabled>Preview diff</button>
       <button id="btnApplyTracked" class="btn js-disable-while-busy" disabled title="Select text in Word before applying edits.">Apply (tracked + comment)</button>

@@ -1,6 +1,58 @@
-import { applyMetaToBadges, apiHealth, apiAnalyze, apiQaRecheck } from "./app/assets/api-client.js";
+import { metaFromResponse, applyMetaToBadges, apiHealth, apiAnalyze, apiQaRecheck } from "./app/assets/api-client.js";
 import { notifyOk, notifyErr } from "./app/assets/notifier.js";
 import { getWholeDocText } from "./app/assets/office.js";
+
+const Q = {
+  proposed: 'textarea#proposedText, textarea[name="proposed"], textarea[data-role="proposed-text"]',
+  original: 'textarea#originalClause, textarea[name="original"], textarea[data-role="original-clause"]'
+};
+
+function $(sel) {
+  return document.querySelector(sel);
+}
+
+async function onGetAIDraft(ev) {
+  try {
+    const src = $(Q.original);
+    const dst = $(Q.proposed);
+    const text = (src && src.value || "").trim();
+    if (!text) {
+      console.info("[Draft] no source text");
+      return;
+    }
+    const body = {
+      text,
+      mode: "friendly",
+      before_text: "",
+      after_text: ""
+    };
+    const resp = await fetch(`${window.__cal_base__ ?? ""}/api/gpt-draft`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
+    if (!resp.ok) {
+      const fail = await resp.text().catch(() => "");
+      console.warn("[Draft] HTTP", resp.status, fail);
+      return;
+    }
+    const json = await resp.json();
+    const proposed = (json && json.proposed_text || "").toString();
+    if (dst) {
+      if (!dst.id) dst.id = "proposedText";
+      if (!dst.name) dst.name = "proposed";
+      dst.dataset.role = "proposed-text";
+      dst.value = proposed;
+      dst.dispatchEvent(new Event("input", { bubbles: true }));
+      console.info("[Draft] proposed filled");
+    } else {
+      console.warn("[Draft] proposed textarea not found");
+    }
+  } catch (e) {
+    console.error("[Draft] error", e);
+  }
+}
 
 async function doHealth() {
   const { json, meta } = await apiHealth();
@@ -36,6 +88,7 @@ function wireUI() {
   bindClick("#btnTest", doHealth);
   bindClick("#btnAnalyzeDoc", doAnalyzeDoc);
   bindClick("#btnQARecheck", doQARecheck);
+  document.getElementById("btnGetAIDraft")?.addEventListener("click", onGetAIDraft);
   console.log("Panel UI wired");
 }
 
@@ -54,47 +107,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
-(function () {
-  function findProposedTextarea() {
-    var el = document.querySelector('#proposedText, textarea[name="proposed"], [data-role="proposed-text"]');
-    if (el) return el;
-    var all = Array.prototype.slice.call(document.querySelectorAll('textarea'));
-    for (var i = 0; i < all.length; i++) {
-      var t = all[i];
-      var around = (t.getAttribute('placeholder') || '') + ' ' +
-                   (t.id || '') + ' ' + (t.name || '') + ' ' +
-                   ((t.closest && t.closest('.card, .form-group, section') || {}).textContent || '');
-      if (/proposed|suggest(ed)? edits|draft/i.test(around)) return t;
-    }
-    return null;
-  }
-  function injectProposedText(text) {
-    var target = findProposedTextarea();
-    if (!target) { window.toast && window.toast('Draft created, but target field not found', 'warn'); return; }
-    target.value = text || '';
-    target.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-  async function onGetAIDraft(ev) {
-    ev && ev.preventDefault && ev.preventDefault();
-    var origEl = document.getElementById('originalClause');
-    var original = (origEl && origEl.value || '').trim();
-    var body = { text: original || 'Please propose a neutral confidentiality clause.', mode: 'friendly', before_text: '', after_text: '' };
-    var resp = await fetch('/api/gpt-draft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    try {
-      var mod = await import('./app/assets/api-client.js');
-      mod.applyMetaToBadges(mod.metaFromResponse(resp));
-    } catch (e) {}
-    var json = await resp.json();
-    window.__last = window.__last || {}; window.__last['/api/gpt-draft'] = { json: json };
-    if (json && json.proposed_text) { injectProposedText(json.proposed_text); window.toast && window.toast('Draft ready', 'success'); }
-    else { window.toast && window.toast('Draft API returned no proposed_text', 'warn'); }
-  }
-  document.addEventListener('DOMContentLoaded', function () {
-    var btn = document.getElementById('btnGetAIDraft') ||
-      Array.prototype.slice.call(document.querySelectorAll('button')).find(function (b) {
-        return /get ai draft/i.test((b.textContent || ''));
-      });
-    if (btn) btn.addEventListener('click', onGetAIDraft, { once: false });
-  });
-})();

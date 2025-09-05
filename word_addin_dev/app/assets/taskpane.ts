@@ -1,84 +1,70 @@
-import { applyMetaToBadges, apiHealth, apiAnalyze, apiQaRecheck } from "./api-client";
+import { metaFromResponse, applyMetaToBadges, apiHealth, apiAnalyze, apiQaRecheck } from "./api-client";
 import { notifyOk, notifyErr } from "./notifier";
 import { getWholeDocText } from "./office"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
 
 type Mode = "live" | "friendly" | "doctor";
 
-// --- helpers to locate and fill the "Proposed draft" textarea ---
-function findProposedTextarea(): HTMLTextAreaElement | null {
-  const primarySel = '#proposedText, textarea[name="proposed"], [data-role="proposed-text"]';
-  let el = document.querySelector(primarySel) as HTMLTextAreaElement | null;
-  if (el) return el;
+const Q = {
+  proposed: 'textarea#proposedText, textarea[name="proposed"], textarea[data-role="proposed-text"]',
+  original: 'textarea#originalClause, textarea[name="original"], textarea[data-role="original-clause"]'
+};
 
-  // Фолбэк: ищем textarea по тексту окружения
-  const all = Array.from(document.querySelectorAll<HTMLTextAreaElement>('textarea'));
-  return all.find(t => {
-    const around =
-      (t.getAttribute('placeholder') || '') + ' ' +
-      (t.id || '') + ' ' + (t.name || '') + ' ' +
-      (t.closest('.card, .form-group, section')?.textContent || '');
-    return /proposed|suggest(ed)? edits|draft/i.test(around);
-  }) || null;
+function $(sel: string): HTMLTextAreaElement | null {
+  return document.querySelector(sel) as HTMLTextAreaElement | null;
 }
 
-function injectProposedText(text: string) {
-  const target = findProposedTextarea();
-  if (!target) {
-    // мягкое уведомление: места для вставки не нашли
-    (window as any).toast?.('Draft created, but target field not found', 'warn');
-    return;
-  }
-  target.value = text || '';
-  target.dispatchEvent(new Event('input', { bubbles: true }));
-}
-
-// --- handler for "Get AI Draft" ---
 async function onGetAIDraft(ev?: Event) {
-  ev?.preventDefault?.();
-
-  const original =
-    (document.getElementById('originalClause') as HTMLTextAreaElement | null)?.value?.trim() || '';
-
-  const body = {
-    text: original || 'Please propose a neutral confidentiality clause.',
-    mode: 'friendly',
-    before_text: '',
-    after_text: '',
-  };
-
-  const resp = await fetch('/api/gpt-draft', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  // применим мета-бейджи, если они есть
   try {
-    // эти функции уже есть в api-client.js
-    // @ts-ignore
-    const { metaFromResponse, applyMetaToBadges } = await import('./api-client.js');
-    applyMetaToBadges(metaFromResponse(resp));
-  } catch {}
+    const src = $(Q.original);
+    const dst = $(Q.proposed);
 
-  const json = await resp.json();
-  (window as any).__last = (window as any).__last || {};
-  (window as any).__last['/api/gpt-draft'] = { json };
+    const text = (src?.value ?? "").trim();
+    if (!text) {
+      console.info("[Draft] no source text");
+      return;
+    }
 
-  if (json?.proposed_text) {
-    injectProposedText(json.proposed_text);
-    (window as any).toast?.('Draft ready', 'success');
-  } else {
-    (window as any).toast?.('Draft API returned no proposed_text', 'warn');
+    const body = {
+      text,
+      mode: "friendly",
+      before_text: "",   // Word selection context not wired yet
+      after_text: ""
+    };
+
+    const resp = await fetch(`${(window as any).__cal_base__ ?? ""}/api/gpt-draft`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    // Обновим бейджи из заголовков
+    try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
+
+    if (!resp.ok) {
+      const fail = await resp.text().catch(() => "");
+      console.warn("[Draft] HTTP", resp.status, fail);
+      return;
+    }
+
+    const json = await resp.json();
+    const proposed = (json?.proposed_text ?? "").toString();
+
+    if (dst) {
+      // стабилизируем селекторы и наполняем
+      if (!dst.id) dst.id = "proposedText";
+      if (!dst.name) dst.name = "proposed";
+      (dst as any).dataset.role = "proposed-text";
+
+      dst.value = proposed;
+      dst.dispatchEvent(new Event("input", { bubbles: true }));
+      console.info("[Draft] proposed filled");
+    } else {
+      console.warn("[Draft] proposed textarea not found");
+    }
+  } catch (e) {
+    console.error("[Draft] error", e);
   }
 }
-
-// навешиваем обработчик
-document.addEventListener('DOMContentLoaded', () => {
-  const btn =
-    document.getElementById('btnGetAIDraft') ||
-    Array.from(document.querySelectorAll('button')).find(b => /get ai draft/i.test(b.textContent || ''));
-  if (btn) btn.addEventListener('click', onGetAIDraft, { once: false });
-});
 
 async function doHealth() {
   const { json, meta } = await apiHealth();
@@ -114,6 +100,7 @@ function wireUI() {
   bindClick("#btnTest", doHealth);
   bindClick("#btnAnalyzeDoc", doAnalyzeDoc);
   bindClick("#btnQARecheck", doQARecheck);
+  document.getElementById("btnGetAIDraft")?.addEventListener("click", onGetAIDraft);
   // При необходимости добавьте остальные кнопки: Use selection, Insert result into Word и т.д.
   console.log("Panel UI wired");
 }

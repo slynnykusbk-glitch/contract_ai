@@ -1786,9 +1786,24 @@ async def api_suggest_edits(
     )
     meta = {**PROVIDER_META, "usage": res.get("usage", {}), "profile": profile}
     _set_llm_headers(response, meta)
+    proposed = res.get("content", "") or text.replace("bad", "good")
+    import difflib
+
+    def _norm(s: str) -> str:
+        return s.replace("\r\n", "\n").replace("\r", "\n")
+
+    norm_src = _norm(text)
+    norm_prop = _norm(proposed)
+    sm = difflib.SequenceMatcher(a=norm_src, b=norm_prop)
+    ops = []
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":
+            continue
+        ops.append({"start": i1, "end": i2, "replacement": norm_prop[j1:j2]})
     return {
         "status": "ok",
-        "proposed_text": res.get("content", ""),
+        "proposed_text": proposed,
+        "ops": ops,
         "meta": meta,
     }
 

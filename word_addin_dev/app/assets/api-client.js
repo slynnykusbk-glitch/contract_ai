@@ -33,6 +33,11 @@ export function applyMetaToBadges(meta) {
   set('usageBadge', meta.usage); set('usage', meta.usage);
 }
 
+export function parseFindings(resp) {
+  const arr = resp?.analysis?.findings ?? resp?.findings ?? resp?.issues ?? [];
+  return Array.isArray(arr) ? arr.filter(Boolean) : [];
+}
+
 const DEFAULT_BASE = 'https://localhost:9443';
 function base() {
   try { return (localStorage.getItem('backendUrl') || DEFAULT_BASE).replace(/\/+$/, ''); }

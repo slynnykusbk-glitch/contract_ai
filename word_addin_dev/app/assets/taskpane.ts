@@ -1,4 +1,4 @@
-import { apiHealth, apiAnalyze, apiQaRecheck, apiGptDraft, metaFromResponse, applyMetaToBadges } from "./api-client";
+import { apiHealth, apiAnalyze, apiQaRecheck, apiGptDraft, metaFromResponse, applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
 import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText } from "./office"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
 
@@ -15,11 +15,148 @@ function slot(id: string, role: string): HTMLElement | null {
   ) || document.getElementById(id);
 }
 
+export function normalizeText(s: string): string {
+  return s.replace(/\r\n?/g, "\n").trim().replace(/[ \t]+/g, " ");
+}
+
+export function buildParagraphIndex(paragraphs: string[]): { starts: number[]; texts: string[] } {
+  const starts: number[] = [];
+  const texts: string[] = [];
+  let pos = 0;
+  for (const p of paragraphs) {
+    const t = normalizeText(p);
+    starts.push(pos);
+    texts.push(t);
+    pos += t.length + 1; // assume joined by \n
+  }
+  return { starts, texts };
+}
+
+export async function mapFindingToRange(
+  f: AnalyzeFinding,
+): Promise<Word.Range | null> {
+  const last: string = (window as any).__lastAnalyzed || "";
+  const snippet = normalizeText(f.snippet || "");
+  const occIdx = (() => {
+    if (typeof f.start !== "number" || !snippet) return 0;
+    let idx = -1, n = 0;
+    while ((idx = last.indexOf(snippet, idx + 1)) !== -1 && idx < f.start) n++;
+    return n;
+  })();
+
+  try {
+    return await Word.run(async ctx => {
+      const body = ctx.document.body;
+      const searchRes = body.search(snippet, { matchCase: false, matchWholeWord: false });
+      searchRes.load("items");
+      await ctx.sync();
+      const items = searchRes.items || [];
+      return items[Math.min(occIdx, Math.max(0, items.length - 1))] || null;
+    });
+  } catch (e) {
+    console.warn("mapFindingToRange fail", e);
+    return null;
+  }
+}
+
+export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
+  const last: string = (window as any).__lastAnalyzed || "";
+  for (const f of findings) {
+    const snippet = normalizeText(f.snippet || "");
+    const occIdx = (() => {
+      if (typeof f.start !== "number" || !snippet) return 0;
+      let idx = -1, n = 0;
+      while ((idx = last.indexOf(snippet, idx + 1)) !== -1 && idx < f.start) n++;
+      return n;
+    })();
+
+    try {
+      await Word.run(async ctx => {
+        const body = ctx.document.body;
+        const searchRes = body.search(snippet, { matchCase: false, matchWholeWord: false });
+        searchRes.load("items");
+        await ctx.sync();
+        const items = searchRes.items || [];
+        const range = items[Math.min(occIdx, Math.max(0, items.length - 1))];
+        if (range) {
+          const msg = `${f.rule_id} (${f.severity})${f.advice ? ": " + f.advice : ""}`;
+          range.insertComment(msg);
+        }
+        await ctx.sync();
+      });
+    } catch (e) {
+      console.warn("annotate fail", e);
+    }
+  }
+}
+
+export async function applyOpsTracked(
+  ops: { start: number; end: number; replacement: string }[]
+) {
+  if (!ops || !ops.length) return;
+  const last: string = (window as any).__lastAnalyzed || "";
+
+  await Word.run(async ctx => {
+    const body = ctx.document.body;
+    (ctx.document as any).trackRevisions = true;
+
+    for (const op of ops) {
+      const snippet = last.slice(op.start, op.end);
+
+      const occIdx = (() => {
+        let idx = -1, n = 0;
+        while ((idx = last.indexOf(snippet, idx + 1)) !== -1 && idx < op.start) n++;
+        return n;
+      })();
+
+      const found = body.search(snippet, { matchCase: false, matchWholeWord: false });
+      found.load("items");
+      await ctx.sync();
+
+      const items = found.items || [];
+      const target = items[Math.min(occIdx, Math.max(0, items.length - 1))];
+
+      if (target) {
+        target.insertText(op.replacement, "Replace");
+        try { target.insertComment("AI edit"); } catch {}
+      } else {
+        console.warn("[applyOpsTracked] match not found", { snippet, occIdx });
+      }
+      await ctx.sync();
+    }
+  });
+}
+
+
+
+async function navComments(dir: number) {
+  try {
+    await Word.run(async ctx => {
+      const comments = ctx.document.body.getComments();
+      comments.load("items");
+      await ctx.sync();
+      const list = comments.items;
+      if (!list.length) return;
+      const w: any = window as any;
+      w.__caiNavIdx = (w.__caiNavIdx ?? -1) + dir;
+      if (w.__caiNavIdx < 0) w.__caiNavIdx = list.length - 1;
+      if (w.__caiNavIdx >= list.length) w.__caiNavIdx = 0;
+      list[w.__caiNavIdx].getRange().select();
+      await ctx.sync();
+    });
+  } catch (e) {
+    console.warn("nav comment fail", e);
+  }
+}
+
+function onPrevIssue() { navComments(-1); }
+function onNextIssue() { navComments(1); }
+
 function renderResults(res: any) {
   const clause = slot("resClauseType", "clause-type");
   if (clause) clause.textContent = res?.clause_type || "—";
 
-  const findingsArr = Array.isArray(res?.findings) ? res.findings : [];
+  const findingsArr: AnalyzeFinding[] = parseFindings(res);
   const findingsList = slot("findingsList", "findings") as HTMLElement | null;
   if (findingsList) {
     findingsList.innerHTML = "";
@@ -110,33 +247,6 @@ async function getSelectionContext(chars = 200): Promise<{ before: string; after
   }
 }
 
-async function onUseSelection() {
-  try {
-    const txt = await getSelectionAsync();
-    const el = document.getElementById("originalClause") as HTMLTextAreaElement | null;
-    if (el) {
-      el.value = txt;
-      el.setAttribute("data-role", "source-loaded");
-    }
-  } catch (e) {
-    notifyWarn("Failed to load selection");
-    console.error(e);
-  }
-}
-
-async function onUseWholeDoc() {
-  try {
-    const txt = await getWholeDocText();
-    const el = document.getElementById("originalClause") as HTMLTextAreaElement | null;
-    if (el) {
-      el.value = txt;
-      el.setAttribute("data-role", "source-loaded");
-    }
-  } catch (e) {
-    notifyWarn("Failed to load document");
-    console.error(e);
-  }
-}
 
 async function onGetAIDraft(ev?: Event) {
   try {
@@ -193,12 +303,16 @@ async function doHealth() {
   }
 }
 
-async function doAnalyzeDoc() {
-  const text = await getWholeDocText();
-  if (!text || !text.trim()) { notifyErr("В документе нет текста"); return; }
+async function doAnalyze() {
+  const useSel = (document.getElementById("chkUseSelection") as HTMLInputElement | null)?.checked;
+  const raw = useSel ? await getSelectionAsync().catch(() => "") : await getWholeDocText();
+  const text = normalizeText(raw || "");
+  if (!text) { notifyErr("В документе нет текста"); return; }
+  (window as any).__lastAnalyzed = text;
   const { json, resp } = await apiAnalyze(text);
   try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
   renderResults(json);
+  (document.getElementById("btnAnnotate") as HTMLButtonElement | null)?.removeAttribute("disabled");
   (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.results", { detail: json }));
   notifyOk("Analyze OK");
 }
@@ -221,17 +335,11 @@ function bindClick(sel: string, fn: () => void) {
 
 async function onApplyTracked() {
   try {
-    const dst = $(Q.proposed);
-    const proposed = (dst?.value || "").trim();
-    if (!proposed) { notifyWarn("No draft to insert"); return; }
-    await Word.run(async ctx => {
-      let range = ctx.document.getSelection();
-      (ctx.document as any).trackRevisions = true;
-      range.insertText(proposed, "Replace");
-      try { range.insertComment("AI draft"); } catch {}
-      await ctx.sync();
-    });
-    notifyOk("Inserted into Word");
+    const last = (window as any).__last || {};
+    const ops = last["gpt-draft"]?.json?.ops || last["suggest"]?.json?.ops || [];
+    if (!ops.length) { notifyWarn("No ops to apply"); return; }
+    await applyOpsTracked(ops);
+    notifyOk("Applied ops");
   } catch (e) {
     notifyWarn("Insert failed");
     console.error(e);
@@ -292,15 +400,21 @@ async function onRejectAll() {
 
 function wireUI() {
   bindClick("#btnTest", doHealth);
-  bindClick("#btnAnalyzeDoc", doAnalyzeDoc);
+  bindClick("#btnAnalyze", doAnalyze);
   bindClick("#btnQARecheck", doQARecheck);
   document.getElementById("btnGetAIDraft")?.addEventListener("click", onGetAIDraft);
-  bindClick("#btn-use-selection", onUseSelection);
-  bindClick("#btn-use-whole", onUseWholeDoc);
   bindClick("#btnInsertIntoWord", onInsertIntoWord);
   bindClick("#btnApplyTracked", onApplyTracked);
   bindClick("#btnAcceptAll", onAcceptAll);
   bindClick("#btnRejectAll", onRejectAll);
+  bindClick("#btnPrevIssue", onPrevIssue);
+  bindClick("#btnNextIssue", onNextIssue);
+  bindClick("#btnAnnotate", () => {
+    const data = (window as any).__last?.analyze?.json || {};
+    const findings = parseFindings(data);
+    annotateFindingsIntoWord(findings);
+  });
+
   wireResultsToggle();
   console.log("Panel UI wired");
 }

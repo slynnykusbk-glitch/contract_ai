@@ -10,6 +10,29 @@ export type Meta = {
   status?: string | null;
 };
 
+export type AnalyzeFinding = {
+  rule_id: string;
+  clause_type: string;
+  severity: string;
+  start: number;
+  end: number;
+  snippet: string;
+  advice?: string;
+};
+
+export type AnalyzeResponse = {
+  status: 'ok';
+  analysis?: { findings?: AnalyzeFinding[] };
+  findings?: AnalyzeFinding[];
+  issues?: AnalyzeFinding[];
+  meta?: any;
+};
+
+export function parseFindings(resp: AnalyzeResponse): AnalyzeFinding[] {
+  const arr = resp?.analysis?.findings ?? resp?.findings ?? resp?.issues ?? [];
+  return Array.isArray(arr) ? arr.filter(Boolean) : [];
+}
+
 export function metaFromResponse(r: { headers: Headers; json?: any; status?: number }): Meta {
   const h = r.headers;
   const js = r.json || {};

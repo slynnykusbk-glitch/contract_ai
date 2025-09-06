@@ -199,6 +199,7 @@ from contract_review_app.core.schemas import (
     SuggestEdit,
     SuggestResponse,
 )
+from contract_review_app.intake.normalization import normalize_text
 
 # --- LLM provider & limits (final resolution) ---
 from contract_review_app.llm.provider import get_provider
@@ -1196,6 +1197,15 @@ def _safe_apply_patches(text: str, changes: List[Any]) -> str:
     return "".join(out)
 
 
+def _extract_context(text: str, start: int, end: int, width: int = 60) -> tuple[str, str]:
+    """Return normalized context strings around the given span."""
+    before_raw = text[max(0, start - width) : start]
+    after_raw = text[end : end + width]
+    before_norm, _ = normalize_text(before_raw)
+    after_norm, _ = normalize_text(after_raw)
+    return before_norm, after_norm
+
+
 def _discover_rules_count() -> int:
     try:
         if rules_loader and hasattr(rules_loader, "rules_count"):
@@ -1866,6 +1876,40 @@ async def api_suggest_edits(
     cid = x_cid or compute_cid(request)
     headers = {"x-cache": "miss", "x-cid": cid, "x-schema-version": SCHEMA_VERSION}
     payload = SuggestResponse(suggestions=suggestions).model_dump()
+
+    ops: list[dict] = []
+    proposed_text = text
+    for sug in payload.get("suggestions", []):
+        span = sug.get("span") or {}
+        start = int(span.get("start", 0))
+        length = int(span.get("length", 0))
+        end = start + length
+        insert = sug.get("insert")
+        delete = sug.get("delete")
+        replacement = None
+        if insert is not None and delete is not None:
+            replacement = insert
+        elif insert is not None:
+            replacement = insert
+        elif delete is not None:
+            replacement = ""
+        ctx_before, ctx_after = _extract_context(text, start, end)
+        sug["context_before"] = ctx_before
+        sug["context_after"] = ctx_after
+        if replacement is not None:
+            ops.append(
+                {
+                    "start": start,
+                    "end": end,
+                    "replacement": replacement,
+                    "context_before": ctx_before,
+                    "context_after": ctx_after,
+                }
+            )
+    for op in sorted(ops, key=lambda o: o["start"], reverse=True):
+        proposed_text = proposed_text[: op["start"]] + op["replacement"] + proposed_text[op["end"] :]
+    payload["proposed_text"] = proposed_text
+    payload["ops"] = ops
     payload["status"] = "ok"
     return _finalize_json("/api/suggest_edits", payload, headers)
 
@@ -1873,6 +1917,8 @@ async def api_suggest_edits(
 class DraftIn(BaseModel):
     text: str = Field(..., min_length=1)
     mode: str = Field("friendly", pattern="^(friendly|medium|strict)$")
+    before_text: Optional[str] = None
+    after_text: Optional[str] = None
 
 
 class DraftOut(BaseModel):
@@ -1885,6 +1931,8 @@ class DraftOut(BaseModel):
     after_text: str
     diff: dict
     x_schema_version: str
+    context_before: str
+    context_after: str
 
 
 @router.post(
@@ -1932,6 +1980,8 @@ async def gpt_draft(inp: DraftIn, request: Request):
         model = getattr(LLM_PROVIDER, "model", "")
         mode_used = inp.mode
         usage = legacy.get("usage", {})
+    ctx_before, _ = normalize_text((inp.before_text or "")[-60:])
+    ctx_after, _ = normalize_text((inp.after_text or "")[:60])
     out = {
         "status": "ok",
         "mode": inp.mode,
@@ -1942,6 +1992,8 @@ async def gpt_draft(inp: DraftIn, request: Request):
         "after_text": after_text,
         "diff": {"type": "unified", "value": diff_unified},
         "x_schema_version": SCHEMA_VERSION,
+        "context_before": ctx_before,
+        "context_after": ctx_after,
     }
     resp = JSONResponse(out)
     _set_llm_headers(

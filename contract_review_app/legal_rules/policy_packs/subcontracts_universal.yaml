@@ -1,0 +1,276 @@
+# Universal Subcontracts rule-pack (works for any industry/contract size)
+# Schema: 1.3-compatible single-rule objects; loader aggregates
+rules:
+  - id: "subcontracts.prior_consent"
+    version: "1.0.0"
+    title: "Subcontracting requires prior written consent (covering critical tiers)"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["subcontracts","outsourcing","third-party"]
+    triggers:
+      any:
+        - regex: "(?i)\\bsub\\-?contract(?:or|ing|s)?s?\\b"
+        - regex: "(?i)\\boutsourc(?:e|ing)\\b"
+    advice: "Insert a clause: 'Contractor shall not subcontract (including critical functions/tiered subs) without Company’s prior written consent (not to be unreasonably withheld or delayed)'."
+    law_reference:
+      - "Bribery Act 2010 s.7"
+      - "PRA SS2/21; FCA SYSC 8 (chain outsourcing controls)"
+    checks:
+      - id: "missing_prior_written_consent"
+        when:
+          not_regex: "(?i)\\bprior\\s+written\\s+consent\\b|\\bcompany'?s\\s+consent\\b"
+        finding:
+          message: "Subcontracting referenced without explicit prior written consent."
+          severity_level: "major"
+          risk: "high"
+          legal_basis:
+            - "Bribery Act 2010 s.7 (adequate procedures require supplier-chain control)"
+            - "General outsourcing best practice (PRA SS2/21, FCA SYSC 8 analogs)"
+          suggestion:
+            text: "Insert a clause: 'Contractor shall not subcontract (including critical functions/tiered subs) without Company’s prior written consent (not to be unreasonably withheld or delayed)'."
+          score_delta: -16
+    outcome:
+      status: fail
+      risk_level: high
+      severity: S2
+      issue_type: "SubcontractApprovalMissing"
+      score: 70
+      problem: "No explicit prior written consent requirement for subcontracting."
+      recommendation: "Require prior written consent for subcontracting, including critical suppliers and sub-tiers."
+      law_reference:
+        - "Bribery Act 2010 s.7"
+        - "PRA SS2/21; FCA SYSC 8 (chain outsourcing controls)"
+      category: "Third-Party Risk"
+      keywords: ["subcontract","outsourcing","consent","approval"]
+    metadata:
+      tags: ["subcontracts","outsourcing","approvals"]
+
+  - id: "subcontracts.flowdown_minimum_set"
+    version: "1.0.0"
+    title: "Mandatory flow-down: anti-bribery, sanctions/export, confidentiality/IP, audit/records, insurance"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["subcontracts","compliance","ip","audit","security"]
+    triggers:
+      any:
+        - regex: "(?i)\\bsub\\-?contract(?:or|ing|s)?s?\\b"
+    advice: "Add anti-bribery, sanctions/export, confidentiality/IP, insurance, and audit/records obligations to all subcontracts."
+    law_reference:
+      - "Bribery Act 2010 s.7"
+      - "OFSI Sanctions Guidance"
+      - "Export Control guidance"
+    checks:
+      - id: "no_anti_bribery_flowdown"
+        when: { not_regex: "(?i)\\b(bribery\\s+act|anti\\-?bribery|facilitation\\s+payments|adequate\\s+procedures)\\b" }
+        finding:
+          message: "No anti-bribery flow-down to subcontractors (incl. s.7 adequate procedures)."
+          severity_level: "major"
+          risk: "high"
+          legal_basis: ["Bribery Act 2010 s.7; MoJ Guidance"]
+          suggestion: { text: "Flow down anti-bribery obligations (incl. training, records, gifts/hospitality, no facilitation payments, audit rights)." }
+          score_delta: -12
+      - id: "no_sanctions_export_flowdown"
+        when: { not_regex: "(?i)\\b(sanctions|OFSI|ownership\\s+and\\s+control|export\\s+control|dual\\-?use)\\b" }
+        finding:
+          message: "No sanctions/export control flow-down (incl. ownership & control test)."
+          severity_level: "major"
+          risk: "high"
+          legal_basis: ["UK Sanctions guidance (OFSI)","Export Control Order/Guidance"]
+          suggestion: { text: "Add sanctions screening (incl. ownership/control) and export-control obligations (classification, licensing, re-export)." }
+          score_delta: -12
+      - id: "no_conf_ip_insurance_audit"
+        when: { not_regex: "(?i)\\b(confidentiality|non\\-?disclosure|intellectual\\s+property|IP\\s+rights|audit|inspect|records\\s+retention|insurance)\\b" }
+        finding:
+          message: "No confidentiality/IP/insurance/audit flow-down detected."
+          severity_level: "major"
+          risk: "medium"
+          legal_basis: ["Common-law chain control; audit & records best practice"]
+          suggestion: { text: "Flow down confidentiality, IP (parity with prime), minimum insurances, audit & records retention." }
+          score_delta: -10
+    outcome:
+      status: fail
+      risk_level: high
+      severity: S2
+      issue_type: "FlowDownMissing"
+      score: 72
+      problem: "Mandatory flow-down terms are absent or incomplete."
+      recommendation: "Add anti-bribery, sanctions/export, confidentiality/IP, insurance, and audit/records obligations to all subcontracts."
+      law_reference:
+        - "Bribery Act 2010 s.7"
+        - "OFSI Sanctions Guidance"
+        - "Export Control guidance"
+      category: "Third-Party Risk"
+      keywords: ["flowdown","supply chain","audit","IP","insurance"]
+    metadata:
+      tags: ["subcontracts","flowdown","compliance"]
+
+  - id: "subcontracts.data_protection_art28"
+    version: "1.0.0"
+    title: "If personal data is processed by a sub, include UK GDPR Art.28 processor terms"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["data protection","privacy","subcontracts"]
+    triggers:
+      all:
+        - regex: "(?i)\\bsub\\-?contract(?:or|ing|s)?s?\\b|\\bsub\\-?processor\\b"
+        - regex: "(?i)\\bpersonal\\s+data|processor|controller\\b"
+    advice: "Include Art.28 terms: subject-matter/duration, type of data, categories, purposes, documented instructions, confidentiality, security, audit/inspection, sub-processor prior authorisation, return/erasure."
+    law_reference:
+      - "UK GDPR Art.28"
+    checks:
+      - id: "missing_art28_terms"
+        when:
+          not_regex: "(?i)\\b(Article\\s*28|Art\\.?\\s*28|processor\\s+terms|controller\\s+instructions|audit|sub\\-?processor\\s+authorisation|return/erase|security)\\b"
+        finding:
+          message: "Personal data via subs without explicit Art.28 processor terms."
+          severity_level: "major"
+          risk: "high"
+          legal_basis: ["UK GDPR Art.28 — Processor requirements"]
+          suggestion:
+            text: "Include Art.28 terms: subject-matter/duration, type of data, categories, purposes, documented instructions, confidentiality, security, audit/inspection, sub-processor prior authorisation, return/erasure."
+          score_delta: -18
+    outcome:
+      status: fail
+      risk_level: high
+      severity: S2
+      issue_type: "DPArt28Missing"
+      score: 68
+      problem: "Art.28 processor terms are not mandated for subcontracted processing."
+      recommendation: "Add full Art.28 terms and prior authorisation for sub-processors."
+      law_reference: ["UK GDPR Art.28"]
+      category: "Privacy"
+      keywords: ["GDPR","processor","sub-processor","Art.28"]
+    metadata:
+      tags: ["gdpr","privacy","subprocessor"]
+
+  - id: "subcontracts.ban_pay_when_paid"
+    version: "1.0.0"
+    title: "Ban pay-when-paid / pay-if-paid clauses (esp. construction)"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["payments","subcontracts","construction"]
+    triggers:
+      any:
+        - regex: "(?i)\\bpay\\s*\\-?\\s*when\\s*\\-?\\s*paid\\b|\\bpay\\s*\\-?\\s*if\\s*\\-?\\s*paid\\b"
+    advice: "Remove conditional-payment wording. Use compliant payment notices and fair terms; if construction, align with HGCRA regime."
+    law_reference:
+      - "HGCRA 1996 s.113"
+      - "Late Payment Act 1998"
+    checks:
+      - id: "pay_when_paid_detected"
+        when: { regex: ".*" }
+        finding:
+          message: "Detected pay-when-paid / pay-if-paid wording — high risk/void in many construction contexts."
+          severity_level: "major"
+          risk: "high"
+          legal_basis:
+            - "HGCRA 1996 s.113 (construction: void except upstream insolvency)"
+            - "Late Payment of Commercial Debts Act 1998 (general prompt payment principles)"
+          suggestion:
+            text: "Remove conditional-payment wording. Use compliant payment notices and fair terms; if construction, align with HGCRA regime."
+          score_delta: -20
+    outcome:
+      status: fail
+      risk_level: high
+      severity: S2
+      issue_type: "PayWhenPaid"
+      score: 60
+      problem: "Conditional-on-receipt payment clause found."
+      recommendation: "Ban pay-when-paid/pay-if-paid, implement compliant payment regime."
+      law_reference: ["HGCRA 1996 s.113","Late Payment Act 1998"]
+      category: "Payments"
+      keywords: ["pay-when-paid","pay-if-paid","construction"]
+    metadata:
+      tags: ["payments","construction","compliance"]
+
+  - id: "subcontracts.step_in_third_party_alignment"
+    version: "1.0.0"
+    title: "Step-in/novation requires CRTPA alignment or collateral warranty"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["subcontracts","third-party rights","collateral warranty"]
+    triggers:
+      any:
+        - regex: "(?i)\\bstep\\-?in\\b|\\bnovat(e|ion)\\b|\\bassign(?:ment)?\\s+of\\s+sub\\-?contract\\b"
+    advice: "Add CRTPA carve-out for named beneficiaries or require a collateral warranty with step-in rights from key subs."
+    law_reference:
+      - "CRTPA 1999"
+    checks:
+      - id: "missing_crtpa_or_collateral"
+        when:
+          not_regex: "(?i)\\b(contracts\\s*\\(rights\\s*of\\s*third\\s*parties\\)\\s*act|CRTPA\\s*1999|collateral\\s+warranty)\\b"
+        finding:
+          message: "Step-in/novation mentioned without CRTPA carve-out or collateral warranty reference."
+          severity_level: "major"
+          risk: "medium"
+          legal_basis: ["CRTPA 1999 (third-party rights) — alignment needed"]
+          suggestion:
+            text: "Add CRTPA carve-out for named beneficiaries or require a collateral warranty with step-in rights from key subs."
+          score_delta: -12
+    outcome:
+      status: fail
+      risk_level: medium
+      severity: S3
+      issue_type: "StepInAlignment"
+      score: 78
+      problem: "No alignment between step-in mechanics and third-party rights."
+      recommendation: "Carve-out under CRTPA or obtain collateral warranties from key subs."
+      law_reference: ["CRTPA 1999"]
+      category: "Third-Party Rights"
+      keywords: ["step-in","novation","collateral warranty","CRTPA"]
+    metadata:
+      tags: ["third-party","step-in","warranties"]
+
+  - id: "subcontracts.copies_audit_rights"
+    version: "1.0.0"
+    title: "Provide copies of subcontracts (limited redactions) + audit rights"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["audit","governance","subcontracts"]
+    triggers:
+      any:
+        - regex: "(?i)\\bsub\\-?contract(?:or|ing|s)?s?\\b"
+    advice: "Require copies within a fixed SLA; include robust audit rights."
+    law_reference:
+      - "UK GDPR Art.28(3)(h)"
+    checks:
+      - id: "no_copy_provision"
+        when:
+          not_regex: "(?i)\\b(provide|supply)\\s+cop(?:y|ies)\\s+of\\s+sub\\-?contracts\\b|\\bwithin\\s+\\d+\\s+days\\b"
+        finding:
+          message: "No obligation to provide copies of subcontracts within a fixed time."
+          severity_level: "minor"
+          risk: "medium"
+          legal_basis: ["Governance/audit best practice; UK GDPR Art.28(3)(h) when personal data is involved"]
+          suggestion:
+            text: "Require copies of subcontracts within 10 days; allow limited redactions (trade secrets/PD) while retaining audit-critical sections."
+          score_delta: -6
+      - id: "no_audit_right"
+        when:
+          not_regex: "(?i)\\b(audit|inspect|records\\s+retention|access\\s+to\\s+premises|examine\\s+books)\\b"
+        finding:
+          message: "No audit/inspection rights for subcontractors detected."
+          severity_level: "major"
+          risk: "medium"
+          legal_basis: ["Audit & records best practice; UK GDPR Art.28(3)(h)"]
+          suggestion: { text: "Insert audit/inspection rights for Company and its auditors, with reasonable notice and confidentiality safeguards." }
+          score_delta: -10
+    outcome:
+      status: fail
+      risk_level: medium
+      severity: S3
+      issue_type: "SubcontractAuditGap"
+      score: 80
+      problem: "Lack of copies/audit rights undermines supply-chain assurance."
+      recommendation: "Require copies within a fixed SLA; include robust audit rights."
+      law_reference: ["UK GDPR Art.28(3)(h)"]
+      category: "Governance"
+      keywords: ["audit","copies","SLA","redaction"]
+    metadata:
+      tags: ["audit","copies","governance"]

@@ -768,6 +768,16 @@ def _env_truthy(name: str) -> bool:
     return (os.getenv(name, "") or "").strip().lower() in _TRUTHY
 
 
+FEATURE_REQUIRE_API_KEY = _env_truthy("FEATURE_REQUIRE_API_KEY")
+API_KEY = os.getenv("API_KEY", "")
+
+_ALLOWED_ORIGINS = [
+    o.strip()
+    for o in (os.getenv("ALLOWED_ORIGINS") or "https://localhost:9443").split(",")
+    if o.strip()
+]
+
+
 def require_llm_enabled() -> None:
     if not _env_truthy("CONTRACTAI_LLM_API"):
         raise HTTPException(status_code=404, detail="LLM API disabled")
@@ -777,7 +787,7 @@ def require_llm_enabled() -> None:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://localhost:3000", "https://127.0.0.1:3000", "*"],
+    allow_origins=_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -792,6 +802,12 @@ app.add_middleware(
         "x-usage-total",
     ],
 )
+
+
+def _require_api_key(request: Request) -> None:
+    if FEATURE_REQUIRE_API_KEY:
+        if request.headers.get("x-api-key") != API_KEY:
+            raise HTTPException(status_code=401, detail="missing or invalid api key")
 
 # ---- Trace middleware and store ------------------------------------
 _TRACE_MAX_CIDS = 200
@@ -1406,6 +1422,7 @@ async def api_report_pdf(cid: str):
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 def api_analyze(req: AnalyzeRequest, request: Request):
+    _require_api_key(request)
     txt = req.text
     debug = request.query_params.get("debug")
     risk_param = (
@@ -1850,6 +1867,7 @@ async def api_qa_recheck(
 async def api_suggest_edits(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
+    _require_api_key(request)
     _set_schema_headers(response)
     try:
         payload = await request.json()
@@ -1967,6 +1985,7 @@ class DraftOut(BaseModel):
     responses={422: {"model": ProblemDetail}},
 )
 async def gpt_draft(inp: DraftIn, request: Request):
+    _require_api_key(request)
     if os.getenv("AZURE_KEY_INVALID") == "1":
         raise HTTPException(
             status_code=500,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from contract_review_app.core.privacy import redact_pii, scrub_llm_output
 # Prompt builder (new API with system/user) + legacy shim
 try:
     from contract_review_app.gpt.gpt_prompt_builder import (
@@ -102,17 +103,21 @@ def generate_guarded_draft(
             prompt = _prepare_prompt(a, mode=mode)
             if lh.get("enabled"):
                 # Mild, non-destructive style hint for LLM; guardrails still prevent risk downgrade or fake sources
-                prompt = (prompt + "\n\nStyle preference: "
-                          f"{lh.get('template_id')} (final_score={lh.get('final_score')}).")
+                prompt = (
+                    prompt
+                    + "\n\nStyle preference: "
+                    + f"{lh.get('template_id')} (final_score={lh.get('final_score')})."
+                )
+            redacted_prompt, pii_map = redact_pii(prompt)
             # Pass the original analysis object to proxy to let it leverage context
             gpt_resp = call_gpt_api(
                 clause_type=clause_type,
-                prompt=prompt,
+                prompt=redacted_prompt,
                 output=a,  # type: ignore[arg-type]
                 model=model or "proxy-llm",
             )
-            draft_text = _get_attr(gpt_resp, "draft_text", "")
-            explanation = _get_attr(gpt_resp, "explanation", "")
+            draft_text = scrub_llm_output(_get_attr(gpt_resp, "draft_text", ""), pii_map)
+            explanation = scrub_llm_output(_get_attr(gpt_resp, "explanation", ""), pii_map)
             cleaned, actions, removed = _apply_guardrails(
                 text=draft_text,
                 allowed_sources=allowed_sources,

@@ -25,6 +25,9 @@ from collections import OrderedDict
 import secrets
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from contract_review_app.core.privacy import redact_pii, scrub_llm_output
+from contract_review_app.core.audit import audit
+
 
 class _TraceStore:
     def __init__(self, maxlen: int = 200):
@@ -1534,6 +1537,15 @@ def api_analyze(req: AnalyzeRequest, request: Request):
     tmp = Response()
     _set_llm_headers(tmp, PROVIDER_META)
     headers.update(tmp.headers)
+    audit(
+        "analyze",
+        request.headers.get("x-user"),
+        doc_hash,
+        {
+            "findings_count": len(findings),
+            "rules_count": summary.get("rules_count", 0),
+        },
+    )
     return _finalize_json("/api/analyze", envelope, headers)
 
 
@@ -1911,6 +1923,15 @@ async def api_suggest_edits(
     payload["proposed_text"] = proposed_text
     payload["ops"] = ops
     payload["status"] = "ok"
+    audit(
+        "suggest_edits",
+        request.headers.get("x-user"),
+        None,
+        {
+            "suggestions_count": len(payload.get("suggestions", [])),
+            "ops_count": len(ops),
+        },
+    )
     return _finalize_json("/api/suggest_edits", payload, headers)
 
 
@@ -1956,26 +1977,30 @@ async def gpt_draft(inp: DraftIn, request: Request):
     if not text:
         raise HTTPException(status_code=422, detail="text is required")
 
+    redacted_text, pii_map = redact_pii(text)
+
     try:
-        result = LLM_PROVIDER.draft(text=text, mode=inp.mode)
-        proposed_text = result.proposed_text
-        rationale = result.rationale
-        evidence = result.evidence
-        before_text = result.before_text
-        after_text = result.after_text
-        diff_unified = result.diff_unified
+        result = LLM_PROVIDER.draft(text=redacted_text, mode=inp.mode)
+        proposed_text = scrub_llm_output(result.proposed_text, pii_map)
+        rationale = scrub_llm_output(result.rationale, pii_map)
+        evidence = [scrub_llm_output(e, pii_map) for e in result.evidence]
+        before_text = text
+        after_text = scrub_llm_output(result.after_text, pii_map)
+        diff_unified = scrub_llm_output(result.diff_unified, pii_map)
         provider = result.provider
         model = result.model
         mode_used = result.mode
         usage = result.usage
     except TypeError:
-        legacy = LLM_PROVIDER.draft(text)
-        proposed_text = legacy.get("text") or legacy.get("proposed_text", "")
-        rationale = legacy.get("rationale", "")
-        evidence = legacy.get("evidence", [])
+        legacy = LLM_PROVIDER.draft(redacted_text)
+        proposed_text = scrub_llm_output(
+            legacy.get("text") or legacy.get("proposed_text", ""), pii_map
+        )
+        rationale = scrub_llm_output(legacy.get("rationale", ""), pii_map)
+        evidence = [scrub_llm_output(e, pii_map) for e in legacy.get("evidence", [])]
         before_text = text
         after_text = proposed_text
-        diff_unified = legacy.get("diff", "")
+        diff_unified = scrub_llm_output(legacy.get("diff", ""), pii_map)
         provider = getattr(LLM_PROVIDER, "name", "")
         model = getattr(LLM_PROVIDER, "model", "")
         mode_used = inp.mode
@@ -2006,6 +2031,15 @@ async def gpt_draft(inp: DraftIn, request: Request):
         },
     )
     apply_std_headers(resp, request, started)
+    audit(
+        "gpt_draft",
+        request.headers.get("x-user"),
+        None,
+        {
+            "before_text_len": len(before_text or ""),
+            "after_text_len": len(after_text or ""),
+        },
+    )
     return resp
 
 

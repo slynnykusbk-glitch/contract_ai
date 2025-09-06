@@ -11,6 +11,7 @@ _CLAUSE_PATTERNS: Dict[str, List[re.Pattern[str]]] = {
     "governing_law": [
         re.compile(r"governing\s+law", re.I),
         re.compile(r"choice\s+of\s+law", re.I),
+        re.compile(r"governed\s+by\s+the\s+laws?", re.I),
     ],
     "confidentiality": [
         re.compile(r"confidential", re.I),

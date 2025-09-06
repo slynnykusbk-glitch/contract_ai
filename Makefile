@@ -28,4 +28,8 @@ retrieval-build:
 
 .PHONY: retrieval-eval
 retrieval-eval:
-	python -m contract_review_app.retrieval.eval --golden data/retrieval_golden.yaml --method hybrid --k 5
+python -m contract_review_app.retrieval.eval --golden data/retrieval_golden.yaml --method hybrid --k 5
+
+.PHONY: openapi
+openapi:
+python scripts/gen_openapi.py

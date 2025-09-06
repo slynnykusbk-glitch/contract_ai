@@ -168,7 +168,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
@@ -626,12 +626,28 @@ def llm_ping():
 
 
 class AnalyzeRequest(BaseModel):
-    text: Optional[str] = None
-    clause: Optional[str] = None
-    body: Optional[str] = None
+    """Public request DTO for ``/api/analyze``.
+
+    Accepts ``text`` as a required field while allowing legacy aliases
+    ``clause`` and ``body`` for backward compatibility. The aliases are
+    folded into ``text`` during validation so downstream logic only needs to
+    handle a single attribute.
+    """
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    text: str = Field(validation_alias=AliasChoices("text", "clause", "body"))
     language: Optional[str] = None
     mode: Optional[str] = None
     risk: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _strip_text(self):
+        txt = (self.text or "").strip()
+        if not txt:
+            raise ValueError("text is empty")
+        self.text = txt
+        return self
 
 
 class AnalyzeResponse(BaseModel):
@@ -1362,10 +1378,7 @@ async def api_report_pdf(cid: str):
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 def api_analyze(req: AnalyzeRequest, request: Request):
-    txt = req.text or req.clause or req.body or ""
-    txt = txt.strip()
-    if not txt:
-        raise HTTPException(status_code=422, detail="text is empty")
+    txt = req.text
     debug = request.query_params.get("debug")
     risk_param = request.query_params.get("risk") or req.risk or getattr(req, "threshold", None) or "medium"
 

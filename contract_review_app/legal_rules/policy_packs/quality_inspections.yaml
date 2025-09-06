@@ -1,0 +1,353 @@
+# §13 Quality management and inspections/tests rule pack
+---
+rule:
+  id: 13.QMS.ISO9001
+  version: 1.0
+  title: QMS must be ISO 9001 or equivalent
+  clause_type: quality_management
+  law_reference:
+    - 'ISO 9001'
+  triggers:
+    any:
+      - regex: '(?i)\b(quality management system|QMS|ISO\s*9001|API\s*Q1|API\s*Q2|AS9100|IATF\s*16949)\b'
+  checks:
+    - when: { regex: '.*' }
+      finding:
+        message: 'Quality Management System must be certified to ISO 9001 or recognized equivalent.'
+        severity_level: medium
+        suggestion:
+          text: 'Maintain QMS certified to ISO 9001 / API Q1/Q2 / AS9100 / IATF 16949.'
+  outcome:
+    status: non_compliant
+    severity: medium
+    risk_level: 3
+    problem: 'QMS certification not confirmed.'
+    recommendation: 'Require documented ISO 9001 or equivalent certification.'
+  metadata:
+    tags: ['quality','QMS','clause13']
+---
+rule:
+  id: 13.QP.REQUIRED
+  version: 1.0
+  title: Quality Plan required before start
+  clause_type: quality_management
+  law_reference:
+    - 'ISO 9001'
+  triggers:
+    any:
+      - regex: '(?i)\bquality\s+plan\b'
+  checks:
+    - when: { regex: '.*' }
+      finding:
+        message: 'Quality Plan must be prepared and approved before work or first invoice.'
+        severity_level: medium
+        suggestion:
+          text: 'Submit Quality Plan for Company approval prior to commencement.'
+  outcome:
+    status: non_compliant
+    severity: medium
+    risk_level: 3
+    problem: 'Quality Plan requirement missing or timing unclear.'
+    recommendation: 'Ensure approved Quality Plan before start.'
+  metadata:
+    tags: ['quality','plan','clause13']
+---
+rule:
+  id: 13.AUDIT.ISO19011
+  version: 1.0
+  title: Internal audits per ISO 19011 with CAPA closure
+  clause_type: quality_management
+  law_reference:
+    - 'ISO 19011'
+  triggers:
+    any:
+      - regex: '(?i)\binternal\s+audit\b'
+      - regex: '(?i)\bISO\s*19011\b'
+      - regex: '(?i)\bCAPA\b'
+  checks:
+    - when: { regex: '.*' }
+      finding:
+        message: 'Internal audits shall follow ISO 19011 with corrective actions closed.'
+        severity_level: medium
+        suggestion:
+          text: 'Perform audits per ISO 19011 and track CAPA to closure.'
+  outcome:
+    status: non_compliant
+    severity: medium
+    risk_level: 3
+    problem: 'Audit process not aligned to ISO 19011.'
+    recommendation: 'Adopt ISO 19011 audit programme with CAPA management.'
+  metadata:
+    tags: ['audit','ISO19011','clause13']
+---
+rule:
+  id: 13.MOC.FORMAL
+  version: 1.0
+  title: Formal Management of Change for key factors
+  clause_type: quality_management
+  law_reference:
+    - 'ISO 9001'
+  triggers:
+    any:
+      - regex: '(?i)\bmanagement\s+of\s+change\b'
+      - regex: '(?i)\bMOC\b'
+  checks:
+    - when: { regex: '.*' }
+      finding:
+        message: 'Changes to resources, suppliers or processes require formal MOC.'
+        severity_level: medium
+        suggestion:
+          text: 'Implement documented Management of Change procedure.'
+  outcome:
+    status: non_compliant
+    severity: medium
+    risk_level: 3
+    problem: 'MOC procedure not defined.'
+    recommendation: 'Adopt formal MOC for influencing factors.'
+  metadata:
+    tags: ['MOC','quality','clause13']
+---
+rule:
+  id: 13.ITP.EXISTS
+  version: 1.0
+  title: ITP must exist with H/W/M/R gates and acceptance criteria
+  clause_type: inspections_tests
+  law_reference:
+    - 'ISO 9001'
+    - 'ISO 19011'
+  triggers:
+    any:
+      - regex: '(?i)\b(Inspection\s*&\s*Test\s*Plan|ITP)\b'
+      - regex: '(?i)\b(Hold|Witness|Monitor|Review)\s*point(s)?\b'
+  checks:
+    - when: { regex: '.*' }
+      finding:
+        message: 'ITP required: include H/W/M/R points, criteria and standards.'
+        severity_level: high
+        suggestion:
+          text: 'Provide ITP covering H/W/M/R gates, acceptance criteria, standards and records.'
+  outcome:
+    status: non_compliant
+    severity: high
+    risk_level: 4
+    problem: 'No structured inspection/testing controls.'
+    recommendation: 'Issue comprehensive ITP before start.'
+  metadata:
+    tags: ['quality','inspection','ITP','clause13']
+---
+rule:
+  id: 13.ITP.NOTICE
+  version: 1.0
+  title: Notice period for Hold/Witness points
+  clause_type: inspections_tests
+  law_reference:
+    - 'ISO 9001'
+  triggers:
+    any:
+      - regex: '(?i)\b(Hold|Witness)\b.*\b(\d+|five)\s+day(s)?\b'
+      - regex: '(?i)\b(\d+|five)\s+day(s)?\b.*\b(Hold|Witness)\b'
+  checks:
+    - when: { regex: '.*' }
+      finding:
+        message: 'Provide minimum notice (default 5 days) for Hold/Witness points.'
+        severity_level: medium
+        suggestion:
+          text: 'Notify Company at least N days before H/W points.'
+  outcome:
+    status: non_compliant
+    severity: medium
+    risk_level: 3
+    problem: 'Notice period for H/W points not specified.'
+    recommendation: 'Specify ≥5 days notice for H/W points.'
+  metadata:
+    tags: ['notice','ITP','clause13']
+---
+rule:
+  id: 13.COST.NOSHOW_FAIL
+  version: 1.0
+  title: Costs on not-ready/no-show/re-test borne by liable party
+  clause_type: inspections_tests
+  law_reference:
+    - 'ISO 9001'
+  triggers:
+    any:
+      - regex: '(?i)(?=.*\b(costs?|expenses?)\b)(?=.*\b(no[-\s]?show|not\s+ready|re[-\s]?test)\b)'
+  checks:
+    - when: { regex: '.*' }
+      finding:
+        message: 'Costs for not-ready/no-show/re-test fall on the responsible party.'
+        severity_level: medium
+        suggestion:
+          text: 'Allocate re-inspection expenses to the at-fault party.'
+  outcome:
+    status: non_compliant
+    severity: medium
+    risk_level: 3
+    problem: 'Cost liability for failed inspections unclear.'
+    recommendation: 'Clarify cost recovery for not-ready or failed inspections.'
+  metadata:
+    tags: ['cost','inspection','clause13']
+---
+rule:
+  id: 13.INSPECT.NO_WAIVER
+  version: 1.0
+  title: Inspection does not waive liability; defects unpaid
+  clause_type: inspections_tests
+  law_reference:
+    - 'ISO 9001'
+  triggers:
+    any:
+      - regex: '(?i)\binspection\b.*\bdoes\s+not\b.*\b(relieve|waive)\b'
+      - regex: '(?i)\bdefect\b.*\bnot\b.*\bpaid\b'
+  checks:
+    - when: { regex: '.*' }
+      finding:
+        message: 'Inspection or lack thereof does not waive contractor responsibility.'
+        severity_level: high
+        suggestion:
+          text: 'State that defects remain contractor liability and are not payable.'
+  outcome:
+    status: non_compliant
+    severity: high
+    risk_level: 4
+    problem: 'Liability waiver implied by inspection.'
+    recommendation: 'Clarify inspection does not relieve contractor of defects.'
+  metadata:
+    tags: ['inspection','liability','clause13']
+---
+rule:
+  id: 13.HIDDEN.WORKS
+  version: 1.0
+  title: Hidden works require evidence if not inspected
+  clause_type: inspections_tests
+  law_reference:
+    - 'ISO 9001'
+  triggers:
+    any:
+      - regex: '(?i)\bhidden\s+works?\b'
+  checks:
+    - when: { regex: '.*' }
+      finding:
+        message: 'Hidden works without inspection require proof of conformity at contractor cost.'
+        severity_level: medium
+        suggestion:
+          text: 'Provide evidence or open up hidden works for inspection.'
+  outcome:
+    status: non_compliant
+    severity: medium
+    risk_level: 3
+    problem: 'Hidden works may be noncompliant.'
+    recommendation: 'Require evidence for uninspected hidden works.'
+  metadata:
+    tags: ['hidden','inspection','clause13']
+---
+rule:
+  id: 13.SHIP.BLOCK
+  version: 1.0
+  title: No shipment without final inspection or waiver
+  clause_type: inspections_tests
+  law_reference:
+    - 'ISO 9001'
+  triggers:
+    any:
+      - regex: '(?i)\bno\s+shipment\b.*\b(final\s+inspection|waiver)\b'
+      - regex: '(?i)\bshipment\b.*\bwithout\b.*\b(final\s+inspection|waiver)\b'
+  checks:
+    - when: { regex: '.*' }
+      finding:
+        message: 'Shipment blocked until final inspection or written waiver.'
+        severity_level: high
+        suggestion:
+          text: 'Do not ship without Company final inspection or waiver.'
+  outcome:
+    status: non_compliant
+    severity: high
+    risk_level: 4
+    problem: 'Shipment may occur without approval.'
+    recommendation: 'Enforce final inspection/waiver before shipment.'
+  metadata:
+    tags: ['shipment','inspection','clause13']
+---
+rule:
+  id: 13.EQUIP.CERT.LOLER_PUWER
+  version: 1.0
+  title: Lifting/work equipment must have current statutory examinations
+  clause_type: inspections_tests
+  law_reference:
+    - 'LOLER 1998'
+    - 'PUWER 1998'
+  triggers:
+    any:
+      - regex: '(?i)\b(lifting|crane|hoist|sling|shackle|SWL|work\s+equipment|PUWER|LOLER)\b'
+  checks:
+    - when:
+        any:
+          - regex: '(?i)\b(out\s+of\s+date|expired|no\s+certificate|no\s+thorough\s+examination)\b'
+          - not_contains: 'certificate'
+      finding:
+        message: 'Equipment certification missing or expired (LOLER/PUWER).'
+        severity_level: high
+        suggestion:
+          text: 'Block use; perform thorough examination; update registers; attach SWL and certificates.'
+  outcome:
+    status: non_compliant
+    severity: high
+    risk_level: 5
+    problem: 'Statutory inspection non-compliance.'
+    recommendation: 'Verify LOLER reg.9 and PUWER checks; maintain records.'
+  metadata:
+    tags: ['HSE','equipment','lifting','clause13']
+---
+rule:
+  id: 13.LAB.ISO17025
+  version: 1.0
+  title: External testing/calibration by ISO/IEC 17025 accredited labs
+  clause_type: inspections_tests
+  law_reference:
+    - 'ISO/IEC 17025'
+  triggers:
+    any:
+      - regex: '(?i)\b(ISO\s*/?IEC\s*17025|accredited\s+laborator(y|ies))\b'
+  checks:
+    - when: { regex: '.*' }
+      finding:
+        message: 'External tests and calibrations must use ISO/IEC 17025 accredited labs.'
+        severity_level: medium
+        suggestion:
+          text: 'Select laboratories with ISO/IEC 17025 accreditation (ILAC MRA).'
+  outcome:
+    status: non_compliant
+    severity: medium
+    risk_level: 3
+    problem: 'Lab accreditation not confirmed.'
+    recommendation: 'Engage ISO/IEC 17025 accredited providers.'
+  metadata:
+    tags: ['lab','accreditation','clause13']
+---
+rule:
+  id: 13.MARKING.UKCA_CE
+  version: 1.0
+  title: UKCA/CE marking and regulatory assessment
+  clause_type: inspections_tests
+  law_reference:
+    - 'UKCA/CE policy'
+    - 'PED 2016'
+  triggers:
+    any:
+      - regex: '(?i)\b(UKCA|CE\s*mark)\b'
+      - regex: '(?i)\bPED\s*2016\b'
+  checks:
+    - when: { regex: '.*' }
+      finding:
+        message: 'Equipment must have applicable UKCA/CE marking and regulatory assessment (e.g. PED 2016).'
+        severity_level: medium
+        suggestion:
+          text: 'Provide evidence of UKCA/CE conformity assessment.'
+  outcome:
+    status: non_compliant
+    severity: medium
+    risk_level: 3
+    problem: 'Regulatory marking unclear.'
+    recommendation: 'Ensure UKCA/CE and PED compliance.'
+  metadata:
+    tags: ['marking','regulatory','clause13']

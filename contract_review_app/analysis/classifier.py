@@ -44,6 +44,17 @@ _CLAUSE_PATTERNS: Dict[str, List[re.Pattern[str]]] = {
     "parties": [
         re.compile(r"parties", re.I),
     ],
+    "quality_management": [
+        re.compile(r"quality\s+management", re.I),
+        re.compile(r"quality\s+plan", re.I),
+        re.compile(r"ISO\s*9001", re.I),
+    ],
+    "inspections_tests": [
+        re.compile(r"inspection", re.I),
+        re.compile(r"test\s+plan", re.I),
+        re.compile(r"LOLER", re.I),
+        re.compile(r"PUWER", re.I),
+    ],
 }
 
 

@@ -1,16 +1,26 @@
 import json
 import subprocess
 import textwrap
+from pathlib import Path
 
-# RAW string: отдаём JS ровно как нужно; \n — двойным слешем.
-JS = r"""
+TEXT = Path("tests/fixtures/quality_clause13.txt").read_text().strip()
+SNIPPETS = [s.strip() for s in TEXT.split(".") if s.strip()]
+FINDINGS = [
+    {"snippet": SNIPPETS[0], "rule_id": "13.ITP.EXISTS", "severity": "high", "start": 0},
+    {"snippet": SNIPPETS[1], "rule_id": "13.SHIP.BLOCK", "severity": "high", "start": len(SNIPPETS[0]) + 2},
+    {"snippet": SNIPPETS[2], "rule_id": "13.EQUIP.CERT.LOLER_PUWER", "severity": "high", "start": len(SNIPPETS[0]) + len(SNIPPETS[1]) + 4},
+]
+
+DOC_TEXT = json.dumps(TEXT)
+FINDINGS_JSON = json.dumps(FINDINGS)
+
+JS_TEMPLATE = r"""
 const vm = require('vm');
 const fs = require('fs');
 const path = require('path');
 
 const bundlePath = path.resolve(process.cwd(), 'word_addin_dev', 'taskpane.bundle.js');
 let code = fs.readFileSync(bundlePath, 'utf-8');
-// Не пускаем bootstrap() автоматически.
 code = code.replace(/bootstrap\(\);\s*$/, '');
 
 let analyzeCalled = 0;
@@ -39,20 +49,9 @@ const document = {
 const sandbox = {
   window: {},
   document,
-  getWholeDocText: async () => 'A\nB\nC',
-  apiAnalyze: async () => {
-    analyzeCalled += 1;
-    return {
-      json: { analysis: { findings: [{ snippet: 'B', rule_id: 'governing_law_basic', severity: 'high', start: 2, end: 3, law_reference: 'Rome I / UCTA 1977' }] } },
-      resp: {}
-    };
-  },
-  annotateFindingsIntoWord: async (findings) => {
-    if (Array.isArray(findings)) {
-      findingsLen = findings.length;
-      annotateCalled += 1;
-    }
-  },
+  getWholeDocText: async () => '',
+  apiAnalyze: async () => ({ json: { analysis: { findings: [] } }, resp: {} }),
+  annotateFindingsIntoWord: async () => {},
   notifyOk: () => {},
   notifyErr: () => {},
   notifyWarn: () => {},
@@ -64,12 +63,13 @@ const sandbox = {
 
 vm.createContext(sandbox);
 vm.runInContext(code, sandbox);
-sandbox.getWholeDocText = async () => 'A\nB\nC';
+
+sandbox.getWholeDocText = async () => __TEXT__;
 sandbox.apiAnalyze = async () => {
   analyzeCalled += 1;
   return {
-    json: { analysis: { findings: [{ snippet: 'B', rule_id: 'governing_law_basic', severity: 'high', start: 2, end: 3, law_reference: 'Rome I / UCTA 1977' }] } },
-    resp: {}
+    json: { analysis: { findings: __FINDINGS__ } },
+    resp: {},
   };
 };
 sandbox.annotateFindingsIntoWord = async (findings) => {
@@ -83,15 +83,15 @@ sandbox.parseFindings = (resp) => {
   return Array.isArray(arr) ? arr.filter(Boolean) : [];
 };
 
-// wire + click Analyze
 sandbox.wireUI();
 btnAnalyze.click();
 
-// Последняя строка — JSON для ассертов в Python (ждём завершения async)
 setTimeout(() => {
   console.log(JSON.stringify({ analyze_called: analyzeCalled, annotate_called: annotateCalled, findings_len: findingsLen }));
 }, 0);
 """
+
+JS = JS_TEMPLATE.replace('__TEXT__', DOC_TEXT).replace('__FINDINGS__', FINDINGS_JSON)
 
 
 def test_whole_doc_analyze_smoke(tmp_path):
@@ -105,4 +105,3 @@ def test_whole_doc_analyze_smoke(tmp_path):
     assert data.get("analyze_called") == 1
     assert data.get("annotate_called") == 1
     assert data.get("findings_len") >= 1
-

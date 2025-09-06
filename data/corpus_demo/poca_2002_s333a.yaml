@@ -1,0 +1,15 @@
+items:
+  - source: "legislation.gov.uk"
+    jurisdiction: "UK"
+    act_code: "POCA_2002"
+    act_title: "Proceeds of Crime Act 2002"
+    section_code: "s.333A"
+    section_title: "Tipping off"
+    version: "2020-01"
+    updated_at: "2020-01-01T00:00:00Z"
+    url: "https://www.legislation.gov.uk/ukpga/2002/29/section/333A"
+    rights: "Open Government Licence v3.0"
+    lang: "en"
+    script: "Latn"
+    text: |
+      It is an offence to disclose information likely to prejudice an investigation under POCA.

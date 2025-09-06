@@ -1,0 +1,15 @@
+items:
+  - source: "legislation.gov.uk"
+    jurisdiction: "UK"
+    act_code: "CA_2006"
+    act_title: "Companies Act 2006"
+    section_code: "s.1161"
+    section_title: "Meaning of 'subsidiary undertaking'"
+    version: "2020-01"
+    updated_at: "2020-01-01T00:00:00Z"
+    url: "https://www.legislation.gov.uk/ukpga/2006/46/section/1161"
+    rights: "Open Government Licence v3.0"
+    lang: "en"
+    script: "Latn"
+    text: |
+      Defines when an undertaking is a subsidiary undertaking.

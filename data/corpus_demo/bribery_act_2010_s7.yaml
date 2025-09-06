@@ -1,0 +1,15 @@
+items:
+  - source: "legislation.gov.uk"
+    jurisdiction: "UK"
+    act_code: "UKBA_2010"
+    act_title: "Bribery Act 2010"
+    section_code: "s.7"
+    section_title: "Failure of commercial organisations to prevent bribery"
+    version: "2020-01"
+    updated_at: "2020-01-01T00:00:00Z"
+    url: "https://www.legislation.gov.uk/ukpga/2010/23/section/7"
+    rights: "Open Government Licence v3.0"
+    lang: "en"
+    script: "Latn"
+    text: |
+      A commercial organisation can be guilty of an offence if it fails to prevent bribery.

@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 from contract_review_app.core.schemas import AppBaseModel
 
@@ -23,7 +23,24 @@ class ProblemDetail(AppBaseModel):
 
 
 class AnalyzeRequest(_DTOBase):
-    text: str
+    """Public request model for ``/api/analyze``.
+
+    ``text`` is required; legacy producers may still send ``clause`` or
+    ``body`` which are accepted as aliases and mapped to ``text``.
+    """
+
+    text: str = Field(validation_alias=AliasChoices("text", "clause", "body"))
+    language: str | None = None
+    mode: str | None = None
+    risk: str | None = None
+
+    @model_validator(mode="after")
+    def _strip(self):
+        txt = (self.text or "").strip()
+        if not txt:
+            raise ValueError("text is empty")
+        self.text = txt
+        return self
 
 
 class Span(_DTOBase):

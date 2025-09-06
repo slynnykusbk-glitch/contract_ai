@@ -31,3 +31,12 @@ After running an analysis the task pane displays the current CID. You can open
 `/api/trace/{cid}` via the **View Trace** button or export the analysis using
 **Export HTML/PDF**. The **Replay last** button re-sends the previous input to
 `/api/analyze`.
+
+## API examples
+
+Sample request bodies for `/api/analyze` are included:
+
+- `analyze_req.json` – minimal request with required fields.
+- `analyze_req_doctor.json` – the same request with `mode` set to `doctor`.
+
+Run `make openapi` to regenerate `openapi.json` in the repository root.

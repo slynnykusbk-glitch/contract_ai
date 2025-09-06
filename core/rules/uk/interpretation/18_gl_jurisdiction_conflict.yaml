@@ -1,0 +1,8 @@
+rule:
+  id: gl_jurisdiction_conflict
+  clause_type: governing_law
+  severity: medium
+  patterns:
+    - "(?is)(?=.*laws? of england and wales)(?=.*scottish courts?).+"
+  advice: "Avoid conflict between English law and Scottish courts."
+  law_refs: []

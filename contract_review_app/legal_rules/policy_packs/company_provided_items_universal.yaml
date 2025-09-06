@@ -1,0 +1,322 @@
+# Universal Company Provided Items / OFI / FIM rule-pack (industry-agnostic)
+# Schema 1.3-compatible; strict regex with boundaries and (?i) case-insensitivity
+
+---
+rule:
+  id: "cpi.register.exhaustive_list"
+  version: "1.0.0"
+  title: "CPI list must be exhaustive, dated, and agreed (no open-ended 'including')"
+  scope: { jurisdiction: ["Any"], doc_types: ["Any"], clauses: ["company provided items","owner-furnished","free-issue materials","customer property"] }
+  triggers:
+    any:
+      - regex: "(?i)\\b(company\\s+provided\\s+items|owner[-\\s]?furnished|free[-\\s]?issue\\s+materials|customer\\s+property)\\b.*\\b(including|include)\\b.*\\b(without\\s+limitation|not\\s+limited)\\b"
+  checks:
+    - id: "open_ended_list"
+      when: { regex: ".*" }
+      finding:
+        message: "CPI list is open-ended ('including… not limited to'); risk of scope drift and missing custody records."
+        advice: "Use an exhaustive, dated CPI schedule with quantities/condition and unique IDs; changes via formal variation only."
+        severity_level: "major"
+        risk: "medium"
+        legal_basis: ["HSWA 1974 (safe custody/arrangements)"]
+        suggestion:
+          text: "Replace 'including…' with reference to a fixed Schedule (ID, qty, condition, handover date)."
+        score_delta: -10
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: S3
+    problem: "Open-ended CPI schedule."
+    recommendation: "Adopt fixed schedule + variation for changes."
+    law_reference: ["HSWA 1974"]
+    category: "Inventory"
+metadata: { tags: ["CPI","register"] }
+---
+rule:
+  id: "cpi.receipt.notice_window.latent"
+  version: "1.0.0"
+  title: "24h defect notice must include latent-defect/‘reasonable time’ carve-out"
+  scope: { jurisdiction: ["Any"], doc_types: ["Any"], clauses: ["company provided items","owner-furnished","free-issue materials"] }
+  triggers:
+    any:
+      - regex: "(?i)\\b(notify|notice)\\b.*\\bwithin\\s+24\\s*hours\\b"
+  checks:
+    - id: "no_latent_carveout"
+      when:
+        all:
+          - not_regex: "(?i)\\blatent\\b|\\bhidden\\b|\\breasonable\\s+time\\b|\\bBusiness\\s+Day\\b"
+      finding:
+        message: "Rigid 24h notice without latent-defect/‘reasonable time’ carve-out may be unreasonable."
+        advice: "Add carve-out: latent/hidden defects → notify within a reasonable time after discovery; allow extension over non-working days."
+        severity_level: "major"
+        risk: "medium"
+        legal_basis: ["UCTA 1977 (reasonableness)"]
+        suggestion:
+          text: "Append: 'This does not apply to latent defects; such defects shall be notified within a reasonable time after discovery.'"
+        score_delta: -12
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: S3
+    problem: "24h notice too strict; no latent carve-out."
+    recommendation: "Insert latent/‘reasonable time’ carve-out."
+    law_reference: ["UCTA 1977"]
+    category: "Acceptance"
+metadata: { tags: ["CPI","acceptance","latent"] }
+---
+rule:
+  id: "cpi.marking.tracking.required"
+  version: "1.0.0"
+  title: "CPI must be marked and tracked (asset ID/ERP/CMMS)"
+  scope: { jurisdiction: ["Any"], doc_types: ["Any"], clauses: ["company provided items","customer property"] }
+  triggers:
+    any:
+      - regex: "(?i)\\b(company\\s+provided\\s+items|owner[-\\s]?furnished|free[-\\s]?issue\\s+materials|customer\\s+property)\\b"
+  checks:
+    - id: "marking_missing"
+      when:
+        all:
+          - not_regex: "(?i)\\b(mark|label|identify|asset\\s*id|serial|ERP|CMMS|inventory)\\b"
+      finding:
+        message: "CPI mentioned without marking/ID/ERP-tracking requirements."
+        advice: "Require visible 'Property of Company' marking, unique asset/serial IDs and ERP/CMMS entries; monthly movement reports."
+        severity_level: "minor"
+        risk: "low"
+        legal_basis: ["HSWA 1974 (arrangements); HSE managing contractors"]
+        suggestion:
+          text: "Add: 'Mark CPI, record asset IDs, and track movements in ERP; provide monthly stock reports.'"
+        score_delta: -6
+  outcome:
+    status: fail
+    risk_level: low
+    severity: S4
+    problem: "No marking/tracking for CPI."
+    recommendation: "Add marking/ID/ERP controls."
+    law_reference: ["HSWA 1974; HSE guidance"]
+    category: "Inventory"
+metadata: { tags: ["CPI","tracking"] }
+---
+rule:
+  id: "cpi.storage.lifting.loler_puwer"
+  version: "1.0.0"
+  title: "Lifting/handling CPI → reference LOLER/PUWER"
+  scope: { jurisdiction: ["UK"], doc_types: ["Any"], clauses: ["HSE","company provided items","materials handling"] }
+  triggers:
+    any:
+      - regex: "(?i)\\b(crane|hoist|lift|lifting|slings?|rigging)\\b"
+  checks:
+    - id: "no_loler_puwer"
+      when:
+        all:
+          - not_regex: "(?i)\\bLOLER\\b|\\bPUWER\\b"
+      finding:
+        message: "Lifting/handling is referenced but LOLER/PUWER controls are not."
+        advice: "Add LOLER/PUWER inspections, competent persons, and records for lifting gear used with CPI."
+        severity_level: "minor"
+        risk: "medium"
+        legal_basis: ["LOLER 1998; PUWER 1998"]
+        suggestion:
+          text: "Insert: 'Lifting operations and equipment shall comply with LOLER/PUWER; keep inspection records.'"
+        score_delta: -8
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: S3
+    problem: "Missing LOLER/PUWER references."
+    recommendation: "Add statutory lifting/equipment controls."
+    law_reference: ["LOLER 1998; PUWER 1998"]
+    category: "HSE"
+metadata: { tags: ["HSE","LOLER","PUWER"] }
+---
+rule:
+  id: "cpi.ccc.insurance.cover_required"
+  version: "1.0.0"
+  title: "CCC (care, custody & control) insurance and loss payee"
+  scope: { jurisdiction: ["Any"], doc_types: ["Any"], clauses: ["insurance","risk","company provided items"] }
+  triggers:
+    any:
+      - regex: "(?i)\\b(care,?\\s+custody\\s+and\\s+control|\\bCCC\\b)\\b|\\b(risk\\s+in\\s+(?:CPI|customer\\s+property))\\b"
+  checks:
+    - id: "ccc_cover_missing"
+      when:
+        all:
+          - not_regex: "(?i)\\badditional\\s+insured\\b|\\bloss\\s+payee\\b|\\bCCC\\b|\\bbailee\\b|\\bCAR\\b|\\bcontractors?\\s+all\\s+risks\\b"
+      finding:
+        message: "CPI risk/CCC is referenced without explicit CCC/bailee/CAR cover and loss-payee/additional-insured protections."
+        advice: "Require CCC/bailee/CAR cover at replacement value, Company as additional insured & loss payee; remove CCC exclusions."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: ["Market practice; insurer CCC exclusions"]
+        suggestion:
+          text: "Amend insurance: include CCC/bailee or CAR cover; list Company as additional insured/loss payee; set limits ≥ replacement value."
+        score_delta: -16
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    problem: "No explicit CCC insurance protections."
+    recommendation: "Insert CCC/CAR cover and payee status."
+    law_reference: ["Insurance market practice (CCC)"]
+    category: "Insurance"
+metadata: { tags: ["CCC","insurance","CAR"] }
+---
+rule:
+  id: "cpi.no_lien.required"
+  version: "1.0.0"
+  title: "No lien over CPI/site/work; lien waivers required"
+  scope: { jurisdiction: ["Any"], doc_types: ["Any"], clauses: ["liens","company provided items","claims"] }
+  triggers:
+    any:
+      - regex: "(?i)\\b(lien|charge|encumbrance)s?\\b"
+  checks:
+    - id: "lien_present"
+      when:
+        all:
+          - not_regex: "(?i)\\bno\\s+(lien|charge|encumbrance)s?\\b"
+          - not_regex: "(?i)\\blien\\s+waivers?\\b"
+      finding:
+        message: "Lien/charge/encumbrance language detected; CPI must remain free of liens."
+        advice: "Insert global ‘no lien’ clause and require lien waivers from Contractor and Subcontractors as a condition to payment."
+        severity_level: "major"
+        risk: "high"
+        legal_basis: ["Best practice; property rights"]
+        suggestion:
+          text: "Add: 'No lien/charge over CPI/site/work; lien waivers required with each payment.'"
+        score_delta: -14
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    problem: "Lien risk on CPI."
+    recommendation: "Add no-lien + waivers."
+    law_reference: ["No-lien practice"]
+    category: "Title/Risk"
+metadata: { tags: ["lien","waiver"] }
+---
+rule:
+  id: "cpi.waste.disposal.duty_of_care"
+  version: "1.0.0"
+  title: "Waste/scrap/disposal must follow EPA s.34 duty of care"
+  scope: { jurisdiction: ["UK"], doc_types: ["Any"], clauses: ["waste","disposal","company provided items"] }
+  triggers:
+    any:
+      - regex: "(?i)\\b(scrap|waste|dispose|disposal)\\b"
+  checks:
+    - id: "no_waste_docs"
+      when:
+        all:
+          - not_regex: "(?i)\\bwaste\\s+transfer\\s+notes?\\b|\\blicensed\\s+carriers?\\b|\\bduty\\s+of\\s+care\\b"
+      finding:
+        message: "Disposal/scrap referenced but no waste transfer notes/licensed carrier/duty of care controls."
+        advice: "Require licensed carrier, waste transfer notes, records and certificates of destruction where applicable."
+        severity_level: "minor"
+        risk: "medium"
+        legal_basis: ["EPA 1990 s.34 (duty of care)"]
+        suggestion:
+          text: "Insert: 'Use licensed carriers; maintain waste transfer notes; provide certificate of destruction when required.'"
+        score_delta: -8
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: S3
+    problem: "Waste duty-of-care controls missing."
+    recommendation: "Add licensed-carrier & documentation."
+    law_reference: ["EPA 1990 s.34"]
+    category: "Environment"
+metadata: { tags: ["waste","EPA"] }
+---
+rule:
+  id: "cpi.use.only.for.project"
+  version: "1.0.0"
+  title: "CPI use limited to the contract scope (no cross-use)"
+  scope: { jurisdiction: ["Any"], doc_types: ["Any"], clauses: ["company provided items","use","scope"] }
+  triggers:
+    any:
+      - regex: "(?i)\\b(company\\s+provided\\s+items|owner[-\\s]?furnished|free[-\\s]?issue\\s+materials|customer\\s+property)\\b"
+  checks:
+    - id: "no_use_limit"
+      when:
+        all:
+          - not_regex: "(?i)\\b(use\\s+solely|use\\s+only\\b.*\\b(work|project)|not\\s+use\\s+for\\s+any\\s+other)\\b"
+      finding:
+        message: "No explicit restriction to use CPI solely for the contract scope."
+        advice: "Add 'use solely for the Work/Project; no cross-use or removal without prior written consent.'"
+        severity_level: "minor"
+        risk: "low"
+        legal_basis: ["Property/custody principles"]
+        suggestion:
+          text: "Insert sole-use restriction and consent gate for any movement."
+        score_delta: -5
+  outcome:
+    status: fail
+    risk_level: low
+    severity: S4
+    problem: "CPI use not limited to project."
+    recommendation: "Add sole-use restriction."
+    law_reference: ["Property custody"]
+    category: "Scope/Use"
+metadata: { tags: ["use","scope"] }
+---
+rule:
+  id: "cpi.incident.loss.damage.reporting"
+  version: "1.0.0"
+  title: "Loss/damage to CPI — incident reporting window"
+  scope: { jurisdiction: ["Any"], doc_types: ["Any"], clauses: ["company provided items","incidents","reports"] }
+  triggers:
+    any:
+      - regex: "(?i)\\b(loss|lost|damage|damaged)\\b.*\\b(company\\s+provided\\s+items|customer\\s+property|owner[-\\s]?furnished|free[-\\s]?issue)\\b"
+  checks:
+    - id: "no_incident_window"
+      when:
+        all:
+          - not_regex: "(?i)\\b(report|notify)\\b.*\\bwithin\\b.*\\b(\\d+|twenty[-\\s]?four)\\b\\s*(hours|hrs|days)\\b"
+      finding:
+        message: "Loss/damage to CPI mentioned without a prompt incident reporting window."
+        advice: "Insert obligation to report CPI incidents within 24–48h with photos, witnesses and insurer notice."
+        severity_level: "minor"
+        risk: "medium"
+        legal_basis: ["Insurance notification duties"]
+        suggestion:
+          text: "Add: 'Report loss/damage within 24h; include evidence and notify insurers.'"
+        score_delta: -6
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: S3
+    problem: "No incident reporting SLA."
+    recommendation: "Add 24–48h reporting + evidence."
+    law_reference: ["Insurance notice"]
+    category: "Reporting"
+metadata: { tags: ["incident","reporting"] }
+---
+rule:
+  id: "cpi.export.controls.sanctions"
+  version: "1.0.0"
+  title: "Cross-border CPI moves — IoR/EoR, classification, sanctions screening"
+  scope: { jurisdiction: ["UK"], doc_types: ["Any"], clauses: ["export","sanctions","logistics","company provided items"] }
+  triggers:
+    any:
+      - regex: "(?i)\\b(export|ship|cross[-\\s]?border|customs|import)\\b.*\\b(company\\s+provided\\s+items|customer\\s+property|owner[-\\s]?furnished|free[-\\s]?issue)\\b"
+  checks:
+    - id: "no_export_controls"
+      when:
+        all:
+          - not_regex: "(?i)\\bImporter\\s+of\\s+Record\\b|\\bExporter\\s+of\\s+Record\\b|\\bclassification\\b|\\bsanctions\\b|\\bexport\\s+control\\b"
+      finding:
+        message: "Cross-border CPI movement without IoR/EoR, HS classification and sanctions/export-control gate."
+        advice: "Define IoR/EoR roles, HS/EC dual-use classification, licences and sanctions screening prior to shipment."
+        severity_level: "minor"
+        risk: "medium"
+        legal_basis: ["UK export controls; sanctions (OFSI)"]
+        suggestion:
+          text: "Add export-control module: IoR/EoR, classification, licences, sanctions screening."
+        score_delta: -8
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: S3
+    problem: "Export/sanctions controls missing."
+    recommendation: "Insert IoR/EoR & screening."
+    law_reference: ["UK export control; OFSI"]
+    category: "Trade"
+metadata: { tags: ["export","sanctions"] }

@@ -17,3 +17,6 @@ include-package-data = true
 [tool.setuptools.packages.find]
 where = ["."]
 
+[project.optional-dependencies]
+test = ["python-docx", "pdfminer.six", "fpdf2"]
+

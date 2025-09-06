@@ -1,0 +1,385 @@
+# Universal Independent Contractor rule-pack (industry-agnostic)
+# Schema 1.3-compatible single-rule documents
+
+---
+rule:
+  id: "ic.status.control.methods"
+  version: "1.0.0"
+  title: "Control over methods/hours risks employee/worker status"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["independent contractor","personnel","management","working time"]
+  triggers:
+    any:
+      - regex: "(?i)\\bcompany\\s+shall\\s+(?:direct|control)\\s+how,?\\s+when,?\\s+and\\s+where\\s+the\\s+services\\s+are\\s+performed\\b"
+      - regex: "(?i)\\bfixed\\s+hours\\b.*\\b(as\\s+directed\\s+by\\s+the\\s+company)\\b"
+  checks:
+    - id: "control_methods_flag"
+      when: { regex: ".*" }
+      finding:
+        message: "Text gives Company day-to-day control over methods/hours (indicator of employment/worker status)."
+        severity_level: "major"
+        risk: "high"
+        legal_basis:
+          - "Autoclenz v Belcher (UKSC) — reality over labels"
+          - "Uber v Aslam (UKSC) — control indicators"
+        suggestion:
+          text: "Recast to outcome control only: 'Supplier controls means and supervision; Company sets outputs/timelines and H&S/site rules only.'"
+        score_delta: -16
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: "ControlOverMethods"
+    score: 72
+    problem: "Operational control suggests employment/worker classification."
+    recommendation: "Limit to outcome control; preserve contractor’s autonomy."
+    law_reference: ["UKSC Uber; UKSC Autoclenz"]
+    category: "Status"
+    keywords: ["control","methods","hours"]
+metadata: { tags: ["status","control","IC"] }
+
+---
+rule:
+  id: "ic.substitution.absent_or_personal_service"
+  version: "1.0.0"
+  title: "Personal service only / no substitution — status risk"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["independent contractor","personnel"]
+  triggers:
+    any:
+      - regex: "(?i)\\bshall\\s+provide\\s+the\\s+services\\s+personally\\b"
+      - regex: "(?i)\\bno\\s+right\\s+to\\s+substitut(e|ion)\\b"
+  checks:
+    - id: "no_substitution"
+      when: { regex: ".*" }
+      finding:
+        message: "Personal service/no substitution increases risk of worker/employee status."
+        severity_level: "major"
+        risk: "medium"
+        legal_basis:
+          - "Pimlico Plumbers v Smith (UKSC) — limited/illusory substitution insufficient"
+        suggestion:
+          text: "Add genuine substitution right with vetting for H&S/site/security; Supplier remains liable; no unreasonable refusal."
+        score_delta: -12
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: S3
+    issue_type: "NoSubstitution"
+    score: 80
+    problem: "Personal service without substitution option."
+    recommendation: "Insert workable substitution clause."
+    law_reference: ["UKSC Pimlico Plumbers"]
+    category: "Status"
+    keywords: ["personal service","substitution"]
+metadata: { tags: ["status","substitution"] }
+
+---
+rule:
+  id: "ic.mutuality.moo.minimum_hours"
+  version: "1.0.0"
+  title: "Mutuality of obligations / guaranteed work or acceptance duty"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["independent contractor","scheduling","SLA"]
+  triggers:
+    any:
+      - regex: "(?i)\\bcompany\\s+shall\\s+provide\\s+work\\b.*\\bcontractor\\s+shall\\s+accept\\b"
+      - regex: "(?i)\\bminimum\\s+(?:hours|days)\\b|\\bguaranteed\\s+hours\\b"
+  checks:
+    - id: "moo_flag"
+      when: { regex: ".*" }
+      finding:
+        message: "Guaranteed work/mandatory acceptance indicates MOO (employee/worker risk)."
+        severity_level: "minor"
+        risk: "medium"
+        legal_basis:
+          - "Ready Mixed Concrete test (HMRC guidance)"
+        suggestion:
+          text: "Use call-off/task acceptance model; allow Supplier to allocate resources; avoid mandatory continuous availability."
+        score_delta: -8
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: S3
+    issue_type: "MOO"
+    score: 83
+    problem: "MOO suggested by guaranteed/mandatory hours."
+    recommendation: "Restructure to non-continuous, task-based engagement."
+    law_reference: ["HMRC ESM guidance on status"]
+    category: "Status"
+    keywords: ["MOO","minimum hours"]
+metadata: { tags: ["status","MOO"] }
+
+---
+rule:
+  id: "ic.agency.no_authority_to_bind"
+  version: "1.0.0"
+  title: "Agency firewall — no authority to bind the Company"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["independent contractor","authority","procurement"]
+  triggers:
+    any:
+      - regex: "(?i)\\bmay\\s+enter\\s+into\\s+contracts\\s+on\\s+behalf\\s+of\\s+the\\s+company\\b"
+      - regex: "(?i)\\bauthority\\s+to\\s+bind\\s+the\\s+company\\b"
+  checks:
+    - id: "agency_flag"
+      when: { not_regex: "(?i)\\bno\\s+authority\\s+to\\s+bind\\b" }
+      finding:
+        message: "Granting authority to bind creates agency risk inconsistent with independent status."
+        severity_level: "major"
+        risk: "high"
+        legal_basis:
+          - "General agency/apparent authority principles"
+        suggestion:
+          text: "Insert: 'Supplier has no authority to bind; any system access is administrative only; commitments require Company signatory per Notices/Approvals.'"
+        score_delta: -16
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: "AgencyAuthority"
+    score: 72
+    problem: "Agency undermines independent contractor position."
+    recommendation: "Add strict no-authority clause + access disclaimer."
+    law_reference: ["Agency law — apparent authority"]
+    category: "Agency"
+    keywords: ["authority","bind"]
+metadata: { tags: ["agency","IC"] }
+
+---
+rule:
+  id: "ic.removal.right.objective_non_discrimination"
+  version: "1.0.0"
+  title: "Right to remove personnel must be objective and non-discriminatory"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["personnel","independent contractor","conduct","HSE"]
+  triggers:
+    any:
+      - regex: "(?i)\\bcompany\\s+may\\s+remove\\s+any\\s+individual\\s+at\\s+any\\s+time\\s+for\\s+any\\s+reason\\b"
+  checks:
+    - id: "removal_overbroad"
+      when: { regex: ".*" }
+      finding:
+        message: "Unbounded removal right (\"any reason\") risks discrimination and status creep."
+        severity_level: "minor"
+        risk: "medium"
+        legal_basis:
+          - "Equality Act 2010 s.41 — contract workers"
+        suggestion:
+          text: "Limit to objective grounds (H&S, competence, misconduct); prohibit discrimination; allow Supplier to replace promptly at no extra cost."
+        score_delta: -8
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: S3
+    issue_type: "RemovalOverbroad"
+    score: 82
+    problem: "Removal right lacks objective safeguards."
+    recommendation: "Add objective grounds + EqA safeguard + replacement right."
+    law_reference: ["EqA 2010 s.41"]
+    category: "Equality/HSE"
+    keywords: ["removal","non-discrimination"]
+metadata: { tags: ["EqA","HSE","personnel"] }
+
+---
+rule:
+  id: "ic.ir35.offpayroll.sds_process"
+  version: "1.0.0"
+  title: "Off-payroll (IR35) — SDS, reasonable care, change notifications"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Any"]
+    clauses: ["taxes","independent contractor","IR35","off-payroll"]
+  triggers:
+    any:
+      - regex: "(?i)\\bIR35\\b|\\boff\\-?payroll\\b|\\bStatus\\s+Determination\\s+Statement\\b|\\bPSC\\b|\\bpersonal\\s+service\\s+company\\b"
+  checks:
+    - id: "sds_missing"
+      when:
+        all:
+          - not_regex: "(?i)\\bStatus\\s+Determination\\s+Statement\\b|\\bSDS\\b"
+          - not_regex: "(?i)\\breasonable\\s+care\\b"
+      finding:
+        message: "IR35/off-payroll referenced without SDS/reasonable care process."
+        severity_level: "major"
+        risk: "high"
+        legal_basis:
+          - "ITEPA 2003 ch.10; HMRC guidance (SDS; reasonable care)"
+        suggestion:
+          text: "Add SDS issuance with reasons, reasonable care standard, challenge/appeal window, and duty to notify factual changes; allocate tax/NIC liabilities."
+        score_delta: -18
+  outcome:
+    status: fail
+    risk_level: high
+    severity: S2
+    issue_type: "IR35ProcessMissing"
+    score: 70
+    problem: "No SDS/RC flow despite IR35 cues."
+    recommendation: "Insert SDS and governance mechanics."
+    law_reference: ["ITEPA 2003 ch.10; HMRC IR35"]
+    category: "Tax"
+    keywords: ["IR35","off-payroll","SDS"]
+metadata: { tags: ["IR35","tax"] }
+
+---
+rule:
+  id: "ic.vicarious.liability.supervision_language"
+  version: "1.0.0"
+  title: "Avoid language of supervision/control to reduce vicarious liability"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["independent contractor","HSE","management"]
+  triggers:
+    any:
+      - regex: "(?i)\\bcompany\\s+shall\\s+supervise\\s+and\\s+control\\s+(?:contractor|supplier)\\s+personnel\\b"
+  checks:
+    - id: "vicarious_flag"
+      when: { regex: ".*" }
+      finding:
+        message: "Supervision/control wording elevates vicarious liability risk."
+        severity_level: "minor"
+        risk: "medium"
+        legal_basis:
+          - "Barclays Bank v Various Claimants (UKSC)"
+        suggestion:
+          text: "Use: 'Supplier retains sole supervision/control; Company sets H&S/site rules and outcome criteria only.'"
+        score_delta: -8
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: S3
+    issue_type: "VicariousControl"
+    score: 82
+    problem: "Control language may support vicarious liability."
+    recommendation: "Shift to outcome/H&S carve-out wording."
+    law_reference: ["UKSC Barclays v Various Claimants"]
+    category: "Liability"
+    keywords: ["vicarious","supervision"]
+metadata: { tags: ["vicarious","IC"] }
+
+---
+rule:
+  id: "ic.hse.carveout.required"
+  version: "1.0.0"
+  title: "H&S/site rules carve-out must not create employment-like control"
+  scope:
+    jurisdiction: ["Any"]
+    doc_types: ["Any"]
+    clauses: ["HSE","independent contractor","policies"]
+  triggers:
+    any:
+      - regex: "(?i)\\bhealth\\s+and\\s+safety\\b|\\bHSE\\b|\\bsite\\s+rules\\b"
+  checks:
+    - id: "carveout_absent"
+      when:
+        all:
+          - regex: "(?i)\\bcomply\\s+with\\s+(?:health\\s+and\\s+safety|site\\s+rules)\\b"
+          - not_regex: "(?i)\\bdoes\\s+not\\s+create\\s+(?:employment|control)\\s+relationship\\b|\\boutcome\\s+only\\b"
+      finding:
+        message: "H&S/site compliance present without carve-out confirming no employment-like control."
+        severity_level: "minor"
+        risk: "low"
+        legal_basis:
+          - "HSWA 1974; HSE HSG159 — manage contractors without controlling their methods"
+        suggestion:
+          text: "Add H&S carve-out: safety/site compliance ≠ employment or method control; Supplier controls means/supervision."
+        score_delta: -5
+  outcome:
+    status: fail
+    risk_level: low
+    severity: S4
+    issue_type: "HSECarveoutMissing"
+    score: 90
+    problem: "Safety wording may imply control without carve-out."
+    recommendation: "Insert explicit carve-out."
+    law_reference: ["HSWA 1974; HSG159"]
+    category: "HSE"
+    keywords: ["HSE","carve-out"]
+metadata: { tags: ["HSE","carve-out"] }
+
+---
+rule:
+  id: "ic.awr.agency_workers_equal_treatment"
+  version: "1.0.0"
+  title: "If agency model used — ensure AWR 2010 equal treatment after 12 weeks"
+  scope:
+    jurisdiction: ["UK"]
+    doc_types: ["Any"]
+    clauses: ["agency","AWR","independent contractor"]
+  triggers:
+    any:
+      - regex: "(?i)\\bagency\\s+worker\\b|\\bemployment\\s+business\\b|\\bAWR\\s*2010\\b"
+  checks:
+    - id: "awr_requirements"
+      when:
+        not_regex: "(?i)\\bequal\\s+treatment\\b.*\\b12\\s+weeks\\b"
+      finding:
+        message: "Agency worker model referenced without AWR equal-treatment mechanism."
+        severity_level: "minor"
+        risk: "medium"
+        legal_basis:
+          - "Agency Workers Regulations 2010"
+        suggestion:
+          text: "Add AWR 2010 compliance: equal treatment after 12 weeks; roles/obligations across hirer/agency/Supplier."
+        score_delta: -8
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: S3
+    issue_type: "AWRMissing"
+    score: 84
+    problem: "AWR obligations not reflected."
+    recommendation: "Include equal-treatment provisions."
+    law_reference: ["AWR 2010"]
+    category: "Labour"
+    keywords: ["AWR","agency"]
+metadata: { tags: ["AWR","agency"] }
+
+---
+rule:
+  id: "ic.medical.data.minimisation"
+  version: "1.0.0"
+  title: "Medical data — special category; require fitness certificate, not full records"
+  scope:
+    jurisdiction: ["UK","EU"]
+    doc_types: ["Any"]
+    clauses: ["HSE","medical","data protection","privacy"]
+  triggers:
+    any:
+      - regex: "(?i)\\bmedical\\s+records\\b|\\bfull\\s+medical\\s+history\\b|\\bhealth\\s+records\\b"
+  checks:
+    - id: "overbroad_medical"
+      when: { regex: ".*" }
+      finding:
+        message: "Request for full medical records likely excessive (special category data)."
+        severity_level: "minor"
+        risk: "medium"
+        legal_basis:
+          - "UK GDPR Art.6/Art.9; ICO guidance on workers’ health information"
+        suggestion:
+          text: "Limit to fitness-to-work certificate and necessary screenings; conduct DPIA if large-scale/systematic."
+        score_delta: -8
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: S3
+    issue_type: "MedicalDataOverbroad"
+    score: 84
+    problem: "Excessive health data collection."
+    recommendation: "Minimise; define lawful bases; add DPIA if needed."
+    law_reference: ["UK GDPR Art.6/9; ICO"]
+    category: "Privacy"
+    keywords: ["medical","special category"]
+metadata: { tags: ["GDPR","medical"] }
+

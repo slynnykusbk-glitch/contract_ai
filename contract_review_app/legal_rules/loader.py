@@ -21,7 +21,6 @@ if _ENV_DIRS:
 else:
     RULE_PACKS_DIRS = [POLICY_DIR, CORE_RULES_DIR]
 
-
 _RULES: List[Dict[str, Any]] = []
 _PACKS: List[Dict[str, Any]] = []
 
@@ -45,59 +44,71 @@ def load_rule_packs() -> None:
             paths = sorted(base.rglob("*.yaml"))
         for path in paths:
             try:
-                data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+                docs = list(yaml.safe_load_all(path.read_text(encoding="utf-8")))
             except Exception as exc:  # pragma: no cover - load error
                 log.error("Failed to load %s: %s", path, exc)
                 continue
 
-            rules_iter: List[Dict[str, Any]]
-            if isinstance(data, dict) and data.get("rule"):
-                rules_iter = [data["rule"]]
-            elif isinstance(data, dict) and data.get("rules"):
-                rules_iter = list(data.get("rules") or [])
-            elif isinstance(data, list):
-                rules_iter = list(data)
-            else:
-                rules_iter = []
-
             rule_count = 0
-            for raw in rules_iter:
-                pats: List[str] = []
-                if raw.get("patterns"):
-                    pats = list(raw.get("patterns", []))
+            for data in docs:
+                if not data:
+                    continue
+
+                if isinstance(data, dict) and data.get("rule"):
+                    rules_iter: List[Dict[str, Any]] = [data["rule"]]
+                elif isinstance(data, dict) and data.get("rules"):
+                    rules_iter = list(data.get("rules") or [])
+                elif isinstance(data, list):
+                    rules_iter = list(data)
                 else:
-                    for cond in raw.get("triggers", {}).get("any", []):
-                        if isinstance(cond, dict):
-                            pat = cond.get("regex")
-                        else:
-                            pat = cond
-                        if pat:
-                            pats.append(pat)
-                spec = {
-                    "id": raw.get("id"),
-                    "clause_type": raw.get("clause_type")
-                    or (raw.get("scope", {}) or {}).get("clauses", [None])[0],
-                    "severity": str(
-                        raw.get("severity")
-                        or raw.get("risk")
-                        or raw.get("severity_level")
-                        or "medium"
-                    ).lower(),
-                    "patterns": _compile(pats),
-                    "advice": raw.get("advice")
-                    or raw.get("intent")
-                    or (raw.get("finding", {}) or {}).get("suggestion", {}).get("text")
-                    or (raw.get("finding", {}) or {}).get("message"),
-                    "law_refs": list(
-                        raw.get("law_reference")
-                        or raw.get("law_refs")
-                        or []
-                    ),
-                    "conflict_with": list(raw.get("conflict_with") or []),
-                    "ops": raw.get("ops") or [],
-                }
-                _RULES.append(spec)
-                rule_count += 1
+                    rules_iter = []
+
+                for raw in rules_iter:
+                    pats: List[str] = []
+                    if raw.get("patterns"):
+                        pats = list(raw.get("patterns", []))
+                    else:
+                        for cond in raw.get("triggers", {}).get("any", []):
+                            if isinstance(cond, dict):
+                                pat = cond.get("regex")
+                            else:
+                                pat = cond
+                            if pat:
+                                pats.append(pat)
+                    finding_section = raw.get("finding")
+                    if not finding_section:
+                        checks = raw.get("checks") or []
+                        if isinstance(checks, list):
+                            for chk in checks:
+                                if isinstance(chk, dict) and chk.get("finding"):
+                                    finding_section = chk.get("finding")
+                                    break
+                    spec = {
+                        "id": raw.get("id"),
+                        "clause_type": raw.get("clause_type")
+                        or (raw.get("scope", {}) or {}).get("clauses", [None])[0],
+                        "severity": str(
+                            raw.get("severity")
+                            or raw.get("risk")
+                            or raw.get("severity_level")
+                            or "medium",
+                        ).lower(),
+                        "patterns": _compile(pats),
+                        "advice": raw.get("advice")
+                        or raw.get("intent")
+                        or (finding_section or {}).get("suggestion", {}).get("text")
+                        or (finding_section or {}).get("message"),
+                        "law_refs": list(
+                            raw.get("law_reference")
+                            or raw.get("law_refs")
+                            or (finding_section or {}).get("legal_basis")
+                            or []
+                        ),
+                        "conflict_with": list(raw.get("conflict_with") or []),
+                        "ops": raw.get("ops") or [],
+                    }
+                    _RULES.append(spec)
+                    rule_count += 1
 
             rel = path.relative_to(ROOT_DIR)
             _PACKS.append({"path": str(rel), "rule_count": rule_count})

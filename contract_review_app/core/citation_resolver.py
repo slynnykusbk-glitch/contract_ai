@@ -46,6 +46,38 @@ _KEYWORD_MAP = {
     "gas": _OGUK_MODEL_AGREEMENT,
 }
 
+# explicit rule/code mappings
+_RULE_MAP = {
+    "poca": Citation(
+        system="UK",
+        instrument="POCA 2002",
+        section="s.327",
+        title="Proceeds of Crime Act 2002",
+        source="UK legislation",
+    ),
+    "ucta": Citation(
+        system="UK",
+        instrument="UCTA 1977",
+        section="s.2",
+        title="Unfair Contract Terms Act 1977",
+        source="UK legislation",
+    ),
+    "companiesact": Citation(
+        system="UK",
+        instrument="Companies Act 2006",
+        section="s.172",
+        title="Companies Act 2006",
+        source="UK legislation",
+    ),
+    "ukgdpr": Citation(
+        system="UK",
+        instrument="UK GDPR",
+        section="Art. 5",
+        title="UK General Data Protection Regulation",
+        source="ICO",
+    ),
+}
+
 
 def resolve_citation(finding: Finding) -> Optional[Citation]:
     """
@@ -58,17 +90,29 @@ def resolve_citation(finding: Finding) -> Optional[Citation]:
     try:
         message = (finding.message or "").lower()
         code = (getattr(finding, "code", "") or "").lower()
-        rule = getattr(finding, "rule", None)
+        rule = (getattr(finding, "rule", "") or "").lower()
+
+        for key, cit in _RULE_MAP.items():
+            if key in code or key in rule:
+                return deepcopy(cit)
 
         # Strong rules first
         if "personal data" in message or "conf_gdpr" in code:
             citation = deepcopy(_UK_GDPR_ART_28_3)
-            logger.info("resolve_citation cid=%s rule=%s", f"{citation.instrument} {citation.section}", rule)
+            logger.info(
+                "resolve_citation cid=%s rule=%s",
+                f"{citation.instrument} {citation.section}",
+                rule,
+            )
             return citation
 
         if _OIL_GAS_RE.search(message) or "oguk" in message or "oguk" in code:
             citation = deepcopy(_OGUK_MODEL_AGREEMENT)
-            logger.info("resolve_citation cid=%s rule=%s", f"{citation.instrument} {citation.section}", rule)
+            logger.info(
+                "resolve_citation cid=%s rule=%s",
+                f"{citation.instrument} {citation.section}",
+                rule,
+            )
             return citation
 
         # Fallback keyword-based stub
@@ -83,9 +127,15 @@ def resolve_citation(finding: Finding) -> Optional[Citation]:
                     link=base.link,
                     score=0.6,
                     # не логируем текст, но можем вернуть snippet в объекте
-                    evidence_text=(getattr(finding, "evidence", None) or finding.message or "")[:200],
+                    evidence_text=(
+                        getattr(finding, "evidence", None) or finding.message or ""
+                    )[:200],
                 )
-                logger.info("resolve_citation cid=%s rule=%s", f"{citation.instrument} {citation.section}", rule)
+                logger.info(
+                    "resolve_citation cid=%s rule=%s",
+                    f"{citation.instrument} {citation.section}",
+                    rule,
+                )
                 return citation
 
         return None

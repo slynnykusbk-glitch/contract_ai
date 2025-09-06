@@ -46,6 +46,7 @@ class _TraceStore:
     def list(self):
         return list(self._d.keys())
 
+
 log = logging.getLogger("contract_ai")
 
 # корень репо: .../contract_ai
@@ -189,6 +190,15 @@ from .models import (
 from contract_review_app.core.cache import TTLCache
 from contract_review_app.engine.report_html import render_html_report
 from contract_review_app.engine.report_pdf import html_to_pdf
+
+# core schemas for suggest_edits
+from contract_review_app.core.schemas import (
+    Citation as CoreCitation,
+    Finding as CoreFinding,
+    Span as CoreSpan,
+    SuggestEdit,
+    SuggestResponse,
+)
 
 # --- LLM provider & limits (final resolution) ---
 from contract_review_app.llm.provider import get_provider
@@ -383,7 +393,9 @@ def _analyze_document(text: str, risk: str = "medium") -> Dict[str, Any]:
 
     order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
     thr = order.get((risk or "medium").lower(), 1)
-    findings = [f for f in findings if order.get(str(f.get("severity")).lower(), 1) >= thr]
+    findings = [
+        f for f in findings if order.get(str(f.get("severity")).lower(), 1) >= thr
+    ]
     doc_analyses: List[Dict[str, Any]] = []
     lower = text.lower() if text else ""
     if "exhibit l" in lower:
@@ -1380,7 +1392,12 @@ async def api_report_pdf(cid: str):
 def api_analyze(req: AnalyzeRequest, request: Request):
     txt = req.text
     debug = request.query_params.get("debug")
-    risk_param = request.query_params.get("risk") or req.risk or getattr(req, "threshold", None) or "medium"
+    risk_param = (
+        request.query_params.get("risk")
+        or req.risk
+        or getattr(req, "threshold", None)
+        or "medium"
+    )
 
     current_provider_name = PROVIDER_META.get("provider", "")
     current_model_name = PROVIDER_META.get("model", "")
@@ -1785,11 +1802,6 @@ async def api_qa_recheck(
 async def api_suggest_edits(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
-    if os.getenv("AZURE_KEY_INVALID") == "1":
-        raise HTTPException(
-            status_code=500,
-            detail="Azure key is invalid (non-ASCII placeholder). Set a real AZURE_OPENAI_API_KEY.",
-        )
     _set_schema_headers(response)
     try:
         payload = await request.json()
@@ -1797,47 +1809,39 @@ async def api_suggest_edits(
         raise HTTPException(status_code=400, detail="Request body is not valid JSON")
 
     text = (payload or {}).get("text", "")
-    if not text.strip():
+    if not isinstance(text, str) or text.strip() == "":
         raise HTTPException(status_code=422, detail="text required")
+    findings_raw = (payload or {}).get("findings") or []
+    if not isinstance(findings_raw, list):
+        raise HTTPException(status_code=422, detail="findings must be a list")
 
-    profile = (payload or {}).get("profile", "smart")
-    cid = x_cid or _sha256_hex("suggest" + str(_now_ms()))
-    _set_std_headers(response, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
-    res = _provider_chat(
-        [
-            {
-                "role": "system",
-                "content": "You are a contract drafting assistant. Return only the revised clause.",
-            },
-            {
-                "role": "user",
-                "content": f"Revise the following for clarity and compliance, keep structure:\n{text}",
-            },
-        ],
-        cid,
-    )
-    meta = {**PROVIDER_META, "usage": res.get("usage", {}), "profile": profile}
-    _set_llm_headers(response, meta)
-    proposed = res.get("content", "") or text.replace("bad", "good")
-    import difflib
-
-    def _norm(s: str) -> str:
-        return s.replace("\r\n", "\n").replace("\r", "\n")
-
-    norm_src = _norm(text)
-    norm_prop = _norm(proposed)
-    sm = difflib.SequenceMatcher(a=norm_src, b=norm_prop)
-    ops = []
-    for tag, i1, i2, j1, j2 in sm.get_opcodes():
-        if tag == "equal":
+    suggestions: list[SuggestEdit] = []
+    for item in findings_raw:
+        try:
+            finding = CoreFinding.model_validate(item)
+        except Exception:
             continue
-        ops.append({"start": i1, "end": i2, "replacement": norm_prop[j1:j2]})
-    return {
-        "status": "ok",
-        "proposed_text": proposed,
-        "ops": ops,
-        "meta": meta,
-    }
+        span = finding.span or CoreSpan(start=0, length=min(30, len(text)))
+        start = max(0, span.start)
+        length = span.length
+        if start + length > len(text):
+            length = max(0, len(text) - start)
+        if length <= 0:
+            continue
+        clamped_span = CoreSpan(start=start, length=length)
+        citation = resolve_citation(finding) or CoreCitation(
+            instrument="Unknown", section="N/A"
+        )
+        rationale = f"Review recommended for rule {finding.code}".strip()
+        suggestions.append(
+            SuggestEdit(span=clamped_span, rationale=rationale, citations=[citation])
+        )
+
+    cid = x_cid or compute_cid(request)
+    headers = {"x-cache": "miss", "x-cid": cid, "x-schema-version": SCHEMA_VERSION}
+    payload = SuggestResponse(suggestions=suggestions).model_dump()
+    payload["status"] = "ok"
+    return _finalize_json("/api/suggest_edits", payload, headers)
 
 
 class DraftIn(BaseModel):

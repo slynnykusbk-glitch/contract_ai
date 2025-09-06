@@ -61,6 +61,8 @@ __all__ = [
     "DraftOut",
     "SuggestIn",
     "SuggestOut",
+    "SuggestEdit",
+    "SuggestResponse",
     "AppliedChange",
     "DeltaMetrics",
     "QARecheckIn",
@@ -1119,6 +1121,22 @@ class SuggestOut(AppBaseModel):
     suggestions: List[Suggestion]
 
 
+class SuggestEdit(AppBaseModel):
+    """Single edit suggestion for /api/suggest_edits."""
+
+    span: Span
+    insert: Optional[str] = None
+    delete: Optional[str] = None
+    rationale: str
+    citations: List[Citation]
+
+
+class SuggestResponse(AppBaseModel):
+    """Response DTO for /api/suggest_edits."""
+
+    suggestions: List[SuggestEdit]
+
+
 class AppliedChange(AppBaseModel):
     """
     Item describing a change applied to a clause between analyses.
@@ -1212,4 +1230,3 @@ class TraceOut(AppBaseModel):
         if not re.fullmatch(r"[0-9a-fA-F]{64}", v or ""):
             raise ValueError("invalid cid")
         return v
-

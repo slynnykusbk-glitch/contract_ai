@@ -1,0 +1,354 @@
+# Clause 13 Quality and inspections rule pack
+---
+rule:
+  id: quality.qms.iso_required
+  version: 1.0.0
+  title: QMS must be ISO 9001/API Spec Q1/Q2 or equivalent
+  law_reference:
+    - "ISO 9001"
+    - "API Spec Q1/Q2"
+  scope:
+    unit: sentence
+    nth: 1
+  triggers:
+    any:
+      - regex: "(?i)\\bquality management system\\b(?![^.]*\\b(ISO\\s*9001|API\\s*Spec\\s*Q1|API\\s*Spec\\s*Q2|equivalent)\\b)"
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "QMS lacks reference to ISO 9001, API Spec Q1/Q2 or an equivalent accepted by Company."
+        severity_level: high
+        risk: "Uncontrolled quality system may be rejected."
+        suggestion:
+          text: "Specify that the quality management system complies with ISO 9001 or API Spec Q1/Q2 or an equivalent accepted by Company."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: major
+    problem: "QMS standard not defined."
+    recommendation: "Add ISO 9001/API Spec Q1/Q2 requirement."
+  metadata:
+    tags: ["clause:13","panel:quality","itp","inspection","iso9001","iso19011","iso10005"]
+---
+rule:
+  id: quality.qp.iso10005.required
+  version: 1.0.0
+  title: Quality Plan per ISO 10005 within 30 days
+  law_reference:
+    - "ISO 10005"
+  scope:
+    unit: sentence
+    nth: 1
+  triggers:
+    any:
+      - regex: "(?i)\\bquality plan\\b(?![^.]*\\bISO\\s*10005\\b)"
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Quality Plan does not reference ISO 10005 or timing for submission."
+        severity_level: high
+        risk: "Quality planning may be delayed and not align with company requirements."
+        suggestion:
+          text: "Require a Quality Plan for each Call-Off per ISO 10005 within 30 days and link payment of first invoice to written acceptance."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: major
+    problem: "Quality Plan standard or deadline missing."
+    recommendation: "Add ISO 10005 and payment hold until approval."
+  metadata:
+    tags: ["clause:13","panel:quality","itp","inspection","iso9001","iso19011","iso10005"]
+---
+rule:
+  id: quality.audit.iso19011
+  version: 1.0.0
+  title: Internal audits per ISO 19011 with Company participation
+  law_reference:
+    - "ISO 19011"
+  scope:
+    unit: sentence
+    nth: 1
+  triggers:
+    any:
+      - regex: "(?i)\\binternal\\s+audit\\b(?![^.]*\\bISO\\s*19011\\b)"
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Internal audits are mentioned without reference to ISO 19011 or Company participation."
+        severity_level: high
+        risk: "Audit process may not follow recognized standard or include Company."
+        suggestion:
+          text: "State that internal audits follow ISO 19011 and that Company may participate or conduct its own audits with CAPA."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: major
+    problem: "Audit standard or rights not defined."
+    recommendation: "Align audit program with ISO 19011 and allow Company participation."
+  metadata:
+    tags: ["clause:13","panel:quality","itp","inspection","iso9001","iso19011","iso10005"]
+---
+rule:
+  id: quality.moc.qms_changes
+  version: 1.0.0
+  title: Management of Change for QMS impacting factors
+  law_reference:
+    - "ISO 9001"
+  scope:
+    unit: sentence
+    nth: 1
+  triggers:
+    any:
+      - regex: "(?i)\\bchange\\b[^.]*\\bwithout\\b[^.]*\\bmanagement\\s+of\\s+change\\b"
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Changes to organization, resources or subcontractors lack a Management of Change process."
+        severity_level: medium
+        risk: "Uncontrolled changes may affect quality."
+        suggestion:
+          text: "Introduce an MOC procedure for changes in organisation, resources or subcontractors with notification to Company."
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: minor
+    problem: "MOC requirement missing."
+    recommendation: "Add formal MOC with notification."
+  metadata:
+    tags: ["clause:13","panel:quality","itp","inspection","iso9001","iso19011","iso10005"]
+---
+rule:
+  id: quality.itp.required
+  version: 1.0.0
+  title: ITP required before work start
+  law_reference:
+    - "Exhibit G – Quality Requirements"
+  scope:
+    unit: sentence
+    nth: 1
+  triggers:
+    any:
+      - regex: "(?i)\\bITP\\b[^.]*\\b(not\\s+required|without\\s+ITP|no\\s+ITP)\\b"
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Inspection and Test Plan is missing or not required before start of work."
+        severity_level: high
+        risk: "Work may begin without agreed inspection gates."
+        suggestion:
+          text: "Provide an ITP for Contractor and subcontractors and block work until ITP is approved."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: major
+    problem: "ITP not mandated before start."
+    recommendation: "Require approved ITP prior to commencement."
+  metadata:
+    tags: ["clause:13","panel:quality","itp","inspection","iso9001","iso19011","iso10005"]
+---
+rule:
+  id: quality.itp.hw_notice_5d
+  version: 1.0.0
+  title: ITP must include H/W/M points and 5-day notice
+  law_reference:
+    - "Exhibit G – Quality Requirements"
+    - "ISO 10005"
+  scope:
+    unit: sentence
+    nth: 1
+  triggers:
+    any:
+      - regex: "(?i)\\bITP\\b[^.]*\\b(no\\s+hold|no\\s+witness|no\\s+monitor|no\\s+advance\\s+notice|without\\s+hold|without\\s+witness|without\\s+monitor)\\b"
+      - regex: "(?i)\\bno\\s+hold,?\\s*witness,?\\s*monitor\\b"
+      - regex: "(?i)\\bno\\s+advance\\s+notice\\b"
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "ITP lacks Hold/Witness/Monitor points or 5-day advance notification."
+        severity_level: high
+        risk: "Inspection gates are unenforceable; Company cannot witness or hold activities."
+        suggestion:
+          text: "Add H/W/M matrix and a requirement to notify Company at least 5 days prior to H/W points; block start until 'Approved with comments'."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: major
+    problem: "ITP incomplete versus Exhibit G and Clause 13."
+    recommendation: "Amend ITP template to include H/W/M and 5-day notice."
+  metadata:
+    tags: ["clause:13","panel:quality","itp","inspection","iso9001","iso19011","iso10005"]
+---
+rule:
+  id: quality.company.rights.reject_nonconforming
+  version: 1.0.0
+  title: Company right to reject nonconforming work
+  law_reference:
+    - "ISO 9001"
+  scope:
+    unit: sentence
+    nth: 1
+  triggers:
+    any:
+      - regex: "(?i)\\bcompany\\b[^.]{0,80}\\binspect\\b(?![^.]*\\breject\\b)"
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Company inspection rights are stated without ability to reject or with obligation to pay for nonconforming work."
+        severity_level: high
+        risk: "Defective work may be accepted or paid."
+        suggestion:
+          text: "State that Company may reject or require rectification and is not liable to pay for nonconforming Goods or Services and may recover amounts paid."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: major
+    problem: "Rejection rights missing."
+    recommendation: "Add explicit rights to reject and withhold payment."
+  metadata:
+    tags: ["clause:13","panel:quality","itp","inspection","iso9001","iso19011","iso10005"]
+---
+rule:
+  id: quality.hidden_work_prove_compliance
+  version: 1.0.0
+  title: Hidden work must prove compliance at contractor cost
+  law_reference:
+    - "ISO 9001"
+  scope:
+    unit: sentence
+    nth: 1
+  triggers:
+    any:
+      - regex: "(?i)\\bhidden\\s+work\\b[^.]*\\b(inaccessible|covered)\\b"
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Work made inaccessible before inspection may require proof of compliance at Contractor's expense."
+        severity_level: medium
+        risk: "Nonconforming hidden work may go undetected."
+        suggestion:
+          text: "Require Contractor to uncover or otherwise prove compliance for hidden work."
+  outcome:
+    status: fail
+    risk_level: medium
+    severity: minor
+    problem: "Hidden work inspection rights unclear."
+    recommendation: "Add obligation to prove compliance for inaccessible work."
+  metadata:
+    tags: ["clause:13","panel:quality","itp","inspection","iso9001","iso19011","iso10005"]
+---
+rule:
+  id: quality.no_ship_without_final_inspection
+  version: 1.0.0
+  title: No shipment without final inspection or waiver
+  law_reference:
+    - "ISO 9001"
+    - "Exhibit G – Quality Requirements"
+  scope:
+    unit: sentence
+    nth: 1
+  triggers:
+    any:
+      - regex: "(?i)\\b(?:may|will|can)\\b[^.]*?\\bship\\b[^.]*?\\bwithout\\b[^.]*?\\bfinal\\s+inspection\\b"
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Goods may be shipped without Company's final inspection or waiver."
+        severity_level: critical
+        risk: "Nonconforming goods may be delivered; rework and return costs increase."
+        suggestion:
+          text: "Prohibit shipment without Company's final inspection or express written waiver; require contractor to bear return or correction costs."
+  outcome:
+    status: fail
+    risk_level: critical
+    severity: critical
+    problem: "Shipment allowed without final inspection."
+    recommendation: "Include ban on shipment until final inspection or waiver."
+  metadata:
+    tags: ["clause:13","panel:quality","itp","inspection","iso9001","iso19011","iso10005"]
+---
+rule:
+  id: quality.equipment.certificates_pre_dispatch
+  version: 1.0.0
+  title: Equipment requires tests and certificates before dispatch
+  law_reference:
+    - "ISO 9001"
+  scope:
+    unit: sentence
+    nth: 1
+  triggers:
+    any:
+      - regex: "(?i)\\bequipment\\b[^.]*\\bwithout\\b[^.]*\\b(test|inspection|certificate)\\b"
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Equipment is dispatched without required inspections, tests or certificates."
+        severity_level: high
+        risk: "Unverified equipment may arrive on site."
+        suggestion:
+          text: "Perform inspections and tests per Call-Off and provide certificates before dispatch; do not ship untested equipment."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: major
+    problem: "Pre-dispatch inspection requirement missing."
+    recommendation: "Ensure equipment tested and certified before shipment."
+  metadata:
+    tags: ["clause:13","panel:quality","itp","inspection","iso9001","iso19011","iso10005"]
+---
+rule:
+  id: quality.equipment.site_tests_swl
+  version: 1.0.0
+  title: Equipment must be tested on site to max SWL
+  law_reference:
+    - "ISO 9001"
+  scope:
+    unit: sentence
+    nth: 1
+  triggers:
+    any:
+      - regex: "(?i)\\blifting\\s+equipment\\b[^.]*\\bwithout\\b[^.]*\\b(test|SWL)\\b"
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Lifting equipment is used on site without testing to maximum safe working load or valid certification."
+        severity_level: high
+        risk: "Unsafe lifting operations may occur."
+        suggestion:
+          text: "Test equipment on site before use; for lifting gear test to maximum SWL and maintain current certification."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: major
+    problem: "Site test or SWL requirement missing."
+    recommendation: "Require on-site tests and SWL proof before use."
+  metadata:
+    tags: ["clause:13","panel:quality","itp","inspection","iso9001","iso19011","iso10005"]
+---
+rule:
+  id: quality.costs.not_ready_or_repeat
+  version: 1.0.0
+  title: Costs for not ready or repeat tests borne by Contractor
+  law_reference:
+    - "Clause 13"
+  scope:
+    unit: sentence
+    nth: 1
+  triggers:
+    any:
+      - regex: "(?i)\\b(not\\s+ready|unsuccessful\\s+test)\\b[^.]*\\bcosts\\b"
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Additional costs due to not ready or unsuccessful test are not assigned to Contractor."
+        severity_level: high
+        risk: "Company may bear waiting or retest costs."
+        suggestion:
+          text: "State that Contractor reimburses Company for costs due to not ready, early or unsuccessful tests and associated waiting or return."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: major
+    problem: "Cost recovery for failed or delayed tests missing."
+    recommendation: "Include clause allowing Company to recover such costs."
+  metadata:
+    tags: ["clause:13","panel:quality","itp","inspection","iso9001","iso19011","iso10005"]

@@ -36,47 +36,84 @@ _OGUK_MODEL_AGREEMENT = Citation(
     evidence_text="Standard industry terms for offshore oil and gas contracts.",
 )
 
+# Additional citation presets
+_UK_GDPR_ART_28 = Citation(
+    system="UK",
+    instrument="UK GDPR",
+    section="Art. 28",
+    title="Processor",
+    source="ICO",
+)
+
+_POCA_2002_S333A = Citation(
+    system="UK",
+    instrument="POCA 2002",
+    section="s.333A",
+    title="Proceeds of Crime Act 2002",
+    source="UK legislation",
+)
+
+_UCTA_1977_S2_1 = Citation(
+    system="UK",
+    instrument="UCTA 1977",
+    section="s.2(1)",
+    title="Unfair Contract Terms Act 1977",
+    source="UK legislation",
+)
+
+_CA_2006_S1159 = Citation(
+    system="UK",
+    instrument="Companies Act 2006",
+    section="s.1159",
+    title="Companies Act 2006",
+    source="UK legislation",
+)
+
+_CA_2006_S1161 = Citation(
+    system="UK",
+    instrument="Companies Act 2006",
+    section="s.1161",
+    title="Companies Act 2006",
+    source="UK legislation",
+)
+
+_DPA_2018_PART2 = Citation(
+    system="UK",
+    instrument="DPA 2018",
+    section="Part 2",
+    title="Data Protection Act 2018",
+    source="UK legislation",
+)
+
+_BRIBERY_ACT_2010_S7 = Citation(
+    system="UK",
+    instrument="Bribery Act 2010",
+    section="s.7",
+    title="Bribery Act 2010",
+    source="UK legislation",
+)
+
 _OIL_GAS_RE = re.compile(r"\boil\b|\bgas\b", re.IGNORECASE)
 
 # lightweight fallback map for keyword search
 _KEYWORD_MAP = {
-    "gdpr": _UK_GDPR_ART_28_3,
+    # general GDPR reference
+    "gdpr": _UK_GDPR_ART_28,
+    "uk gdpr": _UK_GDPR_ART_28,
+    # other instruments
+    "poca": _POCA_2002_S333A,
+    "tipping": _POCA_2002_S333A,
+    "ucta": _UCTA_1977_S2_1,
+    "companies act": _CA_2006_S1159,
+    "dpa": _DPA_2018_PART2,
+    "bribery": _BRIBERY_ACT_2010_S7,
     "oguk": _OGUK_MODEL_AGREEMENT,
     "oil": _OGUK_MODEL_AGREEMENT,
     "gas": _OGUK_MODEL_AGREEMENT,
 }
 
-# explicit rule/code mappings
-_RULE_MAP = {
-    "poca": Citation(
-        system="UK",
-        instrument="POCA 2002",
-        section="s.327",
-        title="Proceeds of Crime Act 2002",
-        source="UK legislation",
-    ),
-    "ucta": Citation(
-        system="UK",
-        instrument="UCTA 1977",
-        section="s.2",
-        title="Unfair Contract Terms Act 1977",
-        source="UK legislation",
-    ),
-    "companiesact": Citation(
-        system="UK",
-        instrument="Companies Act 2006",
-        section="s.172",
-        title="Companies Act 2006",
-        source="UK legislation",
-    ),
-    "ukgdpr": Citation(
-        system="UK",
-        instrument="UK GDPR",
-        section="Art. 5",
-        title="UK General Data Protection Regulation",
-        source="ICO",
-    ),
-}
+# explicit rule/code mappings (kept for future use; currently empty)
+_RULE_MAP: dict[str, Citation] = {}
 
 
 def resolve_citation(finding: Finding) -> Optional[Citation]:
@@ -108,6 +145,87 @@ def resolve_citation(finding: Finding) -> Optional[Citation]:
 
         if _OIL_GAS_RE.search(message) or "oguk" in message or "oguk" in code:
             citation = deepcopy(_OGUK_MODEL_AGREEMENT)
+            logger.info(
+                "resolve_citation cid=%s rule=%s",
+                f"{citation.instrument} {citation.section}",
+                rule,
+            )
+            return citation
+
+        # UK acts/regs
+        if (
+            "poca" in message
+            or "poca" in code
+            or "poca" in rule
+            or "tipping" in message
+            or "tipping" in code
+            or "tipping" in rule
+        ):
+            citation = deepcopy(_POCA_2002_S333A)
+            logger.info(
+                "resolve_citation cid=%s rule=%s",
+                f"{citation.instrument} {citation.section}",
+                rule,
+            )
+            return citation
+
+        if "ucta" in message or "ucta" in code or "ucta" in rule:
+            citation = deepcopy(_UCTA_1977_S2_1)
+            logger.info(
+                "resolve_citation cid=%s rule=%s",
+                f"{citation.instrument} {citation.section}",
+                rule,
+            )
+            return citation
+
+        if (
+            "companies act" in message
+            or "companies act" in rule
+            or "companiesact" in code
+            or "companiesact" in rule
+            or ("ca" in code and ("1159" in code or "1161" in code))
+            or ("ca" in rule and ("1159" in rule or "1161" in rule))
+        ):
+            if "1161" in message or "1161" in code or "1161" in rule:
+                citation = deepcopy(_CA_2006_S1161)
+            elif "1159" in message or "1159" in code or "1159" in rule:
+                citation = deepcopy(_CA_2006_S1159)
+            else:
+                citation = deepcopy(_CA_2006_S1159)
+            logger.info(
+                "resolve_citation cid=%s rule=%s",
+                f"{citation.instrument} {citation.section}",
+                rule,
+            )
+            return citation
+
+        if "dpa" in message or "dpa" in code or "dpa" in rule:
+            citation = deepcopy(_DPA_2018_PART2)
+            logger.info(
+                "resolve_citation cid=%s rule=%s",
+                f"{citation.instrument} {citation.section}",
+                rule,
+            )
+            return citation
+
+        if (
+            "uk gdpr" in message
+            or "uk gdpr" in code
+            or "uk gdpr" in rule
+            or "gdpr" in message
+            or "gdpr" in code
+            or "gdpr" in rule
+        ):
+            citation = deepcopy(_UK_GDPR_ART_28)
+            logger.info(
+                "resolve_citation cid=%s rule=%s",
+                f"{citation.instrument} {citation.section}",
+                rule,
+            )
+            return citation
+
+        if "bribery" in message or "bribery" in code or "bribery" in rule:
+            citation = deepcopy(_BRIBERY_ACT_2010_S7)
             logger.info(
                 "resolve_citation cid=%s rule=%s",
                 f"{citation.instrument} {citation.section}",

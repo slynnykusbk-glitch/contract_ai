@@ -8,10 +8,13 @@ def _f(code: str) -> Finding:
 
 def test_resolver_known_rules():
     cases = {
-        "POCA": ("POCA 2002", "s.327"),
-        "UCTA": ("UCTA 1977", "s.2"),
-        "CompaniesAct": ("Companies Act 2006", "s.172"),
-        "UKGDPR": ("UK GDPR", "Art. 5"),
+        "POCA": ("POCA 2002", "s.333A"),
+        "UCTA": ("UCTA 1977", "s.2(1)"),
+        "CompaniesAct": ("Companies Act 2006", "s.1159"),
+        "CA1161": ("Companies Act 2006", "s.1161"),
+        "UKGDPR": ("UK GDPR", "Art. 28"),
+        "DPA": ("DPA 2018", "Part 2"),
+        "Bribery": ("Bribery Act 2010", "s.7"),
     }
     for code, (instrument, section) in cases.items():
         cit = resolve_citation(_f(code))

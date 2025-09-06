@@ -1,0 +1,4 @@
+“Quoted text”—with non-breaking spaces and a zero-width joiner A‍B.
+Another line to provide length and ensure mapping works across lines.
+
+And CRLF.

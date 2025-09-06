@@ -1,0 +1,9 @@
+rule:
+  id: uk_poca_tipping_off
+  clause_type: confidentiality
+  severity: high
+  patterns:
+    - "(?is)confidential.*disclos(?!.*(law|regulator))"
+  advice: "Include carve-out for disclosures required by law or by a regulator."
+  law_refs:
+    - "POCA 2002 s.333A"

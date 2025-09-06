@@ -1,0 +1,9 @@
+rule:
+  id: uk_ca_1985_outdated
+  clause_type: definitions
+  severity: medium
+  patterns:
+    - "(?i)companies act 1985"
+  advice: "Replace reference with Companies Act 2006."
+  law_refs:
+    - "Companies Act 2006 ss.1159, 1161"

@@ -1,0 +1,8 @@
+rule:
+  id: uk_bribery_act_missing
+  clause_type: definitions
+  severity: medium
+  patterns:
+    - '(?is)^(?!.*(bribery act|anti-?bribery)).*bribery'
+  advice: 'Reference the UK Bribery Act 2010 or anti-bribery obligations.'
+  law_refs: []

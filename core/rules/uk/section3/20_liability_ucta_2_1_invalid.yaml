@@ -1,0 +1,9 @@
+rule:
+  id: uk_ucta_2_1_invalid
+  clause_type: limitation_of_liability
+  severity: high
+  patterns:
+    - '(?is)(?:exclude(?:s)?\s+liability|not\s+be\s+liable)[^.]{0,80}(?:death|personal injury)[^.]{0,80}negligence'
+  advice: 'Liability for death or personal injury caused by negligence cannot be excluded.'
+  law_refs:
+    - 'UCTA 1977 s.2(1)'

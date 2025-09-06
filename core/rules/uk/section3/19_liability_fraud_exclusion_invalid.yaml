@@ -1,0 +1,9 @@
+rule:
+  id: uk_fraud_exclusion_invalid
+  clause_type: limitation_of_liability
+  severity: high
+  patterns:
+    - '(?is)(?:exclude|limit)[^.]{0,80}fraud'
+    - '(?is)(?:exclude|limit)[^.]{0,80}fraudulent\s+misrepresentation'
+  advice: 'Liability for fraud or fraudulent misrepresentation cannot be excluded.'
+  law_refs: []

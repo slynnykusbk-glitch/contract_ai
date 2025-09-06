@@ -277,9 +277,12 @@ def _make_basic_findings(text: str) -> list[Finding]:
 # Snapshot extraction heuristics
 from contract_review_app.analysis.extract_summary import extract_document_snapshot
 from contract_review_app.api.calloff_validator import validate_calloff
+from contract_review_app.analysis import parser as analysis_parser, classifier as analysis_classifier
+from contract_review_app.legal_rules import runner as legal_runner
 
 # SSOT DTO imports
 from contract_review_app.core.citation_resolver import resolve_citation
+from contract_review_app.core.schemas import Finding as CoreFinding, Span as CoreSpan
 from contract_review_app.gpt.config import load_llm_config
 from contract_review_app.gpt.service import (
     LLMService,
@@ -1440,34 +1443,57 @@ def api_analyze(req: AnalyzeRequest, request: Request):
         headers.update(tmp.headers)
         return _finalize_json("/api/analyze", cached_cid, headers)
 
-    # existing internal function
-    try:
-        analysis = _analyze_document(txt, risk=risk_param)
-    except TypeError:  # back-compat for patched funcs
-        analysis = _analyze_document(txt)  # type: ignore[misc]
-    if asyncio.iscoroutine(analysis):
-        analysis = asyncio.run(analysis)
-    if str(debug) == "1" and isinstance(analysis, dict):
-        analysis["findings"] = [f.model_dump() for f in _make_basic_findings(txt)]
-        analysis["issues"] = analysis["findings"].copy()
-    if os.getenv("CONTRACTAI_INTAKE_NORMALIZE") == "1" and isinstance(analysis, dict):
-        analysis["segments"] = [
-            {
-                "span": seg["span"],
-                "text": txt[seg["span"]["start"] : seg["span"]["end"]],
-                "lang": seg["lang"],
-            }
-            for seg in _make_segments(txt)
-        ]
+    # full parsing/classification/rule pipeline
+    parsed = analysis_parser.parse_text(txt)
+    analysis_classifier.classify_segments(parsed.segments)
 
-    # status passthrough (ensure lowercase)
-    if isinstance(analysis, dict):
-        status_out = str(analysis.get("status", "ok")).lower()
-        analysis_out = dict(analysis)
-        analysis_out["status"] = status_out
-    else:
-        status_out = "ok"
-        analysis_out = {"findings": analysis, "status": status_out}
+    findings: List[Dict[str, Any]] = []
+    for seg in parsed.segments:
+        clause_type = seg.get("clause_type")
+        if not clause_type:
+            continue
+
+        for f in seg.get("findings", []) or []:
+            f2 = dict(f)
+            f2["clause_type"] = clause_type
+            f2.setdefault("citations", [])
+            findings.append(f2)
+
+        # execute python rule via runner (best effort)
+        try:
+            legal_runner.run_rule_for_clause(
+                clause_type,
+                seg.get("text", ""),
+                int(seg.get("start", 0)),
+            )
+        except Exception:
+            pass
+
+    # resolve citations for each finding
+    for f in findings:
+        try:
+            cf = CoreFinding(
+                code=f.get("rule_id", ""),
+                message=f.get("snippet") or f.get("message", ""),
+                severity_level=f.get("severity"),
+                span=CoreSpan(start=f.get("start", 0), end=f.get("end", 0)),
+            )
+            cit = resolve_citation(cf)
+            if cit:
+                f["citations"].append(cit.model_dump())
+        except Exception:
+            continue
+
+    order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+    thr = order.get(str(risk_param).lower(), 1)
+    findings = [
+        f for f in findings if order.get(str(f.get("severity", "")).lower(), 1) >= thr
+    ]
+
+    analysis_out = {"findings": findings, "status": "ok"}
+    status_out = "ok"
+    if os.getenv("FEATURE_LLM_ANALYZE", "0") == "1":
+        pass
 
     snap = extract_document_snapshot(txt)
     snap.rules_count = _discover_rules_count()

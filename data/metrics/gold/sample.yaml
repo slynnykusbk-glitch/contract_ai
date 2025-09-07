@@ -1,0 +1,8 @@
+gold:
+  R1: true
+  R2: true
+  R3: false
+pred:
+  R1: true
+  R2: false
+  R3: true

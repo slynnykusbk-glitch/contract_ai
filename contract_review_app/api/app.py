@@ -194,6 +194,9 @@ from contract_review_app.core.cache import TTLCache
 from contract_review_app.engine.report_html import render_html_report
 from contract_review_app.engine.report_pdf import html_to_pdf
 from contract_review_app.core.diff import make_diff
+from contract_review_app.metrics.compute import collect_metrics, to_csv
+from contract_review_app.metrics.report_html import render_metrics_html
+from contract_review_app.metrics.schemas import MetricsResponse
 
 # core schemas for suggest_edits
 from contract_review_app.core.schemas import (
@@ -587,6 +590,10 @@ ENABLE_REPLAY = os.getenv("ANALYZE_REPLAY_ENABLED", "1") == "1"
 an_cache = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
 cid_index = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
 gpt_cache = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
+
+FEATURE_METRICS = os.getenv("FEATURE_METRICS", "1") == "1"
+METRICS_EXPORT_DIR = Path(os.getenv("METRICS_EXPORT_DIR", "var/metrics"))
+DISABLE_PII_IN_METRICS = os.getenv("DISABLE_PII_IN_METRICS", "1") == "1"
 
 
 def _norm_text(s: str) -> str:
@@ -1425,6 +1432,33 @@ async def api_report_pdf(cid: str):
     _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
     resp.headers["Cache-Control"] = "public, max-age=600"
     return resp
+
+
+@router.get("/api/metrics", response_model=MetricsResponse)
+async def api_metrics():
+    if not FEATURE_METRICS:
+        raise HTTPException(status_code=404, detail="disabled")
+    resp = collect_metrics()
+    data = json.loads(resp.model_dump_json())
+    return JSONResponse(data, headers={"Cache-Control": "no-store"})
+
+
+@router.get("/api/metrics.csv")
+async def api_metrics_csv():
+    if not FEATURE_METRICS:
+        raise HTTPException(status_code=404, detail="disabled")
+    resp = collect_metrics()
+    csv_text = to_csv(resp.metrics.rules)
+    return Response(csv_text, media_type="text/csv", headers={"Cache-Control": "no-store"})
+
+
+@router.get("/api/metrics.html")
+async def api_metrics_html():
+    if not FEATURE_METRICS:
+        raise HTTPException(status_code=404, detail="disabled")
+    resp = collect_metrics()
+    html = render_metrics_html(resp)
+    return Response(html, media_type="text/html", headers={"Cache-Control": "no-store"})
 
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)

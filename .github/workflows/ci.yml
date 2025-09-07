@@ -19,3 +19,7 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Run pytest (fast fail)
         run: pytest -q --maxfail=1
+      - name: Run quality metrics
+        run: python -m contract_review_app.metrics.cli --out var/metrics/last.json
+      - name: Compare with baseline
+        run: python tools/metrics_compare.py --baseline metrics_baseline.json --current var/metrics/last.json

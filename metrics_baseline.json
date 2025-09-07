@@ -1,0 +1,6 @@
+{
+  "f1_min": 0.0,
+  "coverage_min": 0.0,
+  "acceptance_min": 0.0,
+  "perf_max_ms_page": 100000.0
+}

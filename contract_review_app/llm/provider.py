@@ -21,7 +21,16 @@ class MockProvider:
     name = "mock"
     model = "mock"
 
-    def chat(self, messages: List[Dict[str, str]], **opts: Any) -> Dict[str, Any]:
+    def chat(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.0,
+        top_p: float = 1.0,
+        max_tokens: int = 1024,
+        timeout: int = 30,
+        **opts: Any,
+    ) -> Dict[str, Any]:
+        """Deterministic chat interface for tests."""
         text = "\n".join(m.get("content", "") for m in messages)
         usage = {"total_tokens": len(text.split())}
         return {"content": f"[MOCK] {text}", "usage": usage}
@@ -65,6 +74,7 @@ class AzureProvider:
         self,
         messages: List[Dict[str, str]],
         temperature: float = 0.0,
+        top_p: float = 1.0,
         max_tokens: int = 1024,
         timeout: int = 30,
     ) -> Dict[str, Any]:
@@ -75,6 +85,7 @@ class AzureProvider:
             json={
                 "messages": messages,
                 "temperature": temperature,
+                "top_p": top_p,
                 "max_tokens": max_tokens,
             },
             timeout=timeout,

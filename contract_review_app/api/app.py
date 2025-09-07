@@ -298,6 +298,7 @@ from contract_review_app.gpt.service import (
 
 from .cache import IDEMPOTENCY_CACHE
 from .corpus_search import router as corpus_router
+from .explain import router as explain_router
 
 # Orchestrator / Engine imports
 try:
@@ -745,7 +746,7 @@ def _custom_openapi():
         "x-latency-ms": 12,
         "x-cid": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     }
-    for p in ["/api/analyze", "/api/gpt-draft"]:
+    for p in ["/api/analyze", "/api/gpt-draft", "/api/explain"]:
         op = openapi_schema.get("paths", {}).get(p, {}).get("post")
         if not op:
             continue
@@ -1352,6 +1353,7 @@ async def health() -> JSONResponse:
             "timeout_s": LLM_CONFIG.timeout_s,
         },
         "provider": PROVIDER_META,
+        "endpoints": ["/api/analyze", "/api/gpt-draft", "/api/explain"],
     }
     try:
         if rules_loader and hasattr(rules_loader, "loaded_packs"):
@@ -2296,6 +2298,7 @@ async def api_learning_update(response: Response, body: LearningUpdateIn):
 # Mount router
 app.include_router(router)
 app.include_router(corpus_router)
+app.include_router(explain_router)
 
 
 # --------------------------------------------------------------------

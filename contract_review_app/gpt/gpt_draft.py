@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from contract_review_app.core.privacy import redact_pii, scrub_llm_output
+# Verification
+from contract_review_app.llm.verification import verify_output_contains_citations
 # Prompt builder (new API with system/user) + legacy shim
 try:
     from contract_review_app.gpt.gpt_prompt_builder import (
@@ -128,6 +130,9 @@ def generate_guarded_draft(
                 cleaned = _fallback_rule_based(a, mode)
                 actions.append("fallback_rule_based_due_to_empty_after_guardrails")
             aligned, align_actions = _align_with_findings(cleaned, clause_type, high_or_critical, mode)
+            v_status = verify_output_contains_citations(
+                draft_text, a.get("citations") or []
+            )
             return _draft_out(
                 draft_text=aligned,
                 mode=mode,
@@ -139,6 +144,7 @@ def generate_guarded_draft(
                 risk_alignment=align_actions,
                 explanation=explanation or "Guarded LLM draft.",
                 learning=lh,
+                verification_status=v_status,
             )
         except Exception:
             # Hard fallback to rule-based
@@ -467,6 +473,7 @@ def _draft_out(
     risk_alignment: List[str],
     explanation: str,
     learning: Optional[Dict[str, Any]] = None,
+    verification_status: str = "unverified",
 ) -> Dict[str, Any]:
     out = {
         "draft_text": (draft_text or "").strip(),
@@ -481,6 +488,7 @@ def _draft_out(
             "risk_alignment": list(risk_alignment or []),
         },
         "explanation": explanation,
+        "verification_status": verification_status,
     }
     out["learning"] = (learning if isinstance(learning, dict) and learning.get("enabled") else {"enabled": False})
     return out

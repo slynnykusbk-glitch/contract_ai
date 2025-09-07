@@ -60,7 +60,7 @@ function buildLegalComment(f: AnalyzeFinding): string {
   const advice = f.advice || "—";
   const law = Array.isArray(f.law_refs) && f.law_refs.length ? f.law_refs.join('; ') : "—";
   const conflict = Array.isArray(f.conflict_with) && f.conflict_with.length ? f.conflict_with.join('; ') : "—";
-  const fix = Array.isArray(f.ops) && f.ops.length ? 'See draft / applied ops' : '—';
+  const fix = f.suggestion?.text || '—';
   return `[${sev}] ${rid}${ct}\nReason: ${advice}\nLaw: ${law}\nConflict: ${conflict}\nSuggested fix: ${fix}`;
 }
 

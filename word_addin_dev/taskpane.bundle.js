@@ -147,11 +147,11 @@
     const sev = (f.severity || "info").toUpperCase();
     const rid = f.rule_id || "rule";
     const ct = f.clause_type ? ` (${f.clause_type})` : "";
-    const adv = f.advice ? ` \u2014 ${f.advice}` : "";
-    const law = f.law_reference ? ` | Law: ${f.law_reference}` : "";
-    const cit = Array.isArray(f.citations) && f.citations.length ? ` | Sources: ${f.citations.join(", ")}` : "";
-    const xrf = f.conflict_with ? ` | Conflicts: ${f.conflict_with}` : "";
-    return `[${sev}] ${rid}${ct}${adv}${law}${xrf}${cit}`;
+    const advice = f.advice || "\u2014";
+    const law = Array.isArray(f.law_refs) && f.law_refs.length ? f.law_refs.join('; ') : "\u2014";
+    const conflict = Array.isArray(f.conflict_with) && f.conflict_with.length ? f.conflict_with.join('; ') : "\u2014";
+    const fix = f.suggestion && f.suggestion.text ? f.suggestion.text : "\u2014";
+    return `[${sev}] ${rid}${ct}\nReason: ${advice}\nLaw: ${law}\nConflict: ${conflict}\nSuggested fix: ${fix}`;
   }
   function nthOccurrenceIndex(hay, needle, startPos) {
     if (!needle) return 0;

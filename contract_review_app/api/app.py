@@ -1477,7 +1477,7 @@ def api_analyze(req: AnalyzeRequest, request: Request):
     parsed = analysis_parser.parse_text(txt)
     analysis_classifier.classify_segments(parsed.segments)
 
-    findings: List[Dict[str, Any]] = []
+    seg_findings: List[Dict[str, Any]] = []
     for seg in parsed.segments:
         clause_type = seg.get("clause_type")
         if not clause_type:
@@ -1487,7 +1487,7 @@ def api_analyze(req: AnalyzeRequest, request: Request):
             f2 = dict(f)
             f2["clause_type"] = clause_type
             f2.setdefault("citations", [])
-            findings.append(f2)
+            seg_findings.append(f2)
 
         # execute python rule via runner (best effort)
         try:
@@ -1499,26 +1499,51 @@ def api_analyze(req: AnalyzeRequest, request: Request):
         except Exception:
             pass
 
-    # resolve citations for each finding
-    for f in findings:
-        try:
-            cf = CoreFinding(
-                code=f.get("rule_id", ""),
-                message=f.get("snippet") or f.get("message", ""),
-                severity_level=f.get("severity"),
-                span=CoreSpan(start=f.get("start", 0), end=f.get("end", 0)),
-            )
-            cit = resolve_citation(cf)
-            if cit:
-                f["citations"].append(cit.model_dump())
-        except Exception:
-            continue
+    # resolve citations for each finding after final list is determined
+    def _add_citations(lst: List[Dict[str, Any]]):
+        for f in lst:
+            try:
+                cf = CoreFinding(
+                    code=f.get("rule_id", ""),
+                    message=f.get("snippet") or f.get("message", ""),
+                    severity_level=f.get("severity"),
+                    span=CoreSpan(start=f.get("start", 0), end=f.get("end", 0)),
+                )
+                cit = resolve_citation(cf)
+                if cit:
+                    f.setdefault("citations", []).append(cit.model_dump())
+            except Exception:
+                continue
 
     order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
     thr = order.get(str(risk_param).lower(), 1)
-    findings = [
-        f for f in findings if order.get(str(f.get("severity", "")).lower(), 1) >= thr
-    ]
+    # derive findings from YAML rule engine
+    yaml_findings: List[Dict[str, Any]] = []
+    try:
+        from contract_review_app.legal_rules import loader as _yaml_loader, engine as _yaml_engine
+        _yaml_loader.load_rule_packs()
+        yaml_findings = _yaml_engine.analyze(txt or "", _yaml_loader._RULES)
+    except Exception:
+        yaml_findings = []
+
+    if yaml_findings:
+        filtered_yaml = [
+            f
+            for f in yaml_findings
+            if order.get(str(f.get("severity", "")).lower(), 1) >= thr
+            and isinstance(f.get("law_refs"), list)
+            and f.get("law_refs")
+        ]
+        findings = filtered_yaml if filtered_yaml else yaml_findings[:1]
+    else:
+        filtered = [
+            f
+            for f in seg_findings
+            if order.get(str(f.get("severity", "")).lower(), 1) >= thr
+        ]
+        findings = filtered if filtered else seg_findings[:1]
+
+    _add_citations(findings)
 
     analysis_out = {"findings": findings, "status": "ok"}
     status_out = "ok"

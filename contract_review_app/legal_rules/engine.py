@@ -82,6 +82,7 @@ def analyze(text: str, rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                         "snippet": block.text,
                         "advice": r.get("advice", ""),
                         "law_refs": r.get("law_refs", []),
+                        "suggestion": r.get("suggestion"),
                         "conflict_with": r.get("conflict_with", []),
                         "ops": r.get("ops", []),
                         "scope": {"unit": block.type, "nth": block.nth},

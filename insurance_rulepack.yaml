@@ -1,0 +1,123 @@
+rulepack: insurance_v1
+detect:
+  primary_noncontrib:
+    any:
+      - regex: '\\bPrimary Insurance\\b'
+      - regex: 'primary (and|&)?\s*non-?contribut(?:ory|ing)'
+  additional_insured:
+    all:
+      - regex: 'additional insureds?'
+      - regex: 'Company Group'
+      - regex: 'defen[cs]e costs'
+  waiver_subrogation:
+    regex: 'waiver of subrogation'
+  cancel_notice_days:
+    regex_group:
+      pattern: "([0-9]{1,3})\\s*day[s]?\\s*(?:prior )?notice.*(?:cancell|material change)"
+      group: 1
+      transform: to_int
+  certs_provision:
+    any:
+      - regex: 'certificates of insurance'
+      - regex: 'copies of (?:polic(y|ies)|endorsements?)'
+  copies_on_request:
+    regex: 'upon request.*cop(?:y|ies) of (?:polic(?:y|ies)|endorsements?)'
+  failure_to_insure_remedy:
+    any:
+      - regex: 'terminate (?:this Agreement|any Call-Off)'
+        value: terminate
+      - regex: 'procure (?:substitute )?insurance.*set-?off'
+        value: procure_and_setoff
+      - regex: 'suspend (?:performance|payments)'
+        value: suspend
+  goods_transit_required:
+    cases:
+      - when: 'if required by Company'
+        value: if_required_by_company
+      - when_regex: 'insur(e|ance) of Goods .* prior to delivery'
+        value: always
+      - default: none
+  cgl_limit:
+    regex_group:
+      pattern: "Commercial General Liability.*?([0-9][0-9,.]+)\\s*(?:any one occurrence|per occurrence)"
+      group: 1
+      transform: to_float
+  el_required:
+    any:
+      - regex: "Employers[’'] Liability"
+      - regex: "Workers[’'] Compensation"
+  auto_required:
+    regex: 'Automobile Liability|Motor Liability'
+  flowdown_to_subs:
+    regex: 'flow[- ]down|Subcontractor.*(insurance|polic)'
+  claims_made_runoff:
+    regex_group:
+      pattern: "(run-?off|extended reporting).*?([1-9][0-9])\\s*(?:month|mos|months)"
+      group: 2
+      transform: to_int
+  deductible_sir_owner:
+    cases:
+      - when_regex: 'Contractor .* (?:liable|responsible) for all (?:deductibles|SIR)'
+        value: contractor
+      - when_regex: 'Company .* (?:liable|responsible) for .* deductibles'
+        value: company
+      - default: silent
+  pollution_cov:
+    cases:
+      - when_regex: 'sudden and accidental pollution'
+        value: sudden_accidental
+      - when_regex: 'pollution|environmental (liability|impairment)'
+        value: broad
+      - default: none
+  no_limit_by_insurance:
+    any:
+      - regex: 'not.*limited by (?:any )?insurance'
+      - regex: 'Insurance does not limit (?:Contractor|Supplier).*(?:liabilit|indemn)'
+validate:
+  hard:
+    - key: primary_noncontrib
+      expect: true
+      fail_message: "Primary & non-contributory отсутствует"
+    - key: additional_insured
+      expect: true
+      fail_message: "Additional Insured + defence costs отсутствуют"
+    - key: waiver_subrogation
+      expect: true
+      fail_message: "Waiver of subrogation отсутствует"
+    - key: cancel_notice_days
+      op: gte
+      value: 30
+      fail_message: "Уведомление < 30 дней"
+    - key: certs_provision
+      expect: true
+      fail_message: "Нет обязанности предоставлять сертификаты/копии"
+    - key: failure_to_insure_remedy
+      op: contains_any
+      value: ["terminate","procure_and_setoff","suspend"]
+      fail_message: "Нет эффективных средств защиты при нестраховании"
+    - key: no_limit_by_insurance
+      expect: true
+      fail_message: "Нет оговорки: страхование не ограничивает ответственность"
+  soft:
+    - key: cgl_limit
+      op: gte
+      value: 5000000
+      warn_message: "CGL лимит ниже ориентирного £5m"
+    - key: goods_transit_required
+      op: ne
+      value: none
+      warn_message: "Нет требования страхования Goods до поставки"
+    - key: flowdown_to_subs
+      expect: true
+      warn_message: "Нет жёсткого flow-down к субподрядчикам"
+    - key: claims_made_runoff
+      op: gte
+      value: 24
+      warn_message: "Run-off для claims-made < 24 мес"
+    - key: pollution_cov
+      op: ne
+      value: none
+      warn_message: "Нет покрытия загрязнения при потенциальной экспозиции"
+    - key: deductible_sir_owner
+      expect: contractor
+      warn_message: "Франшиза/SIR не за подрядчиком"

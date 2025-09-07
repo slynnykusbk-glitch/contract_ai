@@ -71,6 +71,8 @@ __all__ = [
     "ExplainResponse",
     # trace
     "TraceOut",
+    "CompanyProfile",
+    "Party",
     # helpers (both long and short names)
     "risk_to_ordinal",
     "ordinal_to_risk",
@@ -1266,3 +1268,24 @@ class TraceOut(AppBaseModel):
         if not re.fullmatch(r"[0-9a-fA-F]{64}", v or ""):
             raise ValueError("invalid cid")
         return v
+
+
+# ============================================================================
+# Companies House DTOs
+# ============================================================================
+
+
+class CompanyProfile(AppBaseModel):
+    name: Optional[str] = None
+    number_or_duns: Optional[str] = None
+    status: Optional[str] = None
+    address: Optional[str] = None
+    incorp_date: Optional[str] = None
+    sic_codes: List[str] = Field(default_factory=list)
+
+
+class Party(AppBaseModel):
+    name: str
+    company_number: Optional[str] = None
+    address: Optional[str] = None
+    registry: Optional[CompanyProfile] = None

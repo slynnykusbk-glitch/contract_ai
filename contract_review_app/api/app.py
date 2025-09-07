@@ -281,6 +281,8 @@ def _make_basic_findings(text: str) -> list[Finding]:
 # Snapshot extraction heuristics
 # Snapshot extraction heuristics
 from contract_review_app.analysis.extract_summary import extract_document_snapshot
+from contract_review_app.integrations.service import enrich_parties_with_companies_house
+from contract_review_app.core.schemas import Party
 from contract_review_app.api.calloff_validator import validate_calloff
 from contract_review_app.analysis import parser as analysis_parser, classifier as analysis_classifier
 from contract_review_app.legal_rules import runner as legal_runner
@@ -299,6 +301,7 @@ from contract_review_app.gpt.service import (
 from .cache import IDEMPOTENCY_CACHE
 from .corpus_search import router as corpus_router
 from .explain import router as explain_router
+from .integrations import router as integrations_router
 
 # Orchestrator / Engine imports
 try:
@@ -1596,6 +1599,19 @@ def api_analyze(req: AnalyzeRequest, request: Request):
     snap.rules_count = _discover_rules_count()
     summary = snap.model_dump()
     _ensure_legacy_doc_type(summary)
+    try:
+        parties = [
+            Party(
+                name=p.get("name", ""),
+                company_number=p.get("company_number"),
+                address=p.get("address"),
+            )
+            for p in summary.get("parties", [])
+        ]
+        parties = enrich_parties_with_companies_house(parties)
+        summary["parties"] = [p.model_dump() for p in parties]
+    except Exception:
+        pass
 
     envelope = {
         "status": status_out,
@@ -2299,6 +2315,7 @@ async def api_learning_update(response: Response, body: LearningUpdateIn):
 app.include_router(router)
 app.include_router(corpus_router)
 app.include_router(explain_router)
+app.include_router(integrations_router)
 
 
 # --------------------------------------------------------------------

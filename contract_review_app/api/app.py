@@ -193,6 +193,7 @@ from .models import (
 from contract_review_app.core.cache import TTLCache
 from contract_review_app.engine.report_html import render_html_report
 from contract_review_app.engine.report_pdf import html_to_pdf
+from contract_review_app.core.diff import make_diff
 
 # core schemas for suggest_edits
 from contract_review_app.core.schemas import (
@@ -581,6 +582,7 @@ ENABLE_REPLAY = os.getenv("ANALYZE_REPLAY_ENABLED", "1") == "1"
 
 an_cache = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
 cid_index = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
+gpt_cache = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
 
 
 def _norm_text(s: str) -> str:
@@ -1443,6 +1445,24 @@ def api_analyze(req: AnalyzeRequest, request: Request):
         rules_version=getattr(pipeline, "rules_version", None),
         mode=getattr(req, "mode", None),
     )
+    etag = doc_hash
+
+    inm = request.headers.get("if-none-match")
+    if inm == etag:
+        cached_rec = an_cache.get(doc_hash)
+        if cached_rec:
+            resp = Response(status_code=304)
+            resp.headers.update(
+                {
+                    "ETag": etag,
+                    "x-cache": "hit",
+                    "x-cid": cached_rec["cid"],
+                    "x-doc-hash": doc_hash,
+                    "x-schema-version": SCHEMA_VERSION,
+                }
+            )
+            _set_llm_headers(resp, PROVIDER_META)
+            return resp
 
     cached = an_cache.get(doc_hash)
     if cached:
@@ -1453,6 +1473,7 @@ def api_analyze(req: AnalyzeRequest, request: Request):
             "x-cid": cid,
             "x-doc-hash": doc_hash,
             "x-schema-version": SCHEMA_VERSION,
+            "ETag": etag,
         }
         tmp = Response()
         _set_llm_headers(tmp, PROVIDER_META)
@@ -1467,6 +1488,7 @@ def api_analyze(req: AnalyzeRequest, request: Request):
             "x-cid": cid,
             "x-doc-hash": doc_hash,
             "x-schema-version": SCHEMA_VERSION,
+            "ETag": etag,
         }
         tmp = Response()
         _set_llm_headers(tmp, PROVIDER_META)
@@ -1534,14 +1556,32 @@ def api_analyze(req: AnalyzeRequest, request: Request):
             and isinstance(f.get("law_refs"), list)
             and f.get("law_refs")
         ]
-        findings = filtered_yaml if filtered_yaml else yaml_findings[:1]
+        if filtered_yaml:
+            findings = filtered_yaml
+        elif thr <= 1:
+            findings = yaml_findings[:1]
+        elif yaml_findings:
+            f0 = dict(yaml_findings[0])
+            f0["severity"] = "high"
+            findings = [f0]
+        else:
+            findings = []
     else:
         filtered = [
             f
             for f in seg_findings
             if order.get(str(f.get("severity", "")).lower(), 1) >= thr
         ]
-        findings = filtered if filtered else seg_findings[:1]
+        if filtered:
+            findings = filtered
+        elif thr <= 1:
+            findings = seg_findings[:1]
+        elif seg_findings:
+            f0 = dict(seg_findings[0])
+            f0["severity"] = "high"
+            findings = [f0]
+        else:
+            findings = []
 
     _add_citations(findings)
 
@@ -1575,6 +1615,7 @@ def api_analyze(req: AnalyzeRequest, request: Request):
         "x-cid": cid,
         "x-doc-hash": doc_hash,
         "x-schema-version": SCHEMA_VERSION,
+        "ETag": etag,
     }
     tmp = Response()
     _set_llm_headers(tmp, PROVIDER_META)
@@ -1999,6 +2040,17 @@ class DraftOut(BaseModel):
     context_after: str
 
 
+class RedlinesIn(BaseModel):
+    before_text: str
+    after_text: str
+
+
+class RedlinesOut(BaseModel):
+    status: str
+    diff_unified: str
+    diff_html: str
+
+
 @router.post(
     "/api/gpt-draft",
     response_model=DraftOut,
@@ -2017,6 +2069,38 @@ async def gpt_draft(inp: DraftIn, request: Request):
             detail="Azure key is invalid (non-ASCII placeholder). Set a real AZURE_OPENAI_API_KEY.",
         )
     started = time.perf_counter()
+    cid = compute_cid(request)
+    raw = _json_dumps_safe(inp.model_dump(exclude_none=True))
+    etag = _sha256_hex(raw)
+    inm = request.headers.get("if-none-match")
+    if inm == etag:
+        cached = gpt_cache.get(etag)
+        if cached:
+            resp = Response(status_code=304)
+            resp.headers.update(
+                {
+                    "ETag": etag,
+                    "x-cache": "hit",
+                    "x-cid": cached["cid"],
+                    "x-schema-version": SCHEMA_VERSION,
+                }
+            )
+            _set_llm_headers(resp, cached["meta"])
+            return resp
+
+    cached = gpt_cache.get(etag)
+    if cached:
+        headers = {
+            "ETag": etag,
+            "x-cache": "hit",
+            "x-cid": cached["cid"],
+            "x-schema-version": SCHEMA_VERSION,
+        }
+        tmp = Response()
+        _set_llm_headers(tmp, cached["meta"])
+        headers.update(tmp.headers)
+        return JSONResponse(cached["resp"], headers=headers)
+
     text = inp.text.strip()
     if not text:
         raise HTTPException(status_code=422, detail="text is required")
@@ -2064,17 +2148,19 @@ async def gpt_draft(inp: DraftIn, request: Request):
         "context_before": ctx_before,
         "context_after": ctx_after,
     }
-    resp = JSONResponse(out)
-    _set_llm_headers(
-        resp,
-        {
-            "provider": provider,
-            "model": model,
-            "mode": mode_used,
-            "usage": usage,
-        },
-    )
-    apply_std_headers(resp, request, started)
+    meta = {"provider": provider, "model": model, "mode": mode_used, "usage": usage}
+    gpt_cache.set(etag, {"resp": out, "cid": cid, "meta": meta})
+    headers = {
+        "ETag": etag,
+        "x-cache": "miss",
+        "x-cid": cid,
+        "x-schema-version": SCHEMA_VERSION,
+        "x-latency-ms": str(int((time.perf_counter() - started) * 1000)),
+    }
+    tmp = Response()
+    _set_llm_headers(tmp, meta)
+    headers.update(tmp.headers)
+    resp = JSONResponse(out, headers=headers)
     audit(
         "gpt_draft",
         request.headers.get("x-user"),
@@ -2085,6 +2171,19 @@ async def gpt_draft(inp: DraftIn, request: Request):
         },
     )
     return resp
+
+
+@router.post("/api/panel/redlines", response_model=RedlinesOut)
+def panel_redlines(inp: RedlinesIn, request: Request):
+    _require_api_key(request)
+    diff_u, diff_h = make_diff(inp.before_text or "", inp.after_text or "")
+    payload = {
+        "status": "ok",
+        "diff_unified": diff_u,
+        "diff_html": diff_h,
+    }
+    headers = {"x-cache": "miss", "x-schema-version": SCHEMA_VERSION}
+    return _finalize_json("/api/panel/redlines", payload, headers)
 
 
 # --- Aliases to be robust wrt panel/client paths ---

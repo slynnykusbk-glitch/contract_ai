@@ -24,6 +24,7 @@ export type AnalyzeFinding = {
   conflict_with?: string[];
   category?: string;
   score?: number;
+  suggestion?: { text?: string };
   ops?: { start?: number; end?: number; replacement?: string }[];
   scope?: { unit?: string; nth?: number };
   occurrences?: number;

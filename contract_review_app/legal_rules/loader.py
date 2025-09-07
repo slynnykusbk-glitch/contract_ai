@@ -104,6 +104,7 @@ def load_rule_packs() -> None:
                             or (finding_section or {}).get("legal_basis")
                             or []
                         ),
+                        "suggestion": (finding_section or {}).get("suggestion"),
                         "conflict_with": list(raw.get("conflict_with") or []),
                         "ops": raw.get("ops") or [],
                     }

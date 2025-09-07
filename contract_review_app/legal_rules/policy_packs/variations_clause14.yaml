@@ -1,0 +1,274 @@
+# Clause 14 Variations and Changes rule pack
+---
+rule:
+  id: VARIATIONS.NOM_ONLY
+  version: 1.0
+  title: "Call-Off variations only via Clause 14 or Amendment under 31.6"
+  clause_type: variations
+  severity: high
+  advice: "Call-Off can be changed only by Variation Order (Clause 14) or written amendment per Clause 31.6."
+  law_reference:
+    - "MA Clause 14"
+    - "MA Clause 31.6"
+  triggers:
+    any:
+      - regex: '(?i)None of the scope, pricing, or time schedule.*Clause\s*14\s+or\s+Clause\s*31(?:\.6)?'
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Call-Off modifications outside Clause 14 or 31.6 are ineffective."
+        severity_level: high
+        suggestion:
+          text: "Ensure variations use Clause 14 VO or written Amendment under 31.6."
+  outcome:
+    status: flag
+    severity: major
+    problem: "Non-compliant variation mechanism"
+    recommendation: "Reject informal changes."
+  metadata:
+    tags: ["variations", "nom"]
+---
+rule:
+  id: VARIATIONS.VOR_5BD
+  version: 1.0
+  title: "VOR free; notify missing info within 5 business days"
+  clause_type: variations
+  severity: medium
+  advice: "Variation Order Request must be submitted promptly and notify within five business days if information is incomplete."
+  law_reference:
+    - "MA Clause 14.3.1"
+  triggers:
+    any:
+      - regex: '(?i)variation order request.*as soon as reasonably practicable.*five\s*\(5\)\s*business\s*days'
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "VOR must be prompt and free, with 5 BD notice if data missing."
+        severity_level: medium
+        suggestion:
+          text: "Submit VOR promptly and notify within 5 BD when data is incomplete."
+  outcome:
+    status: flag
+    severity: minor
+    problem: "Delayed or charged VOR"
+    recommendation: "Provide VOR free and timely."
+  metadata:
+    tags: ["variations", "vor"]
+---
+rule:
+  id: VARIATIONS.RATE_PARITY_CPA
+  version: 1.0
+  title: "Rate parity and critical path analysis"
+  clause_type: variations
+  severity: medium
+  advice: "Pricing must use same Call-Off rates or demonstrably commensurate rates and schedule impact backed by critical path analysis."
+  law_reference:
+    - "MA Clause 14.3.3"
+  triggers:
+    any:
+      - regex: '(?i)same\s+rates.*critical\s+path\s+analysis'
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Use Call-Off rates or commensurate rates; provide CPA for schedule impact."
+        severity_level: medium
+        suggestion:
+          text: "Apply existing rates or show commensurate pricing with CPA support."
+  outcome:
+    status: flag
+    severity: minor
+    problem: "Unverified rates or schedule impact"
+    recommendation: "Use Call-Off rates and attach CPA."
+  metadata:
+    tags: ["variations", "rate-parity", "cpa"]
+---
+rule:
+  id: VARIATIONS.DISAGREE_PROCEED_NO_COND_SIGN
+  version: 1.0
+  title: "Disagree/Proceed; no conditional signing"
+  clause_type: variations
+  severity: high
+  advice: "Contractor cannot sign VO with conditions; Company may instruct to proceed immediately despite disagreement."
+  law_reference:
+    - "MA Clause 14.4"
+  triggers:
+    any:
+      - regex: '(?i)disagrees.*proceed immediately'
+      - regex: '(?i)sign contingent'
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Contractor must proceed if instructed and may not sign VO with conditions."
+        severity_level: high
+        suggestion:
+          text: "Remove conditional signing language; confirm proceed right."
+  outcome:
+    status: flag
+    severity: major
+    problem: "Conditional signing or refusal to proceed"
+    recommendation: "Company may order immediate performance."
+  metadata:
+    tags: ["variations", "proceed"]
+---
+rule:
+  id: VARIATIONS.CONTRACTOR_INITIATED_LIMITED
+  version: 1.0
+  title: "Contractor VO grounds limited"
+  clause_type: variations
+  severity: medium
+  advice: "Contractor may request VO only for Company instruction, Company breach, expressly listed causes or qualifying Change in Law."
+  law_reference:
+    - "MA Clause 14.2"
+  triggers:
+    any:
+      - regex: '(?i)may\s+only\s+request\s+.*variation order.*(company\s+instruction|breach\s+by\s+company|change in law)'
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "VO by Contractor restricted to specified grounds."
+        severity_level: medium
+        suggestion:
+          text: "Limit Contractor-initiated VO to Company instruction/breach or agreed grounds."
+  outcome:
+    status: flag
+    severity: minor
+    problem: "Broad Contractor VO grounds"
+    recommendation: "Restrict to specified reasons."
+  metadata:
+    tags: ["variations", "contractor-initiated"]
+---
+rule:
+  id: VARIATIONS.CHANGE_IN_LAW_TAXES_BUSINESS_EXCLUDED
+  version: 1.0
+  title: "Change in Law excludes taxes and general business; strict enforcement not change"
+  clause_type: variations
+  severity: high
+  advice: "Change in Law excludes tax or general business effects and strict enforcement of existing law does not qualify."
+  law_reference:
+    - "MA Clause 14.5"
+  triggers:
+    any:
+      - regex: '(?i)change in law.*taxes.*business in general.*does not entitle'
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Taxes/business impacts or strict enforcement do not trigger VO."
+        severity_level: high
+        suggestion:
+          text: "Exclude taxes/general business and mere enforcement from Change in Law."
+  outcome:
+    status: flag
+    severity: major
+    problem: "Overbroad Change in Law definition"
+    recommendation: "Clarify exclusions."
+  metadata:
+    tags: ["variations", "change-in-law"]
+---
+rule:
+  id: VARIATIONS.TIMEBAR_IMMEDIATE_OFFSHORE_3D
+  version: 1.0
+  title: "Time-bar: immediate offshore; ≤3 days otherwise; loss of entitlement"
+  clause_type: variations
+  severity: critical
+  advice: "VO notice must be immediate offshore or within 3 days otherwise; late notice forfeits entitlement."
+  law_reference:
+    - "MA Clause 14.3.2"
+    - "MA Clause 14.3.4"
+  triggers:
+    any:
+      - regex: '(?i)immediately.*offshore.*not\s+later\s+than\s*\(3\)\s+days'
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Strict time-bar for VO requests; miss it and lose rights."
+        severity_level: critical
+        suggestion:
+          text: "Notify immediately offshore and within 3 days otherwise to preserve rights."
+  outcome:
+    status: flag
+    severity: critical
+    problem: "VO notice time-bar"
+    recommendation: "Enforce immediate/3-day notice."
+  metadata:
+    tags: ["variations", "time-bar"]
+---
+rule:
+  id: VARIATIONS.WAIVER_CUMULATIVE_CARDINAL
+  version: 1.0
+  title: "VO waives cardinal change and cumulative impact claims"
+  clause_type: variations
+  severity: high
+  advice: "Signed VO covers full impact and waives cardinal change and cumulative impact claims."
+  law_reference:
+    - "MA Clause 14.7"
+  triggers:
+    any:
+      - regex: '(?i)waives.*cardinal change.*cumulative impact'
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "VO deemed full and final; no cumulative or cardinal change claims."
+        severity_level: high
+        suggestion:
+          text: "Make VO a full and final adjustment, waiving cumulative impacts."
+  outcome:
+    status: flag
+    severity: major
+    problem: "Potential cumulative/cardinal claims"
+    recommendation: "Clarify waiver in VO."
+  metadata:
+    tags: ["variations", "waiver"]
+---
+rule:
+  id: VARIATIONS.MITIGATION_DUTY
+  version: 1.0
+  title: "No adjustments without mitigation"
+  clause_type: variations
+  severity: medium
+  advice: "No price or schedule adjustments if Contractor failed to mitigate."
+  law_reference:
+    - "MA Clause 14.6"
+  triggers:
+    any:
+      - regex: '(?i)no\s+(increase|adjustment).*mitigate'
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Adjustments denied where Contractor could mitigate impacts."
+        severity_level: medium
+        suggestion:
+          text: "Ensure mitigation efforts before claiming adjustments."
+  outcome:
+    status: flag
+    severity: minor
+    problem: "Lack of mitigation"
+    recommendation: "Document mitigation steps."
+  metadata:
+    tags: ["variations", "mitigation"]
+---
+rule:
+  id: VARIATIONS.RATE_IMMUTABILITY_BASELINE
+  version: 1.0
+  title: "Call-Off rates fixed for term"
+  clause_type: variations
+  severity: low
+  advice: "Call-Off rates remain fixed for term; baseline for rate parity."
+  law_reference:
+    - "MA Clause 15"
+  triggers:
+    any:
+      - regex: '(?i)rates?\s+fixed\s+for\s+the\s+term'
+  checks:
+    - when: { regex: ".*" }
+      finding:
+        message: "Rates are fixed for term, serving as baseline."
+        severity_level: low
+        suggestion:
+          text: "Reference fixed Call-Off rates as baseline."
+  outcome:
+    status: flag
+    severity: minor
+    problem: "Rate parity baseline"
+    recommendation: "Keep baseline rates immutable."
+  metadata:
+    tags: ["variations", "rates"]

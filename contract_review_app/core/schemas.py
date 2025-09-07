@@ -67,6 +67,8 @@ __all__ = [
     "DeltaMetrics",
     "QARecheckIn",
     "QARecheckOut",
+    "ExplainRequest",
+    "ExplainResponse",
     # trace
     "TraceOut",
     # helpers (both long and short names)
@@ -1218,6 +1220,28 @@ class QARecheckOut(AppBaseModel):
             data.setdefault("status_from", d.get("status_from", "OK"))
             data.setdefault("status_to", d.get("status_to", "OK"))
         return data
+
+
+# ============================================================================
+# Explain endpoint
+# ============================================================================
+class ExplainRequest(AppBaseModel):
+    """Request DTO for /api/explain."""
+
+    finding: Finding
+    text: Optional[str] = None
+    citations: Optional[List[Citation]] = None
+
+
+class ExplainResponse(AppBaseModel):
+    """Response DTO for /api/explain."""
+
+    reasoning: str
+    citations: List[Citation] = Field(default_factory=list)
+    evidence: List[Evidence] = Field(default_factory=list)
+    verification_status: Literal["ok", "missing_citations", "invalid"] = "ok"
+    trace: Optional[str] = None
+    x_schema_version: str = Field(default=SCHEMA_VERSION, alias="x_schema_version")
 
 
 # ============================================================================

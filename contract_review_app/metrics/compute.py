@@ -74,11 +74,21 @@ def load_acceptance(jsonl_path: Path) -> Acceptance:
                     obj = json.loads(line)
                 except Exception:
                     continue
-                action = str(obj.get("action", ""))
-                if action in {"applied", "accepted_all"}:
-                    applied += 1
-                elif action in {"rejected", "rejected_all"}:
-                    rejected += 1
+                # Support two formats:
+                # 1. Legacy per-action events {"action": "applied"|"rejected"}
+                # 2. Aggregated counts {"applied": N, "rejected": M}
+                if "action" in obj:
+                    action = str(obj.get("action", ""))
+                    if action in {"applied", "accepted_all"}:
+                        applied += 1
+                    elif action in {"rejected", "rejected_all"}:
+                        rejected += 1
+                else:
+                    try:
+                        applied += int(obj.get("applied", 0) or 0)
+                        rejected += int(obj.get("rejected", 0) or 0)
+                    except Exception:
+                        continue
     alpha = 1.0
     rate = (applied + alpha) / (applied + rejected + 2 * alpha)
     return Acceptance(applied=applied, rejected=rejected, acceptance_rate=_clamp(rate))

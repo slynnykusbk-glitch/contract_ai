@@ -1,0 +1,15 @@
+dataset: "msa_ndas_minimal_v1"
+docs:
+  - id: "nda_001"
+    title: "NDA – sample A"
+    expected_rules:
+      # ожидаем срабатывание этих правил (true) и отсутствие (false)
+      - { rule_id: "uk_ucta_2_1_invalid", expected: true }
+      - { rule_id: "uk_bribery_act_missing", expected: true }
+      - { rule_id: "uk_ca_1985_outdated", expected: false }
+  - id: "msa_002"
+    title: "MSA – sample B"
+    expected_rules:
+      - { rule_id: "uk_dpa_1998_outdated", expected: true }
+      - { rule_id: "uk_poca_tipping_off", expected: true }
+      - { rule_id: "gl_jurisdiction_conflict", expected: false }

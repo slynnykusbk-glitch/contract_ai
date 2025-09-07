@@ -1,0 +1,3 @@
+{"ts":"2025-09-07T10:00:00Z","event":"panel.apply","cid":"X1","applied":2,"rejected":1}
+{"ts":"2025-09-07T10:05:00Z","event":"panel.apply","cid":"X2","applied":0,"rejected":3}
+{"ts":"2025-09-07T10:07:00Z","event":"panel.apply","cid":"X3","applied":4,"rejected":0}

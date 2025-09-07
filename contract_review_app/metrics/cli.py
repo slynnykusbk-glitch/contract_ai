@@ -17,34 +17,34 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     resp = collect_metrics()
-    out_path = Path(args.out) if args.out else None
+    out_base = Path(args.out) if args.out else None
+
+    # Always emit JSON if --json specified or no other flags provided
+    if args.json or not (args.csv or args.html):
+        data = json.loads(resp.model_dump_json())
+        text = json.dumps(data, ensure_ascii=False)
+        if out_base:
+            out_base.parent.mkdir(parents=True, exist_ok=True)
+            out_base.with_suffix(".json").write_text(text, encoding="utf-8")
+        else:
+            print(text)
 
     if args.csv:
         content = to_csv(resp.metrics.rules)
-        if out_path:
-            out_path.parent.mkdir(parents=True, exist_ok=True)
-            out_path.write_text(content, encoding="utf-8")
+        if out_base:
+            out_base.parent.mkdir(parents=True, exist_ok=True)
+            out_base.with_suffix(".csv").write_text(content, encoding="utf-8")
         else:
             print(content)
-        return 0
 
     if args.html:
         html = render_metrics_html(resp)
-        if out_path:
-            out_path.parent.mkdir(parents=True, exist_ok=True)
-            out_path.write_text(html, encoding="utf-8")
+        if out_base:
+            out_base.parent.mkdir(parents=True, exist_ok=True)
+            out_base.with_suffix(".html").write_text(html, encoding="utf-8")
         else:
             print(html)
-        return 0
 
-    # default JSON
-    data = json.loads(resp.model_dump_json())
-    text = json.dumps(data, ensure_ascii=False)
-    if out_path:
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(text, encoding="utf-8")
-    else:
-        print(text)
     return 0
 
 

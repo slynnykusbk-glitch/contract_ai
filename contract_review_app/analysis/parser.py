@@ -6,7 +6,12 @@ from dataclasses import dataclass
 from typing import Dict, List
 
 from docx import Document
-from pdfminer.high_level import extract_text
+
+try:
+    from pdfminer.high_level import extract_text
+except Exception:  # pragma: no cover - optional dependency
+    def extract_text(*args, **kwargs):  # type: ignore[override]
+        raise NotImplementedError("pdfminer not installed")
 
 from contract_review_app.intake.parser import ParsedDocument as IntakeParsedDocument
 

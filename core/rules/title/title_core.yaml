@@ -1,0 +1,400 @@
+rule:
+  id: title.clean.free_of_liens
+  version: 1.0.0
+  title: "Title passes free of liens/ROT/encumbrances"
+  severity: low
+  law_reference:
+    - "Clean title / no ROT — best practice; third-party waivers."
+  triggers:
+    any:
+      - regex: '(?i)title.*(pass|transfer|vest).*free (from|of).*(lien|charge|encumbrance|retention of title|rot)'
+  checks:
+    - when:
+        regex: '(?i)free (from|of).*(lien|charge|encumbrance|retention of title|rot)'
+      finding:
+        message: "Титул переходит свободным от ROT/линов/обременений."
+        severity_level: low
+        risk: "Снижен риск третьих лиц на товары."
+        suggestion:
+          text: "Оставьте запрет любых прав удержания субпоставщиков; требуйте waivers."
+  outcome:
+    status: pass
+    risk_level: low
+    severity: low
+    problem: ""
+    recommendation: ""
+    law_reference:
+      - "Clean title / no ROT — best practice; third-party waivers."
+  metadata:
+    tags: ["title","clean","liens","rot","encumbrances"]
+---
+rule:
+  id: title.vesting.early_wip_offsite
+  version: 1.0.0
+  title: "Early vesting to Company for WIP/off-site/advance"
+  severity: low
+  law_reference:
+    - "Vesting certificates / off-site materials (UK construction practice)."
+  triggers:
+    any:
+      - regex: '(?i)title.*(pass|vest)'
+      - regex: '(?i)vesting'
+  checks:
+    - id: early_events
+      when:
+        any:
+          - regex: '(?i)upon.*manufactur(e|ed)|identif(y|ication)'
+          - regex: '(?i)upon.*payment'
+          - regex: '(?i)upon.*delivery to (the )?carrier'
+      finding:
+        message: "Закреплён ранний переход титула (изготовление/идентификация/оплата/сдача перевозчику)."
+        severity_level: low
+        risk: "Снижен риск при банкротстве поставщика."
+        suggestion:
+          text: "Убедитесь, что охватывает WIP/off-site, чертежи и данные."
+    - id: only_final_acceptance
+      when:
+        regex: '(?i)title.+only.+final acceptance'
+      finding:
+        message: "Титул переходит только после финальной приемки без раннего vesting."
+        severity_level: high
+        risk: "Company рискует при предоплате и off-site."
+        suggestion:
+          text: "Переход титула должен происходить при изготовлении/идентификации/оплате или сдаче перевозчику."
+  outcome:
+    status: pass
+    risk_level: low
+    severity: low
+    problem: ""
+    recommendation: ""
+    law_reference:
+      - "Vesting certificates / off-site materials (UK construction practice)."
+  metadata:
+    tags: ["title","vesting","wip","offsite","advance"]
+---
+rule:
+  id: title.delivery_up.access_right
+  version: 1.0.0
+  title: "Delivery-up & site access on termination/insolvency"
+  severity: medium
+  law_reference:
+    - "Delivery-up / landlord & warehouseman waivers — market standard."
+  triggers:
+    any:
+      - regex: '(?i)right to (enter|access).*(premises|site|warehouse)'
+      - regex: '(?i)delivery[- ]?up|recover (company|its) property'
+  checks:
+    - when:
+        all:
+          - regex: '(?i)termination|insolvency'
+          - regex: '(?i)right to (enter|access).*(premises|site|warehouse)'
+      finding:
+        message: "Есть право Company войти на площадки/склады и изъять своё имущество."
+        severity_level: medium
+        risk: "Снижен риск потерь при дефолте поставщика."
+        suggestion:
+          text: "Добейтесь предварительных согласий от владельцев площадок/3PL (landlord waivers)."
+  outcome:
+    status: pass
+    risk_level: medium
+    severity: medium
+    problem: ""
+    recommendation: ""
+    law_reference:
+      - "Delivery-up / landlord & warehouseman waivers — market standard."
+  metadata:
+    tags: ["title","delivery-up","access","waivers"]
+---
+rule:
+  id: title.embedded_software.perpetual_licence
+  version: 1.0.0
+  title: "Embedded software licence survives termination (perpetual)"
+  severity: low
+  law_reference:
+    - "Perpetual licence for already supplied embedded software — best practice."
+  triggers:
+    any:
+      - regex: '(?i)embedded (software|firmware)|software (embedded|supplied)'
+  checks:
+    - when:
+        all:
+          - regex: '(?i)perpetual'
+          - regex: '(?i)sublicen(c|s)able|group'
+          - regex: '(?i)shall survive termination|not terminate on termination'
+      finding:
+        message: "Лицензия на встроенное ПО бессрочная, переживает расторжение; ключи/прошивки/мануалы должны поставляться."
+        severity_level: high
+        risk: "Исключён риск блокировки эксплуатации оборудования."
+        suggestion:
+          text: "Проверьте наличие ключей/прошивок/мануалов и права модификации для сервиса."
+  outcome:
+    status: pass
+    risk_level: low
+    severity: low
+    problem: ""
+    recommendation: ""
+    law_reference:
+      - "Perpetual licence for already supplied embedded software — best practice."
+  metadata:
+    tags: ["title","software","firmware","licence","survival"]
+---
+rule:
+  id: title.marking.register.audit
+  version: 1.0.0
+  title: "Marking, segregation and register of Company Property"
+  severity: medium
+  law_reference:
+    - "Marking & register of buyer property — industry practice."
+  triggers:
+    any:
+      - regex: '(?i)property of company'
+      - regex: '(?i)company property'
+  checks:
+    - id: register_audit_present
+      when:
+        all:
+          - regex: '(?i)(mark|label|tag|identify).*property of company'
+          - regex: '(?i)(segregate|store separately|keep separate)'
+          - regex: '(?i)(register|inventory|record)'
+          - regex: '(?i)(audit|inspect)'
+      finding:
+        message: "Имущество маркируется 'Property of Company', хранится отдельно, ведётся реестр и право аудита."
+        severity_level: low
+        risk: "Снижен риск потери или смешения."
+        suggestion:
+          text: "Уточните поля реестра и право инспекции."
+    - id: missing_register_or_audit
+      when:
+        all:
+          - regex: '(?i)(mark|label|tag|identify).*property of company'
+          - not_regex: '(?i)(register|inventory|audit|inspect)'
+      finding:
+        message: "Нет упоминания реестра или права инспекции Company."
+        severity_level: medium
+        risk: "Может быть трудно отслеживать имущество."
+        suggestion:
+          text: "Добавьте реестр с деталями и право Company на аудит."
+  outcome:
+    status: pass
+    risk_level: medium
+    severity: medium
+    problem: ""
+    recommendation: ""
+    law_reference:
+      - "Marking & register of buyer property — industry practice."
+  metadata:
+    tags: ["title","marking","register","audit"]
+---
+rule:
+  id: title.risk.cross_reference
+  version: 1.0.0
+  title: "Title aligned with Risk/Incoterms"
+  severity: low
+  law_reference:
+    - "Title vs Risk alignment — Incoterms practice."
+  triggers:
+    any:
+      - regex: '(?i)title'
+  checks:
+    - id: explicit_cross_ref
+      when:
+        regex: '(?i)title.*(risk per clause|incoterms)'
+      finding:
+        message: "Есть увязка титула с разделом Risk/Incoterms."
+        severity_level: low
+        risk: "Минимизирован риск расхождений."
+        suggestion:
+          text: "Убедитесь, что cross-ref совпадает с разделом Risk."
+    - id: no_cross_ref
+      when:
+        all:
+          - regex: '(?i)title.*pass'
+          - not_regex: '(?i)(risk|incoterms)'
+      finding:
+        message: "Титул указан без привязки к разделу Risk/Incoterms."
+        severity_level: medium
+        risk: "Риск расхождения между переходом титула и рисков."
+        suggestion:
+          text: "Добавьте ссылку на раздел Risk или условия Инкотермс."
+  outcome:
+    status: pass
+    risk_level: low
+    severity: low
+    problem: ""
+    recommendation: ""
+    law_reference:
+      - "Title vs Risk alignment — Incoterms practice."
+  metadata:
+    tags: ["title","risk","incoterms","cross-ref"]
+---
+rule:
+  id: title.commingling.bulk_processing
+  version: 1.0.0
+  title: "Commingling/bulk and processing"
+  severity: low
+  law_reference:
+    - "UK Sale of Goods Act s.20A-B (bulk goods)."
+  triggers:
+    any:
+      - regex: '(?i)(commingl|mix|processing|bulk)'
+  checks:
+    - id: commingling_rules_present
+      when:
+        all:
+          - regex: '(?i)(commingl|mix)'
+          - regex: '(?i)proportion|proportionate|shared ownership'
+      finding:
+        message: "Регулируется смешение: долевая собственность пропорционально оплате."
+        severity_level: low
+        risk: "Снижен риск потери титула при смешении."
+        suggestion:
+          text: "Опишите порядок фиксации доли и переработки."
+    - id: commingling_not_addressed
+      when:
+        all:
+          - regex: '(?i)(commingl|mix|processing|bulk)'
+          - not_regex: '(?i)proportion|ownership'
+      finding:
+        message: "Отсутствуют правила долевой собственности при смешении/переработке."
+        severity_level: medium
+        risk: "Титул Company может быть утрачен."
+        suggestion:
+          text: "Запретите смешение без согласия и установите долевую собственность."
+  outcome:
+    status: pass
+    risk_level: low
+    severity: low
+    problem: ""
+    recommendation: ""
+    law_reference:
+      - "UK Sale of Goods Act s.20A-B (bulk goods)."
+  metadata:
+    tags: ["title","commingling","bulk","processing"]
+---
+rule:
+  id: title.rejection.return_reversion
+  version: 1.0.0
+  title: "Rejection/return — title reversion & logistics"
+  severity: medium
+  law_reference:
+    - "Rejection and title reversion — sale of goods practice."
+  triggers:
+    any:
+      - regex: '(?i)reject|rejection|return'
+  checks:
+    - id: reversion_and_removal_present
+      when:
+        all:
+          - regex: '(?i)(reject|rejection|return)'
+          - regex: '(?i)title (revert|return)s? to (supplier|contractor)'
+          - regex: '(?i)(remove|collect|dispose|logistics)'
+      finding:
+        message: "При отказе титул возвращается поставщику, он вывозит/утилизирует товар."
+        severity_level: low
+        risk: "Снижен риск зависшего имущества."
+        suggestion:
+          text: "Установите сроки и процедуру вывоза/утилизации."
+    - id: no_reversion_rules
+      when:
+        all:
+          - regex: '(?i)(reject|rejection|return)'
+          - not_regex: '(?i)title (revert|return)s?'
+      finding:
+        message: "Не урегулирована реверсия титула при отказе/возврате."
+        severity_level: medium
+        risk: "Company может остаться с нежеланным имуществом."
+        suggestion:
+          text: "Пропишите автоматическую реверсию титула и обязанности по вывозу."
+  outcome:
+    status: pass
+    risk_level: medium
+    severity: medium
+    problem: ""
+    recommendation: ""
+    law_reference:
+      - "Rejection and title reversion — sale of goods practice."
+  metadata:
+    tags: ["title","rejection","return","logistics"]
+---
+rule:
+  id: title.waivers.third_party_liens
+  version: 1.0.0
+  title: "Waivers from subcontractors/warehousemen"
+  severity: high
+  law_reference:
+    - "Landlord/warehouseman lien waivers — supply contract standard."
+  triggers:
+    any:
+      - regex: '(?i)(lien|retention of title|rot|waiver)'
+  checks:
+    - id: waivers_required
+      when:
+        regex: '(?i)waiver(s)? of (lien|retention of title|rot)'
+      finding:
+        message: "Субы/хранители предоставляют безотзывные waivers ROT/линов."
+        severity_level: high
+        risk: "Устранён риск прав третьих лиц."
+        suggestion:
+          text: "Закрепите форму waiver, приемлемую Company."
+    - id: lien_allowed
+      when:
+        regex: '(?i)(subcontractor|warehouseman|bailee).*(lien|retention of title)'
+      finding:
+        message: "Допускаются права удержания субподрядчиков/складов."
+        severity_level: high
+        risk: "Company может потерять контроль над имуществом."
+        suggestion:
+          text: "Требуйте безотзывные waivers любых прав удержания."
+  outcome:
+    status: pass
+    risk_level: high
+    severity: high
+    problem: ""
+    recommendation: ""
+    law_reference:
+      - "Landlord/warehouseman lien waivers — supply contract standard."
+  metadata:
+    tags: ["title","waiver","lien","subcontractor","warehouse"]
+---
+rule:
+  id: title.customs.ior_alignment
+  version: 1.0.0
+  title: "Customs/IoR alignment"
+  severity: low
+  law_reference:
+    - "Incoterms 2020: title transfer vs IoR/EoR."
+  triggers:
+    any:
+      - regex: '(?i)title'
+      - regex: '(?i)importer of record|exporter of record|customs'
+  checks:
+    - id: customs_alignment_present
+      when:
+        regex: '(?i)title.*shall not affect.*((importer|exporter) of record|customs)'
+      finding:
+        message: "Переход титула не влияет на IoR/EoR и таможенные документы."
+        severity_level: low
+        risk: "Снижен риск таможенных споров."
+        suggestion:
+          text: "Убедитесь, что инвойсы/packing/origin/HS codes соответствуют IoR/EoR."
+    - id: customs_not_addressed
+      when:
+        all:
+          - regex: '(?i)title'
+          - not_regex: '(?i)(importer of record|exporter of record|customs)'
+      finding:
+        message: "Нет увязки перехода титула с IoR/EoR и таможенными документами."
+        severity_level: medium
+        risk: "Риск несоответствия таможенным требованиям."
+        suggestion:
+          text: "Уточните, что титул не меняет IoR/EoR и документы."
+  outcome:
+    status: pass
+    risk_level: low
+    severity: low
+    problem: ""
+    recommendation: ""
+    law_reference:
+      - "Incoterms 2020: title transfer vs IoR/EoR."
+  metadata:
+    tags: ["title","customs","ior","eor"]

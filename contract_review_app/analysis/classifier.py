@@ -41,6 +41,17 @@ _CLAUSE_PATTERNS: Dict[str, List[re.Pattern[str]]] = {
         re.compile(r"definitions", re.I),
         re.compile(r"interpretation", re.I),
     ],
+    "pricing": [
+        re.compile(r"pricing|rates?", re.I),
+        re.compile(r"charge[s]?", re.I),
+    ],
+    "invoice": [
+        re.compile(r"invoice", re.I),
+    ],
+    "payment": [
+        re.compile(r"payment", re.I),
+        re.compile(r"pay[-\s]?ment", re.I),
+    ],
     "parties": [
         re.compile(r"parties", re.I),
     ],

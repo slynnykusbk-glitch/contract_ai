@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 
+PROMPT_VERSION = "explain-1.0"
+
 def build_prompt(mode: str, grounding: Dict[str, Any]) -> str:
     """Build a deterministic prompt using the grounding package."""
     lines: List[str] = []

@@ -1,0 +1,49 @@
+import os
+import respx
+import httpx
+
+from contract_review_app.core.schemas import Party
+from contract_review_app.integrations.service import enrich_parties_with_companies_house
+from contract_review_app.integrations.companies_house import client
+
+BASE = client.BASE
+
+
+def setup_function():
+    client._CACHE.clear()  # type: ignore
+    client._LAST.clear()  # type: ignore
+    os.makedirs("var", exist_ok=True)
+    open("var/audit.log", "w").close()
+    os.environ["FEATURE_COMPANIES_HOUSE"] = "1"
+    os.environ["COMPANIES_HOUSE_API_KEY"] = "x"
+    client.KEY = "x"
+
+
+@respx.mock
+def test_party_with_number():
+    respx.get(f"{BASE}/company/123").respond(json={"company_name": "ACME LTD", "company_number": "123"})
+    p = Party(name="Acme Ltd", company_number="123")
+    res = enrich_parties_with_companies_house([p])
+    assert res[0].registry and res[0].registry.name == "ACME LTD"
+
+
+@respx.mock
+def test_party_without_number_best_match():
+    respx.get(f"{BASE}/search/companies").respond(
+        json={"items": [{"title": "ACME LTD", "company_number": "555"}]}, headers={"ETag": "s1"}
+    )
+    respx.get(f"{BASE}/company/555").respond(json={"company_name": "ACME LTD", "company_number": "555"})
+    p = Party(name="Acme Ltd")
+    res = enrich_parties_with_companies_house([p])
+    assert res[0].registry and res[0].registry.number_or_duns == "555"
+    assert res[0].company_number == "555"
+
+
+@respx.mock
+def test_audit_has_no_pii():
+    respx.get(f"{BASE}/search/companies").respond(json={"items": []}, headers={"ETag": "e1"})
+    enrich_parties_with_companies_house([Party(name="Secret Corp")])
+    with open("var/audit.log", "r") as fh:
+        data = fh.read()
+    assert "integration_call" in data
+    assert "Secret" not in data

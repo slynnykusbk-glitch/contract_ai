@@ -1129,6 +1129,18 @@ class SuggestEdit(AppBaseModel):
     delete: Optional[str] = None
     rationale: str
     citations: List[Citation]
+    evidence: Optional[List[str]] = None
+    verification_status: Optional[
+        Literal["verified", "partially_verified", "unverified", "failed"]
+    ] = None
+    flags: Optional[List[str]] = None
+    operations: Optional[List[Literal["replace", "insertAfter", "comment"]]] = None
+
+    @model_validator(mode="after")
+    def _autofill_operations(self):
+        if self.operations is None and (self.insert is not None or self.delete is not None):
+            self.operations = ["replace"]
+        return self
 
 
 class SuggestResponse(AppBaseModel):

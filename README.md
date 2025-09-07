@@ -40,3 +40,21 @@ Sample request bodies for `/api/analyze` are included:
 - `analyze_req_doctor.json` – the same request with `mode` set to `doctor`.
 
 Run `make openapi` to regenerate `openapi.json` in the repository root.
+
+## Insurance Rule Checker
+
+This repository includes a simple rule-based insurance clause checker.
+
+### Run the checker
+
+```bash
+python cli.py check path/to/contract.txt
+```
+
+Exit code `0` means all hard requirements pass, while `2` indicates at least one hard failure.
+
+### Run tests
+
+```bash
+pytest tests/insurance -q
+```

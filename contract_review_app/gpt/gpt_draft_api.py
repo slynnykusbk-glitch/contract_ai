@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from typing import Any, Optional, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from contract_review_app.api.models import ProblemDetail
 from pydantic import BaseModel
 
 # Спробуємо підтягнути типи, але не ламаємося, якщо їх немає
 try:
-    from contract_review_app.core.schemas import AnalysisOutput  # Pydantic-модель
+    from contract_review_app.core.schemas import AnalysisOutput, SCHEMA_VERSION  # Pydantic-модель
 except Exception:
     AnalysisOutput = Any  # fallback для type hints
+    SCHEMA_VERSION = "1.3"
 
 # Rule Engine (на випадок якщо треба добудувати аналіз із сирого тексту)
 _analyze_document = None
@@ -39,6 +40,8 @@ class GPTDraftResponse(BaseModel):
     score: int
     status: str = "ok"
     title: Optional[str] = None
+    verification_status: Optional[str] = None
+    schema: str = SCHEMA_VERSION
 
 # Для нового формату: передаємо вже готовий analysis усередині
 class GPTDraftRequest(BaseModel):
@@ -89,13 +92,18 @@ def _merge_gpt_into_analysis(analysis: Dict[str, Any], gpt_result: Dict[str, Any
     out["text"] = new_text
     out["score"] = new_score
     out["recommendations"] = recs
+    if gpt_result.get("verification_status") is not None:
+        out["verification_status"] = gpt_result.get("verification_status")
+    out["schema"] = SCHEMA_VERSION
     # М'яко піднімемо статус якщо потрібно
     if gpt_result.get("status") in ("ok", "warn", "fail"):
         out["status"] = gpt_result["status"].upper()
     return out
 
 
-def _fallback_redraft(analysis: Dict[str, Any]) -> Dict[str, Any]:
+def _fallback_redraft(
+    analysis: Dict[str, Any], verification_status: str = "failed"
+) -> Dict[str, Any]:
     """
     Простий детермінований редрафт, якщо GPT недоступний.
     Гарантуємо, що містить 'confidential' для відповідності тесту на конфіденційність.
@@ -122,17 +130,20 @@ def _fallback_redraft(analysis: Dict[str, Any]) -> Dict[str, Any]:
         out["recommendations"] = []
     if "Ensure clarity on confidentiality obligations." not in out["recommendations"]:
         out["recommendations"].append("Ensure clarity on confidentiality obligations.")
+    out["verification_status"] = verification_status
     out["status"] = (analysis.get("status") or "OK").upper()
+    out["schema"] = SCHEMA_VERSION
     return out
 
 
-@router.post("/api/gpt-draft")
-def api_gpt_draft_analysis_output(payload: Dict[str, Any]) -> Any:
+@router.post("/api/gpt-draft-legacy")
+def api_gpt_draft_analysis_output(payload: Dict[str, Any], response: Response) -> Any:
     """
     BACKWARD-COMPAT: приймає AnalysisOutput або {analysis: AnalysisOutput}, повертає AnalysisOutput.
     Потрібно для наявних тестів.
     """
     analysis = _coerce_to_analysis_output(payload)
+    response.headers["x-schema-version"] = SCHEMA_VERSION
 
     # 1) спробувати оркестратор
     if run_gpt_drafting_pipeline is not None:
@@ -170,13 +181,14 @@ def api_gpt_draft_analysis_output(payload: Dict[str, Any]) -> Any:
     response_model=GPTDraftResponse,
     responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
 )
-def api_gpt_draft_gptdto(payload: Dict[str, Any]) -> GPTDraftResponse:
+def api_gpt_draft_gptdto(payload: Dict[str, Any], response: Response) -> GPTDraftResponse:
     """
     НОВИЙ контракт для UI-панелі: приймає або {analysis: ...}, або legacy {clause_type,text}
     Повертає GPTDraftResponse.
     """
     # підготуємо analysis
     analysis = _coerce_to_analysis_output(payload)
+    response.headers["x-schema-version"] = SCHEMA_VERSION
 
     # спробуємо оркестратор
     if run_gpt_drafting_pipeline is not None:
@@ -184,7 +196,7 @@ def api_gpt_draft_gptdto(payload: Dict[str, Any]) -> GPTDraftResponse:
             gpt_req = {"analysis": analysis, "model": payload.get("model", "gpt-4")}
             result = run_gpt_drafting_pipeline(gpt_req)
             if isinstance(result, dict) and ("draft_text" in result or "draft" in result):
-                return GPTDraftResponse(
+                resp = GPTDraftResponse(
                     clause_type=analysis.get("clause_type"),
                     original_text=analysis.get("text"),
                     draft_text=result.get("draft_text") or result.get("draft") or analysis.get("text") or "",
@@ -192,10 +204,12 @@ def api_gpt_draft_gptdto(payload: Dict[str, Any]) -> GPTDraftResponse:
                     score=int(result.get("score") or analysis.get("score") or 0),
                     status=str(result.get("status") or "ok"),
                     title=result.get("title"),
+                    verification_status=result.get("verification_status"),
                 )
+                return resp
             if isinstance(result, dict) and "text" in result:
                 # перетворимо AnalysisOutput -> GPTDraftResponse
-                return GPTDraftResponse(
+                resp = GPTDraftResponse(
                     clause_type=result.get("clause_type"),
                     original_text=analysis.get("text"),
                     draft_text=result.get("text") or "",
@@ -203,11 +217,13 @@ def api_gpt_draft_gptdto(payload: Dict[str, Any]) -> GPTDraftResponse:
                     score=int(result.get("score") or 0),
                     status=str(result.get("status", "ok")).lower(),
                     title=None,
+                    verification_status=result.get("verification_status"),
                 )
+                return resp
             if hasattr(result, "model_dump"):
                 res = result.model_dump()
                 if "draft_text" in res or "draft" in res:
-                    return GPTDraftResponse(
+                    resp = GPTDraftResponse(
                         clause_type=analysis.get("clause_type"),
                         original_text=analysis.get("text"),
                         draft_text=res.get("draft_text") or res.get("draft") or analysis.get("text") or "",
@@ -215,12 +231,15 @@ def api_gpt_draft_gptdto(payload: Dict[str, Any]) -> GPTDraftResponse:
                         score=int(res.get("score") or analysis.get("score") or 0),
                         status=str(res.get("status") or "ok"),
                         title=res.get("title"),
+                        verification_status=res.get("verification_status"),
                     )
+                    return resp
         except Exception:
             pass
 
     # fallback DTO
     redrafted = _fallback_redraft(analysis)
+    # header already set above
     return GPTDraftResponse(
         clause_type=analysis.get("clause_type"),
         original_text=analysis.get("text"),
@@ -229,4 +248,5 @@ def api_gpt_draft_gptdto(payload: Dict[str, Any]) -> GPTDraftResponse:
         score=int(redrafted.get("score") or 0),
         status=str(redrafted.get("status", "ok")).lower(),
         title=None,
+        verification_status=redrafted.get("verification_status"),
     )

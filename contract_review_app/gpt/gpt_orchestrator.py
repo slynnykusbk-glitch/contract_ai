@@ -6,12 +6,15 @@ from typing import Any, Dict, List, Mapping, Optional, Union
 
 from pydantic import BaseModel
 from contract_review_app.core.schemas import AnalysisOutput
+from contract_review_app.llm.citation_resolver import make_grounding_pack
+from contract_review_app.llm.prompt_builder import build_prompt
+from contract_review_app.llm.verification import verify_output_contains_citations
 
-# Prompt builder (new API with system/user) + legacy fallback
+# legacy prompt builder (fallback if new one unavailable)
 try:
     from contract_review_app.gpt.gpt_prompt_builder import (
         build_gpt_prompt,
-        build_prompt,         # legacy shim retained in our builder
+        build_prompt as legacy_build_prompt,  # legacy shim retained
         build_prompt_text,    # convenient single-string format
     )
     _HAS_BUILDER = True
@@ -56,6 +59,11 @@ def run_draft(
     a = dict(analysis or {})
     clause_type = str(a.get("clause_type") or "clause")
     allowed_sources = _extract_allowed_sources(a.get("citations") or [])
+    grounding = make_grounding_pack(
+        question="",
+        context_text=str(a.get("text") or ""),
+        citations=a.get("citations") or [],
+    )
 
     # 1) Prefer rule-provided proposed_text
     proposed = (a.get("proposed_text") or "").strip()
@@ -70,12 +78,13 @@ def run_draft(
             guard_applied=actions,
             removed_sources=removed,
             explanation="Rule template provided.",
+            verification_status=None,
         )
 
     # 2) LLM path (guarded), only if enabled and proxy present
     if use_llm and _HAS_PROXY and _HAS_BUILDER:
         try:
-            prompt_text = _prepare_prompt_string(a, mode=mode)
+            prompt_text = build_prompt(mode=mode, grounding=grounding)
             gpt_resp = call_gpt_api(
                 clause_type=clause_type,
                 prompt=prompt_text,
@@ -91,9 +100,25 @@ def run_draft(
                 findings=a.get("findings") or [],
             )
             if not cleaned:
-                # Defensive fallback if model returned empty after guards
                 cleaned = _fallback_rule_based(a, mode=mode)
                 actions.append("fallback_rule_based_due_to_empty_after_guardrails")
+            v_status = verify_output_contains_citations(
+                cleaned, grounding.get("evidence") or []
+            )
+            if v_status in {"unverified", "failed"}:
+                rb = _fallback_rule_based(a, mode=mode)
+                actions.append("fallback_rule_based_due_to_verification")
+                return _draft_out(
+                    draft_text=rb,
+                    mode=mode,
+                    model="rule-based",
+                    clause_type=clause_type,
+                    sources=allowed_sources,
+                    guard_applied=actions,
+                    removed_sources=removed,
+                    explanation="Fallback due to verification failure.",
+                    verification_status=v_status,
+                )
             return _draft_out(
                 draft_text=cleaned,
                 mode=mode,
@@ -103,9 +128,9 @@ def run_draft(
                 guard_applied=actions,
                 removed_sources=removed,
                 explanation=explanation or "Guarded LLM draft.",
+                verification_status=v_status,
             )
         except Exception as _:
-            # Hard fallback to rule-based
             rb = _fallback_rule_based(a, mode=mode)
             return _draft_out(
                 draft_text=rb,
@@ -116,6 +141,7 @@ def run_draft(
                 guard_applied=["fallback_rule_based_due_to_exception"],
                 removed_sources=[],
                 explanation="LLM path failed; used rule-based fallback.",
+                verification_status="failed",
             )
 
     # 3) Rule-based fallback
@@ -129,6 +155,7 @@ def run_draft(
         guard_applied=["rule_based_fallback"],
         removed_sources=[],
         explanation="LLM disabled or proxy unavailable.",
+        verification_status=None,
     )
 
 
@@ -144,6 +171,8 @@ def run_gpt_drafting_pipeline(
     - returns AnalysisOutput (not dict)
     """
     a = _best_effort_to_dict(analysis)
+    if "analysis" in a and isinstance(a["analysis"], dict):
+        a = dict(a["analysis"])
     mode = str(a.get("mode") or "friendly")
 
     draft_result: Dict[str, Any] = run_draft(
@@ -178,6 +207,10 @@ def run_gpt_drafting_pipeline(
         except Exception:
             pass
 
+    vs = draft_result.get("verification_status")
+    if vs is not None:
+        merged["verification_status"] = vs
+
     md = dict(merged.get("metadata") or {})
     for k in (
         "title",
@@ -187,6 +220,7 @@ def run_gpt_drafting_pipeline(
         "guardrails",
         "model",
         "llm_provider",
+        "verification_status",
     ):
         if k in draft_result and draft_result[k] is not None:
             md[f"gpt_{k}"] = draft_result[k]
@@ -198,7 +232,11 @@ def run_gpt_drafting_pipeline(
         out.diagnostics.append("gpt_draft")
     except Exception:
         pass
-    return out
+    out_dict = out.model_dump()
+    vs = merged.get("verification_status")
+    if vs is not None:
+        out_dict["verification_status"] = vs
+    return out_dict
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +281,7 @@ def _prepare_prompt_string(analysis: Dict[str, Any], mode: str) -> str:
             except Exception:
                 pass
         try:
-            legacy = build_prompt(analysis=analysis, mode=mode)  # type: ignore
+            legacy = legacy_build_prompt(analysis=analysis, mode=mode)  # type: ignore
             # legacy may return dict or string
             if isinstance(legacy, dict):
                 return f"[SYSTEM]\n{legacy.get('system','')}\n\n[USER]\n{legacy.get('user','')}"
@@ -387,6 +425,7 @@ def _draft_out(
     guard_applied: List[str],
     removed_sources: List[str],
     explanation: str,
+    verification_status: Optional[str] = None,
 ) -> Dict[str, Any]:
     return {
         "draft_text": draft_text.strip(),
@@ -400,6 +439,7 @@ def _draft_out(
             "removed_sources": removed_sources,
         },
         "explanation": explanation,
+        "verification_status": verification_status,
     }
 
 _ATTR_ALIASES = {"draft_text": ["draft"]}

@@ -1,0 +1,210 @@
+# Pricing, Invoicing & Payment universal rule-pack
+# Schema 1.3-compatible single-rule objects
+rules:
+  - id: P1.ALL_INCLUSIVE_RATES
+    version: "1.0"
+    title: "All-inclusive rates; вне перечня не оплачивается"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["pricing"]
+    triggers:
+      any:
+        - regex: "(?i)all[- ]inclusive (rates|pricing)"
+        - regex: "(?i)no (additional|separate) charges.*unless.*(listed|set out)"
+    severity: medium
+    advice: "Подтвердить полный список исключений (доставка/упаковка/страхование, минималка)."
+    law_reference:
+      - "Contract admin best practice"
+    suggest_text:
+      friendly: "Specify list of exclusions (delivery, packaging, insurance, minimum order)."
+  - id: P2.INVOICE_CONTENT_VAT
+    version: "1.0"
+    title: "VAT invoice content and supporting documents"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["invoice"]
+    triggers:
+      any:
+        - regex: "(?i)invoice must (include|contain).*VAT"
+        - regex: "(?i)(PO|Call[- ]Off|timesheets|GRN)"
+    severity: high
+    advice: "Сверить с HMRC VAT Notice 700/700/21 (реквизиты, хранение 6 лет)."
+    law_reference:
+      - "HMRC VAT Notice 700"
+      - "HMRC 700/21"
+    suggest_text:
+      friendly: "Ensure VAT invoices include mandatory data and retain supporting docs for 6 years."
+  - id: P3.LATE_INVOICE_TIMEBAR
+    version: "1.0"
+    title: "Late invoice submission time bar"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["invoice"]
+    triggers:
+      any:
+        - regex: '(?i)no payment for invoices submitted later than .*?\(?(\d+)\)?\s*days'
+    severity: high
+    advice: "Подсветить риск несоразмерности; carve-outs для спорных сумм/финальных сверок; для public/construction — manual review."
+    law_reference:
+      - "UCTA reasonableness"
+      - "PCR 2015 Reg.113"
+      - "HGCRA"
+    ops: ["manual_review"]
+    suggest_text:
+      friendly: "Allow carve-outs for disputed sums and final reconciliations; review reasonableness."
+  - id: P4.PAYMENT_TERMS_AND_INTEREST
+    version: "1.0"
+    title: "Payment term and late payment interest"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["payment"]
+    triggers:
+      any:
+        - regex: '(?i)payment (term|due).*?(\d+)\s*days'
+        - regex: "(?i)interest.*late payment"
+    severity: high
+    advice: 'Если нет договорного «существенного средства», указать статутный режим (Late Payment Act: BOE base +8%, фикс. сбор + разумные расходы).'
+    law_reference:
+      - "Late Payment of Commercial Debts (Interest) Act 1998"
+      - "Late Payment of Commercial Debts Regs 2013"
+    suggest_text:
+      friendly: "If contractual remedy insufficient, apply Late Payment Act: BOE base +8% plus fixed charge and reasonable costs."
+  - id: P5.PUBLIC_30DAYS_CASCADE
+    version: "1.0"
+    title: "Public sector 30-day payment cascade"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["payment"]
+    triggers:
+      any:
+        - regex: "(?i)(contracting authority|utility).*30.*days"
+        - regex: '(?i)Reg(ulation)?\.?\s*113'
+    severity: high
+    advice: "Включить 30-дневку во всю цепочку субов; прописать механизмы."
+    law_reference:
+      - "PCR 2015 Reg.113"
+    ops: ["public_sector"]
+    suggest_text:
+      friendly: "Apply 30-day terms through all subcontract tiers with enforcement mechanisms."
+  - id: P6.CONSTRUCTION_PAY_NOTICES
+    version: "1.0"
+    title: "Construction Act payment and pay-less notices"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["payment"]
+    triggers:
+      any:
+        - regex: "(?i)Construction Act|HGCRA|pay[- ]less notice|payment notice"
+    severity: critical
+    advice: "Сроки и содержание уведомлений; запрет pay-when-paid (кроме upstream insolvency)."
+    law_reference:
+      - "HGCRA 1996 s.110A"
+      - "HGCRA 1996 s.111"
+      - "HGCRA 1996 s.113"
+    ops: ["construction"]
+    suggest_text:
+      friendly: "Ensure compliant payment/pay-less notices and remove pay-when-paid except for upstream insolvency."
+  - id: P7.SETOFF_SCOPE
+    version: "1.0"
+    title: "Broad/asymmetric set-off or withholding"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["payment"]
+    triggers:
+      any:
+        - regex: '(?i)(set[- ]off|withhold|deduct)'
+    severity: medium
+    advice: "Подсветить односторонность; для supplier — рекомендовать mutual netting/лимиты."
+    law_reference:
+      - "General contract law"
+    suggest_text:
+      friendly: "Consider mutual set-off rights or caps on deductions to balance positions."
+  - id: P8.PAY_UNDISPUTED
+    version: "1.0"
+    title: "Pay undisputed portion promptly"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["payment"]
+    triggers:
+      any:
+        - regex: "(?i)pay.*undisputed (amount|portion)"
+    severity: medium
+    advice: "Таймер урегулирования спора (напр., 10 BD) и кредит-ноты."
+    law_reference:
+      - "Best practice"
+    suggest_text:
+      friendly: "Set dispute resolution timer (e.g., 10 business days) and credit note mechanism."
+  - id: P9.EINVOICE_PLATFORM_VAT_CONTROL
+    version: "1.0"
+    title: "E-invoicing platform and VAT controls"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["invoice"]
+    triggers:
+      any:
+        - regex: '(?i)(e[- ]invoice|SAP Business Network|Commerce Automation|3[- ]way match)'
+    severity: high
+    advice: "HMRC требования: аутентичность/целостность/читабельность; ретенция ≥6 лет; fallback-канал."
+    law_reference:
+      - "HMRC VAT 700/63"
+      - "HMRC VAT 700"
+    suggest_text:
+      friendly: "Maintain authenticity, integrity, readability of e-invoices and retain records ≥6 years with fallback channel."
+  - id: P10.REIMBURSABLES_NET_OF_REBATES
+    version: "1.0"
+    title: "Reimbursables net of rebates/discounts"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["pricing"]
+    triggers:
+      any:
+        - regex: '(?i)(reimbursable|pass[- ]through|net of rebates)'
+    severity: medium
+    advice: "Приложить 3rd-party счета и отчёт по скидкам; лимит fee."
+    law_reference:
+      - "Procurement best practice"
+    suggest_text:
+      friendly: "Provide third-party invoices and rebate reports; cap any handling fee."
+  - id: P11.NO_PAY_IDLE_EFFICIENCY
+    version: "1.0"
+    title: "No pay for idle time or low efficiency"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["payment"]
+    triggers:
+      any:
+        - regex: "(?i)no payment for (idle|standby).*contractor (fault|failure)"
+        - regex: "(?i)efficiency.*adjust(ment)?"
+    severity: high
+    advice: "Требуются метрики эффективности и события простоя."
+    law_reference:
+      - "Services contracting practice"
+    suggest_text:
+      friendly: "Define efficiency metrics and idle-event reporting to support no-pay provisions."
+  - id: P12.RECEIVABLES_ASSIGNMENT_PERMITTED
+    version: "1.0"
+    title: "Receivables assignment restrictions"
+    scope:
+      jurisdiction: ["Any"]
+      doc_types: ["Any"]
+      clauses: ["payment"]
+    triggers:
+      any:
+        - regex: "(?i)may not assign (receivables|amounts due|right to payment)"
+    severity: high
+    advice: "Если применимы Business Contract Terms (Assignment of Receivables) Regs 2018, запрет 'of no effect'; добавить carve-out."
+    law_reference:
+      - "SI 2018/1254"
+    suggest_text:
+      friendly: "Add carve-out acknowledging Assignment of Receivables Regulations 2018." 

@@ -1,0 +1,340 @@
+rule:
+  id: ipr.agreement_docs_title.company
+  version: 1.0.0
+  title: "Agreement Documentation title vests in Company"
+  law_reference:
+    - "Copyright assignment must be in writing (CDPA 1988 s.90)."
+  severity: low
+  triggers:
+    any:
+      - regex: "(?i)agreement documentation"
+  checks:
+    - id: title_vests_company
+      when:
+        regex: "(?i)(title|ownership).*agreement documentation.*(company)"
+      finding:
+        message: "Титул на Agreement Documentation закреплён за Company."
+        severity_level: low
+        risk: "Риск отсутствует: титул у Company."
+        suggestion:
+          text: "—"
+    - id: title_retained_contractor
+      when:
+        regex: '(?i)title.*(remain|retained).*contractor|assigned\s+later'
+      finding:
+        message: "Титул на Agreement Documentation сохраняется у Contractor или передаётся позднее."
+        severity_level: high
+        risk: "Company может не получить права на документацию."
+        suggestion:
+          text: "Закрепите немедленное переход права на документацию к Company."
+  outcome:
+    status: pass
+    risk_level: low
+    severity: low
+    problem: ""
+    recommendation: ""
+  metadata:
+    tags: ["ipr","documentation","title","company"]
+---
+rule:
+  id: ipr.fg.licence.scope
+  version: 1.0.0
+  title: "Foreground IPR licence to Company — broad grant"
+  law_reference:
+    - "Company must be able to modify and own modifications."
+  severity: high
+  triggers:
+    any:
+      - regex: '(?i)foreground\s+(intellectual\s+property|ipr)'
+  checks:
+    - id: fg_full_scope
+      when:
+        all:
+          - regex: '(?i)worldwide'
+          - regex: '(?i)royalty-free'
+          - regex: '(?i)perpetual'
+          - regex: '(?i)irrevocable'
+          - regex: '(?i)transferable'
+          - regex: '(?i)sub-?licen(c|s)able'
+          - regex: '(?i)\bmodify\b'
+          - regex: '(?i)modifications?\s+shall\s+vest\s+in\s+company'
+      finding:
+        message: "Широкая лицензия FG IPR в пользу Company присутствует."
+        severity_level: low
+        risk: "—"
+        suggestion:
+          text: "—"
+    - id: fg_missing_scope
+      when:
+        any:
+          - not_regex: "(?i)worldwide"
+          - not_regex: '(?i)royalty-free'
+          - not_regex: "(?i)perpetual"
+          - not_regex: "(?i)irrevocable"
+          - not_regex: "(?i)transferable"
+          - not_regex: "(?i)sub-?licen(c|s)able"
+          - not_regex: '(?i)\bmodify\b'
+          - not_regex: '(?i)modifications?\s+shall\s+vest\s+in\s+company'
+      finding:
+        message: "Лицензия FG IPR не покрывает все ключевые права."
+        severity_level: high
+        risk: "Company может не получить полные права на FG IPR."
+        suggestion:
+          text: "Добавьте worldwide, royalty-free, perpetual, irrevocable, transferable, sublicensable, право modify и vesting of modifications."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: high
+    problem: "FG licence scope неполная."
+    recommendation: "Расширить лицензию FG IPR."
+  metadata:
+    tags: ["ipr","foreground","licence","scope"]
+---
+rule:
+  id: ipr.bg.licence.conflict
+  version: 1.0.0
+  title: "Background IPR licence — detect term conflict"
+  law_reference:
+    - "Consistency & enforceability of licence terms (UK contract law)."
+  severity: high
+  triggers:
+    any:
+      - regex: '(?i)background\s+(intellectual\s+property|ipr)'
+  checks:
+    - id: bg_term_conflict
+      when:
+        all:
+          - regex: "(?i)perpetual|irrevocable"
+          - regex: '(?i)only\s+for\s+the\s+duration\s+of\s+the\s+(agreement|call-?off)'
+      finding:
+        message: "Конфликт срока BG-лицензии: perpetual/irrevocable vs only for the duration."
+        severity_level: high
+        risk: "Внутренняя противоречивость условий лицензии."
+        suggestion:
+          text: "Выбрать одну модель срока и убрать конфликт."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: high
+    problem: "BG licence term conflict."
+    recommendation: "Согласовать единую редакцию срока BG-лицензии."
+  metadata:
+    tags: ["ipr","background","licence","conflict","term"]
+---
+rule:
+  id: ipr.moral_rights.waiver
+  version: 1.0.0
+  title: "Moral rights — unconditional & irrevocable waivers"
+  law_reference:
+    - "CDPA 1988 s.87 allows waiver of moral rights."
+  severity: high
+  triggers:
+    any:
+      - regex: '(?i)moral\s+rights'
+  checks:
+    - id: moral_rights_missing_waiver
+      when:
+        not_regex: '(?i)irrevocably\s+and\s+unconditionally\s+waive(s)?\s+all\s+moral\s+rights'
+      finding:
+        message: "Отсутствует безусловный отказ от моральных прав."
+        severity_level: high
+        risk: "Автор может препятствовать использованию произведения."
+        suggestion:
+          text: "Вставьте безусловный и безотзывный отказ от всех моральных прав."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: high
+    problem: "No moral rights waiver."
+    recommendation: "Добавить waiver от всех авторов/исполнителей."
+  metadata:
+    tags: ["ipr","moral rights","waiver"]
+---
+rule:
+  id: ipr.indemnity.remedies
+  version: 1.0.0
+  title: "IPR indemnity with procure/replace/modify remedies"
+  law_reference:
+    - "Indemnifying party must ensure equivalent performance with no extra cost."
+  severity: high
+  triggers:
+    any:
+      - regex: '(?i)intellectual\s+property'
+      - regex: "(?i)ipr"
+  checks:
+    - id: indemnity_missing_conditions
+      when:
+        any:
+          - not_regex: "(?i)procure"
+          - not_regex: "(?i)replace"
+          - not_regex: "(?i)modify"
+          - not_regex: '(?i)equivalent\s+performance'
+          - not_regex: '(?i)no\s+additional\s+cost'
+          - not_regex: '(?i)no\s+adverse\s+impact'
+          - not_regex: '(?i)subject\s+to\s+(this|the)\s+agreement'
+      finding:
+        message: "Условия IPR indemnity/remedies неполные."
+        severity_level: high
+        risk: "Company может остаться без эквивалентного решения и понести расходы."
+        suggestion:
+          text: "Добавьте: procure licence, replace или modify с equivalent performance, без additional cost, без adverse impact и subject to this Agreement."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: high
+    problem: "IPR indemnity lacks full remedies."
+    recommendation: "Расширить перечень remedial условий."
+  metadata:
+    tags: ["ipr","indemnity","remedies"]
+---
+rule:
+  id: ipr.brand.use.prohibition
+  version: 1.0.0
+  title: "Brand use prohibition"
+  law_reference:
+    - "Trade mark use requires prior consent."
+  severity: high
+  triggers:
+    any:
+      - regex: '(?i)company(?:''s)?\s+(name|logo|brand|trademark)'
+  checks:
+    - id: brand_use_allowed
+      when:
+        all:
+          - regex: '(?i)may\s+use.*company(?:''s)?\s+(name|logo|brand|trademark)'
+          - not_regex: '(?i)prior\s+written\s+consent'
+      finding:
+        message: "Разрешение на использование бренда Company дано по умолчанию."
+        severity_level: high
+        risk: "Нежелательное использование названия/логотипов Company."
+        suggestion:
+          text: "Запретите использование бренда без предварительного письменного согласия Company."
+  outcome:
+    status: fail
+    risk_level: high
+    severity: high
+    problem: "Brand use allowed by default."
+    recommendation: "Добавить запрет на использование без письменного согласия."
+  metadata:
+    tags: ["ipr","brand","consent"]
+---
+rule:
+  id: ipr.supplied_software.definition
+  version: 1.0.0
+  title: "Supplied Software — comprehensive definition"
+  law_reference:
+    - "Software supply should cover all components."
+  severity: medium
+  triggers:
+    any:
+      - regex: '(?i)supplied\s+software'
+  checks:
+    - id: supplied_software_incomplete
+      when:
+        any:
+          - not_regex: '(?i)embedded\s+firmware'
+          - not_regex: '(?i)activation\s+keys'
+          - not_regex: '(?i)test\s+scripts'
+          - not_regex: "(?i)patches|updates"
+          - not_regex: "(?i)manuals"
+      finding:
+        message: "Определение Supplied Software неполное."
+        severity_level: medium
+        risk: "Часть компонентов может быть исключена."
+        suggestion:
+          text: "Уточните, что Supplied Software включает firmware, activation keys, test scripts, patches/updates и manuals."
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: medium
+    problem: "Definition of Supplied Software incomplete."
+    recommendation: "Добавить недостающие элементы."
+  metadata:
+    tags: ["ipr","software","definition"]
+---
+rule:
+  id: ipr.further_assurances.poa
+  version: 1.0.0
+  title: "Further assurances and irrevocable PoA"
+  law_reference:
+    - "Further assurances clauses secure assignment validity."
+  severity: medium
+  triggers:
+    any:
+      - regex: '(?i)intellectual\s+property|ipr'
+  checks:
+    - id: missing_further_assurances
+      when:
+        not_regex: '(?i)further\s+assurances|power\s+of\s+attorney'
+      finding:
+        message: "Отсутствует обязанность подписывать документы/PoA для оформления прав."
+        severity_level: medium
+        risk: "Компания может столкнуться с препятствиями при оформлении прав."
+        suggestion:
+          text: "Добавьте обязанность подписывать документы и безотзывный PoA на Company."
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: medium
+    problem: "No further assurances/PoA."
+    recommendation: "Вставить clause о further assurances и irrevocable PoA."
+  metadata:
+    tags: ["ipr","assurances","poa"]
+---
+rule:
+  id: ipr.oss.guardrails
+  version: 1.0.0
+  title: "Open-source guardrails (SBOM/copyleft)"
+  law_reference:
+    - "OSS components require policy compliance and SBOM."
+  severity: medium
+  triggers:
+    any:
+      - regex: "(?i)software"
+  checks:
+    - id: oss_missing_controls
+      when:
+        not_regex: '(?i)open\s*source|OSS|software\s+bill\s+of\s+materials|SBOM|copyleft'
+      finding:
+        message: "Отсутствуют OSS-политика/SBOM/запрет copyleft."
+        severity_level: medium
+        risk: "Возможны нарушения лицензий OSS и copyleft-заражение."
+        suggestion:
+          text: "Добавьте политику использования OSS, требование SBOM и запрет copyleft-заражения."
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: medium
+    problem: "No OSS guardrails."
+    recommendation: "Добавить требования по OSS и SBOM."
+  metadata:
+    tags: ["ipr","oss","sbom"]
+---
+rule:
+  id: ipr.source_code.escrow
+  version: 1.0.0
+  title: "Source code escrow for critical software"
+  law_reference:
+    - "Escrow ensures access if supplier fails."
+  severity: medium
+  triggers:
+    any:
+      - regex: '(?i)source\s+code'
+  checks:
+    - id: escrow_missing
+      when:
+        not_regex: "(?i)escrow"
+      finding:
+        message: "Отсутствует условие о депонировании исходного кода (escrow)."
+        severity_level: medium
+        risk: "Company рискует потерять доступ к критичному ПО."
+        suggestion:
+          text: "Предусмотрите escrow исходного кода с событиями release: банкротство, отказ поддерживать, нарушение."
+  outcome:
+    status: warn
+    risk_level: medium
+    severity: medium
+    problem: "No source code escrow."
+    recommendation: "Добавить escrow с release events."
+  metadata:
+    tags: ["ipr","escrow","source code"]

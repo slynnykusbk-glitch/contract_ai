@@ -21,7 +21,7 @@ def test_api_key_auth(monkeypatch):
     r = client.post("/api/suggest_edits", json=payload)
     assert r.status_code == 401
 
-    headers = {"x-api-key": "secret"}
+    headers = {"x-api-key": "secret", "x-schema-version": "1.3"}
     assert client.post("/api/analyze", json=payload, headers=headers).status_code == 200
     assert (
         client.post(

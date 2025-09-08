@@ -19,5 +19,9 @@ def test_api_key_required(monkeypatch):
     monkeypatch.setenv("API_KEY", "secret")
     resp = client.post("/api/explain", json=REQ)
     assert resp.status_code == 401
-    resp2 = client.post("/api/explain", headers={"x-api-key": "secret"}, json=REQ)
+    resp2 = client.post(
+        "/api/explain",
+        headers={"x-api-key": "secret", "x-schema-version": "1.3"},
+        json=REQ,
+    )
     assert resp2.status_code == 200

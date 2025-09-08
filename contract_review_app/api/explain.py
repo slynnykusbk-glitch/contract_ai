@@ -5,7 +5,7 @@ import os
 import time
 from typing import List, Optional
 
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 
 from contract_review_app.core.schemas import ExplainRequest, ExplainResponse, Citation, Evidence
@@ -19,6 +19,7 @@ from contract_review_app.llm.provider import get_provider
 from contract_review_app.llm.verification import verify_output_contains_citations
 from contract_review_app.core.audit import audit
 from .headers import apply_std_headers, compute_cid
+from .auth import require_api_key_and_schema
 
 
 router = APIRouter(prefix="/api")
@@ -28,13 +29,6 @@ _TRUTHY = {"1", "true", "yes", "on", "enabled"}
 
 def _env_truthy(name: str) -> bool:
     return (os.getenv(name, "") or "").strip().lower() in _TRUTHY
-
-
-def _require_api_key(request: Request) -> None:
-    if _env_truthy("FEATURE_REQUIRE_API_KEY"):
-        api_key = os.getenv("API_KEY", "")
-        if request.headers.get("x-api-key") != api_key:
-            raise HTTPException(status_code=401, detail="missing or invalid api key")
 
 
 # instantiate provider once for explain endpoint
@@ -100,7 +94,7 @@ def _gather_evidence(citations: List[Citation]) -> List[Evidence]:
     return evidence
 
 
-@router.post("/explain", response_model=ExplainResponse, dependencies=[Depends(_require_api_key)])
+@router.post("/explain", response_model=ExplainResponse, dependencies=[Depends(require_api_key_and_schema)])
 async def api_explain(body: ExplainRequest, request: Request) -> JSONResponse:
     started = time.perf_counter()
     cid = compute_cid(request)

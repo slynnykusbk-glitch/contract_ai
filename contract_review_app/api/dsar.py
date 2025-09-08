@@ -1,22 +1,14 @@
-from __future__ import annotations
-
 import json
-import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request, Response, Depends
+from fastapi import APIRouter, HTTPException, Response, Depends
 
 from contract_review_app.security.secure_store import secure_read
+from .auth import require_api_key_and_schema
 
-API_KEY = os.getenv("API_KEY", "")
 _DATA_DIR = Path(__file__).resolve().parents[2] / "var" / "dsar"
 
 router = APIRouter(prefix="/api/dsar")
-
-
-def _check_api_key(request: Request) -> None:
-    if request.headers.get("x-api-key") != API_KEY:
-        raise HTTPException(status_code=401, detail="missing or invalid api key")
 
 
 def _verify_token(token: str) -> None:
@@ -24,7 +16,7 @@ def _verify_token(token: str) -> None:
         raise HTTPException(status_code=401, detail="invalid token")
 
 
-@router.get("/access", dependencies=[Depends(_check_api_key)])
+@router.get("/access", dependencies=[Depends(require_api_key_and_schema)])
 async def dsar_access(identifier: str, token: str):
     _verify_token(token)
     path = _DATA_DIR / f"{identifier}.json"
@@ -37,7 +29,7 @@ async def dsar_access(identifier: str, token: str):
     return data
 
 
-@router.post("/erasure", dependencies=[Depends(_check_api_key)])
+@router.post("/erasure", dependencies=[Depends(require_api_key_and_schema)])
 async def dsar_erasure(identifier: str, token: str):
     _verify_token(token)
     path = _DATA_DIR / f"{identifier}.json"
@@ -49,7 +41,7 @@ async def dsar_erasure(identifier: str, token: str):
     return {"status": "ok"}
 
 
-@router.get("/export", dependencies=[Depends(_check_api_key)])
+@router.get("/export", dependencies=[Depends(require_api_key_and_schema)])
 async def dsar_export(identifier: str, token: str):
     _verify_token(token)
     path = _DATA_DIR / f"{identifier}.json"

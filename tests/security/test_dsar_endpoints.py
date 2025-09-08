@@ -29,7 +29,7 @@ def test_dsar_endpoints(tmp_path, monkeypatch):
     params = {"identifier": "user@example.com", "token": "t"}
     # missing api key
     assert client.get("/api/dsar/access", params=params).status_code == 401
-    headers = {"x-api-key": "secret"}
+    headers = {"x-api-key": "secret", "x-schema-version": "1.3"}
     r = client.get("/api/dsar/access", params=params, headers=headers)
     assert r.status_code == 200
     assert "user@example.com" not in r.text

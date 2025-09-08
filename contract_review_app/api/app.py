@@ -181,6 +181,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
+from .auth import require_api_key_and_schema as _require_api_key
 from .mw_utils import capture_response, normalize_status_if_json
 from .models import (
     CitationInput,
@@ -877,8 +878,6 @@ def _env_truthy(name: str) -> bool:
     return (os.getenv(name, "") or "").strip().lower() in _TRUTHY
 
 
-FEATURE_REQUIRE_API_KEY = _env_truthy("FEATURE_REQUIRE_API_KEY")
-API_KEY = os.getenv("API_KEY", "")
 
 _ALLOWED_ORIGINS = [
     o.strip()
@@ -911,12 +910,6 @@ app.add_middleware(
         "x-usage-total",
     ],
 )
-
-
-def _require_api_key(request: Request) -> None:
-    if FEATURE_REQUIRE_API_KEY:
-        if request.headers.get("x-api-key") != API_KEY:
-            raise HTTPException(status_code=401, detail="missing or invalid api key")
 
 
 # ---- Trace middleware and store ------------------------------------

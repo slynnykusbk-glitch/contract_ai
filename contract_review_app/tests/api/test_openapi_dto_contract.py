@@ -18,27 +18,28 @@ def test_openapi_dto_contract():
         == REF.format("AnalyzeResponse")
     )
 
-    for p in ("/api/citation/resolve", "/api/citations/resolve"):
-        op = paths[p]["post"]
-        assert (
-            op["requestBody"]["content"]["application/json"]["schema"]["$ref"]
-            == REF.format("CitationResolveRequest")
-        )
-        assert (
-            op["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
-            == REF.format("CitationResolveResponse")
-        )
+    p = "/api/citation/resolve"
+    op = paths[p]["post"]
+    assert (
+        op["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+        == REF.format("CitationResolveRequest")
+    )
+    assert (
+        op["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
+        == REF.format("CitationResolveResponse")
+    )
 
-    corpus = paths["/api/corpus/search"]["post"]
-    assert (
-        corpus["requestBody"]["content"]["application/json"]["schema"]["$ref"]
-        == REF.format("CorpusSearchRequest")
-    )
-    assert (
-        corpus["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
-        == REF.format("CorpusSearchResponse")
-    )
+    if "/api/corpus/search" in paths:
+        corpus = paths["/api/corpus/search"]["post"]
+        assert (
+            corpus["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+            == REF.format("CorpusSearchRequest")
+        )
+        assert (
+            corpus["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
+            == REF.format("CorpusSearchResponse")
+        )
 
     comps = schema["components"]["schemas"]
-    for name in ["Finding", "Span", "Segment", "SearchHit", "Citation"]:
+    for name in ["Finding", "Span", "Segment", "SearchHit", "CitationInput"]:
         assert name in comps

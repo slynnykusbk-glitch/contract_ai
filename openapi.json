@@ -4573,7 +4573,6 @@
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": true,
                 "type": "object",
                 "title": "Payload"
               }
@@ -5735,7 +5734,6 @@
             "type": "string"
           },
           "analysis": {
-            "additionalProperties": true,
             "title": "Analysis",
             "type": "object"
           }
@@ -5799,7 +5797,26 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "CitationResolveRequest"
+        "title": "CitationResolveRequest",
+        "description": "Request model for ``/api/citation/resolve``.\n\nExactly one of ``findings`` or ``citations`` must be provided.  Both\nfields are optional to allow Pydantic to perform the exclusive-or check\nbelow.",
+        "examples": [
+          {
+            "citations": [
+              {
+                "instrument": "Act",
+                "section": "1"
+              }
+            ]
+          },
+          {
+            "findings": [
+              {
+                "code": "X",
+                "message": "m"
+              }
+            ]
+          }
+        ]
       },
       "CitationResolveResponse": {
         "properties": {
@@ -5917,7 +5934,6 @@
                 "type": "array"
               },
               {
-                "additionalProperties": true,
                 "type": "object"
               }
             ],
@@ -5932,7 +5948,6 @@
             "title": "After Text"
           },
           "diff": {
-            "additionalProperties": true,
             "type": "object",
             "title": "Diff"
           },
@@ -6091,7 +6106,6 @@
           "extra": {
             "anyOf": [
               {
-                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -6116,7 +6130,6 @@
             "title": "Text"
           },
           "rules": {
-            "additionalProperties": true,
             "type": "object",
             "title": "Rules"
           }
@@ -6143,7 +6156,6 @@
           "meta": {
             "anyOf": [
               {
-                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -6538,7 +6550,6 @@
           "meta": {
             "anyOf": [
               {
-                "additionalProperties": true,
                 "type": "object"
               },
               {

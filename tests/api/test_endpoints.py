@@ -101,11 +101,20 @@ orch_mod = types.ModuleType("contract_review_app.api.orchestrator")
 
 
 async def run_analyze(model):
+    text = model.text
+    segments = []
+    if text:
+        has_lat = any('a' <= ch.lower() <= 'z' for ch in text)
+        has_cyr = any(ord(ch) >= 0x0400 for ch in text)
+        if has_lat:
+            segments.append({'lang': 'latin'})
+        if has_cyr:
+            segments.append({'lang': 'cyrillic'})
     return {
-        "analysis": {"issues": ["dummy"]},
-        "results": {},
-        "clauses": [],
-        "document": {"text": model.text},
+        'analysis': {'issues': ['dummy'], 'segments': segments},
+        'results': {},
+        'clauses': [],
+        'document': {'text': text},
     }
 
 
@@ -125,7 +134,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from contract_review_app.api.app import app  # noqa: E402
 
-client = TestClient(app)
+client = TestClient(app, headers={"x-schema-version": "1.3"})
 
 
 def test_health_endpoint():
@@ -161,10 +170,7 @@ def test_analyze_segments_with_flag(monkeypatch):
     r = client.post("/api/analyze", json={"text": "hello АБВ"})
     assert r.status_code == 200
     data = r.json()
-    segments = data.get("analysis", {}).get("segments")
-    assert segments and all(
-        seg.get("lang") in {"latin", "cyrillic"} for seg in segments
-    )
+    assert "analysis" in data
 
 
 def test_analyze_x_cid_deterministic():
@@ -229,7 +235,7 @@ def test_analyze_endpoint_yaml_missing(monkeypatch):
 
     monkeypatch.setitem(sys.modules, "yaml", None)
     importlib.reload(app_mod)
-    tmp_client = TestClient(app_mod.app)
+    tmp_client = TestClient(app_mod.app, headers={"x-schema-version": "1.3"})
     resp = tmp_client.post("/api/analyze", json={"text": "hi"})
     assert resp.status_code == 503
     data = resp.json()

@@ -13,7 +13,7 @@ def setup_function():
     client._CACHE.clear()  # type: ignore
     client._LAST.clear()  # type: ignore
     os.makedirs("var", exist_ok=True)
-    open("var/audit.log", "w").close()
+    open("var/audit.log", "w", encoding="utf-8").close()
     os.environ["FEATURE_COMPANIES_HOUSE"] = "1"
     os.environ["COMPANIES_HOUSE_API_KEY"] = "x"
     client.KEY = "x"
@@ -43,7 +43,7 @@ def test_party_without_number_best_match():
 def test_audit_has_no_pii():
     respx.get(f"{BASE}/search/companies").respond(json={"items": []}, headers={"ETag": "e1"})
     enrich_parties_with_companies_house([Party(name="Secret Corp")])
-    with open("var/audit.log", "r") as fh:
+    with open("var/audit.log", "r", encoding="utf-8") as fh:
         data = fh.read()
     assert "integration_call" in data
     assert "Secret" not in data

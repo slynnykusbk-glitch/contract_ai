@@ -1,16 +1,7 @@
-import contract_review_app.api.app as app_mod
 import pytest
 
 
 @pytest.fixture(autouse=True)
-def patch_analyze(monkeypatch):
-    def fake(text: str):
-        return {
-            "analysis": {"issues": ["dummy"]},
-            "results": {},
-            "clauses": [],
-            "document": {"text": text},
-        }
-
-    monkeypatch.setattr(app_mod, "_analyze_document", fake, raising=True)
+def ensure_env(monkeypatch):
+    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-key-123456789012345678901234")
     yield

@@ -127,16 +127,6 @@ def _finalize_json(
     hdrs = dict(headers or {})
     cid = hdrs.get("x-cid") or secrets.token_hex(32)
     hdrs["x-cid"] = cid
-    TRACE.put(
-        cid,
-        {
-            "ts": datetime.now(timezone.utc).isoformat(),
-            "path": path,
-            "status": status_code,
-            "headers": hdrs,
-            "body": payload,
-        },
-    )
     return JSONResponse(payload, status_code=status_code, headers=hdrs)
 
 
@@ -968,51 +958,6 @@ async def add_response_headers(request: Request, call_next):
     response = await call_next(request)
     if "x-schema-version" not in response.headers:
         apply_std_headers(response, request, started_at)
-
-    resp_bytes = b""
-    async for chunk in response.body_iterator:
-        resp_bytes += chunk
-
-    async def _send_body():
-        yield resp_bytes
-
-    response.body_iterator = _send_body()
-
-    path = request.url.path
-    method = request.method
-    cid: str | None = None
-    if method == "POST" and path == "/api/analyze":
-        cid = response.headers.get("x-cid")
-    elif method == "GET" and path == "/health":
-        cid = "health"
-
-    if cid:
-        try:
-            req_json = json.loads(body.decode("utf-8")) if body else {}
-        except Exception:
-            req_json = {}
-        try:
-            resp_json = json.loads(resp_bytes.decode("utf-8"))
-        except Exception:
-            resp_json = {}
-        snapshot: Dict[str, Any] = {
-            "cid": cid,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "input": req_json if isinstance(req_json, dict) else {},
-            "analysis": resp_json if isinstance(resp_json, dict) else {},
-            "meta": {
-                "path": path,
-                "status": response.status_code,
-                "headers": {
-                    "x-cache": response.headers.get("x-cache"),
-                    "x-doc-hash": response.headers.get("x-doc-hash"),
-                    "x-cid": response.headers.get("x-cid"),
-                },
-            },
-            "x_schema_version": SCHEMA_VERSION,
-        }
-        if TRACE.get(cid) is None:
-            TRACE.put(cid, snapshot)
     return response
 
 

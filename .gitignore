@@ -49,3 +49,4 @@ Thumbs.db
 # Test fixtures
 tests/analysis/*.docx
 tests/analysis/*.pdf
+contract_review_app/contract_review_app/static/panel/.build-token

@@ -65,6 +65,33 @@ class ParsedDocument:
             return None
         return (start_raw, end_raw)
 
+    # ------------------------------------------------------------------
+    # Reverse mapping helpers
+
+    def map_raw_to_norm(self, i: int) -> Optional[int]:
+        """Map raw index to normalized index if possible."""
+
+        if i < 0 or i >= len(self.content):
+            return None
+        # offset_map is strictly increasing
+        import bisect
+
+        j = bisect.bisect_left(self.offset_map, i)
+        if j < len(self.offset_map) and self.offset_map[j] == i:
+            return j
+        return None
+
+    def map_raw_span_to_norm(self, start: int, end: int) -> Optional[Tuple[int, int]]:
+        """Map a raw span to normalized coordinates."""
+
+        if start < 0 or end < 0 or start > end or end > len(self.content):
+            return None
+        import bisect
+
+        a = bisect.bisect_left(self.offset_map, start)
+        b = bisect.bisect_left(self.offset_map, end)
+        return (a, b)
+
     def _assert_invariants(self) -> None:
         om = self.offset_map
         nt = self.normalized_text

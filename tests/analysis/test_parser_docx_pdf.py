@@ -25,6 +25,25 @@ def test_parse_docx(tmp_path: Path):
     assert any(seg["kind"] == "heading" and seg.get("number") for seg in parsed.segments)
 
 
+def test_parse_docx_multiline(tmp_path: Path) -> None:
+    doc = Document()
+    doc.add_paragraph("Line1\nLine2")
+    file_path = tmp_path / "multi.docx"
+    doc.save(file_path)
+    parsed = parse_docx(file_path.read_bytes())
+    assert "Line1\nLine2" in parsed.normalized_text
+
+
+def test_parse_docx_large(tmp_path: Path) -> None:
+    doc = Document()
+    for i in range(500):
+        doc.add_paragraph(f"Paragraph {i}")
+    file_path = tmp_path / "large.docx"
+    doc.save(file_path)
+    parsed = parse_docx(file_path.read_bytes())
+    assert len(parsed.normalized_text.splitlines()) >= 500
+
+
 def test_parse_pdf(tmp_path: Path):
     pdf = FPDF()
     pdf.add_page()
@@ -33,7 +52,10 @@ def test_parse_pdf(tmp_path: Path):
     file_path = tmp_path / "sample.pdf"
     pdf.output(str(file_path))
     data = file_path.read_bytes()
-    parsed = parse_pdf(data)
+    try:
+        parsed = parse_pdf(data)
+    except NotImplementedError:
+        pytest.skip("pdfminer not installed")
     assert len(parsed.normalized_text) > 0
     assert len(parsed.segments) >= 3
     for seg in parsed.segments:

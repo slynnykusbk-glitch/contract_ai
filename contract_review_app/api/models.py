@@ -92,8 +92,8 @@ class AnalyzeResponse(_DTOBase):
     schema_version: str | None = None
 
 
-class QaRecheckRequest(_DTOBase):
-    """Request model for ``/api/qa-recheck``.
+class QARecheckIn(_DTOBase):
+    """Input model for ``/api/qa-recheck``.
 
     ``rules`` accepts either a mapping of rule flags or a list of small
     dictionaries which will be merged into a single mapping for backward
@@ -102,7 +102,6 @@ class QaRecheckRequest(_DTOBase):
 
     text: str
     rules: Dict[str, Any] = Field(default_factory=dict)
-    profile: str | None = "smart"
 
     @field_validator("text")
     @classmethod
@@ -126,6 +125,12 @@ class QaRecheckRequest(_DTOBase):
         if isinstance(v, dict):
             return v
         raise TypeError("rules must be dict or list of dicts")
+
+
+class QARecheckOut(_DTOBase):
+    status: str
+    qa: List[Any]
+    meta: Dict[str, Any] | None = None
 
 
 class CitationInput(_DTOBase):

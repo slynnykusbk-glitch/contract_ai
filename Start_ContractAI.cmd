@@ -1,4 +1,4 @@
 @echo off
 setlocal
-cd /d C:\Users\Ludmila\contract_ai
+cd /d "%~dp0"
 powershell -NoProfile -ExecutionPolicy Bypass -NoExit -File ".\Start_ContractAI.ps1"

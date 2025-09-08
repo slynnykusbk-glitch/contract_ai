@@ -2,6 +2,7 @@
 
 // ---------------------- helpers ----------------------
 const LS_KEY = "panel:backendUrl";
+const API_KEY_STORAGE = "apiKey";
 const DRAFT_PATH = "/api/gpt-draft";
 const SAMPLE = "Governing law: England and Wales.";
 let clientCid = genCid();
@@ -68,6 +69,17 @@ function loadBase(){
   v = normBase(v);
   document.getElementById("backendInput").value = v || "https://127.0.0.1:9443";
   try{ localStorage.setItem("backendUrl", v); }catch{}
+  return v;
+}
+
+function saveApiKey(){
+  try{ const v=document.getElementById("apiKeyInput").value.trim(); localStorage.setItem(API_KEY_STORAGE, v);}catch{}
+}
+function loadApiKey(){
+  let v="";
+  try{ v = localStorage.getItem(API_KEY_STORAGE) || ""; }catch{}
+  const el = document.getElementById("apiKeyInput");
+  if(el) el.value = v;
   return v;
 }
 function setCidLabels(){
@@ -138,7 +150,13 @@ async function callEndpoint({name, method, path, body, dynamicPathFn}) {
     r = await CAI.API.trace(cid);
   } else {
     const url = joinUrl(base, dynamicPathFn ? dynamicPathFn() : path);
-    const resp = await fetch(url, { method, headers:{"content-type":"application/json"}, body: body ? JSON.stringify(body) : undefined });
+    let apiKey="";
+    try{ apiKey = localStorage.getItem(API_KEY_STORAGE) || ""; }catch{}
+    if(!apiKey){
+      alert("API key missing");
+      return { ok:false, error_code:"CLIENT", detail:"API key missing" };
+    }
+    const resp = await fetch(url, { method, headers:{"content-type":"application/json","x-api-key":apiKey}, body: body ? JSON.stringify(body) : undefined });
     const text = await resp.text();
     let json; try{ json = text ? JSON.parse(text) : {}; }catch{ json = {}; }
     r = { ok: resp.ok && json.status === "ok", http: resp.status, data: json, meta:{ headers:{ cid: resp.headers.get("x-cid")||"", cache: resp.headers.get("x-cache")||"", schema: resp.headers.get("x-schema-version")||"" }, latencyMs:0, schema: resp.headers.get("x-schema-version")||"" } };
@@ -325,6 +343,7 @@ async function runAll(){
 onClick("saveBtn", () => { saveBase(); console.log("Saved"); });
 onClick("runAllBtn", runAll);
 onClick("pingBtn", pingLLM);
+onClick("saveKeyBtn", () => { saveApiKey(); console.log("Saved API key"); });
 onClick("btnHealth", testHealth);
 onClick("btnAnalyze", testAnalyze);
 onClick("btnDraft", testDraft);
@@ -337,5 +356,6 @@ onClick("btnTrace", testTrace);
 // Load defaults on first paint
 window.addEventListener("DOMContentLoaded", () => {
   loadBase();
+  loadApiKey();
   setCidLabels();
 });

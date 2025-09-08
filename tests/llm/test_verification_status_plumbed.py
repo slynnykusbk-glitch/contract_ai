@@ -23,7 +23,7 @@ def test_verification_status_propagates_and_triggers_fallback():
             "citations": [{"instrument": "Act", "section": "1"}],
         }
     }
-    r = client.post("/api/gpt/draft", json=payload)
+    r = client.post("/api/gpt-draft", json=payload)
     assert r.status_code == 200
     data = r.json()
     assert data["verification_status"] == "unverified"

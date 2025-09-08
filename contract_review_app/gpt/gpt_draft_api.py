@@ -176,11 +176,6 @@ def api_gpt_draft_analysis_output(payload: Dict[str, Any], response: Response) -
     response_model=GPTDraftResponse,
     responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
 )
-@router.post(
-    "/api/gpt/draft",
-    response_model=GPTDraftResponse,
-    responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
-)
 def api_gpt_draft_gptdto(payload: Dict[str, Any], response: Response) -> GPTDraftResponse:
     """
     НОВИЙ контракт для UI-панелі: приймає або {analysis: ...}, або legacy {clause_type,text}
@@ -250,3 +245,8 @@ def api_gpt_draft_gptdto(payload: Dict[str, Any], response: Response) -> GPTDraf
         title=None,
         verification_status=redrafted.get("verification_status"),
     )
+
+
+@router.post("/api/gpt/draft", include_in_schema=False)
+def api_gpt_draft_redirect():
+    return Response(status_code=307, headers={"Location": "/api/gpt-draft"})

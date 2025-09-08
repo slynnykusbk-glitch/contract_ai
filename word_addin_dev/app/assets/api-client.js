@@ -118,6 +118,14 @@ async function postRedlines(before_text, after_text) {
   const fn = window.postJson || postJson;
   return fn("/api/panel/redlines", { before_text, after_text });
 }
+async function postCitationResolve({ findings, citations }) {
+  const hasF = Array.isArray(findings) && findings.length > 0;
+  const hasC = Array.isArray(citations) && citations.length > 0;
+  if (hasF === hasC) throw new Error('Provide exactly one of findings or citations');
+  const fn = window.postJson || postJson;
+  return fn('/api/citation/resolve', hasF ? { findings } : { citations });
+}
+window.postCitationResolve = postCitationResolve;
 export {
   postJson,
   apiAnalyze,
@@ -125,6 +133,7 @@ export {
   apiHealth,
   apiQaRecheck,
   postRedlines,
+  postCitationResolve,
   applyMetaToBadges,
   metaFromResponse,
   parseFindings

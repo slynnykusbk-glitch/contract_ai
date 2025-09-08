@@ -199,7 +199,8 @@ from .models import (
     CorpusSearchRequest,  # noqa: F401
     CorpusSearchResponse,  # noqa: F401
     ProblemDetail,
-    QaRecheckRequest,
+    QARecheckIn,
+    QARecheckOut,
     Finding,
     Span,
     Segment,
@@ -1928,19 +1929,22 @@ async def summary_post_alias(
     return await api_summary_post(request, response, x_cid, mode)
 
 
-@router.post("/api/qa-recheck", dependencies=[Depends(_require_api_key)])
+@router.post(
+    "/api/qa-recheck",
+    dependencies=[Depends(_require_api_key)],
+    response_model=QARecheckOut,
+)
 async def api_qa_recheck(
-    body: QaRecheckRequest,
-    request: Request,
+    body: QARecheckIn,
     response: Response,
     x_cid: Optional[str] = Header(None),
+    profile: str = "smart",
 ):
     t0 = _now_ms()
     _set_schema_headers(response)
 
     text = body.text
     rules = body.rules or {}
-    profile = body.profile or "smart"
     cid = x_cid or _sha256_hex(str(t0) + text[:128])
     meta = LLM_CONFIG.meta()
     if LLM_CONFIG.provider == "azure" and not LLM_CONFIG.valid:

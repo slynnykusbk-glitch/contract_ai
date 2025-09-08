@@ -14,7 +14,12 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def _handle_validation_error(request: Request, exc: RequestValidationError):
         """Return pydantic validation details untouched."""
-        resp = JSONResponse({"detail": exc.errors()}, status_code=422)
+        detail = exc.errors()
+        for err in detail:
+            ctx = err.get("ctx")
+            if ctx and "error" in ctx:
+                ctx["error"] = str(ctx["error"])
+        resp = JSONResponse({"detail": detail}, status_code=422)
         apply_std_headers(
             resp, request, getattr(request.state, "started_at", time.perf_counter())
         )

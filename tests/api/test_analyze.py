@@ -19,7 +19,7 @@ def test_minimal_ok(monkeypatch):
         assert r.json().get("status") == "ok"
 
 
-def test_validation_message_contains_loc_and_msg(monkeypatch):
+def test_validation_details_present(monkeypatch):
     monkeypatch.setenv("FEATURE_REQUIRE_API_KEY", "1")
     monkeypatch.setenv("API_KEY", "local-test-key-123")
     with TestClient(app) as c:

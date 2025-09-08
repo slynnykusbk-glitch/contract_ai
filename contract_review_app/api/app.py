@@ -64,32 +64,9 @@ TRACE_MAX = int(os.getenv("TRACE_MAX", "200"))
 
 TRACE = _TraceStore(TRACE_MAX)
 
-_TRACE_STORE: dict[str, dict] = {}
-_TRACE_ORDER: list[str] = []
-_TRACE_LIMIT = 200
-
 # flag indicating whether rule engine is usable
 _RULE_ENGINE_OK = True
 _RULE_ENGINE_ERR = ""
-
-
-def _remember_trace(cid: str, status_code: int, headers: dict, body: bytes) -> None:
-    try:
-        entry = {
-            "cid": cid,
-            "ts": int(time.time() * 1000),
-            "status_code": status_code,
-            "headers": headers,
-            "body": body.decode("utf-8", "replace"),
-        }
-        _TRACE_STORE[cid] = entry
-        _TRACE_ORDER.append(cid)
-        if len(_TRACE_ORDER) > _TRACE_LIMIT:
-            old = _TRACE_ORDER.pop(0)
-            _TRACE_STORE.pop(old, None)
-    except Exception:
-        pass
-
 
 class NormalizeAndTraceMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -109,8 +86,22 @@ class NormalizeAndTraceMiddleware(BaseHTTPMiddleware):
         if not cid:
             cid = hashlib.sha256(f"{time.time_ns()}".encode()).hexdigest()
             new_resp.headers["x-cid"] = cid
+            headers["x-cid"] = cid
 
-        _remember_trace(cid, response.status_code, dict(new_resp.headers), body)
+        try:
+            payload = json.loads(body.decode("utf-8"))
+        except Exception:
+            payload = body.decode("utf-8", "replace")
+        TRACE.put(
+            cid,
+            {
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "path": request.url.path,
+                "status": response.status_code,
+                "headers": dict(new_resp.headers),
+                "body": payload,
+            },
+        )
         return new_resp
 
 
@@ -202,12 +193,13 @@ from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
 from .mw_utils import capture_response, normalize_status_if_json
 from .models import (
-    Citation,
+    CitationInput,
     CitationResolveRequest,
     CitationResolveResponse,
     CorpusSearchRequest,  # noqa: F401
     CorpusSearchResponse,  # noqa: F401
     ProblemDetail,
+    QaRecheckRequest,
     Finding,
     Span,
     Segment,
@@ -821,7 +813,7 @@ def _custom_openapi():
     schemas["AnalyzeResponse"] = AnalyzeResponse.model_json_schema(
         ref_template="#/components/schemas/{model}"
     )
-    for _m in [Finding, Span, Segment, SearchHit, Citation]:
+    for _m in [Finding, Span, Segment, SearchHit, CitationInput]:
         schemas[_m.__name__] = _m.model_json_schema(
             ref_template="#/components/schemas/{model}"
         )
@@ -1508,14 +1500,15 @@ async def health() -> JSONResponse:
 
 @router.get("/api/trace")
 async def list_trace():
-    return {"cids": list(_TRACE_ORDER[-50:])}
+    return {"cids": TRACE.list()[-50:]}
 
 
 @router.get("/api/trace/{cid}")
 async def get_trace(cid: str):
-    if cid not in _TRACE_STORE:
+    trace = TRACE.get(cid)
+    if not trace:
         raise HTTPException(status_code=404, detail="Not found")
-    return _TRACE_STORE[cid]
+    return trace
 
 
 @router.get("/api/report/{cid}.html")
@@ -1937,41 +1930,19 @@ async def summary_post_alias(
 
 @router.post("/api/qa-recheck", dependencies=[Depends(_require_api_key)])
 async def api_qa_recheck(
-    request: Request, response: Response, x_cid: Optional[str] = Header(None)
+    body: QaRecheckRequest,
+    request: Request,
+    response: Response,
+    x_cid: Optional[str] = Header(None),
 ):
     t0 = _now_ms()
     _set_schema_headers(response)
-    try:
-        payload = await request.json()
-    except Exception:
-        return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
-    text = (payload or {}).get("text", "")
-    rules = (payload or {}).get("rules")
-    if isinstance(rules, list):
-        rules = {"rules": rules} if rules else None
-    profile = (payload or {}).get("profile", "smart")
+    text = body.text
+    rules = body.rules or {}
+    profile = body.profile or "smart"
     cid = x_cid or _sha256_hex(str(t0) + text[:128])
     meta = LLM_CONFIG.meta()
-    if not text.strip():
-        resp = JSONResponse(
-            status_code=422,
-            content={
-                "status": "error",
-                "error_code": "bad_input",
-                "detail": "text is empty",
-                "meta": meta,
-            },
-        )
-        _set_llm_headers(resp, meta)
-        _set_std_headers(
-            resp,
-            cid=cid,
-            xcache="miss",
-            schema=SCHEMA_VERSION,
-            latency_ms=_now_ms() - t0,
-        )
-        return resp
     if LLM_CONFIG.provider == "azure" and not LLM_CONFIG.valid:
         resp = JSONResponse(
             status_code=401,
@@ -2144,8 +2115,12 @@ async def api_suggest_edits(
     text = (payload or {}).get("text", "")
     if not isinstance(text, str) or text.strip() == "":
         raise HTTPException(status_code=422, detail="text required")
-    findings_raw = (payload or {}).get("findings") or []
-    if not isinstance(findings_raw, list):
+    findings_raw = (payload or {}).get("findings")
+    if findings_raw is None:
+        findings_raw = []
+    elif isinstance(findings_raw, dict):
+        findings_raw = [findings_raw]
+    elif not isinstance(findings_raw, list):
         raise HTTPException(status_code=422, detail="findings must be a list")
 
     suggestions: list[SuggestEdit] = []
@@ -2520,11 +2495,6 @@ app.include_router(dsar_router)
     response_model=CitationResolveResponse,
     responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
 )
-@app.post(
-    "/api/citations/resolve",
-    response_model=CitationResolveResponse,
-    responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
-)
 async def api_citation_resolve(
     body: CitationResolveRequest,
     response: Response,
@@ -2538,12 +2508,18 @@ async def api_citation_resolve(
     if body.citations is not None:
         citations = body.citations
     else:
-        citations = []
+        citations: list[CitationInput] = []
         for f in body.findings or []:
-            c = resolve_citation(f)
+            try:
+                core = CoreFinding.model_validate(
+                    {"code": f.code or "", "message": f.message or "", "rule": f.rule or ""}
+                )
+            except Exception:
+                continue
+            c = resolve_citation(core)
             if c is None:
                 continue
-            citations.append(Citation(instrument=c.instrument, section=c.section))
+            citations.append(CitationInput(instrument=c.instrument, section=c.section))
         if not citations:
             raise HTTPException(status_code=422, detail="unresolvable")
     resp_model = CitationResolveResponse(citations=citations)
@@ -2556,6 +2532,11 @@ async def api_citation_resolve(
         latency_ms=_now_ms() - t0,
     )
     return resp_model
+
+
+@app.post("/api/citations/resolve", include_in_schema=False)
+async def api_citations_resolve_redirect():
+    return Response(status_code=307, headers={"Location": "/api/citation/resolve"})
 
 
 @app.on_event("startup")

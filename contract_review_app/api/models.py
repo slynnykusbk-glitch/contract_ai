@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator, field_validator
 
 from contract_review_app.core.schemas import AppBaseModel
 
@@ -92,18 +92,60 @@ class AnalyzeResponse(_DTOBase):
     schema_version: str | None = None
 
 
-class Citation(_DTOBase):
+class QaRecheckRequest(_DTOBase):
+    """Request model for ``/api/qa-recheck``.
+
+    ``rules`` accepts either a mapping of rule flags or a list of small
+    dictionaries which will be merged into a single mapping for backward
+    compatibility with legacy clients.
+    """
+
+    text: str
+    rules: Dict[str, Any] = Field(default_factory=dict)
+    profile: str | None = "smart"
+
+    @field_validator("text")
+    @classmethod
+    def _ensure_text(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("text is empty")
+        return v
+
+    @field_validator("rules", mode="before")
+    @classmethod
+    def _normalize_rules(cls, v):
+        if v is None:
+            return {}
+        if isinstance(v, list):
+            merged: Dict[str, Any] = {}
+            for item in v:
+                if isinstance(item, dict):
+                    merged.update(item)
+            return merged
+        if isinstance(v, dict):
+            return v
+        raise TypeError("rules must be dict or list of dicts")
+
+
+class CitationInput(_DTOBase):
     instrument: str
     section: str
 
 
+class QaFindingInput(_DTOBase):
+    code: str | None = None
+    message: str | None = None
+    rule: str | None = None
+
+
 class CitationResolveRequest(_DTOBase):
-    findings: List[Finding] | None = None
-    citations: List[Citation] | None = None
+    findings: List[QaFindingInput] | None = None
+    citations: List[CitationInput] | None = None
 
 
 class CitationResolveResponse(_DTOBase):
-    citations: List[Citation]
+    citations: List[CitationInput]
 
 
 SearchMethod = Literal["hybrid", "bm25", "vector"]

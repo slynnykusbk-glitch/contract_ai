@@ -104,11 +104,11 @@ except Exception:
 # Helpers
 # -----------------------------------------------------------------------------
 def _stable_id_from_span(text_fragment: str, start: int, length: int) -> str:
-    h = hashlib.sha1()
+    h = hashlib.blake2b(digest_size=16)
     h.update(str(start).encode())
     h.update(str(length).encode())
     h.update((text_fragment or "")[:256].encode("utf-8", "ignore"))
-    return h.hexdigest()[:16]
+    return h.hexdigest()
 
 
 def _clamp(v: int, lo: int, hi: int) -> int:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from hashlib import sha1
+from hashlib import blake2b
 from typing import List, Optional
 
 
@@ -68,7 +68,7 @@ def chunk_text(
             abs_start = p_start + start
             abs_end = p_start + end
             norm = _normalise_text(piece)
-            checksum = sha1(norm.encode("utf-8")).hexdigest()
+            checksum = blake2b(norm.encode("utf-8"), digest_size=16).hexdigest()
             tokens = _token_count(piece)
             chunks.append(
                 ChunkDTO(

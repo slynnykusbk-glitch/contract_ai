@@ -13,7 +13,7 @@ def test_api_metrics_json_csv(monkeypatch):
 
     resp = client.get("/api/metrics")
     assert resp.status_code == 200
-    assert resp.json()["schema"] == "1.3"
+    assert resp.json()["schema_version"] == "1.3"
     assert resp.headers.get("Cache-Control") == "no-store"
 
     resp_csv = client.get("/api/metrics.csv")

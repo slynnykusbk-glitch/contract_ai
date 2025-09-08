@@ -68,6 +68,10 @@ _TRACE_STORE: dict[str, dict] = {}
 _TRACE_ORDER: list[str] = []
 _TRACE_LIMIT = 200
 
+# flag indicating whether rule engine is usable
+_RULE_ENGINE_OK = True
+_RULE_ENGINE_ERR = ""
+
 
 def _remember_trace(cid: str, status_code: int, headers: dict, body: bytes) -> None:
     try:
@@ -160,6 +164,20 @@ def _validate_env_vars() -> None:
         )
         log.error(msg)
         os.environ["AZURE_KEY_INVALID"] = "1"
+
+    # ensure PyYAML and rule packs are available
+    global _RULE_ENGINE_OK, _RULE_ENGINE_ERR
+    try:
+        import yaml  # type: ignore  # noqa: F401
+        from contract_review_app.legal_rules import loader as _loader
+
+        _loader.load_rule_packs()
+        if _loader.rules_count() <= 0:
+            raise RuntimeError("no rule packs loaded")
+    except Exception as exc:  # pragma: no cover - best effort only
+        log.warning("Rule engine unavailable: %s", exc)
+        _RULE_ENGINE_OK = False
+        _RULE_ENGINE_ERR = str(exc)
 
 
 _validate_env_vars()
@@ -1462,6 +1480,11 @@ async def health() -> JSONResponse:
         "provider": PROVIDER_META,
         "endpoints": ["/api/analyze", "/api/gpt-draft", "/api/explain"],
     }
+    status_code = 200
+    if not _RULE_ENGINE_OK:
+        payload["status"] = "error"
+        payload.setdefault("meta", {})["rule_engine"] = _RULE_ENGINE_ERR or "unavailable"
+        status_code = 500
     try:
         if rules_loader and hasattr(rules_loader, "loaded_packs"):
             packs = rules_loader.loaded_packs()
@@ -1473,7 +1496,7 @@ async def health() -> JSONResponse:
     except Exception:
         payload.setdefault("meta", {})["rules"] = []
     headers = {"x-schema-version": SCHEMA_VERSION}
-    return _finalize_json("/health", payload, headers)
+    return _finalize_json("/health", payload, headers, status_code=status_code)
 
 
 @router.get("/api/trace")

@@ -423,14 +423,25 @@ MODEL_SUGGEST = LLM_CONFIG.model_suggest
 MODEL_QA = LLM_CONFIG.model_qa
 
 
-def _analyze_document(text: str, risk: str = "medium") -> Dict[str, Any]:
+def _analyze_document(text: str, risk: str = "medium") -> Dict[str, Any] | JSONResponse:
     """Analyze ``text`` using the lightweight rule engine.
 
     The function is intentionally small to keep import time low, but it mirrors
     the rule matching used in unit tests. Tests may monkeypatch this function
     to provide custom behaviour.
     """
-    from contract_review_app.legal_rules import loader, engine
+    try:
+        from contract_review_app.legal_rules import loader, engine
+    except ImportError:
+        log.exception("YAML rule engine import failed")
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "error",
+                "error_code": "rule_engine_unavailable",
+                "detail": "YAML rule engine is unavailable",
+            },
+        )
 
     findings = engine.analyze(text or "", loader._RULES)
 

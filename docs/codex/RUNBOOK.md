@@ -1,4 +1,13 @@
-﻿# RUNBOOK
+# RUNBOOK
+
+## Setup
+
+Install dependencies and confirm **PyYAML** is installed so `/api/analyze` can parse rule packs:
+
+```bash
+pip install -r requirements.txt
+python -c "import yaml"
+```
 
 ## Panel (HTTPS 3000)
 python .\word_addin_dev\serve_https_panel.py 

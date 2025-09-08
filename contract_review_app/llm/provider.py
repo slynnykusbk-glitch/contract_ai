@@ -137,10 +137,8 @@ def get_provider():
     # explicit selector; env var wins
     # hint for local runs: set LLM_PROVIDER=azure
     want = (os.getenv("LLM_PROVIDER") or "").lower()
+    if want in {"", "mock"}:
+        return MockProvider()
     if want == "azure":
-        try:
-            return AzureProvider()
-        except ProviderError:
-            # fall through to mock if misconfigured
-            return MockProvider()
-    return MockProvider()
+        return AzureProvider()
+    raise ProviderError(f"Unsupported LLM_PROVIDER: {want}")

@@ -20,3 +20,10 @@ def test_normbase_forces_https_for_9443():
     assert (
         "replace(/^http:\/\/(127\\.0\\.0\\.1|localhost)(:9443)" in html
     ), "normBase must force https for :9443"
+
+
+def test_selftest_has_llm_fields():
+    html = SELFTEST.read_text(encoding="utf-8")
+    assert 'id="llmProv"' in html
+    assert 'id="llmModel"' in html
+    assert 'id="llmBadge"' in html

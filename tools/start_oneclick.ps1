@@ -25,8 +25,9 @@ function Load-DotEnv {
         if ($parts.Count -ne 2) { continue }
         $k = $parts[0].Trim()
         $v = $parts[1].Trim()
-        if ([string]::IsNullOrEmpty($env:$k)) {
-            $env:$k = $v
+        $cur = [System.Environment]::GetEnvironmentVariable($k, "Process")
+        if ([string]::IsNullOrEmpty($cur)) {
+            [System.Environment]::SetEnvironmentVariable($k, $v, "Process")
         }
     }
     Write-Log '[OK] .env loaded'

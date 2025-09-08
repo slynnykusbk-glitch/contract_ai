@@ -163,7 +163,11 @@ function buildRowsFromOpenAPI(paths){
     '/api/suggest_edits':'suggest',
     '/api/qa-recheck':'qa',
     '/api/calloff/validate':'calloff',
-    '/api/trace/{cid}':'trace'
+    '/api/trace/{cid}':'trace',
+    '/api/citation/resolve':'citation-resolve'
+  };
+  const labelMap = {
+    '/api/citation/resolve':'Resolve citations'
   };
   const special = {
     '/health': testHealth,
@@ -173,7 +177,8 @@ function buildRowsFromOpenAPI(paths){
     '/api/suggest_edits': testSuggest,
     '/api/qa-recheck': testQA,
     '/api/calloff/validate': testCalloff,
-    '/api/trace/{cid}': testTrace
+    '/api/trace/{cid}': testTrace,
+    '/api/citation/resolve': testCitationResolve
   };
   for (const [p, methods] of Object.entries(paths)){
     if(!p.startsWith('/api/') && p !== '/health') continue;
@@ -183,7 +188,7 @@ function buildRowsFromOpenAPI(paths){
       const slug = slugMap[p] || p.replace(/^\/api\//,'').replace(/[{}]/g,'').replace(/\//g,'-');
       const rowId = `row-${slug}`;
       const btnId = `btn-${slug}`;
-      const label = `${method} ${p}`;
+      const label = labelMap[p] || `${method} ${p}`;
       btns.insertAdjacentHTML('beforeend', `<button id="${btnId}">${label}</button>`);
       const rowHtml = `<tr id="${rowId}"><td>${label}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
       tbody.insertAdjacentHTML('beforeend', rowHtml);
@@ -382,6 +387,22 @@ async function testQA(){
   showResp(r);
   showMeta(r.body && r.body.meta || {});
   return r;
+}
+async function testCitationResolve(){
+  const fn = window.postCitationResolve || postCitationResolve;
+  const { http, json, headers } = await fn({ citations:[{ instrument: 'Act', section: '1' }] });
+  const meta = metaFromResponse({ headers, json, status: http.status });
+  setStatusRow('row-citation-resolve', {
+    code: http.status,
+    xcid: meta.cid,
+    xcache: meta.xcache,
+    xschema: meta.schema,
+    latencyMs: meta.latencyMs,
+    ok: http.ok
+  });
+  showResp({ ok: http.ok, code: http.status, body: json });
+  showMeta(json && (json.meta || json.llm || {}));
+  return { http, json, headers };
 }
 async function testCalloff(){
   const r = await callEndpoint({

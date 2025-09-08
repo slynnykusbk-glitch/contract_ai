@@ -29,6 +29,13 @@ Defaults use a deterministic mock model so the application works without keys. S
 | `MODEL_SUGGEST` | `gpt-4o-mini` | *(empty string → ignored)* |
 | `MODEL_QA` | `gpt-4o-mini` | *(empty string → ignored)* |
 
+## Health and dependency checks
+
+The `/health` endpoint verifies that required rule engine dependencies are
+available. It attempts to import **PyYAML** and load rule packs during
+application start. If these checks fail, `/health` reports a non-OK status
+so deployments can detect missing dependencies.
+
 ## Word Add-in
 
 After running an analysis the task pane displays the current CID. You can open

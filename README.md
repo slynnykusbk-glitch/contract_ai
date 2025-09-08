@@ -79,3 +79,13 @@ Exit code `0` means all hard requirements pass, while `2` indicates at least one
 ```bash
 pytest tests/insurance -q
 ```
+
+## i18n inventory
+
+To list any Cyrillic characters in source paths run:
+
+```bash
+rg -n --pcre2 "[\p{Cyrillic}]" contract_review_app core word_addin_dev | tee i18n_inventory.txt
+```
+
+The generated `i18n_inventory.txt` should be empty in a clean repository.

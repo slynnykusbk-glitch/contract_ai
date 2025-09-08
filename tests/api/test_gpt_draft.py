@@ -1,5 +1,4 @@
 import os
-import os
 from fastapi.testclient import TestClient
 from contract_review_app.api.app import app
 
@@ -17,13 +16,11 @@ def test_minimal_body_ok(monkeypatch):
         assert r.json().get("status") == "ok"
 
 
-def test_legacy_route_redirects_or_hidden():
+def test_no_legacy_routes():
     with TestClient(app) as c:
         spec = c.get("/openapi.json").json()
         paths = spec["paths"].keys()
         assert "/api/gpt-draft" in paths
         for p in ["/api/gpt/draft", "/api/gpt_draft", "/gpt-draft"]:
             assert p not in paths
-            r = c.post(p, json={"text": "Hi"}, follow_redirects=False)
-            assert r.status_code == 307
-            assert r.headers.get("location") == "/api/gpt-draft"
+            assert c.post(p, json={"text": "Hi"}).status_code == 404

@@ -245,18 +245,3 @@ def api_gpt_draft_gptdto(payload: Dict[str, Any], response: Response) -> GPTDraf
         title=None,
         verification_status=redrafted.get("verification_status"),
     )
-
-
-@router.post("/api/gpt/draft", include_in_schema=False)
-def api_gpt_draft_redirect():
-    return Response(status_code=307, headers={"Location": "/api/gpt-draft"})
-
-
-@router.post("/api/gpt_draft", include_in_schema=False)
-def api_gpt_draft_redirect_uscore():
-    return Response(status_code=307, headers={"Location": "/api/gpt-draft"})
-
-
-@router.post("/gpt-draft", include_in_schema=False)
-def api_gpt_draft_redirect_plain():
-    return Response(status_code=307, headers={"Location": "/api/gpt-draft"})

@@ -4573,6 +4573,7 @@
           "content": {
             "application/json": {
               "schema": {
+                "additionalProperties": true,
                 "type": "object",
                 "title": "Payload"
               }
@@ -5734,6 +5735,7 @@
             "type": "string"
           },
           "analysis": {
+            "additionalProperties": true,
             "title": "Analysis",
             "type": "object"
           }
@@ -5934,6 +5936,7 @@
                 "type": "array"
               },
               {
+                "additionalProperties": true,
                 "type": "object"
               }
             ],
@@ -5948,6 +5951,7 @@
             "title": "After Text"
           },
           "diff": {
+            "additionalProperties": true,
             "type": "object",
             "title": "Diff"
           },
@@ -6106,6 +6110,7 @@
           "extra": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -6130,6 +6135,7 @@
             "title": "Text"
           },
           "rules": {
+            "additionalProperties": true,
             "type": "object",
             "title": "Rules"
           }
@@ -6156,6 +6162,7 @@
           "meta": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {
@@ -6550,6 +6557,7 @@
           "meta": {
             "anyOf": [
               {
+                "additionalProperties": true,
                 "type": "object"
               },
               {

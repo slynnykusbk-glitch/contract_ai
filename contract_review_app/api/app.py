@@ -2377,7 +2377,7 @@ async def health_alias():
 
 @app.post("/analyze", dependencies=[Depends(_require_api_key)])
 def analyze_alias(req: AnalyzeRequest, request: Request):
-    return api_analyze(req, request)
+    return api_analyze(request, req)
 
 
 @router.post("/suggest_edits", dependencies=[Depends(_require_api_key)])
@@ -2390,33 +2390,6 @@ async def suggest_edits_alias(
 @app.get("/llm/ping")
 def llm_ping_alias():
     return llm_ping()
-
-
-@router.post(
-    "/api/gpt/draft",
-    include_in_schema=False,
-    dependencies=[Depends(_require_api_key)],
-)
-async def gpt_draft_slash_redirect():
-    return Response(status_code=307, headers={"Location": "/api/gpt-draft"})
-
-
-@router.post(
-    "/api/gpt_draft",
-    include_in_schema=False,
-    dependencies=[Depends(_require_api_key)],
-)
-async def gpt_draft_underscore_redirect():
-    return Response(status_code=307, headers={"Location": "/api/gpt-draft"})
-
-
-@router.post(
-    "/gpt-draft",
-    include_in_schema=False,
-    dependencies=[Depends(_require_api_key)],
-)
-async def gpt_draft_plain_redirect():
-    return Response(status_code=307, headers={"Location": "/api/gpt-draft"})
 
 
 @router.post("/api/calloff/validate", dependencies=[Depends(_require_api_key)])
@@ -2532,11 +2505,6 @@ async def api_citation_resolve(
         latency_ms=_now_ms() - t0,
     )
     return resp_model
-
-
-@app.post("/api/citations/resolve", include_in_schema=False)
-async def api_citations_resolve_redirect():
-    return Response(status_code=307, headers={"Location": "/api/citation/resolve"})
 
 
 @app.on_event("startup")

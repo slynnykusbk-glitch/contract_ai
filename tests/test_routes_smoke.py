@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from fastapi.testclient import TestClient
 from contract_review_app.api.app import app
 
 client = TestClient(app)
@@ -38,12 +39,5 @@ def test_gpt_draft_ok():
     payload = {"text": "Draft confidentiality clause"}
     r = client.post("/api/gpt-draft", json=payload)
     assert r.status_code == 200
-    r2 = client.post("/api/gpt/draft", json=payload, follow_redirects=False)
-    assert r2.status_code == 307
-    assert r2.headers["location"] == "/api/gpt-draft"
-    r3 = client.post("/gpt-draft", json=payload, follow_redirects=False)
-    assert r3.status_code == 307
-    assert r3.headers["location"] == "/api/gpt-draft"
-    r4 = client.post("/api/gpt_draft", json=payload, follow_redirects=False)
-    assert r4.status_code == 307
-    assert r4.headers["location"] == "/api/gpt-draft"
+    for p in ["/api/gpt/draft", "/gpt-draft", "/api/gpt_draft"]:
+        assert client.post(p, json=payload).status_code == 404

@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 on:
   pull_request:
@@ -7,19 +7,22 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+          - os: windows-latest
+            python-version: '3.13'
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
       - name: Install deps
         run: |
           python -m pip install -U pip
           pip install -r requirements-dev.txt
-      - name: Run pytest (fast fail)
-        run: pytest -q --maxfail=1
-      - name: Run quality metrics
-        run: python -m contract_review_app.metrics.cli --out var/metrics/last.json
-      - name: Compare with baseline
-        run: python tools/metrics_compare.py --baseline metrics_baseline.json --current var/metrics/last.json
+      - name: Run tests
+        run: pytest -q

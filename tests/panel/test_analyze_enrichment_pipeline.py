@@ -18,7 +18,7 @@ def setup_function():
     ch_client._CACHE.clear()  # type: ignore
     ch_client._LAST.clear()  # type: ignore
     os.makedirs("var", exist_ok=True)
-    open("var/audit.log", "w").close()
+    open("var/audit.log", "w", encoding="utf-8").close()
 
 
 @respx.mock
@@ -31,5 +31,5 @@ def test_enrichment_pipeline():
     assert resp.status_code == 200
     data = resp.json()
     assert data["summary"]["parties"][0]["registry"]["name"] == "ACME LTD"
-    with open("var/audit.log") as fh:
+    with open("var/audit.log", encoding="utf-8") as fh:
         assert "integration_call" in fh.read()

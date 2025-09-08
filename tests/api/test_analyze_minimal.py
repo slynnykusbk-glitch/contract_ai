@@ -6,7 +6,7 @@ client = TestClient(app)
 
 
 def test_analyze_minimal():
-    resp = client.post("/api/analyze", json={"text": "Hello", "language": "en"})
+    resp = client.post("/api/analyze", json={"text": "Hello", "language": "en"}, headers={"x-schema-version": "1.3"})
     assert resp.status_code == 200
     assert resp.headers["x-schema-version"] == "1.3"
     data = resp.json()

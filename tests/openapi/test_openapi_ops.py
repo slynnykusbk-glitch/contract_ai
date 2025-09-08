@@ -1,7 +1,7 @@
 import json
 
 def test_operation_ids_unique():
-    with open('openapi.json') as f:
+    with open('openapi.json', encoding='utf-8') as f:
         spec = json.load(f)
     ids = []
     for path_item in spec.get('paths', {}).values():

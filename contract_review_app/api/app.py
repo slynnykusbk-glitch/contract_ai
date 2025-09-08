@@ -294,12 +294,14 @@ from contract_review_app.analysis.extract_summary import extract_document_snapsh
 from contract_review_app.integrations.service import enrich_parties_with_companies_house
 from contract_review_app.core.schemas import Party
 from contract_review_app.api.calloff_validator import validate_calloff
-from contract_review_app.analysis import parser as analysis_parser, classifier as analysis_classifier
+from contract_review_app.analysis import (
+    parser as analysis_parser,
+    classifier as analysis_classifier,
+)
 from contract_review_app.legal_rules import runner as legal_runner
 
 # SSOT DTO imports
 from contract_review_app.core.citation_resolver import resolve_citation
-from contract_review_app.core.schemas import Finding as CoreFinding, Span as CoreSpan
 from contract_review_app.gpt.config import load_llm_config
 from contract_review_app.gpt.service import (
     LLMService,
@@ -309,6 +311,7 @@ from contract_review_app.gpt.service import (
 )
 
 from .cache import IDEMPOTENCY_CACHE
+
 # ``corpus_search`` depends on heavy optional deps (numpy, etc.).
 # During lightweight environments (like tests focused on other modules)
 # we fallback to an empty router if those deps are missing.
@@ -600,12 +603,14 @@ app.mount("/panel", panel_app, name="panel")
 PROVIDER = get_provider()
 LLM_PROVIDER = PROVIDER
 
+
 def _extract_region(endpoint: str) -> str:
     try:
         host = endpoint.split("//", 1)[1]
         return host.split(".")[0]
     except Exception:
         return ""
+
 
 PROVIDER_META = {
     "provider": LLM_CONFIG.provider,
@@ -622,7 +627,10 @@ if LLM_CONFIG.provider == "azure":
             "region": _extract_region(ep) if ep else "",
         }
     )
-PROVIDER_META["valid_config"] = LLM_CONFIG.valid and os.getenv("AZURE_KEY_INVALID") != "1"
+# In mock mode we ignore any Azure key validation flags
+PROVIDER_META["valid_config"] = LLM_CONFIG.valid and (
+    LLM_CONFIG.mode == "mock" or os.getenv("AZURE_KEY_INVALID") != "1"
+)
 if "endpoint" in PROVIDER_META:
     PROVIDER_META["ep"] = PROVIDER_META["endpoint"][:2]
 if "deployment" in PROVIDER_META:
@@ -647,6 +655,7 @@ def _ensure_llm_ready() -> None:
     if LLM_CONFIG.provider == "azure" and not PROVIDER_META.get("valid_config"):
         problem = _llm_key_problem()
         raise HTTPException(status_code=400, detail=problem.model_dump())
+
 
 an_cache = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
 cid_index = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
@@ -891,6 +900,7 @@ def _require_api_key(request: Request) -> None:
     if FEATURE_REQUIRE_API_KEY:
         if request.headers.get("x-api-key") != API_KEY:
             raise HTTPException(status_code=401, detail="missing or invalid api key")
+
 
 # ---- Trace middleware and store ------------------------------------
 _TRACE_MAX_CIDS = 200
@@ -1299,7 +1309,9 @@ def _safe_apply_patches(text: str, changes: List[Any]) -> str:
     return "".join(out)
 
 
-def _extract_context(text: str, start: int, end: int, width: int = 60) -> tuple[str, str]:
+def _extract_context(
+    text: str, start: int, end: int, width: int = 60
+) -> tuple[str, str]:
     """Return normalized context strings around the given span."""
     before_raw = text[max(0, start - width) : start]
     after_raw = text[end : end + width]
@@ -1523,7 +1535,9 @@ async def api_metrics_csv():
         raise HTTPException(status_code=404, detail="disabled")
     resp = collect_metrics()
     csv_text = to_csv(resp.metrics.rules)
-    return Response(csv_text, media_type="text/csv", headers={"Cache-Control": "no-store"})
+    return Response(
+        csv_text, media_type="text/csv", headers={"Cache-Control": "no-store"}
+    )
 
 
 @router.get("/api/metrics.html")
@@ -1541,10 +1555,14 @@ def api_admin_purge(dry: int = 1):
     return {"removed": [str(p) for p in removed]}
 
 
-@app.post("/api/analyze", response_model=AnalyzeResponse, dependencies=[Depends(_require_api_key)])
+@app.post(
+    "/api/analyze",
+    response_model=AnalyzeResponse,
+    dependencies=[Depends(_require_api_key)],
+)
 def api_analyze(req: AnalyzeRequest, request: Request):
     txt = req.text
-    debug = request.query_params.get("debug")
+    debug = request.query_params.get("debug")  # noqa: F841
     risk_param = (
         request.query_params.get("risk")
         or req.risk
@@ -1660,7 +1678,11 @@ def api_analyze(req: AnalyzeRequest, request: Request):
     # derive findings from YAML rule engine
     yaml_findings: List[Dict[str, Any]] = []
     try:
-        from contract_review_app.legal_rules import loader as _yaml_loader, engine as _yaml_engine
+        from contract_review_app.legal_rules import (
+            loader as _yaml_loader,
+            engine as _yaml_engine,
+        )
+
         _yaml_loader.load_rule_packs()
         yaml_findings = _yaml_engine.analyze(txt or "", _yaml_loader._RULES)
     except Exception:
@@ -1878,11 +1900,6 @@ async def summary_post_alias(
 async def api_qa_recheck(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
-    if os.getenv("AZURE_KEY_INVALID") == "1":
-        raise HTTPException(
-            status_code=500,
-            detail="Azure key is invalid (non-ASCII placeholder). Set a real AZURE_OPENAI_API_KEY.",
-        )
     t0 = _now_ms()
     _set_schema_headers(response)
     try:
@@ -1916,13 +1933,27 @@ async def api_qa_recheck(
             latency_ms=_now_ms() - t0,
         )
         return resp
+    if LLM_CONFIG.provider == "azure" and not LLM_CONFIG.valid:
+        resp = JSONResponse(
+            status_code=401,
+            content={
+                "status": "error",
+                "error_code": "provider_auth",
+                "detail": "Azure key is invalid",
+                "meta": meta,
+            },
+        )
+        _set_llm_headers(resp, meta)
+        _set_std_headers(
+            resp,
+            cid=cid,
+            xcache="miss",
+            schema=SCHEMA_VERSION,
+            latency_ms=_now_ms() - t0,
+        )
+        return resp
     mock_env = os.getenv("CONTRACT_AI_LLM_MOCK", "").lower() in ("1", "true", "yes")
-    mock_mode = (
-        mock_env
-        or LLM_CONFIG.provider == "mock"
-        or not LLM_CONFIG.valid
-        or not _has_llm_keys()
-    )
+    mock_mode = mock_env or LLM_CONFIG.mode == "mock"
     if mock_mode:
         if profile == "smart" and not rules:
             meta["profile"] = "vanilla"
@@ -2134,7 +2165,11 @@ async def api_suggest_edits(
                 }
             )
     for op in sorted(ops, key=lambda o: o["start"], reverse=True):
-        proposed_text = proposed_text[: op["start"]] + op["replacement"] + proposed_text[op["end"] :]
+        proposed_text = (
+            proposed_text[: op["start"]]
+            + op["replacement"]
+            + proposed_text[op["end"] :]
+        )
     payload["proposed_text"] = proposed_text
     payload["ops"] = ops
     payload["status"] = "ok"
@@ -2303,7 +2338,11 @@ async def gpt_draft(inp: DraftIn, request: Request):
     return resp
 
 
-@router.post("/api/panel/redlines", response_model=RedlinesOut, dependencies=[Depends(_require_api_key)])
+@router.post(
+    "/api/panel/redlines",
+    response_model=RedlinesOut,
+    dependencies=[Depends(_require_api_key)],
+)
 def panel_redlines(inp: RedlinesIn, request: Request):
     diff_u, diff_h = make_diff(inp.before_text or "", inp.after_text or "")
     payload = {
@@ -2393,7 +2432,9 @@ async def api_learning_log(body: Any = Body(...)) -> Response:
     t0 = _now_ms()
     try:
         LEARNING_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        secure_write(LEARNING_LOG_PATH, json.dumps(body, ensure_ascii=False), append=True)
+        secure_write(
+            LEARNING_LOG_PATH, json.dumps(body, ensure_ascii=False), append=True
+        )
     except Exception:
         pass
     resp = Response(status_code=204)

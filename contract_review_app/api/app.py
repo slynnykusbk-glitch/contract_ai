@@ -146,15 +146,19 @@ def _finalize_json(
 
 
 def _validate_env_vars() -> None:
-    key = os.getenv("AZURE_OPENAI_API_KEY", "")
+    key = (os.getenv("AZURE_OPENAI_API_KEY", "") or "").strip()
+    invalid = False
+    if not key or key in {"*", "changeme"} or len(key) < 24:
+        invalid = True
     # если ключ указан, он должен быть чистым ASCII
     if key and any(ord(ch) > 127 for ch in key):
+        invalid = True
+    if invalid:
         msg = (
-            "AZURE_OPENAI_API_KEY contains non-ASCII characters (looks like a placeholder). "
-            "Replace with a real Azure key."
+            "AZURE_OPENAI_API_KEY is missing or looks like a placeholder. "
+            "Set a real Azure key."
         )
         log.error(msg)
-        # Поднимем управляемую ошибка для LLM-эндпоинтов
         os.environ["AZURE_KEY_INVALID"] = "1"
 
 
@@ -595,18 +599,54 @@ app.mount("/panel", panel_app, name="panel")
 # instantiate LLM provider once
 PROVIDER = get_provider()
 LLM_PROVIDER = PROVIDER
+
+def _extract_region(endpoint: str) -> str:
+    try:
+        host = endpoint.split("//", 1)[1]
+        return host.split(".")[0]
+    except Exception:
+        return ""
+
 PROVIDER_META = {
     "provider": LLM_CONFIG.provider,
     "model": MODEL_DRAFT,
 }
-if hasattr(PROVIDER, "endpoint_hint"):
-    PROVIDER_META["ep"] = getattr(PROVIDER, "endpoint_hint")
-if hasattr(PROVIDER, "deployment_hint"):
-    PROVIDER_META["dep"] = getattr(PROVIDER, "deployment_hint")
+if LLM_CONFIG.provider == "azure":
+    ep = (LLM_CONFIG.azure_endpoint or "").rstrip("/")
+    dep = LLM_CONFIG.azure_deployment or MODEL_DRAFT
+    PROVIDER_META.update(
+        {
+            "endpoint": ep,
+            "deployment": dep,
+            "api_version": LLM_CONFIG.azure_api_version or "",
+            "region": _extract_region(ep) if ep else "",
+        }
+    )
+PROVIDER_META["valid_config"] = LLM_CONFIG.valid and os.getenv("AZURE_KEY_INVALID") != "1"
+if "endpoint" in PROVIDER_META:
+    PROVIDER_META["ep"] = PROVIDER_META["endpoint"][:2]
+if "deployment" in PROVIDER_META:
+    PROVIDER_META["dep"] = PROVIDER_META["deployment"][:2]
 
 ANALYZE_CACHE_TTL_S = int(os.getenv("ANALYZE_CACHE_TTL_S", "900"))
 ANALYZE_CACHE_MAX = int(os.getenv("ANALYZE_CACHE_MAX", "128"))
 ENABLE_REPLAY = os.getenv("ANALYZE_REPLAY_ENABLED", "1") == "1"
+
+
+def _llm_key_problem() -> ProblemDetail:
+    return ProblemDetail(
+        title="Invalid LLM key",
+        status=400,
+        code="invalid_llm_key",
+        detail="AZURE_OPENAI_API_KEY is missing or invalid",
+        extra={"meta": PROVIDER_META},
+    )
+
+
+def _ensure_llm_ready() -> None:
+    if LLM_CONFIG.provider == "azure" and not PROVIDER_META.get("valid_config"):
+        problem = _llm_key_problem()
+        raise HTTPException(status_code=400, detail=problem.model_dump())
 
 an_cache = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
 cid_index = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
@@ -667,15 +707,24 @@ def _provider_chat(
 @app.get("/api/llm/ping")
 def llm_ping():
     try:
+        _ensure_llm_ready()
+    except HTTPException as exc:
+        return JSONResponse(exc.detail, status_code=exc.status_code)
+    try:
         res = PROVIDER.ping()
-        out = {
+        return {
             "status": "ok",
-            "meta": PROVIDER_META,
             "latency_ms": res.get("latency_ms", 0),
+            "meta": PROVIDER_META,
         }
-    except Exception as e:  # pragma: no cover - network issues
-        out = {"status": "error", "detail": str(e), "meta": PROVIDER_META}
-    return out
+    except Exception as e:
+        problem = ProblemDetail(
+            title="LLM ping failed",
+            status=502,
+            detail=str(e),
+            extra={"meta": PROVIDER_META},
+        )
+        return JSONResponse(problem.model_dump(), status_code=502)
 
 
 class AnalyzeRequest(BaseModel):
@@ -2146,11 +2195,9 @@ class RedlinesOut(BaseModel):
     dependencies=[Depends(_require_api_key)],
 )
 async def gpt_draft(inp: DraftIn, request: Request):
-    if os.getenv("AZURE_KEY_INVALID") == "1":
-        raise HTTPException(
-            status_code=500,
-            detail="Azure key is invalid (non-ASCII placeholder). Set a real AZURE_OPENAI_API_KEY.",
-        )
+    if LLM_CONFIG.provider == "azure" and not PROVIDER_META.get("valid_config"):
+        problem = _llm_key_problem()
+        return JSONResponse(problem.model_dump(), status_code=400)
     started = time.perf_counter()
     cid = compute_cid(request)
     raw = _json_dumps_safe(inp.model_dump(exclude_none=True))

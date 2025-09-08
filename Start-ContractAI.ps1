@@ -1,7 +1,7 @@
 Param([switch]$OpenWord)
 
 $ErrorActionPreference = 'Stop'
-$proj = "C:\Users\Ludmila\contract_ai"
+$proj = Split-Path -Parent $MyInvocation.MyCommand.Path
 $venvPython = Join-Path $proj ".venv\Scripts\python.exe"
 $wef = Join-Path $env:LOCALAPPDATA "Microsoft\Office\16.0\Wef"
 $manifest = Join-Path $proj "word_addin_dev\manifest.xml"
@@ -23,8 +23,7 @@ Write-Host ">>> Copy manifest to WEF..."
 Copy-Item $manifest -Destination (Join-Path $wef (Split-Path $manifest -Leaf)) -Force
 
 Write-Host ">>> Start backend on http://127.0.0.1:9000 ..."
-$cmd = "& `"$venvPython`" -m uvicorn contract_review_app.api.app:app --host 127.0.0.1 --port 9000 --reload"
-Start-Process powershell -ArgumentList "-NoExit","-Command $cmd" -WorkingDirectory $proj
+Start-Process -FilePath $venvPython -ArgumentList @('-m','uvicorn','contract_review_app.api.app:app','--host','127.0.0.1','--port','9000','--reload') -WorkingDirectory $proj
 
 if ($OpenWord) {
   Write-Host ">>> Launch Word..."

@@ -44,9 +44,19 @@ function base() {
   }
 }
 async function req(path, { method = "GET", body = null, key = path } = {}) {
+  let apiKey = "";
+  try {
+    apiKey = localStorage.getItem("apiKey") || "";
+  } catch {}
+  if (!apiKey) {
+    try {
+      console.error("API key missing");
+      alert("API key missing");
+    } catch {}
+  }
   const r = await fetch(base() + path, {
     method,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", "x-api-key": apiKey },
     body: body ? JSON.stringify(body) : void 0,
     credentials: "include"
   });

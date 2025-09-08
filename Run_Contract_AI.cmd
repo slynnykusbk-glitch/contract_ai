@@ -1,10 +1,12 @@
 @echo off
 setlocal
+cd /d "%~dp0"
 
-set REPO=C:\Users\Ludmila\contract_ai
+set REPO=%CD%
 set ROOT=%REPO%\word_addin_dev
 set MF=%ROOT%\manifest.xml
-set CERT=%ROOT%\certs\localhost.pem
+set CERT=%ROOT%\certs\panel-cert.pem
+set KEY=%ROOT%\certs\panel-key.pem
 set PY=%REPO%\.venv\Scripts\python.exe
 
 rem 1) Закрити Word і очистити кеш
@@ -19,7 +21,7 @@ powershell -NoLogo -NoProfile -Command ^
 
 rem 2) Запустити бекенд і панель
 set AI_PROVIDER=mock
-start "ContractAI Backend" /MIN "%PY%" -m uvicorn contract_review_app.api.app:app --host localhost --port 9443 --ssl-certfile "%CERT%" --ssl-keyfile "%ROOT%\certs\localhost-key.pem" --reload
+start "ContractAI Backend" /MIN "%PY%" -m uvicorn contract_review_app.api.app:app --host localhost --port 9443 --ssl-certfile "%CERT%" --ssl-keyfile "%KEY%" --reload
 start "ContractAI Panel"   /MIN "%PY%" "%ROOT%\serve_https_panel.py" --host localhost
 
 rem 3) Відкрити Word

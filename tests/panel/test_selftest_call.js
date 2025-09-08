@@ -2,41 +2,9 @@ const fs = require('fs');
 const vm = require('vm');
 const assert = require('assert');
 
-let code = fs.readFileSync(__dirname + '/../../word_addin_dev/app/selftest.js', 'utf8');
-
 const sandbox = {
   console,
   alert: () => {},
-  fetch: async (url, opts = {}) => {
-    // health endpoint should not send x-api-key
-    assert.ok(url.endsWith('/health'));
-    assert.ok(!opts.headers || !('x-api-key' in opts.headers));
-    const headers = new Map([
-      ['x-cid', 'cid-h'],
-      ['x-schema-version', '1.0'],
-      ['x-latency-ms', '42']
-    ]);
-    return {
-      ok: true,
-      status: 200,
-      headers: { get: k => headers.get(k) },
-      json: async () => ({ status: 'ok', llm:{provider:'p',model:'m',mode:'mock'} })
-    };
-  },
-  CAI: {
-    API: {
-      analyze: async (text) => {
-        assert.strictEqual(sandbox.localStorage.getItem('api_key'), 'KEY123');
-        const headers = new Map([
-          ['x-cid', 'cid-a'],
-          ['x-schema-version', '1.1'],
-          ['x-latency-ms', '7']
-        ]);
-        return { ok:true, resp:{ status:200, headers:{ get: k => headers.get(k) } }, json:{ status:'ok', meta:{} } };
-      }
-    },
-    Store: { setBase: () => {}, get: () => ({}) }
-  },
   document: {
     getElementById: (id) => {
       const el = { value: '', textContent: '', style:{}, className:'', addEventListener: () => {} };
@@ -56,6 +24,58 @@ const sandbox = {
 };
 sandbox.window = sandbox; sandbox.self = sandbox;
 
+let code;
+
+// minimal CAI.Store stub
+const storeState = { lastCid:null, schemaVersion:'', apiKey:'' };
+sandbox.CAI = { Store: {
+  setBase: () => {},
+  setApiKey: k => { storeState.apiKey = k; },
+  setSchemaVersion: v => { storeState.schemaVersion = v; },
+  setMeta: m => { if (m.cid) storeState.lastCid = m.cid; if (m.schema) storeState.schemaVersion = m.schema; },
+  get: () => ({ ...storeState })
+}};
+
+// stub fetch for both health and analyze
+sandbox._lastReq = {};
+sandbox.fetch = async (url, opts = {}) => {
+  if (url.endsWith('/health')) {
+    assert.ok(!opts.headers || !('x-api-key' in opts.headers));
+    const headers = new Map([
+      ['x-cid', 'cid-h'],
+      ['x-schema-version', '1.0'],
+      ['x-latency-ms', '42']
+    ]);
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: k => headers.get(k) },
+      json: async () => ({ status: 'ok', llm:{provider:'p',model:'m',mode:'mock'} })
+    };
+  }
+  if (url.endsWith('/api/analyze')) {
+    sandbox._lastReq = { url, opts };
+    const headers = new Map([
+      ['x-cid', 'cid-a'],
+      ['x-schema-version', '1.1'],
+    ]);
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: k => headers.get(k) },
+      json: async () => ({ status: 'ok' })
+    };
+  }
+  throw new Error('Unexpected fetch url: ' + url);
+};
+
+// load api-client to provide postJson
+code = fs.readFileSync(__dirname + '/../../word_addin_dev/app/assets/api-client.js', 'utf8');
+code = code.replace(/export\s+\{[\s\S]*?\};?/g, '');
+vm.runInNewContext(code, sandbox);
+
+// load selftest.js which uses postJson
+code = fs.readFileSync(__dirname + '/../../word_addin_dev/app/selftest.js', 'utf8');
 vm.runInNewContext(code, sandbox);
 
 (async () => {
@@ -63,8 +83,16 @@ vm.runInNewContext(code, sandbox);
   assert.strictEqual(rHealth.code, 200);
   assert.strictEqual(rHealth.xcid, 'cid-h');
   assert.strictEqual(rHealth.xschema, '1.0');
+
   const rAnalyze = await sandbox.callEndpoint({ name:'analyze', method:'POST', path:'/api/analyze', body:{text:'hi'} });
   assert.strictEqual(rAnalyze.code, 200);
   assert.strictEqual(rAnalyze.xcid, 'cid-a');
+  const sent = sandbox._lastReq;
+  assert.deepStrictEqual(JSON.parse(sent.opts.body), { text: 'hi' });
+  assert.strictEqual(sent.opts.headers['content-type'], 'application/json');
+  assert.strictEqual(sent.opts.headers['x-api-key'], 'KEY123');
+  assert.strictEqual(sent.opts.headers['x-schema-version'], '1.0');
+  assert.strictEqual(sandbox.CAI.Store.get().lastCid, 'cid-a');
   console.log('selftest call tests ok');
 })();
+

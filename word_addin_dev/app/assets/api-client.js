@@ -43,6 +43,38 @@ function base() {
     return DEFAULT_BASE;
   }
 }
+async function postJson(path, body, opts = {}) {
+  const url = base() + path;
+  const headers = { "content-type": "application/json" };
+  let apiKey = opts.apiKey;
+  if (!apiKey) {
+    try {
+      apiKey = document.getElementById("apiKeyInput")?.value.trim() || localStorage.getItem("api_key") || "";
+    } catch {
+      apiKey = "";
+    }
+  }
+  if (apiKey) {
+    headers["x-api-key"] = apiKey;
+    try { localStorage.setItem("api_key", apiKey); } catch {}
+    try { window.CAI?.Store?.setApiKey?.(apiKey); } catch {}
+  }
+  const schemaVersion = opts.schemaVersion || (window.CAI?.Store?.get?.().schemaVersion || "");
+  if (schemaVersion) headers["x-schema-version"] = schemaVersion;
+  const http = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body || {}),
+    credentials: "include"
+  });
+  const json = await http.json().catch(() => ({}));
+  try {
+    const h = http.headers;
+    window.CAI?.Store?.setMeta?.({ cid: h.get("x-cid") || void 0, schema: h.get("x-schema-version") || void 0 });
+  } catch {}
+  return { http, json, headers: http.headers };
+}
+window.postJson = postJson;
 async function req(path, { method = "GET", body = null, key = path } = {}) {
   const headers = { "content-type": "application/json" };
   try {
@@ -82,6 +114,7 @@ async function apiQaRecheck(text, rules = []) {
   return req("/api/qa-recheck", { method: "POST", body: { text, rules }, key: "qa-recheck" });
 }
 export {
+  postJson,
   apiAnalyze,
   apiGptDraft,
   apiHealth,

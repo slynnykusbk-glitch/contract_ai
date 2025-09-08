@@ -85,6 +85,37 @@ function base(): string {
   catch { return DEFAULT_BASE; }
 }
 
+export async function postJson(path: string, body: any, opts: { apiKey?: string; schemaVersion?: string } = {}) {
+  const url = base() + path;
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  let apiKey = opts.apiKey;
+  if (!apiKey) {
+    try {
+      apiKey = (document.getElementById('apiKeyInput') as HTMLInputElement | null)?.value.trim() || localStorage.getItem('api_key') || '';
+    } catch { apiKey = ''; }
+  }
+  if (apiKey) {
+    headers['x-api-key'] = apiKey;
+    try { localStorage.setItem('api_key', apiKey); } catch {}
+    try { (window as any).CAI?.Store?.setApiKey?.(apiKey); } catch {}
+  }
+  const schemaVersion = opts.schemaVersion || (window as any).CAI?.Store?.get?.().schemaVersion || '';
+  if (schemaVersion) headers['x-schema-version'] = schemaVersion;
+  const http = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body || {}),
+    credentials: 'include',
+  });
+  const json = await http.json().catch(() => ({}));
+  const hdr = http.headers;
+  try {
+    (window as any).CAI?.Store?.setMeta?.({ cid: hdr.get('x-cid') || undefined, schema: hdr.get('x-schema-version') || undefined });
+  } catch {}
+  return { http, json, headers: hdr };
+}
+;(window as any).postJson = postJson;
+
 async function req(path: string, { method='GET', body=null, key=path }: { method?: string; body?: any; key?: string } = {}) {
   const headers: Record<string, string> = { 'content-type':'application/json' };
   try {

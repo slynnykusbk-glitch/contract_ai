@@ -200,43 +200,26 @@ async function callEndpoint({name, method, path, body, dynamicPathFn}) {
     localStorage.setItem("backendUrl", base);
   } catch {}
 
-  let apiKey = "";
   const origKey = localStorage.getItem(API_KEY_STORAGE);
   if (path !== "/health") {
     try {
-      apiKey = document.getElementById("apiKeyInput").value.trim();
-      localStorage.setItem(API_KEY_STORAGE, apiKey);
+      const k = document.getElementById("apiKeyInput").value.trim();
+      localStorage.setItem(API_KEY_STORAGE, k);
+      CAI.Store?.setApiKey?.(k);
     } catch {}
   }
 
   let r;
-  if (path === "/health") {
-    const url = joinUrl(base, dynamicPathFn ? dynamicPathFn() : path);
-    const resp = await fetch(url, { method:"GET" });
-    const json = await resp.json().catch(() => ({}));
-    r = { ok: resp.ok && json.status === "ok", resp, json, meta:{ latencyMs: Number(resp.headers.get("x-latency-ms")) || 0 } };
-  } else if (path === "/api/analyze") {
-    r = await CAI.API.analyze(body && body.text);
-  } else if (path === "/api/summary") {
-    r = await CAI.API.summary(body && body.text);
-  } else if (path === DRAFT_PATH || path === "/api/gpt-draft") {
-    r = await CAI.API.gptDraft(body && body.text);
-  } else if (path === "/api/suggest_edits") {
-    r = await CAI.API.suggest(body && body.text);
-  } else if (path === "/api/qa-recheck") {
-    r = await CAI.API.qaRecheck(body && body.text, body && body.applied_changes || []);
-  } else if (name === "trace") {
-    const cid = dynamicPathFn ? dynamicPathFn().split("/").pop() : "";
-    r = await CAI.API.trace(cid);
+  const rel = dynamicPathFn ? dynamicPathFn() : path;
+  if (method === "GET") {
+    const url = joinUrl(base, rel);
+    const http = await fetch(url, { method:"GET" });
+    const json = await http.json().catch(() => ({}));
+    r = { http, json, headers: http.headers };
+  } else if (method === "POST") {
+    r = await postJson(rel, body || {});
   } else {
-    const url = joinUrl(base, dynamicPathFn ? dynamicPathFn() : path);
-    if(!apiKey){
-      alert("API key missing");
-      return { ok:false, error_code:"CLIENT", detail:"API key missing" };
-    }
-    const resp = await fetch(url, { method, headers:{"content-type":"application/json","x-api-key":apiKey}, body: body ? JSON.stringify(body) : undefined });
-    const json = await resp.json().catch(() => ({}));
-    r = { ok: resp.ok && json.status === "ok", resp, json, meta:{ latencyMs: Number(resp.headers.get("x-latency-ms")) || 0 } };
+    return { ok:false, error_code:"CLIENT", detail:"Unsupported method" };
   }
 
   if (origBase1 == null) { localStorage.removeItem(LS_KEY); } else { localStorage.setItem(LS_KEY, origBase1); }
@@ -245,22 +228,24 @@ async function callEndpoint({name, method, path, body, dynamicPathFn}) {
     if (origKey == null) { localStorage.removeItem(API_KEY_STORAGE); } else { localStorage.setItem(API_KEY_STORAGE, origKey); }
   }
 
-  const hdr = r.resp && r.resp.headers ? r.resp.headers : { get: () => "" };
+  const hdr = r.headers || { get: () => "" };
   const cid = hdr.get("x-cid") || "";
   const cache = hdr.get("x-cache") || "";
   const schema = hdr.get("x-schema-version") || "";
-  const latency = Number(hdr.get("x-latency-ms")) || (r.meta && r.meta.latencyMs) || null;
+  const latency = Number(hdr.get("x-latency-ms")) || null;
   if (cid) lastCid = cid;
+  if (schema) { try { CAI.Store?.setSchemaVersion?.(schema); } catch {} }
   setCidLabels();
+  const ok = r.http ? (r.http.ok && r.json && r.json.status === "ok") : false;
   return {
     url: path,
-    code: r.resp ? r.resp.status : null,
+    code: r.http ? r.http.status : null,
     body: r.json,
     xcid: cid,
     xcache: cache,
     xschema: schema,
     latencyMs: latency,
-    ok: r.ok,
+    ok,
     error_code: r.json && r.json.error_code ? r.json.error_code : "",
     detail: r.json && r.json.detail ? r.json.detail : ""
   };

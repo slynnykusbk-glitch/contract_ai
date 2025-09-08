@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -25,7 +26,14 @@ def audit(event: str, user: Optional[str], doc_hash: Optional[str], details: Dic
     }
     if details:
         record.update(details)
-    secure_write(os.path.join("var", "audit.log"), json.dumps(record, sort_keys=True), append=True)
+    try:
+        secure_write(
+            os.path.join("var", "audit.log"),
+            json.dumps(record, sort_keys=True),
+            append=True,
+        )
+    except Exception as exc:  # pragma: no cover - rare
+        logging.warning("failed to write audit log: %s", exc)
 
 
 __all__ = ["audit"]

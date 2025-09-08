@@ -58,8 +58,17 @@ class AzureProvider:
             or os.getenv("AZURE_OPENAI_API_KEY")
             or os.getenv("OPENAI_API_KEY")
         )
-        if not (ep and dep and ver and key):
-            raise ProviderError("Azure env is incomplete")
+        missing = []
+        if not ep:
+            missing.append("AZURE_OPENAI_ENDPOINT")
+        if not dep:
+            missing.append("AZURE_OPENAI_DEPLOYMENT")
+        if not ver:
+            missing.append("AZURE_OPENAI_API_VERSION")
+        if not key:
+            missing.append("AZURE_OPENAI_API_KEY")
+        if missing:
+            raise ProviderError("Azure env vars missing: " + ", ".join(missing))
         self.endpoint = ep.rstrip("/")
         self.deployment = dep
         self.api_version = ver

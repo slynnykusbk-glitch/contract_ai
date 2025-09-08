@@ -12,5 +12,10 @@ def test_missing_azure_env_raises(monkeypatch):
         "AZURE_OPENAI_DEPLOYMENT",
     ):
         monkeypatch.delenv(var, raising=False)
-    with pytest.raises(ProviderError):
+    with pytest.raises(ProviderError) as exc:
         get_provider()
+    expected = (
+        "Azure env vars missing: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT, "
+        "AZURE_OPENAI_API_VERSION, AZURE_OPENAI_API_KEY"
+    )
+    assert str(exc.value) == expected

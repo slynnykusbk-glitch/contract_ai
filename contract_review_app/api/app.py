@@ -27,6 +27,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from contract_review_app.core.privacy import redact_pii, scrub_llm_output
 from contract_review_app.core.audit import audit
+from contract_review_app.security.secure_store import secure_write
 
 
 class _TraceStore:
@@ -197,6 +198,7 @@ from contract_review_app.core.diff import make_diff
 from contract_review_app.metrics.compute import collect_metrics, to_csv
 from contract_review_app.metrics.report_html import render_metrics_html
 from contract_review_app.metrics.schemas import MetricsResponse
+from contract_review_app.tools.purge_retention import purge as retention_purge
 
 # core schemas for suggest_edits
 from contract_review_app.core.schemas import (
@@ -319,6 +321,7 @@ except Exception:  # pragma: no cover - optional
 
     explain_router = APIRouter()
 from .integrations import router as integrations_router
+from .dsar import router as dsar_router
 
 # Orchestrator / Engine imports
 try:
@@ -1475,6 +1478,13 @@ async def api_metrics_html():
     return Response(html, media_type="text/html", headers={"Cache-Control": "no-store"})
 
 
+@router.post("/api/admin/purge")
+def api_admin_purge(request: Request, dry: int = 1):
+    _require_api_key(request)
+    removed = retention_purge(dry_run=bool(dry))
+    return {"removed": [str(p) for p in removed]}
+
+
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 def api_analyze(req: AnalyzeRequest, request: Request):
     _require_api_key(request)
@@ -2328,9 +2338,7 @@ async def api_learning_log(body: Any = Body(...)) -> Response:
     t0 = _now_ms()
     try:
         LEARNING_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with LEARNING_LOG_PATH.open("a", encoding="utf-8") as f:
-            json.dump(body, f, ensure_ascii=False)
-            f.write("\n")
+        secure_write(LEARNING_LOG_PATH, json.dumps(body, ensure_ascii=False), append=True)
     except Exception:
         pass
     resp = Response(status_code=204)
@@ -2364,6 +2372,7 @@ app.include_router(router)
 app.include_router(corpus_router)
 app.include_router(explain_router)
 app.include_router(integrations_router)
+app.include_router(dsar_router)
 
 
 # --------------------------------------------------------------------

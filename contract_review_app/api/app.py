@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Literal
 
 from collections import OrderedDict
 import secrets
@@ -2221,7 +2221,8 @@ async def api_suggest_edits(
 
 class DraftIn(BaseModel):
     text: str = Field(..., min_length=1)
-    mode: str = Field("friendly", pattern="^(friendly|medium|strict)$")
+    language: str = "en"
+    mode: Literal["friendly", "medium", "strict"] = "medium"
     before_text: Optional[str] = None
     after_text: Optional[str] = None
 
@@ -2253,12 +2254,6 @@ class RedlinesOut(BaseModel):
 
 @router.post(
     "/api/gpt-draft",
-    response_model=DraftOut,
-    responses={422: {"model": ProblemDetail}},
-    dependencies=[Depends(_require_api_key)],
-)
-@router.post(
-    "/api/gpt/draft",
     response_model=DraftOut,
     responses={422: {"model": ProblemDetail}},
     dependencies=[Depends(_require_api_key)],
@@ -2414,23 +2409,30 @@ def llm_ping_alias():
 
 
 @router.post(
-    "/api/gpt_draft",
-    response_model=DraftOut,
-    responses={422: {"model": ProblemDetail}},
+    "/api/gpt/draft",
+    include_in_schema=False,
     dependencies=[Depends(_require_api_key)],
 )
-async def gpt_draft_underscore_alias(inp: DraftIn, request: Request):
-    return await gpt_draft(inp, request)
+async def gpt_draft_slash_redirect():
+    return Response(status_code=307, headers={"Location": "/api/gpt-draft"})
+
+
+@router.post(
+    "/api/gpt_draft",
+    include_in_schema=False,
+    dependencies=[Depends(_require_api_key)],
+)
+async def gpt_draft_underscore_redirect():
+    return Response(status_code=307, headers={"Location": "/api/gpt-draft"})
 
 
 @router.post(
     "/gpt-draft",
-    response_model=DraftOut,
-    responses={422: {"model": ProblemDetail}},
+    include_in_schema=False,
     dependencies=[Depends(_require_api_key)],
 )
-async def gpt_draft_plain_alias(inp: DraftIn, request: Request):
-    return await gpt_draft(inp, request)
+async def gpt_draft_plain_redirect():
+    return Response(status_code=307, headers={"Location": "/api/gpt-draft"})
 
 
 @router.post("/api/calloff/validate", dependencies=[Depends(_require_api_key)])

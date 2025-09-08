@@ -1530,6 +1530,668 @@
         }
       }
     },
+    "/api/metrics": {
+      "get": {
+        "summary": "Api Metrics",
+        "operationId": "api_metrics_api_metrics_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsResponse"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metrics.csv": {
+      "get": {
+        "summary": "Api Metrics Csv",
+        "operationId": "api_metrics_csv_api_metrics_csv_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metrics.html": {
+      "get": {
+        "summary": "Api Metrics Html",
+        "operationId": "api_metrics_html_api_metrics_html_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/purge": {
+      "post": {
+        "summary": "Api Admin Purge",
+        "operationId": "api_admin_purge_api_admin_purge_post",
+        "parameters": [
+          {
+            "name": "dry",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "title": "Dry"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Bad Request",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unprocessable Entity",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Too Many Requests",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Internal Server Error",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/analyze/replay": {
       "get": {
         "summary": "Analyze Replay",
@@ -2834,7 +3496,7 @@
         }
       }
     },
-    "/api/gpt/draft": {
+    "/api/gpt-draft": {
       "post": {
         "summary": "Gpt Draft",
         "operationId": "gpt_draft_api_gpt_draft_post",
@@ -2855,6 +3517,17 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DraftOut"
+                },
+                "examples": {
+                  "default": {
+                    "summary": "Example",
+                    "value": {},
+                    "headers": {
+                      "x-schema-version": "1.3",
+                      "x-latency-ms": 12,
+                      "x-cid": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                    }
+                  }
                 }
               }
             },
@@ -3008,15 +3681,15 @@
         }
       }
     },
-    "/api/gpt-draft": {
+    "/api/panel/redlines": {
       "post": {
-        "summary": "Gpt Draft",
-        "operationId": "gpt_draft_api_gpt_draft_post",
+        "summary": "Panel Redlines",
+        "operationId": "panel_redlines_api_panel_redlines_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DraftIn"
+                "$ref": "#/components/schemas/RedlinesIn"
               }
             }
           },
@@ -3028,18 +3701,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DraftOut"
-                },
-                "examples": {
-                  "default": {
-                    "summary": "Example",
-                    "value": {},
-                    "headers": {
-                      "x-schema-version": "1.3",
-                      "x-latency-ms": 12,
-                      "x-cid": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-                    }
-                  }
+                  "$ref": "#/components/schemas/RedlinesOut"
                 }
               }
             },
@@ -3499,354 +4161,6 @@
               }
             },
             "description": "Internal Server Error",
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "504": {
-            "description": "Gateway Timeout",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/gpt_draft": {
-      "post": {
-        "summary": "Gpt Draft Underscore Alias",
-        "operationId": "gpt_draft_underscore_alias_api_gpt_draft_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DraftIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DraftOut"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable Entity",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "429": {
-            "description": "Too Many Requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "504": {
-            "description": "Gateway Timeout",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/gpt-draft": {
-      "post": {
-        "summary": "Gpt Draft Plain Alias",
-        "operationId": "gpt_draft_plain_alias_gpt_draft_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DraftIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DraftOut"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable Entity",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "429": {
-            "description": "Too Many Requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
             "headers": {
               "x-schema-version": {
                 "$ref": "#/components/headers/XSchemaVersion"
@@ -4391,53 +4705,753 @@
         }
       }
     },
-    "/api/corpus/search": {
+    "/api/companies/search": {
       "post": {
-        "summary": "Corpus Search",
-        "operationId": "corpus_search_api_corpus_search_post",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1,
-              "title": "Page"
-            }
-          },
-          {
-            "name": "page_size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 50,
-              "minimum": 1,
-              "default": 10,
-              "title": "Page Size"
-            }
-          }
+        "tags": [
+          "integrations"
         ],
+        "summary": "Api Companies Search",
+        "operationId": "api_companies_search_api_companies_search_post",
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CorpusSearchRequest"
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Payload"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
+                "schema": {}
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CorpusSearchResponse"
+                  "$ref": "#/components/schemas/ProblemDetail"
                 }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/companies/{number}": {
+      "get": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "Api Company Profile",
+        "operationId": "api_company_profile_api_companies__number__get",
+        "parameters": [
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Bad Request",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unprocessable Entity",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Too Many Requests",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Internal Server Error",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dsar/access": {
+      "get": {
+        "summary": "Dsar Access",
+        "operationId": "dsar_access_api_dsar_access_get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Bad Request",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unprocessable Entity",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Too Many Requests",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Internal Server Error",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dsar/erasure": {
+      "post": {
+        "summary": "Dsar Erasure",
+        "operationId": "dsar_erasure_api_dsar_erasure_post",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Bad Request",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unprocessable Entity",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Too Many Requests",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Internal Server Error",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dsar/export": {
+      "get": {
+        "summary": "Dsar Export",
+        "operationId": "dsar_export_api_dsar_export_get",
+        "parameters": [
+          {
+            "name": "identifier",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Identifier"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             },
             "headers": {
@@ -4977,7 +5991,31 @@
   },
   "components": {
     "schemas": {
+      "Acceptance": {
+        "properties": {
+          "applied": {
+            "type": "integer",
+            "title": "Applied"
+          },
+          "rejected": {
+            "type": "integer",
+            "title": "Rejected"
+          },
+          "acceptance_rate": {
+            "type": "number",
+            "title": "Acceptance Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "applied",
+          "rejected",
+          "acceptance_rate"
+        ],
+        "title": "Acceptance"
+      },
       "AnalyzeRequest": {
+        "additionalProperties": false,
         "description": "Public request DTO for ``/api/analyze``.\n\nAccepts ``text`` as a required field while allowing legacy aliases\n``clause`` and ``body`` for backward compatibility. The aliases are\nfolded into ``text`` during validation so downstream logic only needs to\nhandle a single attribute.",
         "properties": {
           "text": {
@@ -5048,6 +6086,7 @@
         "type": "object"
       },
       "Citation": {
+        "additionalProperties": false,
         "properties": {
           "instrument": {
             "title": "Instrument",
@@ -5096,6 +6135,7 @@
             "title": "Citations"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "CitationResolveRequest"
       },
@@ -5109,109 +6149,35 @@
             "title": "Citations"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "citations"
         ],
         "title": "CitationResolveResponse"
       },
-      "CorpusSearchRequest": {
+      "Coverage": {
         "properties": {
-          "q": {
-            "type": "string",
-            "title": "Q"
-          },
-          "k": {
+          "rules_total": {
             "type": "integer",
-            "title": "K",
-            "default": 10
+            "title": "Rules Total"
           },
-          "method": {
-            "type": "string",
-            "enum": [
-              "hybrid",
-              "bm25",
-              "vector"
-            ],
-            "title": "Method",
-            "default": "hybrid"
+          "rules_fired": {
+            "type": "integer",
+            "title": "Rules Fired"
           },
-          "jurisdiction": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Jurisdiction"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          },
-          "act_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Act Code"
-          },
-          "section_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Section Code"
+          "coverage": {
+            "type": "number",
+            "title": "Coverage"
           }
         },
         "type": "object",
         "required": [
-          "q"
+          "rules_total",
+          "rules_fired",
+          "coverage"
         ],
-        "title": "CorpusSearchRequest"
-      },
-      "CorpusSearchResponse": {
-        "properties": {
-          "hits": {
-            "items": {
-              "$ref": "#/components/schemas/SearchHit"
-            },
-            "type": "array",
-            "title": "Hits"
-          },
-          "paging": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Paging"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "required": [
-          "hits"
-        ],
-        "title": "CorpusSearchResponse"
+        "title": "Coverage"
       },
       "DraftIn": {
         "properties": {
@@ -5220,11 +6186,42 @@
             "minLength": 1,
             "title": "Text"
           },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": "en"
+          },
           "mode": {
             "type": "string",
-            "pattern": "^(friendly|medium|strict)$",
+            "enum": [
+              "friendly",
+              "medium",
+              "strict"
+            ],
             "title": "Mode",
-            "default": "friendly"
+            "default": "medium"
+          },
+          "before_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before Text"
+          },
+          "after_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Text"
           }
         },
         "type": "object",
@@ -5280,6 +6277,14 @@
           "x_schema_version": {
             "type": "string",
             "title": "X Schema Version"
+          },
+          "context_before": {
+            "type": "string",
+            "title": "Context Before"
+          },
+          "context_after": {
+            "type": "string",
+            "title": "Context After"
           }
         },
         "type": "object",
@@ -5292,13 +6297,16 @@
           "before_text",
           "after_text",
           "diff",
-          "x_schema_version"
+          "x_schema_version",
+          "context_before",
+          "context_after"
         ],
         "title": "DraftOut"
       },
       "Finding": {
         "$defs": {
           "Span": {
+            "additionalProperties": false,
             "properties": {
               "start": {
                 "minimum": 0,
@@ -5319,6 +6327,7 @@
             "type": "object"
           }
         },
+        "additionalProperties": false,
         "properties": {
           "span": {
             "$ref": "#/components/schemas/Span"
@@ -5362,33 +6371,46 @@
         "type": "object",
         "title": "LearningUpdateIn"
       },
-      "Paging": {
+      "MetricsResponse": {
         "properties": {
-          "page": {
-            "type": "integer",
-            "title": "Page"
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version",
+            "default": "1.3"
           },
-          "page_size": {
-            "type": "integer",
-            "title": "Page Size"
+          "snapshot_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Snapshot At"
           },
-          "total": {
-            "type": "integer",
-            "title": "Total"
-          },
-          "pages": {
-            "type": "integer",
-            "title": "Pages"
+          "metrics": {
+            "$ref": "#/components/schemas/QualityMetrics"
           }
         },
         "type": "object",
         "required": [
-          "page",
-          "page_size",
-          "total",
-          "pages"
+          "snapshot_at",
+          "metrics"
         ],
-        "title": "Paging"
+        "title": "MetricsResponse"
+      },
+      "Perf": {
+        "properties": {
+          "docs": {
+            "type": "integer",
+            "title": "Docs"
+          },
+          "avg_ms_per_page": {
+            "type": "number",
+            "title": "Avg Ms Per Page"
+          }
+        },
+        "type": "object",
+        "required": [
+          "docs",
+          "avg_ms_per_page"
+        ],
+        "title": "Perf"
       },
       "ProblemDetail": {
         "properties": {
@@ -5462,9 +6484,143 @@
         "title": "ProblemDetail",
         "type": "object"
       },
-      "SearchHit": {
+      "QualityMetrics": {
+        "properties": {
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleMetric"
+            },
+            "type": "array",
+            "title": "Rules"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/Coverage"
+          },
+          "acceptance": {
+            "$ref": "#/components/schemas/Acceptance"
+          },
+          "perf": {
+            "$ref": "#/components/schemas/Perf"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rules",
+          "coverage",
+          "acceptance",
+          "perf"
+        ],
+        "title": "QualityMetrics"
+      },
+      "RedlinesIn": {
+        "properties": {
+          "before_text": {
+            "type": "string",
+            "title": "Before Text"
+          },
+          "after_text": {
+            "type": "string",
+            "title": "After Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "before_text",
+          "after_text"
+        ],
+        "title": "RedlinesIn"
+      },
+      "RedlinesOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "diff_unified": {
+            "type": "string",
+            "title": "Diff Unified"
+          },
+          "diff_html": {
+            "type": "string",
+            "title": "Diff Html"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "diff_unified",
+          "diff_html"
+        ],
+        "title": "RedlinesOut"
+      },
+      "RuleMetric": {
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "title": "Rule Id"
+          },
+          "tp": {
+            "type": "integer",
+            "title": "Tp"
+          },
+          "fp": {
+            "type": "integer",
+            "title": "Fp"
+          },
+          "fn": {
+            "type": "integer",
+            "title": "Fn"
+          },
+          "precision": {
+            "type": "number",
+            "title": "Precision"
+          },
+          "recall": {
+            "type": "number",
+            "title": "Recall"
+          },
+          "f1": {
+            "type": "number",
+            "title": "F1"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule_id",
+          "tp",
+          "fp",
+          "fn",
+          "precision",
+          "recall",
+          "f1"
+        ],
+        "title": "RuleMetric"
+      },
+      "Span": {
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "minimum": 0,
+            "title": "Start",
+            "type": "integer"
+          },
+          "end": {
+            "minimum": 0,
+            "title": "End",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "Span",
+        "type": "object"
+      },
+      "Segment": {
         "$defs": {
           "Span": {
+            "additionalProperties": false,
             "properties": {
               "start": {
                 "minimum": 0,
@@ -5485,6 +6641,52 @@
             "type": "object"
           }
         },
+        "additionalProperties": false,
+        "properties": {
+          "span": {
+            "$ref": "#/components/schemas/Span"
+          },
+          "lang": {
+            "enum": [
+              "latin",
+              "cyrillic"
+            ],
+            "title": "Lang",
+            "type": "string"
+          }
+        },
+        "required": [
+          "span",
+          "lang"
+        ],
+        "title": "Segment",
+        "type": "object"
+      },
+      "SearchHit": {
+        "$defs": {
+          "Span": {
+            "additionalProperties": false,
+            "properties": {
+              "start": {
+                "minimum": 0,
+                "title": "Start",
+                "type": "integer"
+              },
+              "end": {
+                "minimum": 0,
+                "title": "End",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "title": "Span",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
         "properties": {
           "doc_id": {
             "title": "Doc Id",
@@ -5589,69 +6791,6 @@
           "span"
         ],
         "title": "SearchHit",
-        "type": "object"
-      },
-      "Span": {
-        "properties": {
-          "start": {
-            "minimum": 0,
-            "title": "Start",
-            "type": "integer"
-          },
-          "end": {
-            "minimum": 0,
-            "title": "End",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "start",
-          "end"
-        ],
-        "title": "Span",
-        "type": "object"
-      },
-      "Segment": {
-        "$defs": {
-          "Span": {
-            "properties": {
-              "start": {
-                "minimum": 0,
-                "title": "Start",
-                "type": "integer"
-              },
-              "end": {
-                "minimum": 0,
-                "title": "End",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "start",
-              "end"
-            ],
-            "title": "Span",
-            "type": "object"
-          }
-        },
-        "properties": {
-          "span": {
-            "$ref": "#/components/schemas/Span"
-          },
-          "lang": {
-            "enum": [
-              "latin",
-              "cyrillic"
-            ],
-            "title": "Lang",
-            "type": "string"
-          }
-        },
-        "required": [
-          "span",
-          "lang"
-        ],
-        "title": "Segment",
         "type": "object"
       }
     },

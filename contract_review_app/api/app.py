@@ -843,7 +843,6 @@ def _custom_openapi():
         content.setdefault("examples", {})["default"] = {
             "summary": "Example",
             "value": {},
-            "headers": example_headers,
         }
     app.openapi_schema = openapi_schema
     return app.openapi_schema

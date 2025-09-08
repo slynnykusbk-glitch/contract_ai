@@ -65,16 +65,7 @@
 
     <div class="card">
       <h3>Tests</h3>
-      <div class="btns" style="margin-bottom:8px;">
-        <button id="btnHealth">GET /health</button>
-        <button id="btnAnalyze">POST /api/analyze</button>
-        <button id="btnSummary">POST /api/summary</button>
-        <button id="btnDraft">POST /api/gpt-draft</button>
-        <button id="btnSuggest">POST /api/suggest_edits</button>
-        <button id="btnQA">POST /api/qa-recheck</button>
-        <button id="btnCalloff">POST /api/calloff/validate</button>
-        <button id="btnTrace">GET /api/trace/{cid}</button>
-      </div>
+      <div class="btns" id="testsBtns" style="margin-bottom:8px;"></div>
       <div class="small">CID used for requests: <span id="cidLbl" class="mono pill"></span></div>
       <div class="small">Last response CID (from headers): <span id="lastCidLbl" class="mono pill"></span></div>
       <div style="overflow:auto;">
@@ -90,16 +81,7 @@
               <th>status</th>
             </tr>
           </thead>
-          <tbody>
-            <tr id="row-health"><td>GET /health</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-            <tr id="row-analyze"><td>POST /api/analyze</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-            <tr id="row-summary"><td>POST /api/summary</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-            <tr id="row-draft"><td>POST /api/gpt-draft</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-            <tr id="row-suggest"><td>POST /api/suggest_edits</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-            <tr id="row-qa"><td>POST /api/qa-recheck</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-            <tr id="row-calloff"><td>POST /api/calloff/validate</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-            <tr id="row-trace"><td>GET /api/trace/{cid}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-          </tbody>
+          <tbody id="statusBody"></tbody>
         </table>
       </div>
     </div>

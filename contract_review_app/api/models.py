@@ -30,7 +30,7 @@ class AnalyzeRequest(_DTOBase):
     """
 
     text: str = Field(validation_alias=AliasChoices("text", "clause", "body"))
-    language: str | None = None
+    language: str = "en"
     mode: str | None = None
     risk: str | None = None
 

@@ -1,0 +1,15 @@
+name: i18n-lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  i18n-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+            python-version: '3.x'
+      - run: python tools/i18n_scan.py

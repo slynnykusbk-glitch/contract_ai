@@ -1,8 +1,9 @@
 from typing import Any, Dict, List, Literal
 
+from fastapi import HTTPException
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
-from contract_review_app.core.schemas import AppBaseModel
+from contract_review_app.core.schemas import AppBaseModel, Finding as CoreFinding
 
 
 SCHEMA_VERSION = "1.3"
@@ -98,8 +99,28 @@ class Citation(_DTOBase):
 
 
 class CitationResolveRequest(_DTOBase):
-    findings: List[Finding] | None = None
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+        json_schema_extra={
+            "examples": [
+                {"citations": [{"instrument": "Act", "section": "1"}]},
+                {"findings": [{"code": "X", "message": "m"}]},
+            ]
+        },
+    )
+
+    findings: List[CoreFinding] | None = None
     citations: List[Citation] | None = None
+
+    @model_validator(mode="after")
+    def _one_of_findings_or_citations(self):
+        if (self.findings is None) == (self.citations is None):
+            raise HTTPException(
+                status_code=400,
+                detail="Exactly one of findings or citations is required",
+            )
+        return self
 
 
 class CitationResolveResponse(_DTOBase):

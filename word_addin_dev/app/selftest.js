@@ -128,6 +128,67 @@ function onClick(id, handler){
   el.addEventListener('click', handler);
 }
 
+async function fetchJSON(path){
+  const base = normBase(document.getElementById("backendInput").value);
+  const url = joinUrl(base, path);
+  const resp = await fetch(url, { method:"GET" });
+  return await resp.json();
+}
+
+async function loadOpenAPI(){
+  try{
+    const spec = await fetchJSON('/openapi.json');
+    return spec.paths || {};
+  }catch{
+    return {};
+  }
+}
+
+const TESTS = [];
+
+function buildRowsFromOpenAPI(paths){
+  const btns = document.getElementById('testsBtns');
+  const tbody = document.getElementById('statusBody');
+  if(!btns || !tbody) return;
+  const slugMap = {
+    '/health':'health',
+    '/api/analyze':'analyze',
+    '/api/summary':'summary',
+    '/api/gpt-draft':'draft',
+    '/api/suggest_edits':'suggest',
+    '/api/qa-recheck':'qa',
+    '/api/calloff/validate':'calloff',
+    '/api/trace/{cid}':'trace'
+  };
+  const special = {
+    '/health': testHealth,
+    '/api/analyze': testAnalyze,
+    '/api/summary': testSummary,
+    '/api/gpt-draft': testDraft,
+    '/api/suggest_edits': testSuggest,
+    '/api/qa-recheck': testQA,
+    '/api/calloff/validate': testCalloff,
+    '/api/trace/{cid}': testTrace
+  };
+  for (const [p, methods] of Object.entries(paths)){
+    if(!p.startsWith('/api/') && p !== '/health') continue;
+    for (const m of Object.keys(methods)){
+      const method = m.toUpperCase();
+      if(method !== 'GET' && method !== 'POST') continue;
+      const slug = slugMap[p] || p.replace(/^\/api\//,'').replace(/[{}]/g,'').replace(/\//g,'-');
+      const rowId = `row-${slug}`;
+      const btnId = `btn-${slug}`;
+      const label = `${method} ${p}`;
+      btns.insertAdjacentHTML('beforeend', `<button id="${btnId}">${label}</button>`);
+      const rowHtml = `<tr id="${rowId}"><td>${label}</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+      tbody.insertAdjacentHTML('beforeend', rowHtml);
+      const fn = special[p] || (() => runGeneric({method, path:p, rowId}));
+      onClick(btnId, fn);
+      TESTS.push({rowId, fn});
+    }
+  }
+}
+
 async function callEndpoint({name, method, path, body, dynamicPathFn}) {
   const base = normBase(document.getElementById("backendInput").value);
   if (!base) { console.log("Please enter backend URL"); return { error:true }; }
@@ -203,6 +264,18 @@ async function callEndpoint({name, method, path, body, dynamicPathFn}) {
     error_code: r.json && r.json.error_code ? r.json.error_code : "",
     detail: r.json && r.json.detail ? r.json.detail : ""
   };
+}
+
+function resolveDynamicPath(p){
+  return p.includes('{cid}') ? p.replace('{cid}', encodeURIComponent(lastCid || clientCid || '')) : p;
+}
+
+async function runGeneric({method, path, rowId}){
+  const r = await callEndpoint({ name:path, method, path, dynamicPathFn: () => resolveDynamicPath(path) });
+  setStatusRow(rowId, r);
+  if(path.includes('/trace')) setJSON('trace', r.body); else showResp(r);
+  showMeta(r.body && (r.body.meta || r.body.llm || {}));
+  return r;
 }
 
 async function pingLLM(){
@@ -370,23 +443,17 @@ async function testTrace(){
 }
 
 async function runAll(){
-  // reset table rows
-  for (const id of ["row-health","row-analyze","row-summary","row-draft","row-suggest","row-qa","row-calloff","row-trace"]) {
-    setStatusRow(id, {code:"",xcid:"",xcache:"",xschema:"",latencyMs:null,ok:false});
+  for (const t of TESTS) {
+    setStatusRow(t.rowId, {code:"",xcid:"",xcache:"",xschema:"",latencyMs:null,ok:false});
   }
   document.getElementById("resp").textContent = "";
   document.getElementById("docSnap").textContent = "";
   document.getElementById("trace").textContent = "";
   clientCid = genCid();
   setCidLabels();
-
-  await testHealth();
-  await testAnalyze();
-  await testSummary();
-  await testSuggest();
-  await testQA();
-  await testCalloff();
-  await testDraft();
+  for (const t of TESTS) {
+    await t.fn();
+  }
 }
 
 // ---------------------- init & events ----------------------
@@ -394,18 +461,12 @@ onClick("saveBtn", () => { saveBase(); console.log("Saved"); });
 onClick("runAllBtn", runAll);
 onClick("pingBtn", pingLLM);
 onClick("saveKeyBtn", () => { saveApiKey(); console.log("Saved API key"); });
-onClick("btnHealth", testHealth);
-onClick("btnAnalyze", testAnalyze);
-onClick("btnDraft", testDraft);
-onClick("btnSummary", testSummary);
-onClick("btnSuggest", testSuggest);
-onClick("btnQA", testQA);
-onClick("btnCalloff", testCalloff);
-onClick("btnTrace", testTrace);
 
 // Load defaults on first paint
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   loadBase();
   loadApiKey();
   setCidLabels();
+  const paths = await loadOpenAPI();
+  buildRowsFromOpenAPI(paths);
 });

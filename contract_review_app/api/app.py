@@ -196,7 +196,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator, field_validator
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
@@ -797,6 +797,31 @@ class AnalyzeResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class QARecheckIn(BaseModel):
+    """Request DTO for ``/api/qa-recheck``."""
+
+    model_config = ConfigDict(extra="allow")
+
+    text: str
+    rules: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("text")
+    @classmethod
+    def _strip_text(cls, v: str):
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("text is empty")
+        return v
+
+
+class QARecheckResponse(BaseModel):
+    status: str
+    qa: List[Any]
+    meta: Dict[str, Any] | None = None
+
+    model_config = ConfigDict(extra="allow")
+
+
 def _custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
@@ -814,6 +839,12 @@ def _custom_openapi():
         ref_template="#/components/schemas/{model}"
     )
     schemas["AnalyzeResponse"] = AnalyzeResponse.model_json_schema(
+        ref_template="#/components/schemas/{model}"
+    )
+    schemas["QARecheckIn"] = QARecheckIn.model_json_schema(
+        ref_template="#/components/schemas/{model}"
+    )
+    schemas["QARecheckResponse"] = QARecheckResponse.model_json_schema(
         ref_template="#/components/schemas/{model}"
     )
     for _m in [Finding, Span, Segment, SearchHit, Citation]:
@@ -1930,43 +1961,22 @@ async def summary_post_alias(
     return await api_summary_post(request, response, x_cid, mode)
 
 
-@router.post("/api/qa-recheck", dependencies=[Depends(_require_api_key)])
+@router.post(
+    "/api/qa-recheck",
+    response_model=QARecheckResponse,
+    responses={400: {"model": ProblemDetail}, 422: {"model": ProblemDetail}},
+    dependencies=[Depends(_require_api_key)],
+)
 async def api_qa_recheck(
-    request: Request, response: Response, x_cid: Optional[str] = Header(None)
+    req: QARecheckIn, response: Response, x_cid: Optional[str] = Header(None)
 ):
     t0 = _now_ms()
     _set_schema_headers(response)
-    try:
-        payload = await request.json()
-    except Exception:
-        return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
-
-    text = (payload or {}).get("text", "")
-    rules = (payload or {}).get("rules")
-    if isinstance(rules, list):
-        rules = {"rules": rules} if rules else None
-    profile = (payload or {}).get("profile", "smart")
+    text = req.text
+    rules = req.rules or {}
+    profile = getattr(req, "profile", "smart")
     cid = x_cid or _sha256_hex(str(t0) + text[:128])
     meta = LLM_CONFIG.meta()
-    if not text.strip():
-        resp = JSONResponse(
-            status_code=422,
-            content={
-                "status": "error",
-                "error_code": "bad_input",
-                "detail": "text is empty",
-                "meta": meta,
-            },
-        )
-        _set_llm_headers(resp, meta)
-        _set_std_headers(
-            resp,
-            cid=cid,
-            xcache="miss",
-            schema=SCHEMA_VERSION,
-            latency_ms=_now_ms() - t0,
-        )
-        return resp
     if LLM_CONFIG.provider == "azure" and not LLM_CONFIG.valid:
         resp = JSONResponse(
             status_code=401,

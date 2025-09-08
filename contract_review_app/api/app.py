@@ -28,27 +28,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from contract_review_app.core.privacy import redact_pii, scrub_llm_output
 from contract_review_app.core.audit import audit
 from contract_review_app.security.secure_store import secure_write
-
-
-class _TraceStore:
-    def __init__(self, maxlen: int = 200):
-        self.maxlen = maxlen
-        self._d: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
-
-    def put(self, cid: str, item: Dict[str, Any]) -> None:
-        if not cid:
-            return
-        if cid in self._d:
-            self._d.move_to_end(cid)
-        self._d[cid] = item
-        while len(self._d) > self.maxlen:
-            self._d.popitem(last=False)
-
-    def get(self, cid: str):
-        return self._d.get(cid)
-
-    def list(self):
-        return list(self._d.keys())
+from contract_review_app.core.trace import TraceStore, compute_cid
 
 
 log = logging.getLogger("contract_ai")
@@ -62,7 +42,7 @@ PANEL_ASSETS_DIR = PANEL_DIR / "app" / "assets"
 TRACE_MAX = int(os.getenv("TRACE_MAX", "200"))
 
 
-TRACE = _TraceStore(TRACE_MAX)
+TRACE = TraceStore(TRACE_MAX)
 
 # flag indicating whether rule engine is usable
 _RULE_ENGINE_OK = True
@@ -173,6 +153,7 @@ from fastapi import (
     Request,
     Response,
     Depends,
+    Path as PathParam,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -180,7 +161,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
-from .headers import apply_std_headers, compute_cid
+from .headers import apply_std_headers
 from .auth import require_api_key_and_schema as _require_api_key
 from .mw_utils import capture_response, normalize_status_if_json
 from .models import (
@@ -1442,8 +1423,13 @@ async def list_trace():
     return {"cids": TRACE.list()[-50:]}
 
 
+@router.get("/api/trace/{cid}.html")
+async def get_trace_suffix(cid: str):
+    raise HTTPException(status_code=404, detail="Do not append .html to CID")
+
+
 @router.get("/api/trace/{cid}")
-async def get_trace(cid: str):
+async def get_trace(cid: str = PathParam(pattern=_CID_RE.pattern)):
     trace = TRACE.get(cid)
     if not trace:
         raise HTTPException(status_code=404, detail="Not found")

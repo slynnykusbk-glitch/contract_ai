@@ -18,7 +18,8 @@ from contract_review_app.llm.prompt_builder import build_prompt
 from contract_review_app.llm.provider import get_provider
 from contract_review_app.llm.verification import verify_output_contains_citations
 from contract_review_app.core.audit import audit
-from .headers import apply_std_headers, compute_cid
+from .headers import apply_std_headers
+from contract_review_app.core.trace import compute_cid
 from .auth import require_api_key_and_schema
 
 

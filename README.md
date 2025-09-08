@@ -1,5 +1,14 @@
 # Contract AI
 
+## Installation
+
+Install required packages and verify that **PyYAML** is available for rule pack parsing by `/api/analyze`:
+
+```bash
+pip install -r requirements.txt
+python -c "import yaml"
+```
+
 ## LLM config
 
 Environment variables controlling the language model provider:
@@ -34,7 +43,8 @@ Defaults use a deterministic mock model so the application works without keys. S
 The `/health` endpoint verifies that required rule engine dependencies are
 available. It attempts to import **PyYAML** and load rule packs during
 application start. If these checks fail, `/health` reports a non-OK status
-so deployments can detect missing dependencies.
+so deployments can detect missing dependencies. PyYAML must be present or
+`/api/analyze` will not load rule packs.
 
 ## Word Add-in
 

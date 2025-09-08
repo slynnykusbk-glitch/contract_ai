@@ -155,3 +155,8 @@ export async function apiGptDraft(text: string, mode = 'friendly', extra: any = 
 export async function apiQaRecheck(text: string, rules: any[] = []) {
   return req('/api/qa-recheck', { method: 'POST', body: { text, rules }, key: 'qa-recheck' });
 }
+
+export async function postRedlines(before_text: string, after_text: string) {
+  const fn: any = (window as any).postJson || postJson;
+  return fn('/api/panel/redlines', { before_text, after_text });
+}

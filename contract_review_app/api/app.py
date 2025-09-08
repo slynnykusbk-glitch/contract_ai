@@ -2278,7 +2278,6 @@ async def gpt_draft(inp: DraftIn, request: Request):
 @router.post(
     "/api/panel/redlines",
     response_model=RedlinesOut,
-    dependencies=[Depends(_require_api_key)],
 )
 def panel_redlines(inp: RedlinesIn, request: Request):
     diff_u, diff_h = make_diff(inp.before_text or "", inp.after_text or "")

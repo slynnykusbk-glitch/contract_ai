@@ -32,4 +32,4 @@
 ## Quality Notes
 - Keep files free of conflict markers and temporary strings like `codex/...`.
 - Remove generated caches (`__pycache__`) before committing.
-- All tests and the doctor script must succeed with `AI_PROVIDER=mock` and without external API keys.
+- All tests and the doctor script must succeed with `LLM_PROVIDER=mock` and without external API keys.

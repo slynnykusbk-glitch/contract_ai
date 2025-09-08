@@ -26,7 +26,6 @@ ENV_VARS = [
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
     "OPENROUTER_API_KEY",
-    "AI_PROVIDER",
 ]
 IGNORED_DIRS = {".git", "node_modules", "__pycache__", ".venv", "dist", "build"}
 

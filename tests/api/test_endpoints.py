@@ -117,7 +117,7 @@ orch_mod.run_gpt_draft = dummy_async
 orch_mod.run_suggest_edits = dummy_async
 sys.modules["contract_review_app.api.orchestrator"] = orch_mod
 
-os.environ["AI_PROVIDER"] = "mock"
+os.environ["LLM_PROVIDER"] = "mock"
 
 from fastapi.testclient import TestClient  # noqa: E402
 

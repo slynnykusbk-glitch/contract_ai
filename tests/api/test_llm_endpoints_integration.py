@@ -13,7 +13,7 @@ def _reload_app():
     ]
     for m in modules:
         sys.modules.pop(m, None)
-    os.environ["AI_PROVIDER"] = "mock"
+    os.environ["LLM_PROVIDER"] = "mock"
     from contract_review_app.api import app as app_module
 
     importlib.reload(app_module)

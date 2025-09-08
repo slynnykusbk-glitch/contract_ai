@@ -54,7 +54,7 @@ ENV_PATTERNS = [
     "OPENAI_BASE",
     "ANTHROPIC_API_KEY",
     "OPENROUTER_API_KEY",
-    "AI_PROVIDER",
+    "LLM_PROVIDER",
 ]
 
 # ---------------------------------------------------------------------------

@@ -30,7 +30,7 @@ $mf = Join-Path $root "manifest.xml"
 
 # 4) старт бекенда (https://localhost:9443) і панелі (https://127.0.0.1:3000)
 $py = Join-Path $repo ".venv\Scripts\python.exe"
-$env:AI_PROVIDER = "mock"
+$env:LLM_PROVIDER = "mock"
 
 Start-Process -WindowStyle Minimized -FilePath $py -ArgumentList `
   "-m","uvicorn","contract_review_app.api.app:app","--host","localhost","--port","9443",`

@@ -54,7 +54,7 @@ $mf = ".\word_addin_dev\manifest.xml"
 
 # 6) Запустити бекенд і панель (без адм уже ок)
 $py = Join-Path $repo ".venv\Scripts\python.exe"
-$env:AI_PROVIDER = "mock"
+$env:LLM_PROVIDER = "mock"
 
 Start-Process -WindowStyle Minimized -FilePath $py -ArgumentList @(
   "-m","uvicorn","contract_review_app.api.app:app",

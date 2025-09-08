@@ -5,7 +5,7 @@ import os
 import time
 from typing import List, Optional
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse
 
 from contract_review_app.core.schemas import ExplainRequest, ExplainResponse, Citation, Evidence
@@ -100,9 +100,8 @@ def _gather_evidence(citations: List[Citation]) -> List[Evidence]:
     return evidence
 
 
-@router.post("/explain", response_model=ExplainResponse)
+@router.post("/explain", response_model=ExplainResponse, dependencies=[Depends(_require_api_key)])
 async def api_explain(body: ExplainRequest, request: Request) -> JSONResponse:
-    _require_api_key(request)
     started = time.perf_counter()
     cid = compute_cid(request)
 

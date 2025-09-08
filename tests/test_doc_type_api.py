@@ -14,7 +14,7 @@ def _create_client():
     ]
     for m in modules:
         sys.modules.pop(m, None)
-    os.environ.setdefault('AI_PROVIDER', 'mock')
+    os.environ.setdefault('LLM_PROVIDER', 'mock')
     from contract_review_app.api import app as app_module
     importlib.reload(app_module)
     client = TestClient(app_module.app)

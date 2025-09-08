@@ -736,7 +736,7 @@ class AnalyzeRequest(BaseModel):
     handle a single attribute.
     """
 
-    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     text: str = Field(validation_alias=AliasChoices("text", "clause", "body"))
     language: Optional[str] = None

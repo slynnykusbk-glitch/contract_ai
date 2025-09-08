@@ -9,7 +9,7 @@ SCHEMA_VERSION = "1.3"
 
 
 class _DTOBase(BaseModel):
-    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
 
 class ProblemDetail(AppBaseModel):

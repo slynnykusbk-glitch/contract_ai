@@ -2505,10 +2505,6 @@ async def api_citation_resolve(
     x_cid: str | None = Header(None),
 ):
     t0 = _now_ms()
-    if (body.findings is None) == (body.citations is None):
-        raise HTTPException(
-            status_code=400, detail="Exactly one of findings or citations is required"
-        )
     if body.citations is not None:
         citations = body.citations
     else:

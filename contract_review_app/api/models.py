@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Literal
 
+from fastapi import HTTPException
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator, field_validator
 
 from contract_review_app.core.schemas import AppBaseModel
@@ -145,8 +146,33 @@ class QaFindingInput(_DTOBase):
 
 
 class CitationResolveRequest(_DTOBase):
+    """Request model for ``/api/citation/resolve``.
+
+    Exactly one of ``findings`` or ``citations`` must be provided.  Both
+    fields are optional to allow Pydantic to perform the exclusive-or check
+    below.
+    """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {"citations": [{"instrument": "Act", "section": "1"}]},
+                {"findings": [{"code": "X", "message": "m"}]},
+            ]
+        }
+    )
+
     findings: List[QaFindingInput] | None = None
     citations: List[CitationInput] | None = None
+
+    @model_validator(mode="after")
+    def _one_of(cls, values):  # type: ignore[override]
+        if (values.findings is None) == (values.citations is None):
+            raise HTTPException(
+                status_code=400,
+                detail="Exactly one of findings or citations is required",
+            )
+        return values
 
 
 class CitationResolveResponse(_DTOBase):

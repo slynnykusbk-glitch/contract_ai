@@ -114,6 +114,14 @@ async function apiQaRecheck(text, rules = {}) {
   const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
   return req("/api/qa-recheck", { method: "POST", body: { text, rules: dict }, key: "qa-recheck" });
 }
+async function apiSummary(text, mode = "live") {
+  return req("/api/summary", { method: "POST", body: { text, mode }, key: "summary" });
+}
+async function apiSuggestEdits(text, findings = []) {
+  const body = { text };
+  if (Array.isArray(findings) && findings.length) body.findings = findings;
+  return req("/api/suggest_edits", { method: "POST", body, key: "suggest_edits" });
+}
 async function postRedlines(before_text, after_text) {
   const fn = window.postJson || postJson;
   return fn("/api/panel/redlines", { before_text, after_text });
@@ -132,6 +140,8 @@ export {
   apiGptDraft,
   apiHealth,
   apiQaRecheck,
+  apiSummary,
+  apiSuggestEdits,
   postRedlines,
   postCitationResolve,
   applyMetaToBadges,

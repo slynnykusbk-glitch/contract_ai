@@ -174,12 +174,7 @@
                 "examples": {
                   "default": {
                     "summary": "Example",
-                    "value": {},
-                    "headers": {
-                      "x-schema-version": "1.3",
-                      "x-latency-ms": 12,
-                      "x-cid": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-                    }
+                    "value": {}
                   }
                 }
               }
@@ -930,6 +925,179 @@
         }
       }
     },
+    "/api/trace/{cid}.html": {
+      "get": {
+        "summary": "Get Trace Suffix",
+        "operationId": "get_trace_suffix_api_trace__cid__html_get",
+        "parameters": [
+          {
+            "name": "cid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Cid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Bad Request",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Too Many Requests",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "description": "Internal Server Error",
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetail"
+                }
+              }
+            },
+            "headers": {
+              "x-schema-version": {
+                "$ref": "#/components/headers/XSchemaVersion"
+              },
+              "x-latency-ms": {
+                "$ref": "#/components/headers/XLatencyMs"
+              },
+              "x-cid": {
+                "$ref": "#/components/headers/XCid"
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/trace/{cid}": {
       "get": {
         "summary": "Get Trace",
@@ -941,6 +1109,7 @@
             "required": true,
             "schema": {
               "type": "string",
+              "pattern": "^[A-Za-z0-9\\-:]{3,64}$",
               "title": "Cid"
             }
           }
@@ -3399,12 +3568,7 @@
                 "examples": {
                   "default": {
                     "summary": "Example",
-                    "value": {},
-                    "headers": {
-                      "x-schema-version": "1.3",
-                      "x-latency-ms": 12,
-                      "x-cid": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-                    }
+                    "value": {}
                   }
                 }
               }

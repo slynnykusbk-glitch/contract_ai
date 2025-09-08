@@ -177,6 +177,30 @@ Search responses now expose additional context for each chunk:
 These rely on the offset map stored in `corpus_chunks` and help clients
 highlight matches in the original text.
 
+# Block B7 — API key & schema headers
+
+## Summary
+
+Protected API endpoints now share a dependency that validates request headers.
+When `FEATURE_REQUIRE_API_KEY` is truthy, callers must supply `x-api-key`
+matching the `API_KEY` value or receive a **401** response. In all cases the
+`x-schema-version` header is mandatory and must equal `1.3`; otherwise the
+server returns **400**.
+
+## How to verify
+
+```bash
+export FEATURE_REQUIRE_API_KEY=1
+export API_KEY=local-test-key-123
+curl -i -X POST localhost:8000/api/analyze -H 'Content-Type: application/json' \
+  -H 'x-schema-version: 1.3' -d '{"text":"hi"}'
+curl -i -X POST localhost:8000/api/analyze -H 'Content-Type: application/json' \
+  -H 'x-api-key: local-test-key-123' -d '{"text":"hi"}'
+```
+
+The first call (missing API key) yields `401`, while the second (missing
+schema) yields `400`.
+
 # Block B8-S1 — Unified API error format
 
 ## Summary

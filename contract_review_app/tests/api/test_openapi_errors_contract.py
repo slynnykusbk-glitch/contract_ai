@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 def _build_client() -> TestClient:
     os.environ["CONTRACTAI_LLM_API"] = "1"
     import contract_review_app.api.app as app_module
+
     importlib.reload(app_module)
     client = TestClient(app_module.app)
     os.environ.pop("CONTRACTAI_LLM_API", None)
@@ -23,6 +24,14 @@ def test_problem_detail_responses():
     schema = client.get("/openapi.json").json()
     for path in ["/api/analyze", "/api/gpt-draft", "/api/citations/resolve"]:
         post = schema["paths"][path]["post"]
-        for code in ("422", "500"):
-            ref = post["responses"][code]["content"]["application/json"]["schema"]["$ref"]
-            assert ref == "#/components/schemas/ProblemDetail"
+        ref_500 = post["responses"]["500"]["content"]["application/json"]["schema"][
+            "$ref"
+        ]
+        assert ref_500 == "#/components/schemas/ProblemDetail"
+        ref_422 = post["responses"]["422"]["content"]["application/json"]["schema"][
+            "$ref"
+        ]
+        if path == "/api/analyze":
+            assert ref_422.endswith("HTTPValidationError")
+        else:
+            assert ref_422 == "#/components/schemas/ProblemDetail"

@@ -196,7 +196,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers, compute_cid
@@ -589,9 +589,7 @@ router = APIRouter()
 # guard: ensure cache cleared even if lifespan not triggered
 IDEMPOTENCY_CACHE.clear()
 _default_problem = {"model": ProblemDetail}
-_default_responses = {
-    code: _default_problem for code in (400, 401, 403, 404, 422, 429, 500)
-}
+_default_responses = {code: _default_problem for code in (400, 401, 403, 404, 429, 500)}
 app = FastAPI(
     title="Contract Review App API",
     version="1.0",
@@ -774,20 +772,27 @@ class AnalyzeRequest(BaseModel):
     handle a single attribute.
     """
 
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+        json_schema_extra={"example": {"text": "Hello"}},
+    )
 
-    text: str = Field(validation_alias=AliasChoices("text", "clause", "body"))
-    language: Optional[str] = None
+    text: str = Field(
+        validation_alias=AliasChoices("text", "clause", "body"),
+        min_length=1,
+    )
+    language: str = "en"
     mode: Optional[str] = None
     risk: Optional[str] = None
 
-    @model_validator(mode="after")
-    def _strip_text(self):
-        txt = (self.text or "").strip()
-        if not txt:
+    @field_validator("text")
+    @classmethod
+    def _strip_text(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
             raise ValueError("text is empty")
-        self.text = txt
-        return self
+        return v
 
 
 class AnalyzeResponse(BaseModel):
@@ -1483,7 +1488,9 @@ async def health() -> JSONResponse:
     status_code = 200
     if not _RULE_ENGINE_OK:
         payload["status"] = "error"
-        payload.setdefault("meta", {})["rule_engine"] = _RULE_ENGINE_ERR or "unavailable"
+        payload.setdefault("meta", {})["rule_engine"] = (
+            _RULE_ENGINE_ERR or "unavailable"
+        )
         status_code = 500
     try:
         if rules_loader and hasattr(rules_loader, "loaded_packs"):
@@ -1594,7 +1601,9 @@ def api_admin_purge(dry: int = 1):
     response_model=AnalyzeResponse,
     dependencies=[Depends(_require_api_key)],
 )
-def api_analyze(req: AnalyzeRequest, request: Request):
+def api_analyze(
+    request: Request, req: AnalyzeRequest = Body(..., example={"text": "Hello"})
+):
     txt = req.text
     debug = request.query_params.get("debug")  # noqa: F841
     risk_param = (
@@ -1628,7 +1637,6 @@ def api_analyze(req: AnalyzeRequest, request: Request):
                     "x-cache": "hit",
                     "x-cid": cached_rec["cid"],
                     "x-doc-hash": doc_hash,
-                    "x-schema-version": SCHEMA_VERSION,
                 }
             )
             _set_llm_headers(resp, PROVIDER_META)
@@ -1642,7 +1650,6 @@ def api_analyze(req: AnalyzeRequest, request: Request):
             "x-cache": "hit",
             "x-cid": cid,
             "x-doc-hash": doc_hash,
-            "x-schema-version": SCHEMA_VERSION,
             "ETag": etag,
         }
         tmp = Response()
@@ -1657,7 +1664,6 @@ def api_analyze(req: AnalyzeRequest, request: Request):
             "x-cache": "hit",
             "x-cid": cid,
             "x-doc-hash": doc_hash,
-            "x-schema-version": SCHEMA_VERSION,
             "ETag": etag,
         }
         tmp = Response()
@@ -1801,7 +1807,6 @@ def api_analyze(req: AnalyzeRequest, request: Request):
         "x-cache": "miss",
         "x-cid": cid,
         "x-doc-hash": doc_hash,
-        "x-schema-version": SCHEMA_VERSION,
         "ETag": etag,
     }
     tmp = Response()

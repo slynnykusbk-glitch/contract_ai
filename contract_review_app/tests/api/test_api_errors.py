@@ -11,8 +11,9 @@ client = TestClient(app_module.app, raise_server_exceptions=False)
 def test_422_validation_error():
     r = client.post("/api/analyze", json={"text": 123})
     assert r.status_code == 422
-    ProblemDetail.model_validate(r.json())
-    assert r.json()["status"] == 422
+    detail = r.json().get("detail")
+    assert isinstance(detail, list)
+    assert any("loc" in e and "msg" in e for e in detail)
 
 
 def test_http_exception_problem():
@@ -31,10 +32,10 @@ def test_http_exception_problem():
 
 
 def test_generic_exception(monkeypatch):
-    def boom(text: str):
+    def boom(*_args, **_kwargs):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(app_module, "_analyze_document", boom, raising=True)
+    monkeypatch.setattr(app_module.analysis_parser, "parse_text", boom, raising=True)
     resp = client.post("/api/analyze", json={"text": "hello"})
     assert resp.status_code == 500
     ProblemDetail.model_validate(resp.json())

@@ -13,6 +13,16 @@ async function getWholeDocText(): Promise<string> {
   });
 }
 
+/** Выделенный текст (клаузула) */
+async function getSelectedText(): Promise<string> {
+  return await Word.run(async ctx => {
+    const sel = ctx.document.getSelection();
+    sel.load('text');
+    await ctx.sync();
+    return (sel.text || '').trim();
+  });
+}
+
 async function postJson(path: string, body: any): Promise<Response> {
   const resp = await fetch(`${backend}${path}`, {
     method: 'POST',
@@ -46,9 +56,9 @@ async function onAnalyzeDoc(e: Event) {
 /** QA Recheck — без правил (для smoke) */
 async function onQARecheck(e: Event) {
   e.preventDefault();
-  const text = await getWholeDocText();
-  if (!text) { notify.warn('В документе нет текста'); return; }
-  const resp = await postJson('/api/qa-recheck', { text, rules: [] });
+  const text = await getSelectedText();
+  if (!text) { notify.warn('Select clause text first'); return; }
+  const resp = await postJson('/api/qa-recheck', { text, rules: {} });
   const js = await resp.json();
   notify.ok(`QA: HTTP ${resp.status}`);
   console.log('QA resp:', js);

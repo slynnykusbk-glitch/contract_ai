@@ -74,8 +74,9 @@
   async function apiGptDraft(text, mode = "friendly", extra = {}) {
     return req("/api/gpt-draft", { method: "POST", body: { text, mode, ...extra }, key: "gpt-draft" });
   }
-  async function apiQaRecheck(text, rules = []) {
-    return req("/api/qa-recheck", { method: "POST", body: { text, rules }, key: "qa-recheck" });
+  async function apiQaRecheck(text, rules = {}) {
+    const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
+    return req("/api/qa-recheck", { method: "POST", body: { text, rules: dict }, key: "qa-recheck" });
   }
   async function postRedlines(before_text, after_text) {
     return req("/api/panel/redlines", { method: "POST", body: { before_text, after_text }, key: "redlines" });
@@ -111,6 +112,15 @@
     });
   }
 
+  async function getSelectedText() {
+    return await Word.run(async (ctx) => {
+      const sel = ctx.document.getSelection();
+      sel.load("text");
+      await ctx.sync();
+      return (sel.text || "").trim();
+    });
+  }
+
   // app/assets/taskpane.ts
   var g = globalThis;
   g.parseFindings = g.parseFindings || parseFindings;
@@ -118,6 +128,7 @@
   g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
   g.metaFromResponse = g.metaFromResponse || metaFromResponse;
   g.getWholeDocText = g.getWholeDocText || getWholeDocText;
+  g.getSelectedText = g.getSelectedText || getSelectedText;
   g.postRedlines = g.postRedlines || postRedlines;
   var Q = {
     proposed: 'textarea#proposedText, textarea[name="proposed"], textarea[data-role="proposed-text"]',
@@ -490,8 +501,12 @@
     }
   }
   async function doQARecheck() {
-    const text = await getWholeDocText();
-    const { json, resp } = await apiQaRecheck(text, []);
+    const text = await getSelectedText();
+    if (!text) {
+      notifyWarn("Select clause text first");
+      return;
+    }
+    const { json, resp } = await postJson("/api/qa-recheck", { text, rules: {} });
     try {
       applyMetaToBadges(metaFromResponse(resp));
     } catch {

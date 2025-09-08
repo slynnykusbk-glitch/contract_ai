@@ -110,8 +110,9 @@ async function apiAnalyze(text) {
 async function apiGptDraft(text, mode = "friendly", extra = {}) {
   return req("/api/gpt-draft", { method: "POST", body: { text, mode, ...extra }, key: "gpt-draft" });
 }
-async function apiQaRecheck(text, rules = []) {
-  return req("/api/qa-recheck", { method: "POST", body: { text, rules }, key: "qa-recheck" });
+async function apiQaRecheck(text, rules = {}) {
+  const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
+  return req("/api/qa-recheck", { method: "POST", body: { text, rules: dict }, key: "qa-recheck" });
 }
 async function postRedlines(before_text, after_text) {
   const fn = window.postJson || postJson;

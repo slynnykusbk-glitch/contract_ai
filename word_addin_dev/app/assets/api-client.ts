@@ -152,8 +152,9 @@ export async function apiGptDraft(text: string, mode = 'friendly', extra: any = 
   return req('/api/gpt-draft', { method: 'POST', body: { text, mode, ...extra }, key: 'gpt-draft' });
 }
 
-export async function apiQaRecheck(text: string, rules: any[] = []) {
-  return req('/api/qa-recheck', { method: 'POST', body: { text, rules }, key: 'qa-recheck' });
+export async function apiQaRecheck(text: string, rules: any = {}) {
+  const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
+  return req('/api/qa-recheck', { method: 'POST', body: { text, rules: dict }, key: 'qa-recheck' });
 }
 
 export async function postRedlines(before_text: string, after_text: string) {

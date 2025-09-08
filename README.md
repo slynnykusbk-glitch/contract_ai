@@ -33,7 +33,7 @@ Defaults use a deterministic mock model so the application works without keys. S
 | `AZURE_OPENAI_API_KEY` | `0123456789abcdef0123456789ab` | `changeme` |
 | `AZURE_OPENAI_ENDPOINT` | `https://eastus.api.cognitive.microsoft.com` | `http://localhost` |
 | `AZURE_OPENAI_DEPLOYMENT` | `gpt-4o-mini` | *(empty string)* |
-| `AZURE_OPENAI_API_VERSION` | `2024-02-15-preview` | *(empty string)* |
+| `AZURE_OPENAI_API_VERSION` | `2024-12-01-preview` | *(empty string)* |
 | `MODEL_DRAFT` | `gpt-4o-mini` | *(empty string → ignored)* |
 | `MODEL_SUGGEST` | `gpt-4o-mini` | *(empty string → ignored)* |
 | `MODEL_QA` | `gpt-4o-mini` | *(empty string → ignored)* |

@@ -29,7 +29,7 @@ class AzureClient(BaseClient):
         self._api_key = cfg.azure_api_key or ""
         self._endpoint = (cfg.azure_endpoint or "").rstrip("/")
         self._deployment = cfg.azure_deployment or self.model
-        self._api_version = cfg.azure_api_version or "2024-02-15"
+        self._api_version = cfg.azure_api_version or "2024-12-01-preview"
 
     def _post(self, payload: dict, timeout: float) -> dict:
         url = f"{self._endpoint}/openai/deployments/{self._deployment}/chat/completions?api-version={self._api_version}"

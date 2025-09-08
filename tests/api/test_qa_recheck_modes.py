@@ -49,7 +49,7 @@ def test_qa_recheck_azure_bad_key():
     env = {
         "LLM_PROVIDER": "azure",
         "AZURE_OPENAI_ENDPOINT": "https://example.com",
-        "AZURE_OPENAI_API_VERSION": "2024-02-15",
+        "AZURE_OPENAI_API_VERSION": "2024-12-01-preview",
         "AZURE_OPENAI_DEPLOYMENT": "gpt",
         "AZURE_OPENAI_KEY": "bad",
     }

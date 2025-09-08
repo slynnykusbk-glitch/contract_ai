@@ -13,6 +13,11 @@ function showMeta(meta){
   const model = document.getElementById("llmModel");
   prov.textContent = (meta && meta.provider) || "—";
   model.textContent = (meta && meta.model) || "—";
+  const modeEl = document.getElementById("llmLatency");
+  if (modeEl && meta && meta.mode) {
+    modeEl.textContent = meta.mode;
+    modeEl.className = meta.mode === "mock" ? "ok" : "";
+  }
   const badge = document.getElementById("llmBadge");
   if (badge) badge.style.display = (meta && meta.mode === "mock") ? "inline-block" : "none";
 }
@@ -264,31 +269,20 @@ async function runGeneric({method, path, rowId}){
 }
 
 async function pingLLM(){
-  const base = normBase(document.getElementById("backendInput").value);
   const latEl = document.getElementById("llmLatency");
-  if (!base) { console.log("Please enter backend URL"); return; }
   latEl.textContent = "…";
   latEl.className = "";
-  const origBase1 = localStorage.getItem(LS_KEY);
-  const origBase2 = localStorage.getItem("backendUrl");
-  const origKey = localStorage.getItem(API_KEY_STORAGE);
   try {
-    localStorage.setItem(LS_KEY, base);
-    localStorage.setItem("backendUrl", base);
-    try { localStorage.setItem(API_KEY_STORAGE, document.getElementById("apiKeyInput").value.trim()); } catch {}
-    const resp = await CAI.API.summary("ping");
-    showMeta(resp.meta || {});
-    const ms = resp.meta.latencyMs || Number(resp.resp.headers.get("x-latency-ms")) || 0;
+    const resp = await CAI.API.get("/api/llm/ping");
+    const meta = resp.meta || resp.json.llm || {};
+    if (meta.provider || meta.model || meta.mode) showMeta(meta);
+    const ms = meta.latencyMs || Number(resp.resp.headers?.get("x-latency-ms")) || 0;
     latEl.textContent = ms + "ms";
     latEl.className = resp.ok ? "ok" : "err";
     showResp({ ok: resp.ok, code: resp.resp.status, body: resp.json });
   } catch (e) {
     latEl.textContent = "ERR";
     latEl.className = "err";
-  } finally {
-    if (origBase1 == null) { localStorage.removeItem(LS_KEY); } else { localStorage.setItem(LS_KEY, origBase1); }
-    if (origBase2 == null) { localStorage.removeItem("backendUrl"); } else { localStorage.setItem("backendUrl", origBase2); }
-    if (origKey == null) { localStorage.removeItem(API_KEY_STORAGE); } else { localStorage.setItem(API_KEY_STORAGE, origKey); }
   }
 }
 
@@ -454,4 +448,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   setCidLabels();
   const paths = await loadOpenAPI();
   buildRowsFromOpenAPI(paths);
+  try {
+    const resp = await CAI.API.get('/health');
+    const llm = (resp && resp.json && resp.json.llm) || {};
+    const model = (llm.models && llm.models.draft) || llm.model;
+    showMeta({ provider: llm.provider, model, mode: llm.mode });
+  } catch {
+    const latEl = document.getElementById('llmLatency');
+    if (latEl) { latEl.textContent = 'ERR'; latEl.className = 'err'; }
+  }
 });

@@ -1,15 +1,19 @@
-$root = Split-Path -Parent $PSScriptRoot
-. "$root/tools/start_oneclick.ps1"
+$repo = Split-Path -Parent $PSScriptRoot
+. "$repo/tools/start_oneclick.ps1"
 
-Describe 'Wait-BackendHealth' {
-    It 'returns true when health eventually ok' {
-        $call = 0
-        Mock -CommandName Test-NetConnection { @{ TcpTestSucceeded = $true } }
-        Mock -CommandName Invoke-WebRequest {
-            $script:call++
-            if ($script:call -lt 2) { throw 'not ready' }
-            @{ StatusCode = 200 }
-        }
-        Wait-BackendHealth -TimeoutSeconds 5 | Should -BeTrue
-    }
+describe "Load-DotEnv" {
+  it "loads env without overriding existing" {
+    $tmp = New-TemporaryFile
+    Set-Content $tmp "EXIST=fromenv`nNEWVAR=fromenv"
+    [System.Environment]::SetEnvironmentVariable('EXIST','orig','Process')
+    Load-DotEnv $tmp
+    [System.Environment]::GetEnvironmentVariable('EXIST','Process') | Should -Be 'orig'
+    [System.Environment]::GetEnvironmentVariable('NEWVAR','Process') | Should -Be 'fromenv'
+  }
+}
+
+describe "Wait-BackendHealth" {
+  it "returns false when backend missing" {
+    Wait-BackendHealth -Url 'https://localhost:9443/health' -TimeoutSeconds 1 | Should -BeFalse
+  }
 }

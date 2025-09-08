@@ -169,6 +169,7 @@ from fastapi import (
     Query,
     Request,
     Response,
+    Depends,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -410,6 +411,9 @@ def _has_llm_keys() -> bool:
 
 LLM_CONFIG = load_llm_config()
 LLM_SERVICE = LLMService(LLM_CONFIG)
+MODEL_DRAFT = LLM_CONFIG.model_draft
+MODEL_SUGGEST = LLM_CONFIG.model_suggest
+MODEL_QA = LLM_CONFIG.model_qa
 
 
 def _analyze_document(text: str, risk: str = "medium") -> Dict[str, Any]:
@@ -592,8 +596,8 @@ app.mount("/panel", panel_app, name="panel")
 PROVIDER = get_provider()
 LLM_PROVIDER = PROVIDER
 PROVIDER_META = {
-    "provider": getattr(PROVIDER, "name", "?"),
-    "model": getattr(PROVIDER, "model", "?"),
+    "provider": LLM_CONFIG.provider,
+    "model": MODEL_DRAFT,
 }
 if hasattr(PROVIDER, "endpoint_hint"):
     PROVIDER_META["ep"] = getattr(PROVIDER, "endpoint_hint")
@@ -1375,7 +1379,11 @@ async def health() -> JSONResponse:
         "rules_count": _discover_rules_count(),
         "llm": {
             "provider": LLM_CONFIG.provider,
-            "model": LLM_CONFIG.model_draft,
+            "models": {
+                "draft": MODEL_DRAFT,
+                "suggest": MODEL_SUGGEST,
+                "qa": MODEL_QA,
+            },
             "mode": LLM_CONFIG.mode,
             "timeout_s": LLM_CONFIG.timeout_s,
         },
@@ -1478,16 +1486,14 @@ async def api_metrics_html():
     return Response(html, media_type="text/html", headers={"Cache-Control": "no-store"})
 
 
-@router.post("/api/admin/purge")
-def api_admin_purge(request: Request, dry: int = 1):
-    _require_api_key(request)
+@router.post("/api/admin/purge", dependencies=[Depends(_require_api_key)])
+def api_admin_purge(dry: int = 1):
     removed = retention_purge(dry_run=bool(dry))
     return {"removed": [str(p) for p in removed]}
 
 
-@app.post("/api/analyze", response_model=AnalyzeResponse)
+@app.post("/api/analyze", response_model=AnalyzeResponse, dependencies=[Depends(_require_api_key)])
 def api_analyze(req: AnalyzeRequest, request: Request):
-    _require_api_key(request)
     txt = req.text
     debug = request.query_params.get("debug")
     risk_param = (
@@ -1819,7 +1825,7 @@ async def summary_post_alias(
     return await api_summary_post(request, response, x_cid, mode)
 
 
-@router.post("/api/qa-recheck")
+@router.post("/api/qa-recheck", dependencies=[Depends(_require_api_key)])
 async def api_qa_recheck(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
@@ -2005,11 +2011,11 @@ async def api_qa_recheck(
 @router.post(
     "/api/suggest_edits",
     responses={400: {"model": ProblemDetail}, 422: {"model": ProblemDetail}},
+    dependencies=[Depends(_require_api_key)],
 )
 async def api_suggest_edits(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
-    _require_api_key(request)
     _set_schema_headers(response)
     try:
         payload = await request.json()
@@ -2131,14 +2137,15 @@ class RedlinesOut(BaseModel):
     "/api/gpt-draft",
     response_model=DraftOut,
     responses={422: {"model": ProblemDetail}},
+    dependencies=[Depends(_require_api_key)],
 )
 @router.post(
     "/api/gpt/draft",
     response_model=DraftOut,
     responses={422: {"model": ProblemDetail}},
+    dependencies=[Depends(_require_api_key)],
 )
 async def gpt_draft(inp: DraftIn, request: Request):
-    _require_api_key(request)
     if os.getenv("AZURE_KEY_INVALID") == "1":
         raise HTTPException(
             status_code=500,
@@ -2249,9 +2256,8 @@ async def gpt_draft(inp: DraftIn, request: Request):
     return resp
 
 
-@router.post("/api/panel/redlines", response_model=RedlinesOut)
+@router.post("/api/panel/redlines", response_model=RedlinesOut, dependencies=[Depends(_require_api_key)])
 def panel_redlines(inp: RedlinesIn, request: Request):
-    _require_api_key(request)
     diff_u, diff_h = make_diff(inp.before_text or "", inp.after_text or "")
     payload = {
         "status": "ok",
@@ -2270,12 +2276,12 @@ async def health_alias():
     return await health()
 
 
-@app.post("/analyze")
+@app.post("/analyze", dependencies=[Depends(_require_api_key)])
 def analyze_alias(req: AnalyzeRequest, request: Request):
     return api_analyze(req, request)
 
 
-@router.post("/suggest_edits")
+@router.post("/suggest_edits", dependencies=[Depends(_require_api_key)])
 async def suggest_edits_alias(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
@@ -2291,6 +2297,7 @@ def llm_ping_alias():
     "/api/gpt_draft",
     response_model=DraftOut,
     responses={422: {"model": ProblemDetail}},
+    dependencies=[Depends(_require_api_key)],
 )
 async def gpt_draft_underscore_alias(inp: DraftIn, request: Request):
     return await gpt_draft(inp, request)
@@ -2300,12 +2307,13 @@ async def gpt_draft_underscore_alias(inp: DraftIn, request: Request):
     "/gpt-draft",
     response_model=DraftOut,
     responses={422: {"model": ProblemDetail}},
+    dependencies=[Depends(_require_api_key)],
 )
 async def gpt_draft_plain_alias(inp: DraftIn, request: Request):
     return await gpt_draft(inp, request)
 
 
-@router.post("/api/calloff/validate")
+@router.post("/api/calloff/validate", dependencies=[Depends(_require_api_key)])
 async def api_calloff_validate(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):

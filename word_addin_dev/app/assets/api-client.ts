@@ -86,9 +86,15 @@ function base(): string {
 }
 
 async function req(path: string, { method='GET', body=null, key=path }: { method?: string; body?: any; key?: string } = {}) {
+  const headers: Record<string, string> = { 'content-type':'application/json' };
+  try {
+    const apiKey = localStorage.getItem('api_key');
+    if (apiKey) headers['x-api-key'] = apiKey;
+  } catch {}
+
   const r = await fetch(base()+path, {
     method,
-    headers: { 'content-type':'application/json' },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
     credentials: 'include'
   });

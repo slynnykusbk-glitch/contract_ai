@@ -136,7 +136,7 @@ class AzureProvider:
 def get_provider():
     # explicit selector; env var wins
     # hint for local runs: set LLM_PROVIDER=azure
-    want = (os.getenv("LLM_PROVIDER") or os.getenv("AI_PROVIDER") or "").lower()
+    want = (os.getenv("LLM_PROVIDER") or "").lower()
     if want == "azure":
         try:
             return AzureProvider()

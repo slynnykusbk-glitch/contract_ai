@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response, Depends
 
 from contract_review_app.security.secure_store import secure_read
 
@@ -24,9 +24,8 @@ def _verify_token(token: str) -> None:
         raise HTTPException(status_code=401, detail="invalid token")
 
 
-@router.get("/access")
-async def dsar_access(identifier: str, token: str, request: Request):
-    _check_api_key(request)
+@router.get("/access", dependencies=[Depends(_check_api_key)])
+async def dsar_access(identifier: str, token: str):
     _verify_token(token)
     path = _DATA_DIR / f"{identifier}.json"
     if not path.exists():
@@ -38,9 +37,8 @@ async def dsar_access(identifier: str, token: str, request: Request):
     return data
 
 
-@router.post("/erasure")
-async def dsar_erasure(identifier: str, token: str, request: Request):
-    _check_api_key(request)
+@router.post("/erasure", dependencies=[Depends(_check_api_key)])
+async def dsar_erasure(identifier: str, token: str):
     _verify_token(token)
     path = _DATA_DIR / f"{identifier}.json"
     if path.exists():
@@ -51,9 +49,8 @@ async def dsar_erasure(identifier: str, token: str, request: Request):
     return {"status": "ok"}
 
 
-@router.get("/export")
-async def dsar_export(identifier: str, token: str, request: Request):
-    _check_api_key(request)
+@router.get("/export", dependencies=[Depends(_check_api_key)])
+async def dsar_export(identifier: str, token: str):
     _verify_token(token)
     path = _DATA_DIR / f"{identifier}.json"
     if not path.exists():

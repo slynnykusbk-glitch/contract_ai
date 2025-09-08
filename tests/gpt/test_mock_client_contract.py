@@ -93,7 +93,7 @@ service_mod.ProviderConfigError = ProviderConfigError
 service_mod.load_llm_config = load_llm_config
 sys.modules["contract_review_app.gpt.service"] = service_mod
 
-os.environ["AI_PROVIDER"] = "mock"
+os.environ["LLM_PROVIDER"] = "mock"
 
 from contract_review_app.gpt.service import LLMService, load_llm_config
 from contract_review_app.gpt.clients.mock_client import MockClient

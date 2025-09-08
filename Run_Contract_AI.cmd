@@ -20,7 +20,7 @@ powershell -NoLogo -NoProfile -Command ^
    Copy-Item '%MF%' (Join-Path '$env:LOCALAPPDATA\Microsoft\Office\16.0\Wef' 'ContractAI-Dev.xml') -Force | Out-Null"
 
 rem 2) Запустити бекенд і панель
-set AI_PROVIDER=mock
+set LLM_PROVIDER=mock
 start "ContractAI Backend" /MIN "%PY%" -m uvicorn contract_review_app.api.app:app --host localhost --port 9443 --ssl-certfile "%CERT%" --ssl-keyfile "%KEY%" --reload
 start "ContractAI Panel"   /MIN "%PY%" "%ROOT%\serve_https_panel.py" --host localhost
 

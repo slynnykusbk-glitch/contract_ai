@@ -44,19 +44,14 @@ function base() {
   }
 }
 async function req(path, { method = "GET", body = null, key = path } = {}) {
-  let apiKey = "";
+  const headers = { "content-type": "application/json" };
   try {
-    apiKey = localStorage.getItem("apiKey") || "";
+    const apiKey = localStorage.getItem("api_key");
+    if (apiKey) headers["x-api-key"] = apiKey;
   } catch {}
-  if (!apiKey) {
-    try {
-      console.error("API key missing");
-      alert("API key missing");
-    } catch {}
-  }
   const r = await fetch(base() + path, {
     method,
-    headers: { "content-type": "application/json", "x-api-key": apiKey },
+    headers,
     body: body ? JSON.stringify(body) : void 0,
     credentials: "include"
   });

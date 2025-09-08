@@ -2,7 +2,7 @@
 
 // ---------------------- helpers ----------------------
 const LS_KEY = "panel:backendUrl";
-const API_KEY_STORAGE = "apiKey";
+const API_KEY_STORAGE = "api_key";
 const DRAFT_PATH = "/api/gpt-draft";
 const SAMPLE = "Governing law: England and Wales.";
 let clientCid = genCid();
@@ -187,10 +187,11 @@ async function pingLLM(){
   try{
     try{ localStorage.setItem("backendUrl", base); }catch{}
     const resp = await CAI.API.summary("ping");
-    showMeta(resp.meta.headers || {});
+    showMeta(resp.meta || {});
     const ms = resp.meta.latencyMs || 0;
     latEl.textContent = ms + "ms";
     latEl.className = resp.ok ? "ok" : "err";
+    showResp({ ok: resp.ok, code: resp.resp.status, body: resp.json });
   }catch(e){
     latEl.textContent = "ERR";
     latEl.className = "err";
@@ -274,7 +275,7 @@ async function testDraft(){
 async function testSuggest(){
   const r = await callEndpoint({
     name:"suggest", method:"POST", path:"/api/suggest_edits",
-    body:{ text: SAMPLE }
+    body:{ text: SAMPLE, clause_type: "termination" }
   });
   setStatusRow("row-suggest", r);
   showResp(r);
@@ -294,7 +295,17 @@ async function testQA(){
 async function testCalloff(){
   const r = await callEndpoint({
     name:"calloff", method:"POST", path:"/api/calloff/validate",
-    body:{ description:"[●]" }
+    body:{
+      term:"",
+      description:"[●]",
+      price:"",
+      currency:"",
+      vat:"",
+      delivery_point:"",
+      representatives:"",
+      notices:"",
+      po_number:""
+    }
   });
   setStatusRow("row-calloff", r);
   if(!r.ok || (r.body && r.body.status !== "ok")){

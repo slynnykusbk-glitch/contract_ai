@@ -257,7 +257,7 @@ curl -X POST '/api/corpus/search?page=2&page_size=5' -d '{"q":"data"}' -H 'Conte
 
 # Block B8-S5 — LLM providers
 
-By default the application uses a mock LLM provider (`CONTRACTAI_PROVIDER=mock`).
+By default the application uses a mock LLM provider (`LLM_PROVIDER=mock`).
 
 For Azure integration set the following environment variables:
 

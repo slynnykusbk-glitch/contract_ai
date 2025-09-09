@@ -47,13 +47,8 @@ def test_panel_end_to_end_flow():
     assert valid >= 1
 
     # Step 2: draft
-    payload = {
-        "text": "Ping",
-        "mode": "friendly",
-        "before_text": "",
-        "after_text": "",
-        "language": "en-GB",
-    }
+    cid = r.headers.get("x-cid")
+    payload = {"cid": cid, "clause": "Ping", "mode": "friendly"}
     r = client.post("/api/gpt-draft", json=payload, headers=_headers())
     assert r.status_code == 200
     data = r.json()

@@ -36,7 +36,9 @@ def test_suggest_ok():
 
 
 def test_gpt_draft_ok():
-    payload = {"text": "Draft confidentiality clause"}
+    r_an = client.post("/api/analyze", json={"text": "Hi"})
+    cid = r_an.headers.get("x-cid")
+    payload = {"cid": cid, "clause": "Draft confidentiality clause"}
     r = client.post("/api/gpt-draft", json=payload)
     assert r.status_code == 200
     for p in ["/api/gpt/draft", "/gpt-draft", "/api/gpt_draft"]:

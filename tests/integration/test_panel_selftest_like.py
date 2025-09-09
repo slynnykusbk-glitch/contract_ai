@@ -33,7 +33,7 @@ def test_panel_selftest_like():
         r = client.post("/api/analyze", json={"text": "Hi"})
         assert r.status_code == 200
         cid = r.headers.get("x-cid")
-        assert client.post("/api/gpt-draft", json={"text": "Hi"}).status_code == 200
+        assert client.post("/api/gpt-draft", json={"cid": cid, "clause": "Hi"}).status_code == 200
         assert client.post("/api/qa-recheck", json={"text": "hi", "rules": {}}).status_code == 200
         assert (
             client.post("/api/qa-recheck", json={"text": "hi", "rules": [{"R1": "on"}]})

@@ -17,17 +17,19 @@ def test_api_key_auth(monkeypatch):
 
     r = client.post("/api/analyze", json=payload)
     assert r.status_code == 401
-    r = client.post("/api/gpt-draft", json={"text": "Ping", "mode": "friendly"})
+    r = client.post("/api/gpt-draft", json={"cid": "x", "clause": "Ping", "mode": "friendly"})
     assert r.status_code == 401
     r = client.post("/api/suggest_edits", json=payload)
     assert r.status_code == 401
 
     headers = {"x-api-key": "secret", "x-schema-version": SCHEMA_VERSION}
-    assert client.post("/api/analyze", json=payload, headers=headers).status_code == 200
+    r_an = client.post("/api/analyze", json=payload, headers=headers)
+    assert r_an.status_code == 200
+    cid = r_an.headers.get("x-cid")
     assert (
         client.post(
             "/api/gpt-draft",
-            json={"text": "Ping", "mode": "friendly"},
+            json={"cid": cid, "clause": "Ping", "mode": "friendly"},
             headers=headers,
         ).status_code
         == 200

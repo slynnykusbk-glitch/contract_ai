@@ -27,12 +27,21 @@ def make_client(monkeypatch, flag="1", key="k"):
 
 
 def _expect_503(client):
-    r = client.post("/api/companies/search", json={"q": "AC"})
+    r = client.post("/api/companies/search", json={"query": "AC"})
     assert r.status_code == 503
     assert r.json()["error"] == "companies_house_disabled"
     r2 = client.get("/api/companies/1")
     assert r2.status_code == 503
     assert r2.json()["error"] == "companies_house_disabled"
+
+
+def _expect_401(client):
+    r = client.post("/api/companies/search", json={"query": "AC"})
+    assert r.status_code == 401
+    assert r.json()["error"] == "companies_house_api_key_missing"
+    r2 = client.get("/api/companies/1")
+    assert r2.status_code == 401
+    assert r2.json()["error"] == "companies_house_api_key_missing"
 
 
 def test_gate_disabled_no_flag(monkeypatch):
@@ -42,7 +51,7 @@ def test_gate_disabled_no_flag(monkeypatch):
 
 def test_gate_disabled_no_key(monkeypatch):
     client, _ = make_client(monkeypatch, flag="1", key=None)
-    _expect_503(client)
+    _expect_401(client)
 
 
 @respx.mock
@@ -50,6 +59,6 @@ def test_search_ok(monkeypatch):
     client, ch_client = make_client(monkeypatch, flag="1", key="x")
     BASE = ch_client.BASE
     respx.get(f"{BASE}/search/companies").respond(json={"items": []}, headers={"ETag": "s1"})
-    r = client.post("/api/companies/search", json={"q": "ACME"})
+    r = client.post("/api/companies/search", json={"query": "ACME"})
     assert r.status_code == 200
     assert r.json()["items"] == []

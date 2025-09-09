@@ -1,24 +1,18 @@
 import json
-import os
-import urllib.request
+from fastapi.testclient import TestClient
+from contract_review_app.api.app import app
 
-BASE = os.environ.get("PANEL_BASE", "https://localhost:9443")
+client = TestClient(app)
 
-def _post(path, payload):
-    req = urllib.request.Request(
-        f"{BASE}{path}",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type":"application/json"},
-        method="POST"
-    )
-    return urllib.request.urlopen(req, timeout=5)
 
 def test_gpt_draft_payload_and_response():
-    payload = {"text":"Ping", "mode":"friendly", "before_text":"", "after_text":""}
-    with _post("/api/gpt-draft", payload) as r:
-        assert r.status == 200
-        data = json.load(r)
-    for k in ("text", "mode", "before_text", "after_text"):
+    r_an = client.post("/api/analyze", json={"text": "Ping"})
+    cid = r_an.headers.get("x-cid")
+    payload = {"cid": cid, "clause": "Ping", "mode": "friendly"}
+    r = client.post("/api/gpt-draft", json=payload)
+    assert r.status_code == 200
+    data = r.json()
+    for k in ("cid", "clause", "mode"):
         assert k in payload and isinstance(payload[k], str)
     assert isinstance(data.get("proposed_text"), str)
     assert data["proposed_text"].strip() != ""

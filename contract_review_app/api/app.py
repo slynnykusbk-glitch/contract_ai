@@ -1016,7 +1016,7 @@ async def add_response_headers(request: Request, call_next):
     if request.method.upper() in {"POST", "PUT", "PATCH"} and body:
         try:
             request.state.json = json.loads(body.decode("utf-8"))
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             cid = request.headers.get("x-cid") or compute_cid(request)
             return _problem_response(
                 400,

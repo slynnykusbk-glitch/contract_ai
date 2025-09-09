@@ -2,6 +2,14 @@
 # Canonical clause keywords (ALL LOWERCASE). Kept broad enough for robust recall.
 # Matching/normalization is handled downstream by intake/patterns.py.
 
+import os
+
+
+FEATURE_COMPANIES_HOUSE = os.getenv("FEATURE_COMPANIES_HOUSE", "")
+CH_API_KEY = os.getenv("CH_API_KEY") or os.getenv("COMPANIES_HOUSE_API_KEY", "")
+CH_ENABLED = FEATURE_COMPANIES_HOUSE in {"1", "true", "True"} and CH_API_KEY != ""
+
+
 CLAUSE_KEYWORDS = {
     # Core
     "definitions": [

@@ -8,7 +8,7 @@ import httpx
 from contract_review_app.core.audit import audit
 
 BASE = os.getenv("COMPANIES_HOUSE_BASE", "https://api.company-information.service.gov.uk")
-KEY = os.getenv("COMPANIES_HOUSE_API_KEY", "")
+KEY = os.getenv("CH_API_KEY") or os.getenv("COMPANIES_HOUSE_API_KEY", "")
 TIMEOUT_S = float(os.getenv("CH_TIMEOUT_S", "8"))
 
 _CACHE: Dict[str, Dict[str, Any]] = {}

@@ -927,8 +927,8 @@
     },
     "/api/trace/{cid}.html": {
       "get": {
-        "summary": "Get Trace Suffix",
-        "operationId": "get_trace_suffix_api_trace__cid__html_get",
+        "summary": "Get Trace Html",
+        "operationId": "get_trace_html_api_trace__cid__html_get",
         "parameters": [
           {
             "name": "cid",
@@ -1109,7 +1109,6 @@
             "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^[A-Za-z0-9\\-:]{3,64}$",
               "title": "Cid"
             }
           }

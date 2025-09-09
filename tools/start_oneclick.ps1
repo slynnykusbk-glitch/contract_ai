@@ -1,4 +1,7 @@
 #requires -version 5.1
+# This script starts the ContractAI backend and optionally sideloads the
+# Word add-in. Elevation is only required for certificate generation tasks;
+# Word should be launched in the intended user's context.
 [CmdletBinding()]
 param(
     [switch]$OpenWord,
@@ -76,11 +79,24 @@ function Open-Panel {
 }
 
 function Sideload-Word {
+    param(
+        [string]$UserProfile
+    )
     $src = Join-Path $repo 'word_addin_dev\manifest.xml'
-    $dst = Join-Path $env:LOCALAPPDATA 'Microsoft\Office\16.0\Wef'
+    # If no profile is specified, attempt to locate the non-elevated user via HKU.
+    if (-not $UserProfile) {
+        try {
+            $sid = (Get-ChildItem 'HKU:' | Where-Object { $_.Name -match '^HKEY_USERS\\S-1-5-21' } | Select-Object -First 1).PSChildName
+            if ($sid) {
+                $UserProfile = (Get-ItemProperty -Path "Registry::HKU\$sid\Volatile Environment" -ErrorAction Stop).USERPROFILE
+            }
+        } catch {}
+        if (-not $UserProfile) { $UserProfile = $env:USERPROFILE }
+    }
+    $dst = Join-Path $UserProfile 'AppData\Local\Microsoft\Office\16.0\Wef'
     New-Item -ItemType Directory -Path $dst -Force | Out-Null
     Copy-Item $src (Join-Path $dst 'manifest.xml') -Force
-    Start-Process WINWORD.EXE | Out-Null
+    Start-Process -FilePath 'WINWORD.EXE' | Out-Null
     Write-Log '[OK] Word launched'
 }
 

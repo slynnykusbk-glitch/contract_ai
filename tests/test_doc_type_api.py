@@ -17,7 +17,8 @@ def _create_client():
     os.environ.setdefault('LLM_PROVIDER', 'mock')
     from contract_review_app.api import app as app_module
     importlib.reload(app_module)
-    client = TestClient(app_module.app)
+    from contract_review_app.api.models import SCHEMA_VERSION
+    client = TestClient(app_module.app, headers={"x-schema-version": SCHEMA_VERSION})
     return client, modules
 
 
@@ -38,7 +39,11 @@ TEXT = (
 
 
 def test_summary_returns_doc_type_and_confidence(client):
-    resp = client.post('/api/summary', json={'text': TEXT})
+    r_analyze = client.post('/api/analyze', json={'text': TEXT})
+    assert r_analyze.status_code == 200
+    cid = r_analyze.headers.get('x-cid')
+    assert cid
+    resp = client.post('/api/summary', json={'cid': cid})
     assert resp.status_code == 200
     summary = resp.json()['summary']
     assert summary['type'] == 'NDA'

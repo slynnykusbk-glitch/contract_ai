@@ -216,6 +216,7 @@ from .models import (
     ProblemDetail,
     QARecheckIn,
     QARecheckOut,
+    SummaryIn,
     Finding,
     Span,
     Segment,
@@ -1895,61 +1896,65 @@ async def api_summary_get(response: Response, mode: Optional[str] = None):
 async def api_summary_post(
     request: Request,
     response: Response,
-    x_cid: Optional[str] = Header(None),
+    body: SummaryIn,
     mode: Optional[str] = None,
 ):
     t0 = _now_ms()
     _set_schema_headers(response)
-    try:
-        body = await _read_body_guarded(request)
-        payload = json.loads(body.decode("utf-8")) if body else {}
-    except HTTPException:
-        return _problem_response(
-            413, "Payload too large", "Request body exceeds limits"
-        )
-    except Exception:
-        return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
-
-    text = str(payload.get("text") or "")
-    body_cid = payload.get("cid")
-    if body_cid and not text:
-        cached = IDEMPOTENCY_CACHE.get(body_cid)
+    if body.cid:
+        cached = IDEMPOTENCY_CACHE.get(body.cid)
         if not cached:
-            return _problem_response(404, "cid not found", "cid not found")
+            resp = _problem_response(404, "cid not found", "cid not found")
+            _set_std_headers(
+                resp,
+                cid=body.cid,
+                xcache="miss",
+                schema=SCHEMA_VERSION,
+                latency_ms=_now_ms() - t0,
+            )
+            return resp
         summary = cached.get("summary") or cached.get("results", {}).get("summary", {})
         resp = {"status": "ok", "summary": summary, "meta": PROVIDER_META}
         _set_std_headers(
             response,
-            cid=body_cid,
+            cid=body.cid,
             xcache="hit",
             schema=SCHEMA_VERSION,
             latency_ms=_now_ms() - t0,
         )
+        doc_meta = cid_index.get(body.cid)
+        if doc_meta and "hash" in doc_meta:
+            response.headers["x-doc-hash"] = doc_meta.get("hash", "")
         _set_llm_headers(response, PROVIDER_META)
         _ensure_legacy_doc_type(resp.get("summary"))
         return resp
 
-    cid = x_cid or _sha256_hex(str(t0) + text[:128])
+    # body.hash is present (model ensures exactly one of cid or hash)
+    rec = an_cache.get(body.hash)
+    if not rec:
+        resp = _problem_response(404, "hash not found", "hash not found")
+        _set_std_headers(
+            resp,
+            cid=compute_cid(request),
+            xcache="miss",
+            schema=SCHEMA_VERSION,
+            latency_ms=_now_ms() - t0,
+        )
+        return resp
 
-    snap = extract_document_snapshot(text)
-    snap.rules_count = _discover_rules_count()
-
-    envelope = {"status": "ok", "summary": snap.model_dump(), "meta": PROVIDER_META}
+    summary = rec["resp"].get("summary") or rec["resp"].get("results", {}).get("summary", {})
+    resp = {"status": "ok", "summary": summary, "meta": PROVIDER_META}
+    response.headers["x-doc-hash"] = body.hash or ""
     _set_std_headers(
         response,
-        cid=cid,
-        xcache="miss",
+        cid=rec.get("cid", ""),
+        xcache="hit",
         schema=SCHEMA_VERSION,
         latency_ms=_now_ms() - t0,
     )
     _set_llm_headers(response, PROVIDER_META)
-    # guaranteed summary on root
-    if "document" in envelope and isinstance(envelope["document"], dict):
-        envelope["summary"] = envelope["document"].get(
-            "summary", envelope.get("summary", {})
-        )
-    _ensure_legacy_doc_type(envelope.get("summary"))
-    return envelope
+    _ensure_legacy_doc_type(resp.get("summary"))
+    return resp
 
 
 # compatibility aliases at root level
@@ -1963,11 +1968,10 @@ async def summary_get_alias(response: Response, mode: Optional[str] = None):
 async def summary_post_alias(
     request: Request,
     response: Response,
-    x_cid: Optional[str] = Header(None),
+    body: SummaryIn,
     mode: Optional[str] = None,
 ):
-    _set_schema_headers(response)
-    return await api_summary_post(request, response, x_cid, mode)
+    return await api_summary_post(request, response, body, mode)
 
 
 @router.post(

@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from contract_review_app.api.app import app, SCHEMA_VERSION
 
-client = TestClient(app)
+client = TestClient(app, headers={"x-schema-version": SCHEMA_VERSION})
 
 
 def test_snapshot_positive():
@@ -13,7 +13,11 @@ def test_snapshot_positive():
         "It shall be governed by the laws of England and Wales and the courts of England and Wales shall have exclusive jurisdiction.\n"
         "The liability of either party shall not exceed £500,000 except for fraud and confidentiality obligations."
     )
-    resp = client.post("/api/summary", json={"text": text})
+    r_analyze = client.post("/api/analyze", json={"text": text})
+    assert r_analyze.status_code == 200
+    cid = r_analyze.headers.get("x-cid")
+    assert cid
+    resp = client.post("/api/summary", json={"cid": cid})
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "ok"
@@ -36,7 +40,11 @@ def test_snapshot_positive():
 
 def test_snapshot_negative():
     text = "Lorem ipsum dolor sit amet"
-    resp = client.post("/api/summary", json={"text": text})
+    r_analyze = client.post("/api/analyze", json={"text": text})
+    assert r_analyze.status_code == 200
+    cid = r_analyze.headers.get("x-cid")
+    assert cid
+    resp = client.post("/api/summary", json={"cid": cid})
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "ok"

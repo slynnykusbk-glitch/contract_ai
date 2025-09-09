@@ -11,7 +11,7 @@ from contract_review_app.core.schemas import SCHEMA_VERSION
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    return TestClient(app, headers={"x-schema-version": SCHEMA_VERSION})
 
 
 def test_summary_endpoint_nda(client):
@@ -24,7 +24,11 @@ def test_summary_endpoint_nda(client):
             "The Seller warrants that goods are fit. The following is a condition of this Agreement."
         )
     }
-    resp = client.post("/api/summary", json=payload)
+    r_analyze = client.post("/api/analyze", json=payload)
+    assert r_analyze.status_code == 200
+    cid = r_analyze.headers.get("x-cid")
+    assert cid
+    resp = client.post("/api/summary", json={"cid": cid})
     assert resp.status_code == 200
     assert resp.headers.get("x-schema-version") == SCHEMA_VERSION
     data = resp.json()
@@ -48,7 +52,11 @@ def test_summary_endpoint_nda(client):
 
 def test_summary_endpoint_license(client):
     text = "LICENSE AGREEMENT between Foo Corp (Licensor) and Bar Inc (Licensee)."
-    resp = client.post("/api/summary", json={"text": text})
+    r_analyze = client.post("/api/analyze", json={"text": text})
+    assert r_analyze.status_code == 200
+    cid = r_analyze.headers.get("x-cid")
+    assert cid
+    resp = client.post("/api/summary", json={"cid": cid})
     assert resp.status_code == 200
     data = resp.json()["summary"]
     assert data["type"] == "License"

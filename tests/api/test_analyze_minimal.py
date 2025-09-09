@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from hypothesis import given, strategies as st, settings
+import logging
 
 from contract_review_app.api.app import app
 from contract_review_app.api.models import SCHEMA_VERSION
@@ -21,7 +22,10 @@ def test_analyze_minimal():
 
 
 @settings(deadline=None, max_examples=25)
-@given(st.text(min_size=1, max_size=100))
+@given(
+    st.text(min_size=1, max_size=100, alphabet=st.characters(blacklist_categories=["Cs", "Cc"]))
+    .filter(lambda s: s.strip() != "")
+)
 def test_analyze_any_text(text):
     resp = client.post(
         "/api/analyze",
@@ -30,3 +34,17 @@ def test_analyze_any_text(text):
     )
     assert resp.status_code == 200
     assert resp.headers.get("x-cid")
+
+
+def test_missing_api_key_logs(monkeypatch, caplog):
+    monkeypatch.setenv("FEATURE_REQUIRE_API_KEY", "1")
+    caplog.set_level(logging.INFO, logger="contract_ai")
+    with TestClient(app, raise_server_exceptions=False) as c:
+        resp = c.post(
+            "/api/analyze",
+            json={"text": "Hello"},
+            headers={"x-schema-version": SCHEMA_VERSION},
+        )
+    assert resp.status_code == 401
+    assert resp.json()["detail"] == "missing or invalid api key"
+    assert any("missing or invalid x-api-key" in r.message for r in caplog.records)

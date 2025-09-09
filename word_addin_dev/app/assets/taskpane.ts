@@ -1,9 +1,11 @@
-import { apiHealth, apiAnalyze, apiQaRecheck, apiGptDraft, metaFromResponse, applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
+import { apiHealth, apiQaRecheck, apiGptDraft, metaFromResponse, applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
+import { getApiKeyFromStore, getSchemaFromStore } from "./store";
 const g: any = globalThis as any;
 g.parseFindings = g.parseFindings || parseFindings;
-g.apiAnalyze = g.apiAnalyze || apiAnalyze;
 g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
 g.metaFromResponse = g.metaFromResponse || metaFromResponse;
+g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
+g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
 import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText } from "./office"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
 g.getWholeDocText = g.getWholeDocText || getWholeDocText;
@@ -393,10 +395,25 @@ async function doAnalyze() {
     const base = cached && cached.trim() ? cached : normalizeText(await (globalThis as any).getWholeDocText());
     if (!base) { notifyErr("В документе нет текста"); return; }
 
+    const apiKey = getApiKeyFromStore();
+    const schema = getSchemaFromStore();
+    if (!apiKey) { notifyErr("API key is missing"); return; }
+    if (!schema) { notifyErr("Schema version is missing"); return; }
+
     (window as any).__lastAnalyzed = base;
 
-    const { json, resp } = await (globalThis as any).apiAnalyze(base);
-    try { (globalThis as any).applyMetaToBadges((globalThis as any).metaFromResponse(resp)); } catch {}
+    const resp = await fetch("/api/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "x-schema-version": schema,
+      },
+      body: JSON.stringify({ text: base }),
+      credentials: "same-origin",
+    });
+    const json = await resp.json().catch(() => ({}));
+    try { (globalThis as any).applyMetaToBadges((globalThis as any).metaFromResponse({ headers: resp.headers, json, status: resp.status })); } catch {}
     renderResults(json);
 
     try {

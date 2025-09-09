@@ -269,7 +269,7 @@ class RequireHeadersMiddleware(BaseHTTPMiddleware):
         if "x-schema-version" not in request.headers:
             client_host = request.client.host if request.client else ""
             if client_host in {"127.0.0.1", "::1", "localhost"}:
-                headers = MutableHeaders(request.scope)
+                headers = MutableHeaders(scope=request.scope)
                 headers.append("x-schema-version", SCHEMA_VERSION)
 
         if request.method.upper() == "POST" and not any(

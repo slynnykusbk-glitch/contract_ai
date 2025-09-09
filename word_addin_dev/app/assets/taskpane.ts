@@ -1,4 +1,4 @@
-import { apiHealth, apiQaRecheck, apiGptDraft, metaFromResponse, applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
+import { apiHealth, apiQaRecheck, apiGptDraft, metaFromResponse, applyMetaToBadges, parseFindings, AnalyzeFinding, postJson } from "./api-client";
 import { getApiKeyFromStore, getSchemaFromStore } from "./store";
 const g: any = globalThis as any;
 g.parseFindings = g.parseFindings || parseFindings;
@@ -402,18 +402,16 @@ async function doAnalyze() {
 
     (window as any).__lastAnalyzed = base;
 
-    const resp = await fetch("/api/analyze", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "x-schema-version": schema,
-      },
-      body: JSON.stringify({ text: base }),
-      credentials: "same-origin",
-    });
-    const json = await resp.json().catch(() => ({}));
-    try { (globalThis as any).applyMetaToBadges((globalThis as any).metaFromResponse({ headers: resp.headers, json, status: resp.status })); } catch {}
+    const { http: resp, json, headers } = await postJson(
+      "/api/analyze",
+      { text: base, mode: "live" },
+      { apiKey, schemaVersion: schema }
+    );
+    try {
+      (globalThis as any).applyMetaToBadges(
+        (globalThis as any).metaFromResponse({ headers, json, status: resp.status })
+      );
+    } catch {}
     renderResults(json);
 
     try {

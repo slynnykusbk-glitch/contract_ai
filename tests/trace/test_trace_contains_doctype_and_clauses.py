@@ -2,6 +2,7 @@ import os
 from fastapi.testclient import TestClient
 
 from contract_review_app.api.app import app
+from contract_review_app.api.models import SCHEMA_VERSION
 
 
 def test_trace_contains_doctype_and_clauses():
@@ -12,7 +13,7 @@ def test_trace_contains_doctype_and_clauses():
         "Confidentiality. Each party agrees to keep all information confidential.\n"
         "Governing Law. This agreement is governed by the laws of England.\n"
     )
-    headers = {"x-schema-version": "1.3"}
+    headers = {"x-schema-version": SCHEMA_VERSION}
     resp = client.post("/api/analyze", json={"text": text}, headers=headers)
     assert resp.status_code == 200
     cid = resp.headers["x-cid"]

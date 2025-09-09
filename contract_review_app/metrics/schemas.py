@@ -41,6 +41,6 @@ class QualityMetrics(BaseModel):
 
 
 class MetricsResponse(BaseModel):
-    schema_version: str = "1.3"
+    schema_version: str = "1.4"
     snapshot_at: datetime
     metrics: QualityMetrics

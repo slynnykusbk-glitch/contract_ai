@@ -1,4 +1,5 @@
 // word_addin_dev/app/selftest.js - extracted module from panel_selftest.html
+// Expected API schema version: 1.4
 
 // ---------------------- helpers ----------------------
 const LS_KEY = "panel:backendUrl";

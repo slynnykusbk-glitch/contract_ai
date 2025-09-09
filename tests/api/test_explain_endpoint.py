@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from contract_review_app.api.app import app
+from contract_review_app.api.models import SCHEMA_VERSION
 
 client = TestClient(app)
 
@@ -16,9 +17,9 @@ def test_explain_basic():
     }
     resp = client.post("/api/explain", json=req)
     assert resp.status_code == 200
-    assert resp.headers["x-schema-version"] == "1.3"
+    assert resp.headers["x-schema-version"] == SCHEMA_VERSION
     data = resp.json()
-    assert data["x_schema_version"] == "1.3"
+    assert data["x_schema_version"] == SCHEMA_VERSION
     assert data["reasoning"]
     assert data["trace"]
     assert any("UCTA" in c.get("instrument", "") for c in data["citations"])

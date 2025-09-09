@@ -133,8 +133,9 @@ os.environ["LLM_PROVIDER"] = "mock"
 from fastapi.testclient import TestClient  # noqa: E402
 
 from contract_review_app.api.app import app  # noqa: E402
+from contract_review_app.api.models import SCHEMA_VERSION  # noqa: E402
 
-client = TestClient(app, headers={"x-schema-version": "1.3"})
+client = TestClient(app, headers={"x-schema-version": SCHEMA_VERSION})
 
 
 def test_health_endpoint():
@@ -235,7 +236,7 @@ def test_analyze_endpoint_yaml_missing(monkeypatch):
 
     monkeypatch.setitem(sys.modules, "yaml", None)
     importlib.reload(app_mod)
-    tmp_client = TestClient(app_mod.app, headers={"x-schema-version": "1.3"})
+    tmp_client = TestClient(app_mod.app, headers={"x-schema-version": SCHEMA_VERSION})
     resp = tmp_client.post("/api/analyze", json={"text": "hi"})
     assert resp.status_code == 503
     data = resp.json()

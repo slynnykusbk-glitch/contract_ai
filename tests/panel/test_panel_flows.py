@@ -2,13 +2,14 @@ from pathlib import Path
 import os
 from fastapi.testclient import TestClient
 from contract_review_app.api.app import app
+from contract_review_app.api.models import SCHEMA_VERSION
 
 
 client = TestClient(app)
 
 
 def _headers():
-    headers = {"x-schema-version": "1.3"}
+    headers = {"x-schema-version": SCHEMA_VERSION}
     flag = os.getenv("FEATURE_REQUIRE_API_KEY", "").strip().lower()
     if flag in {"1", "true", "yes", "on", "enabled"}:
         headers["x-api-key"] = os.getenv("API_KEY", "")

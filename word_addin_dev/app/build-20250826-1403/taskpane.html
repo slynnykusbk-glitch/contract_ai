@@ -11,22 +11,43 @@ body{font-family:Segoe UI,Arial,sans-serif;margin:10px;}
 textarea{width:100%;height:120px;}
 button{margin:4px 4px 4px 0;}
 pre{background:#f0f0f0;padding:8px;border-radius:4px;white-space:pre-wrap;}
+.warning{padding:6px;background:#fff3cd;border:1px solid #ffeeba;margin:8px 0;}
+.hidden{display:none;}
 </style>
 </head>
 <body>
 <div id="health">?</div>
 <textarea id="input" placeholder="Enter text..."></textarea>
 <div>
-<button id="btnAnalyze">Analyze</button>
-<button id="btnSummary">Summary</button>
-<button id="btnSuggest">Suggest</button>
-<button id="btnQA">QA</button>
+<button id="btnAnalyze" data-needs-headers="1">Analyze</button>
+<button id="btnSummary" data-needs-headers="1">Summary</button>
+<button id="btnSuggest" data-needs-headers="1">Suggest</button>
+<button id="btnQA" data-needs-headers="1">QA</button>
 </div>
 <pre id="output"></pre>
+<div id="suggestions"></div>
+<template id="sugg-item">
+  <div class="sugg-item" data-id="">
+    <div class="sugg-head">
+      <span class="rule"></span>
+      <span class="sev"></span>
+      <span class="badge status"></span>
+    </div>
+    <div class="sugg-body">
+      <div class="before"></div>
+      <div class="after"></div>
+    </div>
+    <div class="sugg-actions">
+      <button class="btn-apply">Apply (tracked)</button>
+      <button class="btn-accept">Accept</button>
+      <button class="btn-reject">Reject</button>
+    </div>
+  </div>
+</template>
 <script type="module" src="taskpane.bundle.js"></script>
 <script nomodule>
   document.body.innerHTML =
-    '<div style=\"padding:12px;color:#f66\">Your runtime is too old for ES modules. Please update your browser.</div>';
+    '<div style="padding:12px;color:#f66">Your runtime is too old for ES modules. Please update your browser.</div>';
 </script>
 </body>
 </html>

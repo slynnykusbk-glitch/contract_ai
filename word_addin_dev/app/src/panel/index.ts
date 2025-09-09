@@ -27,22 +27,6 @@ function getLastCid(): string | null {
   return lastCid || null;
 }
 
-function ensureHeadersSetOrBlock() {
-  // existing panel code stores credentials under `api_key` and `schemaVersion`
-  const apiKey = localStorage.getItem('api_key') || '';
-  const schema = localStorage.getItem('schemaVersion') || '';
-  const ok = !!apiKey && !!schema;
-
-  const btns = document.querySelectorAll<HTMLButtonElement>('[data-needs-headers="1"]');
-  btns.forEach(b => b.disabled = !ok);
-
-  const banner = document.getElementById('headers-missing-banner');
-  if (banner) banner.classList.toggle('hidden', ok);
-}
-
-document.addEventListener('DOMContentLoaded', ensureHeadersSetOrBlock);
-window.addEventListener('storage', ensureHeadersSetOrBlock);
-
 async function handleResponse(res: Response, label: string) {
   const js = await res.json().catch(() => ({}));
   const cid = res.headers.get('x-cid');
@@ -101,5 +85,4 @@ Office.onReady().then(() => {
     await doQARecheck(text);
   });
   notify.info('Panel init OK');
-  ensureHeadersSetOrBlock();
 });

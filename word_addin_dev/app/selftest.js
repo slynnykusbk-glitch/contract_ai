@@ -115,9 +115,9 @@ function checkHeaders(){
   const warn = document.getElementById('hdrWarn');
   if (warn) warn.style.display = ok ? 'none' : 'inline';
   const ids = ['runAllBtn','pingBtn'];
-  ids.forEach(id => { const b = document.getElementById(id) as HTMLButtonElement | null; if (b) b.disabled = !ok; });
+  ids.forEach(id => { const b = document.getElementById(id); if (b && 'disabled' in b) b.disabled = !ok; });
   const tests = document.getElementById('testsBtns');
-  if (tests) Array.from(tests.querySelectorAll('button')).forEach(b => { (b as HTMLButtonElement).disabled = !ok; });
+  if (tests) Array.from(tests.querySelectorAll('button')).forEach(b => { b.disabled = !ok; });
 }
 function setJSON(elId, obj){
   const el = document.getElementById(elId);

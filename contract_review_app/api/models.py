@@ -31,7 +31,7 @@ class AnalyzeRequest(_DTOBase):
     """
 
     text: str = Field(validation_alias=AliasChoices("text", "clause", "body"))
-    language: str = "en"
+    language: str = "en-GB"
     mode: str | None = None
     risk: str | None = None
 
@@ -103,6 +103,7 @@ class QARecheckIn(_DTOBase):
 
     text: str
     rules: Dict[str, Any] = Field(default_factory=dict)
+    language: str = "en-GB"
 
     @field_validator("text")
     @classmethod

@@ -40,6 +40,7 @@ __all__ = [
     # inputs
     "AnalysisInput",
     "AnalyzeIn",
+    "AnalyzeRequest",
     # building blocks
     "Finding",
     "Diagnostic",
@@ -180,7 +181,7 @@ class AnalyzeIn(AppBaseModel):
 
     document_name: Optional[str] = None
     text: str
-    language: Optional[str] = None
+    language: str = "en-GB"
 
     # segment context (optional; used by pipeline/template selection)
     jurisdiction: Optional[str] = None
@@ -197,7 +198,15 @@ class AnalyzeIn(AppBaseModel):
         if not isinstance(self.text, str) or self.text.strip() == "":
             raise ValueError("AnalyzeIn.text must be a non-empty string")
         self.text = self.text.strip()
+        if not isinstance(self.language, str) or not self.language.strip():
+            self.language = "en-GB"
+        else:
+            self.language = self.language.strip()
         return self
+
+
+# Backwards compatibility alias
+AnalyzeRequest = AnalyzeIn
 
 
 # ============================================================================

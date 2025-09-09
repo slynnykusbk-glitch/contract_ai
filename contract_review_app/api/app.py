@@ -48,6 +48,7 @@ TRACE = TraceStore(TRACE_MAX)
 _RULE_ENGINE_OK = True
 _RULE_ENGINE_ERR = ""
 
+
 class NormalizeAndTraceMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
@@ -195,7 +196,6 @@ from fastapi import (
     Query,
     Request,
     Response,
-    Depends,
     Path as PathParam,
 )
 from fastapi.middleware.cors import CORSMiddleware
@@ -251,10 +251,17 @@ from contract_review_app.api.limits import API_TIMEOUT_S, API_RATE_LIMIT_PER_MIN
 
 
 class RequireHeadersMiddleware(BaseHTTPMiddleware):
+    _skip_paths = {
+        "/api/companies/search",
+    }
+
     async def dispatch(self, request: Request, call_next):
         if request.method.upper() == "POST":
-            _require_api_key(request)
+            path = request.url.path.rstrip("/")
+            if path not in self._skip_paths:
+                _require_api_key(request)
         return await call_next(request)
+
 
 # --------------------------------------------------------------------
 # Language segmentation helpers
@@ -884,7 +891,7 @@ def _custom_openapi():
                     hdrs["x-latency-ms"] = {"$ref": "#/components/headers/XLatencyMs"}
                     hdrs["x-cid"] = {"$ref": "#/components/headers/XCid"}
 
-    example_headers = {
+    _example_headers = {
         "x-schema-version": SCHEMA_VERSION,
         "x-latency-ms": 12,
         "x-cid": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -911,7 +918,6 @@ _TRUTHY = {"1", "true", "yes", "on", "enabled"}
 def _env_truthy(name: str) -> bool:
     """Return ``True`` if environment variable ``name`` is set to a truthy value."""
     return (os.getenv(name, "") or "").strip().lower() in _TRUTHY
-
 
 
 _ALLOWED_ORIGINS = [
@@ -2458,7 +2464,11 @@ async def api_citation_resolve(
         for f in body.findings or []:
             try:
                 core = CoreFinding.model_validate(
-                    {"code": f.code or "", "message": f.message or "", "rule": f.rule or ""}
+                    {
+                        "code": f.code or "",
+                        "message": f.message or "",
+                        "rule": f.rule or "",
+                    }
                 )
             except Exception:
                 continue

@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from contract_review_app.api.app import app
+from contract_review_app.api.models import SCHEMA_VERSION
 
 client = TestClient(app)
 
@@ -14,7 +15,7 @@ def test_suggest_edits_endpoint():
     }
     resp = client.post("/api/suggest_edits", json=payload)
     assert resp.status_code == 200
-    assert resp.headers.get("x-schema-version") == "1.3"
+    assert resp.headers.get("x-schema-version") == SCHEMA_VERSION
     data = resp.json()
     suggestions = data.get("suggestions")
     assert isinstance(suggestions, list) and len(suggestions) >= 1

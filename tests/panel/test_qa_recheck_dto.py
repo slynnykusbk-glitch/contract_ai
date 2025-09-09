@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 import contract_review_app.api.app as app_module
 import os
+from contract_review_app.api.models import SCHEMA_VERSION
 
 
 @pytest.fixture()
@@ -19,7 +20,7 @@ def client(monkeypatch):
 
 
 def test_recheck_minimal_ok(client):
-    headers = {"x-schema-version": "1.3"}
+    headers = {"x-schema-version": SCHEMA_VERSION}
     flag = os.getenv("FEATURE_REQUIRE_API_KEY", "").strip().lower()
     if flag in {"1", "true", "yes", "on", "enabled"}:
         headers["x-api-key"] = os.getenv("API_KEY", "")
@@ -35,7 +36,7 @@ def test_recheck_minimal_ok(client):
 
 
 def test_recheck_empty_text_422(client):
-    headers = {"x-schema-version": "1.3"}
+    headers = {"x-schema-version": SCHEMA_VERSION}
     flag = os.getenv("FEATURE_REQUIRE_API_KEY", "").strip().lower()
     if flag in {"1", "true", "yes", "on", "enabled"}:
         headers["x-api-key"] = os.getenv("API_KEY", "")

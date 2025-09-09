@@ -19,5 +19,5 @@ async def test_analyze_ok_contract():
         j = r.json()
         assert j["status"] == "OK"
         assert j["analysis"]["status"] == "OK"
-        assert j["schema_version"] in ("1.3", SCHEMA_VERSION)
+        assert j["schema_version"] == SCHEMA_VERSION
         assert r.headers.get("x-schema-version") == j["schema_version"]

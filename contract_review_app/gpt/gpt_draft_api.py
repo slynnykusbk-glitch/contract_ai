@@ -11,7 +11,7 @@ try:
     from contract_review_app.core.schemas import AnalysisOutput, SCHEMA_VERSION  # Pydantic-модель
 except Exception:
     AnalysisOutput = Any  # fallback для type hints
-    SCHEMA_VERSION = "1.3"
+    SCHEMA_VERSION = "1.4"
 
 # Rule Engine (на випадок якщо треба добудувати аналіз із сирого тексту)
 _analyze_document = None

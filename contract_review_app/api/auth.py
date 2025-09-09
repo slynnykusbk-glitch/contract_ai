@@ -17,7 +17,7 @@ def require_api_key_and_schema(request: Request) -> None:
 
     ``x-api-key`` must match ``API_KEY`` when ``FEATURE_REQUIRE_API_KEY`` is
     truthy. ``x-schema-version`` is always required and must equal the
-    current ``SCHEMA_VERSION`` (``1.3``)."""
+    current ``SCHEMA_VERSION`` (``1.4``)."""
     if _env_truthy("FEATURE_REQUIRE_API_KEY"):
         api_key = os.getenv("API_KEY", "")
         if request.headers.get("x-api-key") != api_key:

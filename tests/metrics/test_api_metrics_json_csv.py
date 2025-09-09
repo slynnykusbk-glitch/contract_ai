@@ -3,6 +3,7 @@ from __future__ import annotations
 from importlib import reload
 
 from fastapi.testclient import TestClient
+from contract_review_app.api.models import SCHEMA_VERSION
 
 
 def test_api_metrics_json_csv(monkeypatch):
@@ -13,7 +14,7 @@ def test_api_metrics_json_csv(monkeypatch):
 
     resp = client.get("/api/metrics")
     assert resp.status_code == 200
-    assert resp.json()["schema_version"] == "1.3"
+    assert resp.json()["schema_version"] == SCHEMA_VERSION
     assert resp.headers.get("Cache-Control") == "no-store"
 
     resp_csv = client.get("/api/metrics.csv")

@@ -3,10 +3,11 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 import contract_review_app.api.app as app_module
 from contract_review_app.api.app import app
+from contract_review_app.api.models import SCHEMA_VERSION
 
 
 def _h():
-    return {"x-api-key": os.environ.get("API_KEY", "local-test-key-123"), "x-schema-version": "1.3"}
+    return {"x-api-key": os.environ.get("API_KEY", "local-test-key-123"), "x-schema-version": SCHEMA_VERSION}
 
 
 def _patch_env(monkeypatch):

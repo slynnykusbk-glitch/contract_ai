@@ -6,7 +6,7 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 from contract_review_app.core.schemas import AppBaseModel
 
 
-SCHEMA_VERSION = "1.3"
+SCHEMA_VERSION = "1.4"
 
 
 class _DTOBase(BaseModel):

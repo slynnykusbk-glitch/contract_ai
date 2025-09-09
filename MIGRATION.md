@@ -184,7 +184,7 @@ highlight matches in the original text.
 Protected API endpoints now share a dependency that validates request headers.
 When `FEATURE_REQUIRE_API_KEY` is truthy, callers must supply `x-api-key`
 matching the `API_KEY` value or receive a **401** response. In all cases the
-`x-schema-version` header is mandatory and must equal `1.3`; otherwise the
+`x-schema-version` header is mandatory and must equal `1.4`; otherwise the
 server returns **400**.
 
 ## How to verify
@@ -192,8 +192,8 @@ server returns **400**.
 ```bash
 export FEATURE_REQUIRE_API_KEY=1
 export API_KEY=local-test-key-123
-curl -i -X POST localhost:8000/api/analyze -H 'Content-Type: application/json' \
-  -H 'x-schema-version: 1.3' -d '{"text":"hi"}'
+  curl -i -X POST localhost:8000/api/analyze -H 'Content-Type: application/json' \
+    -H 'x-schema-version: 1.4' -d '{"text":"hi"}'
 curl -i -X POST localhost:8000/api/analyze -H 'Content-Type: application/json' \
   -H 'x-api-key: local-test-key-123' -d '{"text":"hi"}'
 ```
@@ -226,7 +226,7 @@ Both calls return `{"type":"/errors/general","title":...,"status":422}`.
 
 Every API response now includes three standard headers:
 
-* `x-schema-version` – current schema version (`1.3`).
+* `x-schema-version` – current schema version (`1.4`).
 * `x-latency-ms` – request processing time in milliseconds.
 * `x-cid` – deterministic SHA256 hash of the canonical request (`path + sorted(query) + JSON body`).
 

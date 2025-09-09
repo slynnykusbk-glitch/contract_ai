@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from contract_review_app.api.app import app
+from contract_review_app.api.models import SCHEMA_VERSION
 
 client = TestClient(app)
 
@@ -21,7 +22,7 @@ def test_api_key_required(monkeypatch):
     assert resp.status_code == 401
     resp2 = client.post(
         "/api/explain",
-        headers={"x-api-key": "secret", "x-schema-version": "1.3"},
+        headers={"x-api-key": "secret", "x-schema-version": SCHEMA_VERSION},
         json=REQ,
     )
     assert resp2.status_code == 200

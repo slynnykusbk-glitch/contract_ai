@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from contract_review_app.api.app import app
+from contract_review_app.core.schemas import SCHEMA_VERSION
 
 
 @pytest.fixture
@@ -25,7 +26,7 @@ def test_summary_endpoint_nda(client):
     }
     resp = client.post("/api/summary", json=payload)
     assert resp.status_code == 200
-    assert resp.headers.get("x-schema-version") == "1.3"
+    assert resp.headers.get("x-schema-version") == SCHEMA_VERSION
     data = resp.json()
     summary = data["summary"]
     assert summary["type"] == "NDA"

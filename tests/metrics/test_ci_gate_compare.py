@@ -4,6 +4,8 @@ import json
 import subprocess
 from pathlib import Path
 
+from contract_review_app.api.models import SCHEMA_VERSION
+
 
 def test_ci_gate_compare(tmp_path: Path):
     baseline = tmp_path / "baseline.json"
@@ -22,7 +24,7 @@ def test_ci_gate_compare(tmp_path: Path):
     current.write_text(
         json.dumps(
             {
-                "schema": "1.3",
+                "schema": SCHEMA_VERSION,
                 "snapshot_at": "2020-01-01T00:00:00Z",
                 "metrics": {
                     "rules": [

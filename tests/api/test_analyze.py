@@ -1,12 +1,13 @@
 import os
 from fastapi.testclient import TestClient
 from contract_review_app.api.app import app
+from contract_review_app.api.models import SCHEMA_VERSION
 
 
 def _h():
     return {
         "x-api-key": os.environ.get("API_KEY", "local-test-key-123"),
-        "x-schema-version": "1.3",
+        "x-schema-version": SCHEMA_VERSION,
     }
 
 

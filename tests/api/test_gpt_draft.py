@@ -14,7 +14,7 @@ def test_minimal_body_ok(monkeypatch):
     with TestClient(app) as c:
         r_an = c.post("/api/analyze", json={"text": "Hi"}, headers=_h())
         cid = r_an.headers.get("x-cid")
-        payload = {"cid": cid, "clause": "Hi"}
+        payload = {"cid": cid, "clause": "Hi", "mode": "friendly"}
         r = c.post("/api/gpt-draft", json=payload, headers=_h())
         assert r.status_code == 200
         assert r.json().get("status") == "ok"
@@ -27,7 +27,7 @@ def test_no_legacy_routes():
         assert "/api/gpt-draft" in paths
         for p in ["/api/gpt/draft", "/api/gpt_draft", "/gpt-draft"]:
             assert p not in paths
-            assert c.post(p, json={"cid": "x", "clause": "Hi"}).status_code == 404
+            assert c.post(p, json={"cid": "x", "clause": "Hi"}, headers=_h()).status_code == 404
 
 
 def test_unknown_cid(monkeypatch):
@@ -38,3 +38,24 @@ def test_unknown_cid(monkeypatch):
         r = c.post("/api/gpt-draft", json=payload, headers=_h())
         assert r.status_code == 404
         assert r.json().get("title") == "cid not found"
+
+
+def test_draft_schema(api):
+    r = api.post("/api/gpt-draft", json={"clause": "x"})
+    assert r.status_code == 422
+
+
+def test_draft_404(api):
+    r = api.post("/api/gpt-draft", json={"cid": "nope", "clause": "x"})
+    assert r.status_code == 404
+
+
+def test_draft_ok(api, analyzed_doc):
+    cid = analyzed_doc["cid"]
+    r = api.post(
+        "/api/gpt-draft",
+        json={"cid": cid, "clause": "Confidentiality clause.", "mode": "friendly"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body.get("proposed_text", "").strip()

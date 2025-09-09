@@ -1,5 +1,5 @@
 (() => {
-  // app/assets/api-client.ts
+  // word_addin_dev/app/assets/api-client.ts
   function parseFindings(resp) {
     const arr = resp?.analysis?.findings ?? resp?.findings ?? resp?.issues ?? [];
     return Array.isArray(arr) ? arr.filter(Boolean) : [];
@@ -44,10 +44,65 @@
       return DEFAULT_BASE;
     }
   }
+  async function postJson(path, body, opts = {}) {
+    const url = base() + path;
+    const headers = { "content-type": "application/json" };
+    const apiKey = opts.apiKey ?? (() => {
+      try {
+        return localStorage.getItem("api_key") || "";
+      } catch {
+        return "";
+      }
+    })();
+    if (apiKey) {
+      headers["x-api-key"] = apiKey;
+      try {
+        localStorage.setItem("api_key", apiKey);
+      } catch {
+      }
+      try {
+        window.CAI?.Store?.setApiKey?.(apiKey);
+      } catch {
+      }
+    }
+    const schemaVersion = opts.schemaVersion ?? (() => {
+      try {
+        return localStorage.getItem("schemaVersion") || "";
+      } catch {
+        return "";
+      }
+    })();
+    if (schemaVersion) headers["x-schema-version"] = schemaVersion;
+    const http = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body || {}),
+      credentials: "include"
+    });
+    const json = await http.json().catch(() => ({}));
+    const hdr = http.headers;
+    try {
+      window.CAI?.Store?.setMeta?.({ cid: hdr.get("x-cid") || void 0, schema: hdr.get("x-schema-version") || void 0 });
+    } catch {
+    }
+    return { http, json, headers: hdr };
+  }
+  window.postJson = postJson;
   async function req(path, { method = "GET", body = null, key = path } = {}) {
+    const headers = { "content-type": "application/json" };
+    try {
+      const apiKey = localStorage.getItem("api_key");
+      if (apiKey) headers["x-api-key"] = apiKey;
+    } catch {
+    }
+    try {
+      const schema = localStorage.getItem("schemaVersion");
+      if (schema) headers["x-schema-version"] = schema;
+    } catch {
+    }
     const r = await fetch(base() + path, {
       method,
-      headers: { "content-type": "application/json" },
+      headers,
       body: body ? JSON.stringify(body) : void 0,
       credentials: "include"
     });
@@ -68,21 +123,64 @@
   async function apiHealth() {
     return req("/health", { key: "health" });
   }
-  async function apiAnalyze(text) {
-    return req("/api/analyze", { method: "POST", body: { text, mode: "live" }, key: "analyze" });
-  }
-  async function apiGptDraft(text, mode = "friendly", extra = {}) {
-    return req("/api/gpt-draft", { method: "POST", body: { text, mode, ...extra }, key: "gpt-draft" });
+  async function apiGptDraft(cid, clause, mode = "friendly") {
+    return req("/api/gpt-draft", { method: "POST", body: { cid, clause, mode }, key: "gpt-draft" });
   }
   async function apiQaRecheck(text, rules = {}) {
-    const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
+    const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : rules || {};
     return req("/api/qa-recheck", { method: "POST", body: { text, rules: dict }, key: "qa-recheck" });
   }
-  async function postRedlines(before_text, after_text) {
-    return req("/api/panel/redlines", { method: "POST", body: { before_text, after_text }, key: "redlines" });
-  }
 
-  // app/assets/notifier.ts
+  // word_addin_dev/app/assets/store.ts
+  var DEFAULT_API_KEY = "";
+  var DEFAULT_SCHEMA = "1.4";
+  function ensureDefaults() {
+    try {
+      if (localStorage.getItem("api_key") === null) {
+        localStorage.setItem("api_key", DEFAULT_API_KEY);
+      }
+      if (localStorage.getItem("schemaVersion") === null) {
+        localStorage.setItem("schemaVersion", DEFAULT_SCHEMA);
+      }
+    } catch {
+    }
+  }
+  ensureDefaults();
+  function getApiKeyFromStore() {
+    try {
+      return localStorage.getItem("api_key") || DEFAULT_API_KEY;
+    } catch {
+      return DEFAULT_API_KEY;
+    }
+  }
+  function setApiKey(k) {
+    try {
+      localStorage.setItem("api_key", k);
+    } catch {
+    }
+  }
+  function getSchemaFromStore() {
+    try {
+      return localStorage.getItem("schemaVersion") || DEFAULT_SCHEMA;
+    } catch {
+      return DEFAULT_SCHEMA;
+    }
+  }
+  function setSchemaVersion(v) {
+    try {
+      localStorage.setItem("schemaVersion", v);
+    } catch {
+    }
+  }
+  var root = typeof globalThis !== "undefined" ? globalThis : window;
+  root.CAI = root.CAI || {};
+  root.CAI.Store = root.CAI.Store || {};
+  root.CAI.Store.setApiKey = setApiKey;
+  root.CAI.Store.setSchemaVersion = setSchemaVersion;
+  root.CAI.Store.get = () => ({ apiKey: getApiKeyFromStore(), schemaVersion: getSchemaFromStore() });
+  root.CAI.Store.DEFAULT_BASE = root.CAI.Store.DEFAULT_BASE || "https://localhost:9443";
+
+  // word_addin_dev/app/assets/notifier.ts
   function notifyOk(msg) {
     try {
       console.log("[OK]", msg);
@@ -102,7 +200,7 @@
     }
   }
 
-  // app/assets/office.ts
+  // word_addin_dev/app/assets/office.ts
   async function getWholeDocText() {
     return await Word.run(async (ctx) => {
       const body = ctx.document.body;
@@ -112,28 +210,24 @@
     });
   }
 
-  async function getSelectedText() {
-    return await Word.run(async (ctx) => {
-      const sel = ctx.document.getSelection();
-      sel.load("text");
-      await ctx.sync();
-      return (sel.text || "").trim();
-    });
-  }
-
-  // app/assets/taskpane.ts
+  // word_addin_dev/app/assets/taskpane.ts
   var g = globalThis;
   g.parseFindings = g.parseFindings || parseFindings;
-  g.apiAnalyze = g.apiAnalyze || apiAnalyze;
   g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
   g.metaFromResponse = g.metaFromResponse || metaFromResponse;
+  g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
+  g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
   g.getWholeDocText = g.getWholeDocText || getWholeDocText;
-  g.getSelectedText = g.getSelectedText || getSelectedText;
-  g.postRedlines = g.postRedlines || postRedlines;
   var Q = {
     proposed: 'textarea#proposedText, textarea[name="proposed"], textarea[data-role="proposed-text"]',
     original: 'textarea#originalClause, textarea[name="original"], textarea[data-role="original-clause"]'
   };
+  var lastCid = "";
+  function ensureHeaders() {
+    getApiKeyFromStore();
+    getSchemaFromStore();
+    return true;
+  }
   function slot(id, role) {
     return document.querySelector(`[data-role="${role}"]`) || document.getElementById(id);
   }
@@ -163,10 +257,14 @@
     const rid = f.rule_id || "rule";
     const ct = f.clause_type ? ` (${f.clause_type})` : "";
     const advice = f.advice || "\u2014";
-    const law = Array.isArray(f.law_refs) && f.law_refs.length ? f.law_refs.join('; ') : "\u2014";
-    const conflict = Array.isArray(f.conflict_with) && f.conflict_with.length ? f.conflict_with.join('; ') : "\u2014";
-    const fix = f.suggestion && f.suggestion.text ? f.suggestion.text : "\u2014";
-    return `[${sev}] ${rid}${ct}\nReason: ${advice}\nLaw: ${law}\nConflict: ${conflict}\nSuggested fix: ${fix}`;
+    const law = Array.isArray(f.law_refs) && f.law_refs.length ? f.law_refs.join("; ") : "\u2014";
+    const conflict = Array.isArray(f.conflict_with) && f.conflict_with.length ? f.conflict_with.join("; ") : "\u2014";
+    const fix = f.suggestion?.text || "\u2014";
+    return `[${sev}] ${rid}${ct}
+Reason: ${advice}
+Law: ${law}
+Conflict: ${conflict}
+Suggested fix: ${fix}`;
   }
   function nthOccurrenceIndex(hay, needle, startPos) {
     if (!needle) return 0;
@@ -372,28 +470,6 @@
       }
     });
   }
-  async function getSelectionContext(chars = 200) {
-    try {
-      return await Word.run(async (ctx) => {
-        const sel = ctx.document.getSelection();
-        const body = ctx.document.body;
-        sel.load("text");
-        body.load("text");
-        await ctx.sync();
-        const full = body.text || "";
-        const s = sel.text || "";
-        const idx = full.indexOf(s);
-        if (idx === -1) return { before: "", after: "" };
-        return {
-          before: full.slice(Math.max(0, idx - chars), idx),
-          after: full.slice(idx + s.length, idx + s.length + chars)
-        };
-      });
-    } catch (e) {
-      console.warn("context fail", e);
-      return { before: "", after: "" };
-    }
-  }
   async function onUseWholeDoc() {
     const src = $(Q.original);
     const raw = await getWholeDocText();
@@ -423,12 +499,11 @@
       }
       const modeSel = document.getElementById("cai-mode");
       const mode = modeSel?.value || "friendly";
-      const ctx = await getSelectionContext(200);
-      const { ok, json, resp } = await apiGptDraft(
-        text,
-        mode,
-        { before_text: ctx.before, after_text: ctx.after }
-      );
+      if (!lastCid) {
+        notifyWarn("Analyze first");
+        return;
+      }
+      const { ok, json, resp } = await apiGptDraft(lastCid, text, mode);
       if (!ok) {
         notifyWarn("Draft failed");
         return;
@@ -476,10 +551,21 @@
         notifyErr("\u0412 \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0435 \u043D\u0435\u0442 \u0442\u0435\u043A\u0441\u0442\u0430");
         return;
       }
+      const apiKey = getApiKeyFromStore();
+      const schema = getSchemaFromStore();
+      if (!apiKey) {
+        notifyErr("API key is missing");
+        return;
+      }
+      if (!schema) {
+        notifyErr("Schema version is missing");
+        return;
+      }
       window.__lastAnalyzed = base2;
-      const { json, resp } = await globalThis.apiAnalyze(base2);
+      const { http: resp, json, headers } = await postJson("/api/analyze", { text: base2 });
+      lastCid = headers.get("x-cid") || "";
       try {
-        globalThis.applyMetaToBadges(globalThis.metaFromResponse(resp));
+        applyMetaToBadges(metaFromResponse({ headers, json, status: resp.status }));
       } catch {
       }
       renderResults(json);
@@ -501,31 +587,29 @@
     }
   }
   async function doQARecheck() {
-    const text = await getSelectedText();
-    if (!text) {
-      notifyWarn("Select clause text first");
+    const apiKey = getApiKeyFromStore();
+    const schema = getSchemaFromStore();
+    if (!apiKey) {
+      notifyErr("API key is missing");
       return;
     }
-    const { json, resp } = await postJson("/api/qa-recheck", { text, rules: {} });
+    if (!schema) {
+      notifyErr("Schema version is missing");
+      return;
+    }
+    const text = await getWholeDocText();
+    const { ok, json, resp } = await apiQaRecheck(text, []);
     try {
       applyMetaToBadges(metaFromResponse(resp));
     } catch {
     }
     (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
-    notifyOk("QA recheck OK");
-  }
-  async function doRedlines() {
-    const before = document.getElementById("originalClause")?.value || "";
-    const after = document.getElementById("draftBox")?.value || "";
-    const { json, resp } = await postRedlines(before, after);
-    try {
-      applyMetaToBadges(metaFromResponse(resp));
-    } catch {
+    if (ok) {
+      notifyOk("QA recheck OK");
+    } else {
+      const msg = json?.error || resp.statusText || `status ${resp.status}`;
+      notifyErr(`QA recheck failed: ${msg}`);
     }
-    const container = document.getElementById("results") || document.body;
-    if (json?.diff_html) container.innerHTML = json.diff_html;
-    container.dispatchEvent(new CustomEvent("ca.redlines", { detail: json }));
-    notifyOk("Redlines OK");
   }
   function bindClick(sel, fn) {
     const el = document.querySelector(sel);
@@ -618,7 +702,6 @@
     bindClick("#btnAnalyze", doAnalyze);
     bindClick("#btnTest", doHealth);
     bindClick("#btnQARecheck", doQARecheck);
-    bindClick("#btnRedlines", doRedlines);
     document.getElementById("btnGetAIDraft")?.addEventListener("click", onGetAIDraft);
     bindClick("#btnInsertIntoWord", onInsertIntoWord);
     bindClick("#btnApplyTracked", onApplyTracked);
@@ -633,6 +716,7 @@
     });
     wireResultsToggle();
     console.log("Panel UI wired");
+    ensureHeaders();
   }
   g.wireUI = g.wireUI || wireUI;
   async function onInsertIntoWord() {

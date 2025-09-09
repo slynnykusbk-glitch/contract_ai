@@ -433,11 +433,21 @@ async function doAnalyze() {
 }
 
 async function doQARecheck() {
+  const apiKey = getApiKeyFromStore();
+  const schema = getSchemaFromStore();
+  if (!apiKey) { notifyErr("API key is missing"); return; }
+  if (!schema) { notifyErr("Schema version is missing"); return; }
+
   const text = await getWholeDocText();
-  const { json, resp } = await apiQaRecheck(text, []);
+  const { ok, json, resp } = await apiQaRecheck(text, []);
   try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
   (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
-  notifyOk("QA recheck OK");
+  if (ok) {
+    notifyOk("QA recheck OK");
+  } else {
+    const msg = json?.error || resp.statusText || `status ${resp.status}`;
+    notifyErr(`QA recheck failed: ${msg}`);
+  }
 }
 
 function bindClick(sel: string, fn: () => void) {

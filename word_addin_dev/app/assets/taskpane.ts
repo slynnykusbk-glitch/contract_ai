@@ -20,16 +20,9 @@ const Q = {
 let lastCid: string = "";
 
 function ensureHeaders(): boolean {
-  const apiKey = getApiKeyFromStore();
-  const schema = getSchemaFromStore();
-  const ok = !!apiKey && !!schema;
-  const warn = document.getElementById('hdrWarn');
-  if (warn) warn.style.display = ok ? 'none' : 'block';
-  ['#btnAnalyze', '#btnQARecheck', '#btnGetAIDraft'].forEach(sel => {
-    const b = document.querySelector(sel) as HTMLButtonElement | null;
-    if (b) b.disabled = !ok;
-  });
-  return ok;
+  getApiKeyFromStore();
+  getSchemaFromStore();
+  return true;
 }
 
 function slot(id: string, role: string): HTMLElement | null {

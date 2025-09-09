@@ -251,16 +251,22 @@ from contract_review_app.api.limits import API_TIMEOUT_S, API_RATE_LIMIT_PER_MIN
 
 
 class RequireHeadersMiddleware(BaseHTTPMiddleware):
-    _skip_paths = {
-        "/api/companies/search",
-    }
+    """Ensure required headers are present for relevant POST requests.
+
+    Some integration endpoints (e.g. Companies House) historically did not
+    mandate schema headers. To avoid breaking those clients, skip enforcement
+    for those paths and only require headers on the core API routes that
+    depend on them.
+    """
+    _SKIP_PATHS = ("/api/companies",)
 
     async def dispatch(self, request: Request, call_next):
-        if request.method.upper() == "POST":
-            path = request.url.path.rstrip("/")
-            if path not in self._skip_paths:
-                _require_api_key(request)
+        if request.method.upper() == "POST" and not any(
+            request.url.path.startswith(p) for p in self._SKIP_PATHS
+        ):
+            _require_api_key(request)
         return await call_next(request)
+
 
 
 # --------------------------------------------------------------------
@@ -891,11 +897,6 @@ def _custom_openapi():
                     hdrs["x-latency-ms"] = {"$ref": "#/components/headers/XLatencyMs"}
                     hdrs["x-cid"] = {"$ref": "#/components/headers/XCid"}
 
-    _example_headers = {
-        "x-schema-version": SCHEMA_VERSION,
-        "x-latency-ms": 12,
-        "x-cid": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    }
     for p in ["/api/analyze", "/api/gpt-draft", "/api/explain"]:
         op = openapi_schema.get("paths", {}).get(p, {}).get("post")
         if not op:

@@ -48,7 +48,15 @@ INCLUDE_ROOT_FILES = {
     "gen_dev_certs.py",
     "run_analysis.ps1",
 }
-REQUIRED_EXPOSE_HEADERS = {"x-cid", "x-cache", "x-schema-version", "x-latency-ms"}
+REQUIRED_EXPOSE_HEADERS = {
+    "x-cid",
+    "x-cache",
+    "x-schema-version",
+    "x-latency-ms",
+    "x-provider",
+    "x-model",
+    "x-llm-mode",
+}
 ENV_PATTERNS = [
     "OPENAI_API_KEY",
     "OPENAI_BASE",

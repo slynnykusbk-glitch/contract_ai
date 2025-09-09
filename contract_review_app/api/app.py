@@ -253,12 +253,11 @@ from contract_review_app.api.limits import API_TIMEOUT_S, API_RATE_LIMIT_PER_MIN
 class RequireHeadersMiddleware(BaseHTTPMiddleware):
     """Ensure required headers are present for relevant POST requests.
 
-    Some integration endpoints (e.g. Companies House search) historically did not
-    mandate schema headers. To avoid breaking those clients, skip enforcement for
-    such paths and only require headers on the core API routes that depend on
-    them.
+    Some integration endpoints (e.g. Companies House) historically did not
+    mandate schema headers. To avoid breaking those clients, skip enforcement
+    for those paths and only require headers on the core API routes that
+    depend on them.
     """
-
     _SKIP_PATHS = ("/api/companies",)
 
     async def dispatch(self, request: Request, call_next):
@@ -267,6 +266,7 @@ class RequireHeadersMiddleware(BaseHTTPMiddleware):
         ):
             _require_api_key(request)
         return await call_next(request)
+
 
 
 # --------------------------------------------------------------------

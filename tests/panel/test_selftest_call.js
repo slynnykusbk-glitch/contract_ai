@@ -10,6 +10,7 @@ const sandbox = {
       const el = { value: '', textContent: '', style:{}, className:'', addEventListener: () => {} };
       if (id === 'backendInput') el.value = 'https://localhost:9443';
       if (id === 'apiKeyInput') el.value = 'KEY123';
+      if (id === 'schemaInput') el.value = '1.0';
       return el;
     },
     querySelector: () => ({})

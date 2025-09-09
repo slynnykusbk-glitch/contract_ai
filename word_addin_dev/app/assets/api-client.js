@@ -46,20 +46,13 @@ function base() {
 async function postJson(path, body, opts = {}) {
   const url = base() + path;
   const headers = { "content-type": "application/json" };
-  let apiKey = opts.apiKey;
-  if (!apiKey) {
-    try {
-      apiKey = document.getElementById("apiKeyInput")?.value.trim() || localStorage.getItem("api_key") || "";
-    } catch {
-      apiKey = "";
-    }
-  }
+  const apiKey = opts.apiKey ?? (() => { try { return localStorage.getItem("api_key") || ""; } catch { return ""; } })();
   if (apiKey) {
     headers["x-api-key"] = apiKey;
     try { localStorage.setItem("api_key", apiKey); } catch {}
     try { window.CAI?.Store?.setApiKey?.(apiKey); } catch {}
   }
-  const schemaVersion = opts.schemaVersion || (window.CAI?.Store?.get?.().schemaVersion || "");
+  const schemaVersion = opts.schemaVersion ?? (() => { try { return localStorage.getItem("schemaVersion") || ""; } catch { return ""; } })();
   if (schemaVersion) headers["x-schema-version"] = schemaVersion;
   const http = await fetch(url, {
     method: "POST",
@@ -80,6 +73,10 @@ async function req(path, { method = "GET", body = null, key = path } = {}) {
   try {
     const apiKey = localStorage.getItem("api_key");
     if (apiKey) headers["x-api-key"] = apiKey;
+  } catch {}
+  try {
+    const schema = localStorage.getItem("schemaVersion");
+    if (schema) headers["x-schema-version"] = schema;
   } catch {}
   const r = await fetch(base() + path, {
     method,
@@ -105,17 +102,20 @@ async function apiHealth() {
   return req("/health", { key: "health" });
 }
 async function apiAnalyze(text) {
-  return req("/api/analyze", { method: "POST", body: { text, mode: "live" }, key: "analyze" });
+  return req("/api/analyze", { method: "POST", body: { text }, key: "analyze" });
 }
-async function apiGptDraft(text, mode = "friendly", extra = {}) {
-  return req("/api/gpt-draft", { method: "POST", body: { text, mode, ...extra }, key: "gpt-draft" });
+async function apiGptDraft(cid, clause, mode = "friendly") {
+  return req("/api/gpt-draft", { method: "POST", body: { cid, clause, mode }, key: "gpt-draft" });
 }
 async function apiQaRecheck(text, rules = {}) {
   const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
   return req("/api/qa-recheck", { method: "POST", body: { text, rules: dict }, key: "qa-recheck" });
 }
-async function apiSummary(text, mode = "live") {
-  return req("/api/summary", { method: "POST", body: { text, mode }, key: "summary" });
+async function apiSummary(cid) {
+  return req("/api/summary", { method: "POST", body: { cid }, key: "summary" });
+}
+async function apiSummaryGet() {
+  return req("/api/summary", { method: "GET", key: "summary" });
 }
 async function apiSuggestEdits(text, findings = []) {
   const body = { text };
@@ -141,6 +141,7 @@ export {
   apiHealth,
   apiQaRecheck,
   apiSummary,
+  apiSummaryGet,
   apiSuggestEdits,
   postRedlines,
   postCitationResolve,

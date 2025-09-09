@@ -45,9 +45,18 @@
     }
   }
   async function req(path, { method = "GET", body = null, key = path } = {}) {
+    const headers = { "content-type": "application/json" };
+    try {
+      const apiKey = localStorage.getItem("api_key");
+      if (apiKey) headers["x-api-key"] = apiKey;
+    } catch {}
+    try {
+      const schema = localStorage.getItem("schemaVersion");
+      if (schema) headers["x-schema-version"] = schema;
+    } catch {}
     const r = await fetch(base() + path, {
       method,
-      headers: { "content-type": "application/json" },
+      headers,
       body: body ? JSON.stringify(body) : void 0,
       credentials: "include"
     });
@@ -69,10 +78,10 @@
     return req("/health", { key: "health" });
   }
   async function apiAnalyze(text) {
-    return req("/api/analyze", { method: "POST", body: { text, mode: "live" }, key: "analyze" });
+    return req("/api/analyze", { method: "POST", body: { text }, key: "analyze" });
   }
-  async function apiGptDraft(text, mode = "friendly", extra = {}) {
-    return req("/api/gpt-draft", { method: "POST", body: { text, mode, ...extra }, key: "gpt-draft" });
+  async function apiGptDraft(cid, clause, mode = "friendly") {
+    return req("/api/gpt-draft", { method: "POST", body: { cid, clause, mode }, key: "gpt-draft" });
   }
   async function apiQaRecheck(text, rules = {}) {
     const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
@@ -134,6 +143,25 @@
     proposed: 'textarea#proposedText, textarea[name="proposed"], textarea[data-role="proposed-text"]',
     original: 'textarea#originalClause, textarea[name="original"], textarea[data-role="original-clause"]'
   };
+  var lastCid = "";
+  function ensureHeaders() {
+    let apiKey = "";
+    let schema = "";
+    try {
+      apiKey = localStorage.getItem("api_key") || "";
+    } catch {}
+    try {
+      schema = localStorage.getItem("schemaVersion") || "";
+    } catch {}
+    const ok = !!apiKey && !!schema;
+    const warn = document.getElementById("hdrWarn");
+    if (warn) warn.style.display = ok ? "none" : "block";
+    ["#btnAnalyze", "#btnQARecheck", "#btnGetAIDraft"].forEach((sel) => {
+      const b = document.querySelector(sel);
+      if (b) b.disabled = !ok;
+    });
+    return ok;
+  }
   function slot(id, role) {
     return document.querySelector(`[data-role="${role}"]`) || document.getElementById(id);
   }
@@ -423,12 +451,11 @@
       }
       const modeSel = document.getElementById("cai-mode");
       const mode = modeSel?.value || "friendly";
-      const ctx = await getSelectionContext(200);
-      const { ok, json, resp } = await apiGptDraft(
-        text,
-        mode,
-        { before_text: ctx.before, after_text: ctx.after }
-      );
+      if (!lastCid) {
+        notifyWarn("Analyze first");
+        return;
+      }
+      const { ok, json, resp } = await apiGptDraft(lastCid, text, mode);
       if (!ok) {
         notifyWarn("Draft failed");
         return;
@@ -478,8 +505,9 @@
       }
       window.__lastAnalyzed = base2;
       const { json, resp } = await globalThis.apiAnalyze(base2);
+      lastCid = resp.headers.get("x-cid") || "";
       try {
-        globalThis.applyMetaToBadges(globalThis.metaFromResponse(resp));
+        globalThis.applyMetaToBadges(globalThis.metaFromResponse({ headers: resp.headers, json, status: resp.status }));
       } catch {
       }
       renderResults(json);
@@ -633,6 +661,7 @@
     });
     wireResultsToggle();
     console.log("Panel UI wired");
+    ensureHeaders();
   }
   g.wireUI = g.wireUI || wireUI;
   async function onInsertIntoWord() {

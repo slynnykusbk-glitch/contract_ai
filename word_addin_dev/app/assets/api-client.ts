@@ -88,18 +88,17 @@ function base(): string {
 export async function postJson(path: string, body: any, opts: { apiKey?: string; schemaVersion?: string } = {}) {
   const url = base() + path;
   const headers: Record<string, string> = { 'content-type': 'application/json' };
-  let apiKey = opts.apiKey;
-  if (!apiKey) {
-    try {
-      apiKey = (document.getElementById('apiKeyInput') as HTMLInputElement | null)?.value.trim() || localStorage.getItem('api_key') || '';
-    } catch { apiKey = ''; }
-  }
+  const apiKey = opts.apiKey ?? (() => {
+    try { return localStorage.getItem('api_key') || ''; } catch { return ''; }
+  })();
   if (apiKey) {
     headers['x-api-key'] = apiKey;
     try { localStorage.setItem('api_key', apiKey); } catch {}
     try { (window as any).CAI?.Store?.setApiKey?.(apiKey); } catch {}
   }
-  const schemaVersion = opts.schemaVersion || (window as any).CAI?.Store?.get?.().schemaVersion || '';
+  const schemaVersion = opts.schemaVersion ?? (() => {
+    try { return localStorage.getItem('schemaVersion') || ''; } catch { return ''; }
+  })();
   if (schemaVersion) headers['x-schema-version'] = schemaVersion;
   const http = await fetch(url, {
     method: 'POST',
@@ -121,6 +120,10 @@ async function req(path: string, { method='GET', body=null, key=path }: { method
   try {
     const apiKey = localStorage.getItem('api_key');
     if (apiKey) headers['x-api-key'] = apiKey;
+  } catch {}
+  try {
+    const schema = localStorage.getItem('schemaVersion');
+    if (schema) headers['x-schema-version'] = schema;
   } catch {}
 
   const r = await fetch(base()+path, {
@@ -145,11 +148,19 @@ export async function apiHealth() {
 }
 
 export async function apiAnalyze(text: string) {
-  return req('/api/analyze', { method: 'POST', body: { text, mode: 'live' }, key: 'analyze' });
+  return req('/api/analyze', { method: 'POST', body: { text }, key: 'analyze' });
 }
 
-export async function apiGptDraft(text: string, mode = 'friendly', extra: any = {}) {
-  return req('/api/gpt-draft', { method: 'POST', body: { text, mode, ...extra }, key: 'gpt-draft' });
+export async function apiGptDraft(cid: string, clause: string, mode = 'friendly') {
+  return req('/api/gpt-draft', { method: 'POST', body: { cid, clause, mode }, key: 'gpt-draft' });
+}
+
+export async function apiSummary(cid: string) {
+  return req('/api/summary', { method: 'POST', body: { cid }, key: 'summary' });
+}
+
+export async function apiSummaryGet() {
+  return req('/api/summary', { method: 'GET', key: 'summary' });
 }
 
 export async function apiQaRecheck(text: string, rules: any = {}) {

@@ -53,6 +53,20 @@ After running an analysis the task pane displays the current CID. You can open
 **Export HTML/PDF**. The **Replay last** button re-sends the previous input to
 `/api/analyze`.
 
+## Panel Self-Test
+
+The file `word_addin_dev/panel_selftest.html` provides a small web page for
+checking the backend API. To run the self-test:
+
+1. Start the backend service.
+2. Open `panel_selftest.html` in a browser.
+3. Enter the backend URL, your API key (`x-api-key`) and the expected schema
+   version (`x-schema-version`, for example `1.4`).
+4. Click **Run All** or choose individual tests.
+
+Both headers are required for most API endpoints; requests without them will
+fail.
+
 ## API examples
 
 Sample request bodies for `/api/analyze` are included:

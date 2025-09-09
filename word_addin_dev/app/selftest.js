@@ -4,6 +4,7 @@
 // ---------------------- helpers ----------------------
 const LS_KEY = "panel:backendUrl";
 const API_KEY_STORAGE = "api_key";
+const SCHEMA_STORAGE = "schemaVersion";
 const DRAFT_PATH = "/api/gpt-draft";
 const SAMPLE = "Governing law: England and Wales.";
 let clientCid = genCid();
@@ -86,6 +87,21 @@ function loadApiKey(){
   try{ v = localStorage.getItem(API_KEY_STORAGE) || ""; }catch{}
   const el = document.getElementById("apiKeyInput");
   if(el) el.value = v;
+  return v;
+}
+function saveSchemaVersion(){
+  try{
+    const v=document.getElementById("schemaInput").value.trim();
+    localStorage.setItem(SCHEMA_STORAGE, v);
+    CAI.Store?.setSchemaVersion?.(v);
+  }catch{}
+}
+function loadSchemaVersion(){
+  let v="";
+  try{ v = localStorage.getItem(SCHEMA_STORAGE) || ""; }catch{}
+  const el = document.getElementById("schemaInput");
+  if(el) el.value = v;
+  try{ CAI.Store?.setSchemaVersion?.(v); }catch{}
   return v;
 }
 function setCidLabels(){
@@ -212,11 +228,19 @@ async function callEndpoint({name, method, path, body, dynamicPathFn}) {
   } catch {}
 
   const origKey = localStorage.getItem(API_KEY_STORAGE);
+  const origSchema = localStorage.getItem(SCHEMA_STORAGE);
   if (path !== "/health") {
     try {
       const k = document.getElementById("apiKeyInput").value.trim();
+      const s = document.getElementById("schemaInput").value.trim();
+      if (!k || !s) {
+        alert("Please enter API Key (x-api-key) and Schema Version (x-schema-version)");
+        return { ok:false, error_code:"CLIENT", detail:"Missing headers" };
+      }
       localStorage.setItem(API_KEY_STORAGE, k);
+      localStorage.setItem(SCHEMA_STORAGE, s);
       CAI.Store?.setApiKey?.(k);
+      CAI.Store?.setSchemaVersion?.(s);
     } catch {}
   }
 
@@ -237,6 +261,7 @@ async function callEndpoint({name, method, path, body, dynamicPathFn}) {
   if (origBase2 == null) { localStorage.removeItem("backendUrl"); } else { localStorage.setItem("backendUrl", origBase2); }
   if (path !== "/health") {
     if (origKey == null) { localStorage.removeItem(API_KEY_STORAGE); } else { localStorage.setItem(API_KEY_STORAGE, origKey); }
+    if (origSchema == null) { localStorage.removeItem(SCHEMA_STORAGE); } else { localStorage.setItem(SCHEMA_STORAGE, origSchema); }
   }
 
   const hdr = r.headers || { get: () => "" };
@@ -444,6 +469,14 @@ async function testTrace(){
 }
 
 async function runAll(){
+  const apiKey = document.getElementById("apiKeyInput")?.value.trim();
+  const schema = document.getElementById("schemaInput")?.value.trim();
+  if (!apiKey || !schema) {
+    alert("Please enter API Key (x-api-key) and Schema Version (x-schema-version)");
+    return;
+  }
+  saveApiKey();
+  saveSchemaVersion();
   for (const t of TESTS) {
     setStatusRow(t.rowId, {code:"",xcid:"",xcache:"",xschema:"",latencyMs:null,ok:false});
   }
@@ -461,12 +494,13 @@ async function runAll(){
 onClick("saveBtn", () => { saveBase(); console.log("Saved"); });
 onClick("runAllBtn", runAll);
 onClick("pingBtn", pingLLM);
-onClick("saveKeyBtn", () => { saveApiKey(); console.log("Saved API key"); });
+onClick("saveKeyBtn", () => { saveApiKey(); saveSchemaVersion(); console.log("Saved headers"); });
 
 // Load defaults on first paint
 window.addEventListener("DOMContentLoaded", async () => {
   loadBase();
   loadApiKey();
+  loadSchemaVersion();
   setCidLabels();
   const paths = await loadOpenAPI();
   buildRowsFromOpenAPI(paths);

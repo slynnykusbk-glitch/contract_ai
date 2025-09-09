@@ -179,6 +179,8 @@ class AnalyzeIn(AppBaseModel):
     Adds optional segment context and output switches without breaking legacy.
     """
 
+    model_config = ConfigDict(extra="ignore")
+
     document_name: Optional[str] = None
     text: str
     language: str = "en-GB"
@@ -1151,7 +1153,9 @@ class SuggestEdit(AppBaseModel):
 
     @model_validator(mode="after")
     def _autofill_operations(self):
-        if self.operations is None and (self.insert is not None or self.delete is not None):
+        if self.operations is None and (
+            self.insert is not None or self.delete is not None
+        ):
             self.operations = ["replace"]
         return self
 

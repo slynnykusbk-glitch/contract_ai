@@ -20,11 +20,12 @@ from datetime import datetime, timezone
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
-from typing import Any, Dict, List, Optional, Tuple, Literal
+from typing import Any, Dict, List, Optional, Tuple
 
 from collections import OrderedDict
 import secrets
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.datastructures import MutableHeaders
 
 from contract_review_app.core.privacy import redact_pii, scrub_llm_output
 from contract_review_app.core.audit import audit
@@ -265,15 +266,27 @@ class RequireHeadersMiddleware(BaseHTTPMiddleware):
     _SKIP_PATHS = ("/api/companies",)
 
     async def dispatch(self, request: Request, call_next):
+        if "x-schema-version" not in request.headers:
+            client_host = request.client.host if request.client else ""
+            if client_host in {"127.0.0.1", "::1", "localhost"}:
+                headers = MutableHeaders(request.scope)
+                headers.append("x-schema-version", SCHEMA_VERSION)
+
         if request.method.upper() == "POST" and not any(
             request.url.path.startswith(p) for p in self._SKIP_PATHS
         ):
             try:
                 _require_api_key(request)
             except HTTPException as exc:
-                problem = ProblemDetail(title=exc.detail, detail=exc.detail, status=exc.status_code)
+                problem = ProblemDetail(
+                    title=exc.detail, detail=exc.detail, status=exc.status_code
+                )
                 resp = JSONResponse(problem.model_dump(), status_code=exc.status_code)
-                apply_std_headers(resp, request, getattr(request.state, "started_at", time.perf_counter()))
+                apply_std_headers(
+                    resp,
+                    request,
+                    getattr(request.state, "started_at", time.perf_counter()),
+                )
                 return resp
         return await call_next(request)
 
@@ -2028,7 +2041,9 @@ async def api_summary_post(
         )
         return resp
 
-    summary = rec["resp"].get("summary") or rec["resp"].get("results", {}).get("summary", {})
+    summary = rec["resp"].get("summary") or rec["resp"].get("results", {}).get(
+        "summary", {}
+    )
     resp = {"status": "ok", "summary": summary, "meta": PROVIDER_META}
     response.headers["x-doc-hash"] = body.hash or ""
     _set_std_headers(
@@ -2352,7 +2367,9 @@ class RedlinesOut(BaseModel):
 )
 async def gpt_draft(inp: GptDraftIn, request: Request):
     if not TRACE.get(inp.cid):
-        problem = ProblemDetail(title="cid not found", status=404, detail="cid not found")
+        problem = ProblemDetail(
+            title="cid not found", status=404, detail="cid not found"
+        )
         return JSONResponse(problem.model_dump(), status_code=404)
     if LLM_CONFIG.provider == "azure" and not PROVIDER_META.get("valid_config"):
         problem = _llm_key_problem()

@@ -500,7 +500,7 @@ onClick("saveKeyBtn", () => { saveApiKey(); saveSchemaVersion(); console.log("Sa
 window.addEventListener("DOMContentLoaded", async () => {
   loadBase();
   loadApiKey();
-  loadSchemaVersion();
+  const storedSchema = loadSchemaVersion();
   setCidLabels();
   const paths = await loadOpenAPI();
   buildRowsFromOpenAPI(paths);
@@ -509,6 +509,23 @@ window.addEventListener("DOMContentLoaded", async () => {
     const llm = (resp && resp.json && resp.json.llm) || {};
     const model = (llm.models && llm.models.draft) || llm.model;
     showMeta({ provider: llm.provider, model, mode: llm.mode });
+
+    const serverSchema =
+      (resp.headers && resp.headers.get && resp.headers.get('x-schema-version')) ||
+      (resp.json && resp.json.schema) || '';
+    if (serverSchema && storedSchema !== serverSchema) {
+      const el = document.getElementById('schemaInput');
+      if (el) el.value = serverSchema;
+      try {
+        localStorage.setItem(SCHEMA_STORAGE, serverSchema);
+        CAI.Store?.setSchemaVersion?.(serverSchema);
+      } catch {}
+      const warnEl = document.getElementById('schemaWarn');
+      if (warnEl && storedSchema) {
+        warnEl.textContent = `Schema mismatch: ${storedSchema} → ${serverSchema}`;
+        warnEl.style.display = 'inline';
+      }
+    }
   } catch {
     const latEl = document.getElementById('llmLatency');
     if (latEl) { latEl.textContent = 'ERR'; latEl.className = 'err'; }

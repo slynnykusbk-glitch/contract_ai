@@ -48,6 +48,7 @@ TRACE = TraceStore(TRACE_MAX)
 _RULE_ENGINE_OK = True
 _RULE_ENGINE_ERR = ""
 
+
 class NormalizeAndTraceMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         response = await call_next(request)
@@ -195,7 +196,6 @@ from fastapi import (
     Query,
     Request,
     Response,
-    Depends,
     Path as PathParam,
 )
 from fastapi.middleware.cors import CORSMiddleware
@@ -244,6 +244,30 @@ from contract_review_app.intake.normalization import normalize_text
 # --- LLM provider & limits (final resolution) ---
 from contract_review_app.llm.provider import get_provider
 from contract_review_app.api.limits import API_TIMEOUT_S, API_RATE_LIMIT_PER_MIN
+
+# --------------------------------------------------------------------
+# Middleware for header validation
+# --------------------------------------------------------------------
+
+
+class RequireHeadersMiddleware(BaseHTTPMiddleware):
+    """Ensure required headers are present for relevant POST requests.
+
+    Some integration endpoints (e.g. Companies House search) historically did not
+    mandate schema headers. To avoid breaking those clients, skip enforcement for
+    such paths and only require headers on the core API routes that depend on
+    them.
+    """
+
+    _SKIP_PATHS = ("/api/companies",)
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method.upper() == "POST" and not any(
+            request.url.path.startswith(p) for p in self._SKIP_PATHS
+        ):
+            _require_api_key(request)
+        return await call_next(request)
+
 
 # --------------------------------------------------------------------
 # Language segmentation helpers
@@ -606,6 +630,7 @@ app = FastAPI(
 )
 register_error_handlers(app)
 app.add_middleware(NormalizeAndTraceMiddleware)
+app.add_middleware(RequireHeadersMiddleware)
 
 # ---------------------------- Panel sub-app ----------------------------
 panel_app = FastAPI()
@@ -783,14 +808,14 @@ class AnalyzeRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         populate_by_name=True,
-        json_schema_extra={"example": {"text": "Hello"}},
+        json_schema_extra={"example": {"text": "Hello", "language": "en-GB"}},
     )
 
     text: str = Field(
         validation_alias=AliasChoices("text", "clause", "body"),
         min_length=1,
     )
-    language: str = "en"
+    language: str = "en-GB"
     mode: Optional[str] = None
     risk: Optional[str] = None
 
@@ -872,11 +897,6 @@ def _custom_openapi():
                     hdrs["x-latency-ms"] = {"$ref": "#/components/headers/XLatencyMs"}
                     hdrs["x-cid"] = {"$ref": "#/components/headers/XCid"}
 
-    example_headers = {
-        "x-schema-version": SCHEMA_VERSION,
-        "x-latency-ms": 12,
-        "x-cid": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    }
     for p in ["/api/analyze", "/api/gpt-draft", "/api/explain"]:
         op = openapi_schema.get("paths", {}).get(p, {}).get("post")
         if not op:
@@ -899,7 +919,6 @@ _TRUTHY = {"1", "true", "yes", "on", "enabled"}
 def _env_truthy(name: str) -> bool:
     """Return ``True`` if environment variable ``name`` is set to a truthy value."""
     return (os.getenv(name, "") or "").strip().lower() in _TRUTHY
-
 
 
 _ALLOWED_ORIGINS = [
@@ -1550,7 +1569,7 @@ async def api_metrics_html():
     return Response(html, media_type="text/html", headers={"Cache-Control": "no-store"})
 
 
-@router.post("/api/admin/purge", dependencies=[Depends(_require_api_key)])
+@router.post("/api/admin/purge")
 def api_admin_purge(dry: int = 1):
     removed = retention_purge(dry_run=bool(dry))
     return {"removed": [str(p) for p in removed]}
@@ -1559,7 +1578,6 @@ def api_admin_purge(dry: int = 1):
 @app.post(
     "/api/analyze",
     response_model=AnalyzeResponse,
-    dependencies=[Depends(_require_api_key)],
 )
 def api_analyze(
     request: Request, req: AnalyzeRequest = Body(..., example={"text": "Hello"})
@@ -1897,7 +1915,6 @@ async def summary_post_alias(
 
 @router.post(
     "/api/qa-recheck",
-    dependencies=[Depends(_require_api_key)],
     response_model=QARecheckOut,
 )
 async def api_qa_recheck(
@@ -1948,19 +1965,7 @@ async def api_qa_recheck(
             schema=SCHEMA_VERSION,
             latency_ms=_now_ms() - t0,
         )
-        return {
-            "status": "ok",
-            "qa": [],
-            "issues": [],
-            "analysis": {"ok": True},
-            "risk_delta": 0,
-            "score_delta": 0,
-            "status_from": "OK",
-            "status_to": "OK",
-            "residual_risks": [{"code": "demo", "message": "demo"}],
-            "deltas": {},
-            "meta": meta,
-        }
+        return {"status": "ok", "qa": [], "meta": meta}
     try:
         result = LLM_SERVICE.qa(text, rules, LLM_CONFIG.timeout_s, profile=profile)
     except ValueError:
@@ -2071,7 +2076,6 @@ async def api_qa_recheck(
 @router.post(
     "/api/suggest_edits",
     responses={400: {"model": ProblemDetail}, 422: {"model": ProblemDetail}},
-    dependencies=[Depends(_require_api_key)],
 )
 async def api_suggest_edits(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
@@ -2170,8 +2174,20 @@ async def api_suggest_edits(
 
 
 class DraftIn(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "text": "Example clause.",
+                "language": "en-GB",
+                "mode": "friendly",
+                "before_text": "",
+                "after_text": "",
+            }
+        }
+    )
+
     text: str = Field(..., min_length=1)
-    language: str = "en"
+    language: str = "en-GB"
     mode: Literal["friendly", "medium", "strict"] = "medium"
     before_text: Optional[str] = None
     after_text: Optional[str] = None
@@ -2206,7 +2222,6 @@ class RedlinesOut(BaseModel):
     "/api/gpt-draft",
     response_model=DraftOut,
     responses={422: {"model": ProblemDetail}},
-    dependencies=[Depends(_require_api_key)],
 )
 async def gpt_draft(inp: DraftIn, request: Request):
     if LLM_CONFIG.provider == "azure" and not PROVIDER_META.get("valid_config"):
@@ -2340,12 +2355,12 @@ async def health_alias():
     return await health()
 
 
-@app.post("/analyze", dependencies=[Depends(_require_api_key)])
+@app.post("/analyze")
 def analyze_alias(req: AnalyzeRequest, request: Request):
     return api_analyze(request, req)
 
 
-@router.post("/suggest_edits", dependencies=[Depends(_require_api_key)])
+@router.post("/suggest_edits")
 async def suggest_edits_alias(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
@@ -2357,7 +2372,7 @@ def llm_ping_alias():
     return llm_ping()
 
 
-@router.post("/api/calloff/validate", dependencies=[Depends(_require_api_key)])
+@router.post("/api/calloff/validate")
 async def api_calloff_validate(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
@@ -2450,7 +2465,11 @@ async def api_citation_resolve(
         for f in body.findings or []:
             try:
                 core = CoreFinding.model_validate(
-                    {"code": f.code or "", "message": f.message or "", "rule": f.rule or ""}
+                    {
+                        "code": f.code or "",
+                        "message": f.message or "",
+                        "rule": f.rule or "",
+                    }
                 )
             except Exception:
                 continue

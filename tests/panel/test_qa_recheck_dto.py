@@ -2,6 +2,7 @@ import pytest
 from types import SimpleNamespace
 from fastapi.testclient import TestClient
 import contract_review_app.api.app as app_module
+import os
 
 
 @pytest.fixture()
@@ -18,10 +19,14 @@ def client(monkeypatch):
 
 
 def test_recheck_minimal_ok(client):
+    headers = {"x-schema-version": "1.3"}
+    flag = os.getenv("FEATURE_REQUIRE_API_KEY", "").strip().lower()
+    if flag in {"1", "true", "yes", "on", "enabled"}:
+        headers["x-api-key"] = os.getenv("API_KEY", "")
     r = client.post(
         "/api/qa-recheck",
-        json={"text": "clause text", "rules": {}},
-        headers={"x-schema-version": "1.3"},
+        json={"text": "clause text", "rules": {}, "language": "en-GB"},
+        headers=headers,
     )
     assert r.status_code == 200
     data = r.json()
@@ -30,10 +35,14 @@ def test_recheck_minimal_ok(client):
 
 
 def test_recheck_empty_text_422(client):
+    headers = {"x-schema-version": "1.3"}
+    flag = os.getenv("FEATURE_REQUIRE_API_KEY", "").strip().lower()
+    if flag in {"1", "true", "yes", "on", "enabled"}:
+        headers["x-api-key"] = os.getenv("API_KEY", "")
     r = client.post(
         "/api/qa-recheck",
-        json={"text": "", "rules": {}},
-        headers={"x-schema-version": "1.3"},
+        json={"text": "", "rules": {}, "language": "en-GB"},
+        headers=headers,
     )
     assert r.status_code == 422
     detail = r.json().get("detail")

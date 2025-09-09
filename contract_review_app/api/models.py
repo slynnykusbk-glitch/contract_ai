@@ -1,7 +1,14 @@
 from typing import Any, Dict, List, Literal
 
 from fastapi import HTTPException
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator, field_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    model_validator,
+    field_validator,
+)
 
 from contract_review_app.core.schemas import AppBaseModel
 
@@ -113,7 +120,7 @@ class GptDraftIn(_DTOBase):
 
     cid: str
     clause: str
-    mode: Literal["friendly", "neutral", "strict"] | None = None
+    mode: Literal["friendly", "neutral", "medium", "strict"] | None = None
 
 
 class QARecheckIn(_DTOBase):

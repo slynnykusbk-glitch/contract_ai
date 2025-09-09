@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from contract_review_app.core.privacy import redact_pii, scrub_llm_output
+
 # Verification
 from contract_review_app.llm.verification import verify_output_contains_citations
+
 # Prompt builder (new API with system/user) + legacy shim
 try:
     from contract_review_app.gpt.gpt_prompt_builder import (
@@ -14,6 +16,7 @@ try:
         build_prompt_text,
         build_prompt,  # legacy
     )
+
     _HAS_BUILDER = True
 except Exception:
     _HAS_BUILDER = False
@@ -21,6 +24,7 @@ except Exception:
 # Proxy to LLM (mock or real proxy)
 try:
     from contract_review_app.gpt.gpt_proxy_api import call_gpt_api  # type: ignore
+
     _HAS_PROXY = True
 except Exception:
     _HAS_PROXY = False
@@ -28,6 +32,7 @@ except Exception:
 # Rule-based fallback synthesizer
 try:
     from contract_review_app.engine.pipeline import synthesize_draft  # type: ignore
+
     _HAS_RULE_FALLBACK = True
 except Exception:
     _HAS_RULE_FALLBACK = False
@@ -35,6 +40,7 @@ except Exception:
 # Learning adaptor (optional, local-only)
 try:
     from contract_review_app.learning import adaptor as _learn  # type: ignore
+
     _HAS_LEARNING = True
 except Exception:
     _learn = None
@@ -44,6 +50,7 @@ except Exception:
 # -----------------------------------------------------------------------------
 # Public API
 # -----------------------------------------------------------------------------
+
 
 def generate_guarded_draft(
     analysis: Union[Dict[str, Any], Any],
@@ -85,7 +92,9 @@ def generate_guarded_draft(
             mode=mode,
             findings=a.get("findings") or [],
         )
-        aligned, align_actions = _align_with_findings(cleaned or proposed, clause_type, high_or_critical, mode)
+        aligned, align_actions = _align_with_findings(
+            cleaned or proposed, clause_type, high_or_critical, mode
+        )
         return _draft_out(
             draft_text=aligned,
             mode=mode,
@@ -118,8 +127,12 @@ def generate_guarded_draft(
                 output=a,  # type: ignore[arg-type]
                 model=model or "proxy-llm",
             )
-            draft_text = scrub_llm_output(_get_attr(gpt_resp, "draft_text", ""), pii_map)
-            explanation = scrub_llm_output(_get_attr(gpt_resp, "explanation", ""), pii_map)
+            draft_text = scrub_llm_output(
+                _get_attr(gpt_resp, "draft_text", ""), pii_map
+            )
+            explanation = scrub_llm_output(
+                _get_attr(gpt_resp, "explanation", ""), pii_map
+            )
             cleaned, actions, removed = _apply_guardrails(
                 text=draft_text,
                 allowed_sources=allowed_sources,
@@ -129,7 +142,9 @@ def generate_guarded_draft(
             if not cleaned:
                 cleaned = _fallback_rule_based(a, mode)
                 actions.append("fallback_rule_based_due_to_empty_after_guardrails")
-            aligned, align_actions = _align_with_findings(cleaned, clause_type, high_or_critical, mode)
+            aligned, align_actions = _align_with_findings(
+                cleaned, clause_type, high_or_critical, mode
+            )
             v_status = verify_output_contains_citations(
                 draft_text, a.get("citations") or []
             )
@@ -182,6 +197,7 @@ def generate_guarded_draft(
 # Internals: normalization, learning, prompts, guardrails, alignment
 # -----------------------------------------------------------------------------
 
+
 def _norm_analysis(analysis: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
     if isinstance(analysis, dict):
         return dict(analysis)
@@ -200,12 +216,14 @@ def _norm_analysis(analysis: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
         out[k] = getattr(analysis, k, None)
     return out
 
+
 def _has_high_or_critical(findings: List[Any]) -> bool:
     for f in findings or []:
         sev = _get_attr(f, "severity", None) or _get_attr(f, "severity_level", None)
         if isinstance(sev, str) and sev.lower() in ("high", "major", "critical"):
             return True
     return False
+
 
 def _extract_allowed_sources(citations: List[Any]) -> List[str]:
     res: List[str] = []
@@ -219,13 +237,20 @@ def _extract_allowed_sources(citations: List[Any]) -> List[str]:
             res.append(s)
     return res
 
-def _segment_key_for_learning(clause_type: str, mode: str,
-                              jurisdiction: str = "UK",
-                              contract_type: str = "generic",
-                              user_role: str = "neutral") -> str:
+
+def _segment_key_for_learning(
+    clause_type: str,
+    mode: str,
+    jurisdiction: str = "UK",
+    contract_type: str = "generic",
+    user_role: str = "neutral",
+) -> str:
     # Deterministic ASCII-only segment key
-    return (f"(clause_type={clause_type}|mode={mode}|jurisdiction={jurisdiction}"
-            f"|contract_type={contract_type}|role={user_role})")
+    return (
+        f"(clause_type={clause_type}|mode={mode}|jurisdiction={jurisdiction}"
+        f"|contract_type={contract_type}|role={user_role})"
+    )
+
 
 def _learning_hint(analysis: Dict[str, Any], mode: str) -> Dict[str, Any]:
     """
@@ -238,21 +263,30 @@ def _learning_hint(analysis: Dict[str, Any], mode: str) -> Dict[str, Any]:
         return {"enabled": False}
     clause_type = str(analysis.get("clause_type") or "clause")
     m = (mode or "standard").strip().lower()
-    if m not in ("friendly", "standard", "strict"):
+    if m in {"neutral", "medium"}:
+        m = "standard"
+    if m not in {"friendly", "standard", "strict"}:
         m = "standard"
 
     # Baseline template IDs/scores must be stable across releases
     presets = {
         "friendly": ("GEN_FRIENDLY_01", 0.60),
         "standard": ("GEN_STANDARD_01", 0.70),
-        "strict":   ("GEN_STRICT_01",   0.80),
+        "strict": ("GEN_STRICT_01", 0.80),
     }
     tpl_id, base = presets[m]
     seg = _segment_key_for_learning(clause_type, m)
 
     try:
-        ranked = _learn.rank_templates(clause_type=clause_type, context={"segment_key": seg}) or []
-        learned_map = {str(it.get("template_id") or ""): float(it.get("score") or 0.0) for it in ranked if isinstance(it, dict)}
+        ranked = (
+            _learn.rank_templates(clause_type=clause_type, context={"segment_key": seg})
+            or []
+        )
+        learned_map = {
+            str(it.get("template_id") or ""): float(it.get("score") or 0.0)
+            for it in ranked
+            if isinstance(it, dict)
+        }
         ls = float(learned_map.get(tpl_id, base))
         final = 0.7 * base + 0.3 * ls
         if final > base + 0.25:
@@ -269,6 +303,7 @@ def _learning_hint(analysis: Dict[str, Any], mode: str) -> Dict[str, Any]:
         }
     except Exception:
         return {"enabled": False}
+
 
 def _prepare_prompt(analysis: Dict[str, Any], mode: str) -> str:
     # Prefer single-string prompt if available
@@ -291,6 +326,7 @@ def _prepare_prompt(analysis: Dict[str, Any], mode: str) -> str:
     base = (analysis.get("proposed_text") or analysis.get("text") or "").strip()
     return f"Rewrite conservatively for a contract clause. Return only clause text.\n---\n{base}\n---"
 
+
 _MARKDOWN_TOKENS = ("```", "# ", "## ", "**", "* ", "> ", "- [", "[SYSTEM]", "[USER]")
 _DISCLAIMER_RX = (
     "as an ai",
@@ -299,6 +335,7 @@ _DISCLAIMER_RX = (
     "as a language model",
     "disclaimer",
 )
+
 
 def _apply_guardrails(
     text: str,
@@ -347,6 +384,8 @@ def _apply_guardrails(
 
     # Light style normalization per mode
     m = (mode or "friendly").strip().lower()
+    if m in {"neutral", "medium"}:
+        m = "standard"
     if m == "friendly":
         t = _soften_obligations(t)
         actions.append("style_friendly")
@@ -383,6 +422,7 @@ def _apply_guardrails(
 
     return t.strip(), actions, removed
 
+
 def _align_with_findings(
     text: str,
     clause_type: str,
@@ -407,16 +447,24 @@ def _align_with_findings(
         actions.append("align_add_shall")
 
     # 2) Ensure a timeline marker
-    if (" within " not in low) and (" days" not in low) and (" no later than " not in low):
+    if (
+        (" within " not in low)
+        and (" days" not in low)
+        and (" no later than " not in low)
+    ):
         t = t.rstrip() + " The parties shall meet applicable timelines where specified."
         actions.append("align_add_timeline_hint")
 
     # 3) Generic compliance line (notice/cure/limits)
     if ("notice" not in low) and ("cure" not in low) and ("limit" not in low):
-        t = t.rstrip() + " The parties shall comply with any applicable notice, cure and limitation requirements."
+        t = (
+            t.rstrip()
+            + " The parties shall comply with any applicable notice, cure and limitation requirements."
+        )
         actions.append("align_add_notice_cure_limits_hint")
 
     return t, actions
+
 
 def _neutralize_unknown_sources(text: str, allowed: List[str]) -> Tuple[str, List[str]]:
     """
@@ -435,7 +483,17 @@ def _neutralize_unknown_sources(text: str, allowed: List[str]) -> Tuple[str, Lis
             if j != -1:
                 chunk = s[i : j + 1]
                 chunk_low = chunk.lower()
-                if any(tok in chunk_low for tok in ("act", "regulation", "directive", "code", "article", "section")):
+                if any(
+                    tok in chunk_low
+                    for tok in (
+                        "act",
+                        "regulation",
+                        "directive",
+                        "code",
+                        "article",
+                        "section",
+                    )
+                ):
                     if not any(src.lower() in chunk_low for src in (allowed or [])):
                         removed.append(chunk)
                         i = j + 1
@@ -444,23 +502,34 @@ def _neutralize_unknown_sources(text: str, allowed: List[str]) -> Tuple[str, Lis
         i += 1
     return "".join(out), removed
 
+
 def _soften_obligations(t: str) -> str:
     # Replace " shall " with " should " where safe (very light-touch)
     return t.replace(" shall ", " should ")
 
+
 def _ensure_shall_once(t: str) -> str:
-    return (t.rstrip() + " The parties shall perform their obligations as specified.").strip()
+    return (
+        t.rstrip() + " The parties shall perform their obligations as specified."
+    ).strip()
+
 
 def _fallback_rule_based(analysis: Dict[str, Any], mode: str) -> str:
+    m = (mode or "friendly").strip().lower()
+    if m in {"neutral", "medium"}:
+        m = "standard"
+    if m not in {"friendly", "standard", "strict"}:
+        m = "friendly"
     if _HAS_RULE_FALLBACK:
         try:
-            return synthesize_draft(analysis, mode=mode)  # type: ignore
+            return synthesize_draft(analysis, mode=m)  # type: ignore
         except Exception:
             pass
     base = (analysis.get("proposed_text") or analysis.get("text") or "").strip()
     if base:
-        return f"Suggested edit ({mode}): {base}"
-    return f"Drafted clause ({mode})."
+        return f"Suggested edit ({m}): {base}"
+    return f"Drafted clause ({m})."
+
 
 def _draft_out(
     draft_text: str,
@@ -490,8 +559,13 @@ def _draft_out(
         "explanation": explanation,
         "verification_status": verification_status,
     }
-    out["learning"] = (learning if isinstance(learning, dict) and learning.get("enabled") else {"enabled": False})
+    out["learning"] = (
+        learning
+        if isinstance(learning, dict) and learning.get("enabled")
+        else {"enabled": False}
+    )
     return out
+
 
 def _get_attr(obj: Any, name: str, default: Any = None) -> Any:
     if obj is None:

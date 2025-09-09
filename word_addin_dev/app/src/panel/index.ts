@@ -1,4 +1,4 @@
-import { notify } from '../../assets/notifier';
+import { notifyOk, notifyWarn } from '../../assets/notifier';
 import { postJson } from './api-client';
 
 let lastCid = '';
@@ -31,7 +31,7 @@ async function handleResponse(res: Response, label: string) {
   const js = await res.json().catch(() => ({}));
   const cid = res.headers.get('x-cid');
   if (cid) lastCid = cid;
-  notify.ok(`${label}: HTTP ${res.status}`);
+  notifyOk(`${label}: HTTP ${res.status}`);
   console.log(`${label} resp:`, js);
 }
 
@@ -62,10 +62,20 @@ async function doQARecheck(text: string) {
   await handleResponse(res, 'QA');
 }
 
-function bindClick(sel: string, fn: (e: Event) => void) {
+function bindClick(sel: string, fn: (e: Event) => Promise<void>) {
   const b = document.querySelector(sel) as HTMLButtonElement | null;
   if (!b) return;
-  b.addEventListener('click', fn);
+  b.addEventListener('click', async e => {
+    try {
+      await fn(e);
+    } catch (err: any) {
+      if (err?.message === 'MISSING_HEADERS') {
+        notifyWarn('Set API key and schema first');
+      } else {
+        notifyWarn('Request failed');
+      }
+    }
+  });
   b.disabled = false;
 }
 
@@ -75,14 +85,14 @@ Office.onReady().then(() => {
   bindClick('#btnSuggest', async e => {
     e.preventDefault();
     const clause = await getSelectedText();
-    if (!clause) { notify.warn('Select clause text first'); return; }
+    if (!clause) { notifyWarn('Select clause text first'); return; }
     await doGptDraft(clause);
   });
   bindClick('#btnQA', async e => {
     e.preventDefault();
     const text = await getSelectedText();
-    if (!text) { notify.warn('Select clause text first'); return; }
+    if (!text) { notifyWarn('Select clause text first'); return; }
     await doQARecheck(text);
   });
-  notify.info('Panel init OK');
+  notifyOk('Panel init OK');
 });

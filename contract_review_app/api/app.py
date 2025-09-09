@@ -1911,6 +1911,24 @@ async def api_summary_post(
         return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
 
     text = str(payload.get("text") or "")
+    body_cid = payload.get("cid")
+    if body_cid and not text:
+        cached = IDEMPOTENCY_CACHE.get(body_cid)
+        if not cached:
+            return _problem_response(404, "cid not found", "cid not found")
+        summary = cached.get("summary") or cached.get("results", {}).get("summary", {})
+        resp = {"status": "ok", "summary": summary, "meta": PROVIDER_META}
+        _set_std_headers(
+            response,
+            cid=body_cid,
+            xcache="hit",
+            schema=SCHEMA_VERSION,
+            latency_ms=_now_ms() - t0,
+        )
+        _set_llm_headers(response, PROVIDER_META)
+        _ensure_legacy_doc_type(resp.get("summary"))
+        return resp
+
     cid = x_cid or _sha256_hex(str(t0) + text[:128])
 
     snap = extract_document_snapshot(text)

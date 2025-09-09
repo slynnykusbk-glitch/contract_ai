@@ -72,6 +72,48 @@ class NormalizeAndTraceMiddleware(BaseHTTPMiddleware):
             payload = json.loads(body.decode("utf-8"))
         except Exception:
             payload = body.decode("utf-8", "replace")
+
+        classifiers: Dict[str, Any] = {}
+        if isinstance(payload, dict):
+            summary = (
+                payload.get("summary")
+                or (payload.get("results") or {}).get("summary")
+                or {}
+            )
+            doc_type = summary.get("type")
+            confidence = summary.get("type_confidence")
+            language = summary.get("language")
+
+            clause_types: set[str] = set()
+            analyses = []
+            if isinstance(payload.get("document"), dict):
+                analyses = payload.get("document", {}).get("analyses", []) or []
+            if not analyses and isinstance(payload.get("analyses"), list):
+                analyses = payload.get("analyses") or []
+            for a in analyses:
+                ct = a.get("clause_type") if isinstance(a, dict) else None
+                if ct:
+                    clause_types.add(str(ct))
+            for c in payload.get("clauses", []) or []:
+                ct = c.get("clause_type") if isinstance(c, dict) else None
+                if ct:
+                    clause_types.add(str(ct))
+
+            try:
+                from contract_review_app.legal_rules import loader as _loader  # type: ignore
+
+                packs = [p.get("path") for p in _loader.loaded_packs()]
+            except Exception:
+                packs = []
+
+            classifiers = {
+                "document_type": doc_type,
+                "confidence": confidence,
+                "clause_types": sorted(clause_types),
+                "active_rule_packs": packs,
+                "language": language,
+            }
+
         TRACE.put(
             cid,
             {
@@ -80,6 +122,7 @@ class NormalizeAndTraceMiddleware(BaseHTTPMiddleware):
                 "status": response.status_code,
                 "headers": dict(new_resp.headers),
                 "body": payload,
+                **({"classifiers": classifiers} if classifiers else {}),
             },
         )
         return new_resp

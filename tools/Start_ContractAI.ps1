@@ -1,5 +1,15 @@
 param([switch]$OpenSelfTest=$true)
 
+function Assert-Elevated {
+    $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $p = New-Object Security.Principal.WindowsPrincipal($id)
+    if (-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        throw "Administrative privileges are required. Please run this script as Administrator."
+    }
+}
+
+Assert-Elevated
+
 $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $MyInvocation.MyCommand.Path
 cd $repo
@@ -11,17 +21,29 @@ Remove-Item "$env:LOCALAPPDATA\Microsoft\EdgeWebView\User Data\Default\Cache\*" 
 
 # 1) сертифікат
 $cert = Join-Path $repo "word_addin_dev\certs\localhost.pem"
-Import-Certificate -FilePath $cert -CertStoreLocation Cert:\CurrentUser\Root  | Out-Null
-Import-Certificate -FilePath $cert -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+try {
+  Import-Certificate -FilePath $cert -CertStoreLocation Cert:\CurrentUser\Root  | Out-Null
+  Import-Certificate -FilePath $cert -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+} catch {
+  Write-Error "Failed to import certificate: $_"
+  throw
+}
 
 # 2) шера \\localhost\wef (доступ – ваш акаунт)
 $root = Join-Path $repo "word_addin_dev"
-try { Remove-SmbShare -Name wef -Force -EA SilentlyContinue } catch {}
+try { Remove-SmbShare -Name wef -Force -EA SilentlyContinue } catch {
+  Write-Warning "Failed to remove existing share 'wef': $_"
+}
 $me = "$env:COMPUTERNAME\$env:USERNAME"
 try {
-  New-SmbShare -Name wef -Path $root -FullAccess $me -CachingMode None | Out-Null
+    New-SmbShare -Name wef -Path $root -FullAccess $me -CachingMode None | Out-Null
 } catch {
-  cmd /c "net share wef=""$root"" /GRANT:$env:COMPUTERNAME\%USERNAME%,FULL" | Out-Null
+    try {
+        cmd /c "net share wef=""$root"" /GRANT:$env:COMPUTERNAME\%USERNAME%,FULL" | Out-Null
+    } catch {
+        Write-Error "Failed to create SMB share 'wef': $_"
+        throw
+    }
 }
 
 # 3) manifest → localhost

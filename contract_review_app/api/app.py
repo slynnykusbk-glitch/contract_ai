@@ -1013,6 +1013,18 @@ async def add_response_headers(request: Request, call_next):
     request = Request(request.scope, receive)
     request.state.body = body
     request.state.started_at = started_at
+    if request.method.upper() in {"POST", "PUT", "PATCH"} and body:
+        try:
+            request.state.json = json.loads(body.decode("utf-8"))
+        except json.JSONDecodeError:
+            cid = request.headers.get("x-cid") or compute_cid(request)
+            return _problem_response(
+                400,
+                "Bad JSON",
+                error_code="bad_json",
+                detail="Request body is not valid JSON",
+                cid=cid,
+            )
     response = await call_next(request)
     if "x-schema-version" not in response.headers:
         apply_std_headers(response, request, started_at)
@@ -1176,22 +1188,35 @@ def _set_llm_headers(resp: Response, meta: Dict[str, Any]) -> None:
 
 
 def _problem_json(
-    status: int, title: str, detail: str | None = None, type_: str = "/errors/general"
+    status: int,
+    title: str,
+    detail: str | None = None,
+    error_code: str | None = None,
+    type_: str = "/errors/general",
 ) -> Dict[str, Any]:
-    return ProblemDetail(
-        status=status, title=title, detail=detail, type=type_
+    data = ProblemDetail(
+        status=status, title=title, detail=detail, type=type_, code=error_code
     ).model_dump()
+    if error_code:
+        data["error_code"] = error_code
+    return data
 
 
 def _problem_response(
-    status: int, title: str, detail: str | None = None
+    status: int,
+    title: str,
+    error_code: str | None = None,
+    detail: str | None = None,
+    cid: str | None = None,
 ) -> JSONResponse:
     resp = JSONResponse(
         status_code=status,
         media_type="application/problem+json",
-        content=_problem_json(status, title, detail),
+        content=_problem_json(status, title, detail, error_code),
     )
-    _set_schema_headers(resp)
+    if cid:
+        resp.headers["x-cid"] = cid
+    resp.headers["x-schema-version"] = SCHEMA_VERSION
     return resp
 
 
@@ -1510,12 +1535,24 @@ async def list_trace():
 @router.get("/api/trace/{cid}.html")
 async def get_trace_html(cid: str):
     if not _CID_RE.fullmatch(cid or ""):
-        resp = _problem_response(404, "trace not found", "trace not found")
+        resp = _problem_response(
+            404,
+            "trace not found",
+            error_code="trace_not_found",
+            detail="trace not found",
+            cid=cid,
+        )
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         return resp
     trace = TRACE.get(cid)
     if not trace:
-        resp = _problem_response(404, "trace not found", "trace not found")
+        resp = _problem_response(
+            404,
+            "trace not found",
+            error_code="trace_not_found",
+            detail="trace not found",
+            cid=cid,
+        )
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         return resp
     html = "<pre>" + html_escape(json.dumps(trace, indent=2)) + "</pre>"
@@ -1542,12 +1579,24 @@ async def get_trace(cid: str):
 @router.get("/api/report/{cid}.html")
 async def api_report_html(cid: str):
     if not _CID_RE.fullmatch(cid or ""):
-        resp = _problem_response(404, "trace not found", "trace not found")
+        resp = _problem_response(
+            404,
+            "trace not found",
+            error_code="trace_not_found",
+            detail="trace not found",
+            cid=cid,
+        )
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         return resp
     trace = TRACE.get(cid)
     if not trace:
-        resp = _problem_response(404, "trace not found", "trace not found")
+        resp = _problem_response(
+            404,
+            "trace not found",
+            error_code="trace_not_found",
+            detail="trace not found",
+            cid=cid,
+        )
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         return resp
     html = render_html_report(trace)
@@ -1561,12 +1610,24 @@ async def api_report_html(cid: str):
 @router.get("/api/report/{cid}.pdf")
 async def api_report_pdf(cid: str):
     if not _CID_RE.fullmatch(cid or ""):
-        resp = _problem_response(404, "trace not found", "trace not found")
+        resp = _problem_response(
+            404,
+            "trace not found",
+            error_code="trace_not_found",
+            detail="trace not found",
+            cid=cid,
+        )
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         return resp
     trace = TRACE.get(cid)
     if not trace:
-        resp = _problem_response(404, "trace not found", "trace not found")
+        resp = _problem_response(
+            404,
+            "trace not found",
+            error_code="trace_not_found",
+            detail="trace not found",
+            cid=cid,
+        )
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         return resp
     html = render_html_report(trace)
@@ -1574,7 +1635,11 @@ async def api_report_pdf(cid: str):
         pdf_bytes = html_to_pdf(html)
     except NotImplementedError:
         resp = _problem_response(
-            501, "PDF export not enabled", "PDF export not enabled"
+            501,
+            "PDF export not enabled",
+            error_code="pdf_export_not_enabled",
+            detail="PDF export not enabled",
+            cid=cid,
         )
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         resp.headers["Cache-Control"] = "public, max-age=600"
@@ -1910,7 +1975,13 @@ async def api_summary_post(
     if body.cid:
         cached = IDEMPOTENCY_CACHE.get(body.cid)
         if not cached:
-            resp = _problem_response(404, "cid not found", "cid not found")
+            resp = _problem_response(
+                404,
+                "cid not found",
+                error_code="cid_not_found",
+                detail="cid not found",
+                cid=body.cid,
+            )
             _set_std_headers(
                 resp,
                 cid=body.cid,
@@ -1938,7 +2009,13 @@ async def api_summary_post(
     # body.hash is present (model ensures exactly one of cid or hash)
     rec = an_cache.get(body.hash)
     if not rec:
-        resp = _problem_response(404, "hash not found", "hash not found")
+        resp = _problem_response(
+            404,
+            "hash not found",
+            error_code="hash_not_found",
+            detail="hash not found",
+            cid=compute_cid(request),
+        )
         _set_std_headers(
             resp,
             cid=compute_cid(request),
@@ -2450,10 +2527,20 @@ async def api_calloff_validate(
         payload = json.loads(body.decode("utf-8")) if body else {}
     except HTTPException:
         return _problem_response(
-            413, "Payload too large", "Request body exceeds limits"
+            413,
+            "Payload too large",
+            error_code="payload_too_large",
+            detail="Request body exceeds limits",
+            cid=x_cid or compute_cid(request),
         )
     except Exception:
-        return _problem_response(400, "Bad JSON", "Request body is not valid JSON")
+        return _problem_response(
+            400,
+            "Bad JSON",
+            error_code="bad_json",
+            detail="Request body is not valid JSON",
+            cid=x_cid or compute_cid(request),
+        )
 
     cid = x_cid or _sha256_hex(str(t0) + json.dumps(payload, sort_keys=True)[:128])
     issues = validate_calloff(payload if isinstance(payload, dict) else {})

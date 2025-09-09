@@ -827,6 +827,22 @@ class AnalyzeRequest(BaseModel):
             raise ValueError("text is empty")
         return v
 
+    @field_validator("language", mode="before")
+    @classmethod
+    def _default_language(cls, v: str | None) -> str:
+        """Normalize language, falling back to the default."""
+        if not v or not str(v).strip():
+            return "en-GB"
+        return str(v)
+
+    @field_validator("mode", "risk", mode="before")
+    @classmethod
+    def _blank_to_none(cls, v: Optional[str]) -> Optional[str]:
+        """Treat empty strings as missing values."""
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
 
 class AnalyzeResponse(BaseModel):
     status: str

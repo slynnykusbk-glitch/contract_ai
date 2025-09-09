@@ -35,6 +35,21 @@ class AnalyzeRequest(_DTOBase):
     mode: str | None = None
     risk: str | None = None
 
+    @field_validator("language", mode="before")
+    @classmethod
+    def _default_language(cls, v: str | None) -> str:
+        """Ensure language has a sensible default."""
+        if not v or not v.strip():
+            return "en-GB"
+        return v
+
+    @field_validator("mode", "risk", mode="before")
+    @classmethod
+    def _blank_to_none(cls, v: str | None):
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
     @model_validator(mode="after")
     def _strip(self):
         txt = (self.text or "").strip()

@@ -12,11 +12,20 @@ client = TestClient(app)
 
 @pytest.mark.parametrize("path", ["/api/analyze", "/api/gpt-draft"])
 def test_std_headers_present_and_valid(path):
-    payload1 = {"text": "hello"}
-    payload2 = {"text": "world"}
-    r1 = client.post(path, json=payload1)
-    r2 = client.post(path, json=payload1)
-    r3 = client.post(path, json=payload2)
+    if path == "/api/analyze":
+        payload1 = {"text": "hello"}
+        payload2 = {"text": "world"}
+        r1 = client.post(path, json=payload1)
+        r2 = client.post(path, json=payload1)
+        r3 = client.post(path, json=payload2)
+    else:
+        cid1 = client.post("/api/analyze", json={"text": "hello"}).headers["x-cid"]
+        cid2 = client.post("/api/analyze", json={"text": "world"}).headers["x-cid"]
+        payload1 = {"cid": cid1, "clause": "hello"}
+        payload2 = {"cid": cid2, "clause": "world"}
+        r1 = client.post(path, json=payload1)
+        r2 = client.post(path, json=payload1)
+        r3 = client.post(path, json=payload2)
     assert r1.headers["x-cid"] == r2.headers["x-cid"]
     assert r1.headers["x-cid"] != r3.headers["x-cid"]
     assert r1.headers["x-schema-version"] == SCHEMA_VERSION

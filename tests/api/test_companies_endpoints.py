@@ -19,11 +19,13 @@ os.environ["FEATURE_COMPANIES_HOUSE"] = "1"
 @respx.mock
 def test_search_endpoint():
     respx.get(f"{BASE}/search/companies").respond(json={"items": []}, headers={"ETag": "s1"})
-    r = client.post("/api/companies/search", json={"q": "ACME"})
+    r = client.post("/api/companies/search", json={"query": "ACME"})
     assert r.status_code == 200
     assert r.json()["items"] == []
     assert r.headers.get("ETag") == "s1"
     assert r.headers.get("x-cache") == "miss"
+    r2 = client.get("/api/companies/search", params={"q": "ACME"})
+    assert r2.status_code == 200
 
 
 @respx.mock
@@ -46,7 +48,7 @@ def test_disabled(monkeypatch):
     importlib.reload(integrations)
     importlib.reload(app_module)
     local_client = TestClient(app_module.app)
-    r = local_client.post("/api/companies/search", json={"q": "A"})
+    r = local_client.post("/api/companies/search", json={"query": "A"})
     assert r.status_code == 503
     monkeypatch.setenv("FEATURE_COMPANIES_HOUSE", "1")
     importlib.reload(cfg)

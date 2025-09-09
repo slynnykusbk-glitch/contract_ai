@@ -108,6 +108,14 @@ class AnalyzeResponse(_DTOBase):
     schema_version: str | None = None
 
 
+class GptDraftIn(_DTOBase):
+    """Input model for ``/api/gpt-draft``."""
+
+    cid: str
+    clause: str
+    mode: Literal["friendly", "neutral", "strict"] | None = None
+
+
 class QARecheckIn(_DTOBase):
     """Input model for ``/api/qa-recheck``.
 

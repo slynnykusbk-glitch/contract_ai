@@ -5,7 +5,9 @@ client = TestClient(app)
 
 
 def test_gpt_draft_returns_text_and_headers():
-    r = client.post("/api/gpt-draft", json={"text": "Example clause."})
+    r_an = client.post("/api/analyze", json={"text": "Example clause."})
+    cid = r_an.headers.get("x-cid")
+    r = client.post("/api/gpt-draft", json={"cid": cid, "clause": "Example clause."})
     assert r.status_code == 200
     data = r.json()
     assert data["status"] == "ok"

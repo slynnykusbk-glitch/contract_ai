@@ -14,6 +14,12 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
     async def _handle_validation_error(request: Request, exc: RequestValidationError):
         """Return pydantic validation details untouched."""
+        body = await request.body()
+        logger.warning(
+            "validation error: size=%s content_type=%s",
+            len(body or b""),
+            request.headers.get("content-type"),
+        )
         detail = exc.errors()
         for err in detail:
             ctx = err.get("ctx")

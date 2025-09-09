@@ -25,4 +25,6 @@ def test_analyze_cache_headers():
 
 
 def test_gpt_draft_cache_headers():
-    _check_etag_flow("/api/gpt-draft", {"text": "hello", "mode": "friendly"})
+    r = client.post("/api/analyze", json={"text": "hello"})
+    cid = r.headers.get("x-cid")
+    _check_etag_flow("/api/gpt-draft", {"cid": cid, "clause": "hello", "mode": "friendly"})

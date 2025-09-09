@@ -30,7 +30,7 @@ from contract_review_app.core.privacy import redact_pii, scrub_llm_output
 from contract_review_app.core.audit import audit
 from contract_review_app.security.secure_store import secure_write
 from contract_review_app.core.trace import TraceStore, compute_cid
-from contract_review_app.config import CH_ENABLED
+from contract_review_app.config import CH_ENABLED, CH_API_KEY
 
 
 log = logging.getLogger("contract_ai")
@@ -222,6 +222,7 @@ from .models import (
     Span,
     Segment,
     SearchHit,
+    GptDraftIn,
     SCHEMA_VERSION,
 )
 from contract_review_app.core.cache import TTLCache
@@ -1505,7 +1506,7 @@ async def health() -> JSONResponse:
             "timeout_s": LLM_CONFIG.timeout_s,
         },
         "provider": PROVIDER_META,
-        "ch": {"enabled": CH_ENABLED},
+        "ch": {"enabled": CH_ENABLED, "keylen": len(CH_API_KEY or "")},
         "endpoints": ["/api/analyze", "/api/gpt-draft", "/api/explain"],
     }
     status_code = 200
@@ -2319,26 +2320,6 @@ async def api_suggest_edits(
     return _finalize_json("/api/suggest_edits", payload, headers)
 
 
-class DraftIn(BaseModel):
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "text": "Example clause.",
-                "language": "en-GB",
-                "mode": "friendly",
-                "before_text": "",
-                "after_text": "",
-            }
-        }
-    )
-
-    text: str = Field(..., min_length=1)
-    language: str = "en-GB"
-    mode: Literal["friendly", "medium", "strict"] = "medium"
-    before_text: Optional[str] = None
-    after_text: Optional[str] = None
-
-
 class DraftOut(BaseModel):
     status: str
     mode: str
@@ -2367,14 +2348,17 @@ class RedlinesOut(BaseModel):
 @router.post(
     "/api/gpt-draft",
     response_model=DraftOut,
-    responses={422: {"model": ProblemDetail}},
+    responses={422: {"model": ProblemDetail}, 404: {"model": ProblemDetail}},
 )
-async def gpt_draft(inp: DraftIn, request: Request):
+async def gpt_draft(inp: GptDraftIn, request: Request):
+    if not TRACE.get(inp.cid):
+        problem = ProblemDetail(title="cid not found", status=404, detail="cid not found")
+        return JSONResponse(problem.model_dump(), status_code=404)
     if LLM_CONFIG.provider == "azure" and not PROVIDER_META.get("valid_config"):
         problem = _llm_key_problem()
         return JSONResponse(problem.model_dump(), status_code=400)
     started = time.perf_counter()
-    cid = compute_cid(request)
+    req_cid = compute_cid(request)
     raw = _json_dumps_safe(inp.model_dump(exclude_none=True))
     etag = _sha256_hex(raw)
     inm = request.headers.get("if-none-match")
@@ -2406,9 +2390,9 @@ async def gpt_draft(inp: DraftIn, request: Request):
         headers.update(tmp.headers)
         return JSONResponse(cached["resp"], headers=headers)
 
-    text = inp.text.strip()
+    text = inp.clause.strip()
     if not text:
-        raise HTTPException(status_code=422, detail="text is required")
+        raise HTTPException(status_code=422, detail="clause is required")
 
     redacted_text, pii_map = redact_pii(text)
 
@@ -2438,8 +2422,8 @@ async def gpt_draft(inp: DraftIn, request: Request):
         model = getattr(LLM_PROVIDER, "model", "")
         mode_used = inp.mode
         usage = legacy.get("usage", {})
-    ctx_before, _ = normalize_text((inp.before_text or "")[-60:])
-    ctx_after, _ = normalize_text((inp.after_text or "")[:60])
+    ctx_before, _ = normalize_text("")
+    ctx_after, _ = normalize_text("")
     out = {
         "status": "ok",
         "mode": inp.mode,
@@ -2454,11 +2438,11 @@ async def gpt_draft(inp: DraftIn, request: Request):
         "context_after": ctx_after,
     }
     meta = {"provider": provider, "model": model, "mode": mode_used, "usage": usage}
-    gpt_cache.set(etag, {"resp": out, "cid": cid, "meta": meta})
+    gpt_cache.set(etag, {"resp": out, "cid": req_cid, "meta": meta})
     headers = {
         "ETag": etag,
         "x-cache": "miss",
-        "x-cid": cid,
+        "x-cid": req_cid,
         "x-schema-version": SCHEMA_VERSION,
         "x-latency-ms": str(int((time.perf_counter() - started) * 1000)),
     }

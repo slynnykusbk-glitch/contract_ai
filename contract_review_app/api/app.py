@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import re
+from html import escape as html_escape
 import time
 from datetime import datetime, timezone
 import logging
@@ -196,7 +197,6 @@ from fastapi import (
     Query,
     Request,
     Response,
-    Path as PathParam,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -1501,27 +1501,48 @@ async def list_trace():
 
 
 @router.get("/api/trace/{cid}.html")
-async def get_trace_suffix(cid: str):
-    raise HTTPException(status_code=404, detail="Do not append .html to CID")
+async def get_trace_html(cid: str):
+    if not _CID_RE.fullmatch(cid or ""):
+        resp = _problem_response(404, "trace not found", "trace not found")
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+        return resp
+    trace = TRACE.get(cid)
+    if not trace:
+        resp = _problem_response(404, "trace not found", "trace not found")
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+        return resp
+    html = "<pre>" + html_escape(json.dumps(trace, indent=2)) + "</pre>"
+    resp = Response(content=html, media_type="text/html; charset=utf-8")
+    _set_schema_headers(resp)
+    _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+    resp.headers["Cache-Control"] = "public, max-age=600"
+    return resp
 
 
 @router.get("/api/trace/{cid}")
-async def get_trace(cid: str = PathParam(pattern=_CID_RE.pattern)):
+async def get_trace(cid: str):
+    if not _CID_RE.fullmatch(cid or ""):
+        raise HTTPException(status_code=404, detail="trace not found")
     trace = TRACE.get(cid)
     if not trace:
-        raise HTTPException(status_code=404, detail="Not found")
-    return trace
+        raise HTTPException(status_code=404, detail="trace not found")
+    body = dict(trace.get("body") or {})
+    body["cid"] = cid
+    body["created_at"] = trace.get("ts")
+    return body
 
 
 @router.get("/api/report/{cid}.html")
 async def api_report_html(cid: str):
     if not _CID_RE.fullmatch(cid or ""):
-        resp = _problem_response(422, "invalid cid", "invalid cid")
+        resp = _problem_response(404, "trace not found", "trace not found")
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         return resp
     trace = TRACE.get(cid)
     if not trace:
-        raise HTTPException(status_code=404, detail="trace not found")
+        resp = _problem_response(404, "trace not found", "trace not found")
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+        return resp
     html = render_html_report(trace)
     resp = Response(content=html, media_type="text/html; charset=utf-8")
     _set_schema_headers(resp)
@@ -1533,12 +1554,14 @@ async def api_report_html(cid: str):
 @router.get("/api/report/{cid}.pdf")
 async def api_report_pdf(cid: str):
     if not _CID_RE.fullmatch(cid or ""):
-        resp = _problem_response(422, "invalid cid", "invalid cid")
+        resp = _problem_response(404, "trace not found", "trace not found")
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         return resp
     trace = TRACE.get(cid)
     if not trace:
-        raise HTTPException(status_code=404, detail="trace not found")
+        resp = _problem_response(404, "trace not found", "trace not found")
+        _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
+        return resp
     html = render_html_report(trace)
     try:
         pdf_bytes = html_to_pdf(html)

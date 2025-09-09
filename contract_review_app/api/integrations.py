@@ -60,7 +60,7 @@ async def api_companies_search(payload: _CompanySearchIn, request: Request):
 
 
 @router.get("/companies/search")
-async def api_companies_search_get(q: str, items: int = 10, request: Request):
+async def api_companies_search_get(q: str, request: Request, items: int = 10):
     gate = _ch_gate()
     if gate:
         return gate

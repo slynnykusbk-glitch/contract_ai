@@ -266,7 +266,13 @@ class RequireHeadersMiddleware(BaseHTTPMiddleware):
         if request.method.upper() == "POST" and not any(
             request.url.path.startswith(p) for p in self._SKIP_PATHS
         ):
-            _require_api_key(request)
+            try:
+                _require_api_key(request)
+            except HTTPException as exc:
+                problem = ProblemDetail(title=exc.detail, detail=exc.detail, status=exc.status_code)
+                resp = JSONResponse(problem.model_dump(), status_code=exc.status_code)
+                apply_std_headers(resp, request, getattr(request.state, "started_at", time.perf_counter()))
+                return resp
         return await call_next(request)
 
 

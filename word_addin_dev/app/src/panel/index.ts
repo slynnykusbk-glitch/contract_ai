@@ -28,8 +28,9 @@ function getLastCid(): string | null {
 }
 
 function ensureHeadersSetOrBlock() {
-  const apiKey = localStorage.getItem('x-api-key') || '';
-  const schema = localStorage.getItem('x-schema-version') || '';
+  // existing panel code stores credentials under `api_key` and `schemaVersion`
+  const apiKey = localStorage.getItem('api_key') || '';
+  const schema = localStorage.getItem('schemaVersion') || '';
   const ok = !!apiKey && !!schema;
 
   const btns = document.querySelectorAll<HTMLButtonElement>('[data-needs-headers="1"]');

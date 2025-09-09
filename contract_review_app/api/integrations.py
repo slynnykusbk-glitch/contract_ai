@@ -1,14 +1,10 @@
-import os
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse, Response
 
+from contract_review_app.config import CH_ENABLED
 from contract_review_app.integrations.companies_house import client as ch_client
 
 router = APIRouter(prefix="/api", tags=["integrations"])
-
-
-def _disabled() -> bool:
-    return os.getenv("FEATURE_COMPANIES_HOUSE", "0") != "1" or not ch_client.KEY
 
 
 def _cache_headers(etag: str, cache: str) -> dict:
@@ -17,8 +13,11 @@ def _cache_headers(etag: str, cache: str) -> dict:
 
 @router.post("/companies/search")
 async def api_companies_search(payload: dict, request: Request):
-    if _disabled():
-        raise HTTPException(status_code=503, detail={"error": "CH integration disabled"})
+    if not CH_ENABLED:
+        return JSONResponse(
+            {"error": "companies_house_disabled", "hint": "Set FEATURE_COMPANIES_HOUSE=1 and CH_API_KEY=..."},
+            status_code=503,
+        )
     try:
         data = ch_client.search_companies(str(payload.get("q", "")), int(payload.get("items", 10)))
     except ch_client.CHTimeout:
@@ -37,8 +36,11 @@ async def api_companies_search(payload: dict, request: Request):
 
 @router.get("/companies/{number}")
 async def api_company_profile(number: str, request: Request):
-    if _disabled():
-        raise HTTPException(status_code=503, detail={"error": "CH integration disabled"})
+    if not CH_ENABLED:
+        return JSONResponse(
+            {"error": "companies_house_disabled", "hint": "Set FEATURE_COMPANIES_HOUSE=1 and CH_API_KEY=..."},
+            status_code=503,
+        )
     try:
         data = ch_client.get_company_profile(number)
     except ch_client.CHTimeout:

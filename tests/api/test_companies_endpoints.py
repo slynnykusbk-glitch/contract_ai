@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 os.environ.setdefault("FEATURE_INTEGRATIONS", "1")
 os.environ.setdefault("FEATURE_COMPANIES_HOUSE", "1")
-os.environ.setdefault("COMPANIES_HOUSE_API_KEY", "x")
+os.environ.setdefault("CH_API_KEY", "x")
 
 import contract_review_app.api.app as app_module
 from contract_review_app.integrations.companies_house import client as ch_client
@@ -36,8 +36,23 @@ def test_profile_endpoint():
 
 def test_disabled(monkeypatch):
     monkeypatch.setenv("FEATURE_COMPANIES_HOUSE", "0")
-    r = client.post("/api/companies/search", json={"q": "A"})
+    import importlib
+    import contract_review_app.config as cfg
+    import contract_review_app.api.integrations as integrations
+    import contract_review_app.integrations.companies_house.client as ch_client
+    import contract_review_app.api.app as app_module
+    importlib.reload(cfg)
+    importlib.reload(ch_client)
+    importlib.reload(integrations)
+    importlib.reload(app_module)
+    local_client = TestClient(app_module.app)
+    r = local_client.post("/api/companies/search", json={"q": "A"})
     assert r.status_code == 503
+    monkeypatch.setenv("FEATURE_COMPANIES_HOUSE", "1")
+    importlib.reload(cfg)
+    importlib.reload(ch_client)
+    importlib.reload(integrations)
+    importlib.reload(app_module)
 
 
 @respx.mock

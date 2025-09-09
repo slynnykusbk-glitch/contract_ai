@@ -30,6 +30,7 @@ from contract_review_app.core.privacy import redact_pii, scrub_llm_output
 from contract_review_app.core.audit import audit
 from contract_review_app.security.secure_store import secure_write
 from contract_review_app.core.trace import TraceStore, compute_cid
+from contract_review_app.config import CH_ENABLED
 
 
 log = logging.getLogger("contract_ai")
@@ -1504,6 +1505,7 @@ async def health() -> JSONResponse:
             "timeout_s": LLM_CONFIG.timeout_s,
         },
         "provider": PROVIDER_META,
+        "ch": {"enabled": CH_ENABLED},
         "endpoints": ["/api/analyze", "/api/gpt-draft", "/api/explain"],
     }
     status_code = 200

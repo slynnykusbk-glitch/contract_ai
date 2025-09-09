@@ -14,6 +14,12 @@ $ErrorActionPreference = "Stop"
 $repo = Split-Path -Parent $MyInvocation.MyCommand.Path
 cd $repo
 
+$pyExe = Join-Path $repo ".venv\Scripts\python.exe"
+if (!(Test-Path $pyExe)) {
+  Write-Host "Python virtual environment not found. Please run `python -m venv .venv` and install requirements." -ForegroundColor Red
+  exit 1
+}
+
 # 0) чистий старт
 taskkill /IM WINWORD.EXE /F 2>$null
 Remove-Item "$env:LOCALAPPDATA\Microsoft\Office\16.0\Wef\*" -Recurse -Force -EA SilentlyContinue

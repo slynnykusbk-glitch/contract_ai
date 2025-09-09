@@ -19,6 +19,14 @@ function Write-Log {
     try { "$ts $Message" | Out-File -FilePath $logFile -Append -Encoding UTF8 } catch {}
 }
 
+$pyExe = Join-Path $repo '.venv\Scripts\python.exe'
+if (!(Test-Path $pyExe)) {
+    $msg = "Python virtual environment not found. Please run `python -m venv .venv` and install requirements."
+    Write-Log "[ERR] $msg"
+    Write-Host $msg -ForegroundColor Red
+    exit 1
+}
+
 function Load-DotEnv {
     param([string]$Path)
     if (!(Test-Path $Path)) { Write-Log "[WARN] .env not found"; return }

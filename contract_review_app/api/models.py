@@ -150,6 +150,25 @@ class QARecheckOut(_DTOBase):
     meta: Dict[str, Any] | None = None
 
 
+class SummaryIn(_DTOBase):
+    """Input model for ``/api/summary``.
+
+    Exactly one of ``cid`` or ``hash`` must be provided.
+    """
+
+    cid: str | None = None
+    hash: str | None = None
+
+    @model_validator(mode="after")
+    def _one_of(cls, values):  # type: ignore[override]
+        if (values.cid is None) == (values.hash is None):
+            raise HTTPException(
+                status_code=422,
+                detail="Provide exactly one of cid or hash",
+            )
+        return values
+
+
 class CitationInput(_DTOBase):
     instrument: str
     section: str

@@ -182,7 +182,11 @@ def test_analyze_x_cid_deterministic():
 
 
 def test_summary_endpoint():
-    r = client.post("/api/summary", json={"text": "hello"})
+    r_analyze = client.post("/api/analyze", json={"text": "hello"})
+    assert r_analyze.status_code == 200
+    cid = r_analyze.headers.get("x-cid")
+    assert cid
+    r = client.post("/api/summary", json={"cid": cid})
     assert r.status_code == 200
     assert r.json().get("summary")
 

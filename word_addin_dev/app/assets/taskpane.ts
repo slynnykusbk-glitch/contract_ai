@@ -1,4 +1,4 @@
-import { apiHealth, apiQaRecheck, apiGptDraft, metaFromResponse, applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
+import { apiHealth, apiQaRecheck, apiGptDraft, postJson, metaFromResponse, applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
 import { getApiKeyFromStore, getSchemaFromStore } from "./store";
 const g: any = globalThis as any;
 g.parseFindings = g.parseFindings || parseFindings;
@@ -16,6 +16,21 @@ const Q = {
   proposed: 'textarea#proposedText, textarea[name="proposed"], textarea[data-role="proposed-text"]',
   original: 'textarea#originalClause, textarea[name="original"], textarea[data-role="original-clause"]'
 };
+
+let lastCid: string = "";
+
+function ensureHeaders(): boolean {
+  const apiKey = getApiKeyFromStore();
+  const schema = getSchemaFromStore();
+  const ok = !!apiKey && !!schema;
+  const warn = document.getElementById('hdrWarn');
+  if (warn) warn.style.display = ok ? 'none' : 'block';
+  ['#btnAnalyze', '#btnQARecheck', '#btnGetAIDraft'].forEach(sel => {
+    const b = document.querySelector(sel) as HTMLButtonElement | null;
+    if (b) b.disabled = !ok;
+  });
+  return ok;
+}
 
 function slot(id: string, role: string): HTMLElement | null {
   return (
@@ -350,12 +365,8 @@ async function onGetAIDraft(ev?: Event) {
 
     const modeSel = document.getElementById("cai-mode") as HTMLSelectElement | null;
     const mode = modeSel?.value || "friendly";
-    const ctx = await getSelectionContext(200);
-    const { ok, json, resp } = await apiGptDraft(
-      text,
-      mode,
-      { before_text: ctx.before, after_text: ctx.after }
-    );
+    if (!lastCid) { notifyWarn("Analyze first"); return; }
+    const { ok, json, resp } = await apiGptDraft(lastCid, text, mode);
     if (!ok) { notifyWarn("Draft failed"); return; }
     try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
     const proposed = (json?.proposed_text ?? "").toString();
@@ -402,18 +413,9 @@ async function doAnalyze() {
 
     (window as any).__lastAnalyzed = base;
 
-    const resp = await fetch("/api/analyze", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "x-schema-version": schema,
-      },
-      body: JSON.stringify({ text: base }),
-      credentials: "same-origin",
-    });
-    const json = await resp.json().catch(() => ({}));
-    try { (globalThis as any).applyMetaToBadges((globalThis as any).metaFromResponse({ headers: resp.headers, json, status: resp.status })); } catch {}
+    const { http: resp, json, headers } = await postJson('/api/analyze', { text: base });
+    lastCid = headers.get('x-cid') || '';
+    try { applyMetaToBadges(metaFromResponse({ headers, json, status: resp.status })); } catch {}
     renderResults(json);
 
     try {
@@ -538,6 +540,7 @@ function wireUI() {
 
   wireResultsToggle();
   console.log("Panel UI wired");
+  ensureHeaders();
 }
 
 g.wireUI = g.wireUI || wireUI;

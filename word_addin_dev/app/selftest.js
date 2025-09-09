@@ -108,6 +108,17 @@ function setCidLabels(){
   document.getElementById("cidLbl").textContent = clientCid;
   document.getElementById("lastCidLbl").textContent = lastCid || "(none yet)";
 }
+function checkHeaders(){
+  const apiKey = loadApiKey();
+  const schema = loadSchemaVersion();
+  const ok = !!apiKey && !!schema;
+  const warn = document.getElementById('hdrWarn');
+  if (warn) warn.style.display = ok ? 'none' : 'inline';
+  const ids = ['runAllBtn','pingBtn'];
+  ids.forEach(id => { const b = document.getElementById(id) as HTMLButtonElement | null; if (b) b.disabled = !ok; });
+  const tests = document.getElementById('testsBtns');
+  if (tests) Array.from(tests.querySelectorAll('button')).forEach(b => { (b as HTMLButtonElement).disabled = !ok; });
+}
 function setJSON(elId, obj){
   const el = document.getElementById(elId);
   try { el.textContent = JSON.stringify(obj, null, 2); }
@@ -344,7 +355,7 @@ async function testAnalyze(){
 async function testSummary(){
   const r = await callEndpoint({
     name:"summary", method:"POST", path:"/api/summary",
-    body:{ text: SAMPLE }
+    body:{ cid: lastCid }
   });
   setStatusRow("row-summary", r);
   if(!r.ok || (r.body && r.body.status !== "ok")){
@@ -383,7 +394,7 @@ async function testSummary(){
 async function testDraft(){
   const r = await callEndpoint({
     name:"draft", method:"POST", path:DRAFT_PATH,
-    body:{ text: SAMPLE }
+    body:{ cid: lastCid, clause: SAMPLE, mode: "friendly" }
   });
   const ok = r.ok && r.body && r.body.status === "ok";
   setStatusRow("row-draft", Object.assign({}, r, { ok: !!ok }));
@@ -494,7 +505,7 @@ async function runAll(){
 onClick("saveBtn", () => { saveBase(); console.log("Saved"); });
 onClick("runAllBtn", runAll);
 onClick("pingBtn", pingLLM);
-onClick("saveKeyBtn", () => { saveApiKey(); saveSchemaVersion(); console.log("Saved headers"); });
+onClick("saveKeyBtn", () => { saveApiKey(); saveSchemaVersion(); checkHeaders(); console.log("Saved headers"); });
 
 // Load defaults on first paint
 window.addEventListener("DOMContentLoaded", async () => {
@@ -504,6 +515,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   setCidLabels();
   const paths = await loadOpenAPI();
   buildRowsFromOpenAPI(paths);
+  checkHeaders();
   try {
     const resp = await CAI.API.get('/health');
     const llm = (resp && resp.json && resp.json.llm) || {};

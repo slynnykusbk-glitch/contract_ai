@@ -76,7 +76,7 @@ async function postJson(path, body, opts = {}) {
     } catch {
     }
     try {
-      return localStorage.getItem("schemaVersion") || "";
+      return localStorage.getItem("schema_version") || "";
     } catch {
       return "";
     }
@@ -103,7 +103,7 @@ async function req(path, { method = "GET", body = null, key = path } = {}) {
     const store = window.CAI?.Store?.get?.() || {};
     const apiKey = store.apiKey || localStorage.getItem("api_key");
     if (apiKey) headers["x-api-key"] = apiKey;
-    const schema = store.schemaVersion || localStorage.getItem("schemaVersion");
+    const schema = store.schemaVersion || localStorage.getItem("schema_version");
     if (schema) headers["x-schema-version"] = schema;
   } catch {
   }

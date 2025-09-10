@@ -5,7 +5,7 @@
     baseUrl: localStorage.getItem("backendUrl") || DEFAULT_BASE,
     risk:    localStorage.getItem("risk") || "medium",
     apiKey:  localStorage.getItem("api_key") || "",
-    schemaVersion: localStorage.getItem("schemaVersion") || "",
+    schemaVersion: localStorage.getItem("schema_version") || "",
     lastCid: null,
     meta: { cid:"", cache:"", latencyMs:0, schema:"", provider:"", model:"", llm_mode:"", usage:"" },
     last: { analyze:null, summary:null, draft:null, suggest:null }
@@ -13,7 +13,7 @@
   function setBase(u){ S.baseUrl = u; try { localStorage.setItem("backendUrl", u); } catch {} }
   function setRisk(r){ S.risk = r; try { localStorage.setItem("risk", r); } catch {} }
   function setApiKey(k){ S.apiKey = k; try { localStorage.setItem("api_key", k); } catch {} }
-  function setSchemaVersion(v){ S.schemaVersion = v; try { localStorage.setItem("schemaVersion", v); } catch {} }
+  function setSchemaVersion(v){ S.schemaVersion = v; try { localStorage.setItem("schema_version", v); } catch {} }
   function setMeta(m){
     S.meta = { ...S.meta, ...m };
     if (m && m.cid) S.lastCid = m.cid;

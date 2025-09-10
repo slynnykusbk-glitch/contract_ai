@@ -6,8 +6,8 @@ function ensureDefaults(): void {
     if (localStorage.getItem("api_key") === null) {
       localStorage.setItem("api_key", DEFAULT_API_KEY);
     }
-    if (localStorage.getItem("schemaVersion") === null) {
-      localStorage.setItem("schemaVersion", DEFAULT_SCHEMA);
+    if (localStorage.getItem("schema_version") === null) {
+      localStorage.setItem("schema_version", DEFAULT_SCHEMA);
     }
   } catch {
     // ignore
@@ -34,7 +34,7 @@ export function setApiKey(k: string): void {
 
 export function getSchemaFromStore(): string {
   try {
-    return localStorage.getItem("schemaVersion") || DEFAULT_SCHEMA;
+    return localStorage.getItem("schema_version") || DEFAULT_SCHEMA;
   } catch {
     return DEFAULT_SCHEMA;
   }
@@ -42,7 +42,7 @@ export function getSchemaFromStore(): string {
 
 export function setSchemaVersion(v: string): void {
   try {
-    localStorage.setItem("schemaVersion", v);
+    localStorage.setItem("schema_version", v);
   } catch {
     // ignore
   }

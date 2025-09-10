@@ -4,7 +4,7 @@
 // ---------------------- helpers ----------------------
 const LS_KEY = "panel:backendUrl";
 const API_KEY_STORAGE = "api_key";
-const SCHEMA_STORAGE = "schemaVersion";
+const SCHEMA_STORAGE = "schema_version";
 const DRAFT_PATH = "/api/gpt-draft";
 const SAMPLE = "Governing law: England and Wales.";
 let clientCid = genCid();

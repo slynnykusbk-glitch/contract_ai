@@ -235,16 +235,22 @@ async function callEndpoint({name, method, path, body, dynamicPathFn}) {
   const origSchema = localStorage.getItem(SCHEMA_STORAGE);
   if (path !== "/health") {
     try {
-      const k = document.getElementById("apiKeyInput").value.trim();
-      const s = document.getElementById("schemaInput").value.trim();
-      if (!k || !s) {
-        alert("Please enter API Key (x-api-key) and Schema Version (x-schema-version)");
-        return { ok:false, error_code:"CLIENT", detail:"Missing headers" };
+      let k = document.getElementById("apiKeyInput").value.trim();
+      let s = document.getElementById("schemaInput").value.trim();
+      if (!k) {
+        k = origKey || (CAI.Store?.get?.().apiKey) || "";
       }
-      localStorage.setItem(API_KEY_STORAGE, k);
-      localStorage.setItem(SCHEMA_STORAGE, s);
-      CAI.Store?.setApiKey?.(k);
-      CAI.Store?.setSchemaVersion?.(s);
+      if (!s) {
+        s = origSchema || (CAI.Store?.get?.().schemaVersion) || "";
+      }
+      if (k) {
+        localStorage.setItem(API_KEY_STORAGE, k);
+        CAI.Store?.setApiKey?.(k);
+      }
+      if (s) {
+        localStorage.setItem(SCHEMA_STORAGE, s);
+        CAI.Store?.setSchemaVersion?.(s);
+      }
     } catch {}
   }
 
@@ -473,12 +479,6 @@ async function testTrace(){
 }
 
 async function runAll(){
-  const apiKey = document.getElementById("apiKeyInput")?.value.trim();
-  const schema = document.getElementById("schemaInput")?.value.trim();
-  if (!apiKey || !schema) {
-    alert("Please enter API Key (x-api-key) and Schema Version (x-schema-version)");
-    return;
-  }
   saveApiKey();
   saveSchemaVersion();
   for (const t of TESTS) {

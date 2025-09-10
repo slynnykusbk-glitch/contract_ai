@@ -244,15 +244,16 @@ def loaded_packs() -> List[Dict[str, Any]]:
 
 
 def filter_rules(
-    text: str, doc_type: str, clause_types: Iterable[str]
+    text: str | None, doc_type: str | None, clause_types: Iterable[str] | None
 ) -> List[Dict[str, Any]]:
-    """Return rules matching ``doc_type``/``clause_types`` triggered by ``text``.
+    """Return rules triggered by ``text`` and constrained by scope.
 
-    The returned list contains dictionaries with the original rule under the
-    ``"rule"`` key and a list of matched trigger strings under ``"matches"``.
+    Parameters are case-insensitive and may be ``None``. The returned list
+    contains dictionaries with the original rule under the ``"rule"`` key and
+    a list of matched trigger strings under ``"matches"``.
     """
 
-    norm = normalize_for_intake(text or "")
+    norm = normalize_for_intake(text)
     doc_type_lc = (doc_type or "").lower()
     clause_set: Set[str] = {c.lower() for c in clause_types or []}
 
@@ -295,7 +296,9 @@ def filter_rules(
         if ok:
             regex_pats = trig.get("regex")
             if regex_pats:
-                regex_matches = [m.group(0) for p in regex_pats for m in p.finditer(norm)]
+                regex_matches = [
+                    m.group(0) for p in regex_pats for m in p.finditer(norm)
+                ]
                 if not regex_matches:
                     ok = False
                 else:

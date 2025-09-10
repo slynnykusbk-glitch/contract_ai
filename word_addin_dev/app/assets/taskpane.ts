@@ -390,6 +390,7 @@ async function onGetAIDraft(ev?: Event) {
       dst.value = proposed;
       dst.dispatchEvent(new Event("input", { bubbles: true }));
       notifyOk("Draft ready");
+      try { await insertIntoWord(proposed); } catch {}
     } else {
       notifyWarn("Proposed textarea not found");
     }
@@ -576,21 +577,27 @@ async function onInsertIntoWord() {
     const dst = $(Q.proposed);
     const txt = (dst?.value || "").trim();
     if (!txt) { notifyWarn("No draft to insert"); return; }
-    if ((window as any).Office && (window as any).Word) {
-      await Word.run(async ctx => {
-        const range = ctx.document.getSelection();
-        range.insertText(txt, "Replace");
-        await ctx.sync();
-      });
-      notifyOk("Inserted into Word");
-    } else {
-      await navigator.clipboard.writeText(txt);
-      notifyWarn("Not in Office environment; result copied to clipboard");
-    }
+    await insertIntoWord(txt);
+    notifyOk("Inserted into Word");
   } catch (e) {
-    try { await navigator.clipboard.writeText($(Q.proposed)?.value || ""); } catch {}
-    notifyWarn("Not in Office environment; result copied to clipboard");
     console.error(e);
+  }
+}
+
+async function insertIntoWord(text: string) {
+  const w: any = window as any;
+  if (w?.Office?.context?.document?.setSelectedDataAsync) {
+    await new Promise<void>((resolve, reject) =>
+      w.Office.context.document.setSelectedDataAsync(
+        text,
+        { coercionType: w.Office.CoercionType.Text },
+        (res: any) =>
+          res?.status === w.Office.AsyncResultStatus.Succeeded ? resolve() : reject(res?.error),
+      ),
+    );
+  } else {
+    await navigator.clipboard?.writeText(text).catch(() => {});
+    alert('Draft copied to clipboard (Office not ready). Paste it into the document.');
   }
 }
 

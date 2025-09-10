@@ -11,7 +11,7 @@ client = TestClient(app)
 def test_analyze_minimal():
     resp = client.post(
         "/api/analyze",
-        json={"text": "Hello"},
+        json={"text": "Each party shall keep the other's information confidential."},
         headers={"x-api-key": "local-test-key-123", "x-schema-version": SCHEMA_VERSION},
     )
     assert resp.status_code == 200
@@ -19,7 +19,10 @@ def test_analyze_minimal():
     assert resp.headers.get("x-cid")
     data = resp.json()
     assert isinstance(data.get("analysis"), dict) and data["analysis"]
-    assert isinstance(data["analysis"].get("findings"), list)
+    findings = data["analysis"].get("findings") or []
+    assert isinstance(findings, list)
+    spans = {(f.get("start"), f.get("end"), f.get("snippet")) for f in findings}
+    assert len(spans) == len(findings)
 
 
 @settings(deadline=None, max_examples=25)

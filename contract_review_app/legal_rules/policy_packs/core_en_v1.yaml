@@ -14,6 +14,7 @@ rules:
   - id: confidentiality_basic
     clause_type: confidentiality
     severity: medium
+    deprecated: true
     patterns:
       - "(?i)confidential information"
       - "(?i)keep.*confidential"

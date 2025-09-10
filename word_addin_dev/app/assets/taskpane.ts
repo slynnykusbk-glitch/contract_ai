@@ -66,10 +66,51 @@ function getRiskThreshold(): "low" | "medium" | "high" {
   return (v === "low" || v === "medium" || v === "high") ? v : "medium";
 }
 
-function isAddCommentsOnAnalyzeEnabled(): boolean {
-  const cb = (document.getElementById("cai-comment-on-analyze") as HTMLInputElement | null)
-    || (document.getElementById("chkAddCommentsOnAnalyze") as HTMLInputElement | null);
-  return cb ? !!cb.checked : true; // default ON
+export function isAddCommentsOnAnalyzeEnabled(): boolean {
+  try {
+    const key = "cai-comment-on-analyze";
+    const stored = localStorage.getItem(key);
+    const def = stored === null ? (localStorage.setItem(key, "1"), true) : stored !== "0";
+    const cb = (document.getElementById("cai-comment-on-analyze") as HTMLInputElement | null)
+      || (document.getElementById("chkAddCommentsOnAnalyze") as HTMLInputElement | null);
+    if (cb) cb.checked = def;
+    return cb ? !!cb.checked : def;
+  } catch {
+    return true;
+  }
+}
+
+export function setAddCommentsOnAnalyze(val: boolean): void {
+  try { localStorage.setItem("cai-comment-on-analyze", val ? "1" : "0"); } catch {}
+}
+
+function isDryRunAnnotateEnabled(): boolean {
+  const cb = document.getElementById("cai-dry-run-annotate") as HTMLInputElement | null;
+  return cb ? !!cb.checked : false;
+}
+
+export function dedupeFindings(findings: AnalyzeFinding[]): AnalyzeFinding[] {
+  const map = new Map<string, AnalyzeFinding>();
+  let invalid = 0, dupes = 0;
+  for (const f of findings || []) {
+    const snippet = normalizeText(f.snippet || "");
+    const start = typeof f.start === "number" ? f.start : undefined;
+    const end = typeof f.end === "number" ? f.end : (start !== undefined ? start + snippet.length : undefined);
+    if (typeof start !== "number" || typeof end !== "number" || end <= start || end - start > 10000) {
+      invalid++;
+      continue;
+    }
+    const key = `${f.rule_id || ""}|${start}|${end}|${snippet}`;
+    const ex = map.get(key);
+    if (!ex || severityRank(f.severity) > severityRank(ex.severity)) {
+      map.set(key, { ...f, snippet, start, end });
+    } else {
+      dupes++;
+    }
+  }
+  const res = Array.from(map.values());
+  console.log("panel:annotate", `dedupe dropped ${invalid} invalid, ${dupes} duplicates`);
+  return res;
 }
 
 function severityRank(s?: string): number {
@@ -140,17 +181,8 @@ export async function mapFindingToRange(
 export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
   const base = normalizeText((window as any).__lastAnalyzed || "");
 
-  const list = (findings || []).map(f => {
-    const snippet = normalizeText(f.snippet || "");
-    return {
-      ...f,
-      snippet,
-      start: typeof f.start === "number" ? f.start : undefined,
-      end: typeof f.end === "number" ? f.end : (typeof f.start === "number" ? (f.start as number) + snippet.length : undefined)
-    };
-  });
-
-  list.sort((a, b) => (b.end ?? 0) - (a.end ?? 0));
+  const deduped = dedupeFindings(findings || []);
+  const list = deduped.slice().sort((a, b) => (b.end ?? 0) - (a.end ?? 0));
 
   let lastStart = Number.POSITIVE_INFINITY;
   let skipped = 0;
@@ -172,9 +204,17 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
       return n;
     })();
 
-    const tryInsert = async () => {
+    const tryInsert = async (mode: "normal" | "anchor" | "selection") => {
       await Word.run(async ctx => {
         const body = ctx.document.body;
+
+        if (mode === "selection") {
+          const sel = ctx.document.getSelection();
+          const msgSel = `${buildLegalComment(f)} (fallback)`;
+          if (!isDryRunAnnotateEnabled()) sel.insertComment(msgSel);
+          await ctx.sync();
+          return;
+        }
 
         const s1 = body.search(snippet, { matchCase: false, matchWholeWord: false });
         s1.load("items");
@@ -198,8 +238,13 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
         }
 
         if (target) {
-          const msg = buildLegalComment(f);
-          target.insertComment(msg);
+          if (mode === "anchor") target = target.getRange("Start");
+          if (isDryRunAnnotateEnabled()) {
+            try { target.select(); } catch {}
+          } else {
+            const msg = buildLegalComment(f);
+            target.insertComment(msg);
+          }
         } else {
           console.warn("[annotate] no match for snippet/anchor", { rid: f.rule_id, snippet: snippet.slice(0, 120) });
         }
@@ -208,13 +253,19 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
     };
 
     try {
-      await tryInsert();
+      await tryInsert("normal");
     } catch (e) {
       if (String(e).includes("0xA7210002")) {
+        console.warn("panel:annotate", { rid: f.rule_id, fallback: "anchor" });
         try {
-          await tryInsert();
+          await tryInsert("anchor");
         } catch (e2) {
-          console.warn("annotate retry failed", e2);
+          console.warn("panel:annotate", { rid: f.rule_id, fallback: "selection" });
+          try {
+            await tryInsert("selection");
+          } catch (e3) {
+            console.warn("annotate retry failed", e3);
+          }
         }
       } else {
         console.warn("annotate error", e);
@@ -227,6 +278,12 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
   }
 
   if (skipped) notifyWarn(`Skipped ${skipped} overlaps`);
+  console.log("panel:annotate", {
+    total: findings.length,
+    deduped: deduped.length,
+    skipped_overlaps: skipped,
+    will_annotate: list.length - skipped,
+  });
 }
 
 g.annotateFindingsIntoWord = g.annotateFindingsIntoWord || annotateFindingsIntoWord;

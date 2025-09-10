@@ -33,20 +33,30 @@ def test_filter_rules(monkeypatch):
             "requires_clause": ["Payment"],
             "triggers": {"any": [re.compile("pay", re.I)]},
         },
+        {
+            "id": "R5",
+            "doc_types": ["any"],
+            "requires_clause": [],
+            # case-sensitive pattern; relies on normalisation lowering the text
+            "triggers": {"any": [re.compile("vat/tax")]},
+        },
     ]
 
     monkeypatch.setattr(loader, "_RULES", sample_rules)
 
     text = (
-        "This Confidentiality clause explains the term and termination clause. "
-        "Payment is due. A NonCompete clause applies."
+        "This “Confidentiality” clause explains the term and termination clause. "
+        "Payment is due — a NonCompete clause applies. VAT/Tax shall be addressed."
     )
-    res = loader.filter_rules(text, doc_type="MSA", clause_types=["Termination", "Payment"])
+    res = loader.filter_rules(
+        text, doc_type="MSA", clause_types=["Termination", "Payment"]
+    )
 
     ids = {r["rule"]["id"] for r in res}
-    assert ids == {"R2", "R3", "R4"}
+    assert ids == {"R2", "R3", "R4", "R5"}
 
     matches = {r["rule"]["id"]: r["matches"] for r in res}
     assert any(m.lower().startswith("term") for m in matches["R2"])
     assert any("noncompete" in m.lower() for m in matches["R3"])
     assert any("pay" in m.lower() for m in matches["R4"])
+    assert any("vat/tax" in m.lower() for m in matches["R5"])

@@ -140,12 +140,15 @@ export async function mapFindingToRange(
 export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
   const base = normalizeText((window as any).__lastAnalyzed || "");
 
-  const list = (findings || []).map(f => ({
-    ...f,
-    snippet: normalizeText(f.snippet || ""),
-    start: typeof f.start === "number" ? f.start : 0,
-    end: typeof f.end === "number" ? f.end : (typeof f.start === "number" ? (f.start as number) + normalizeText(f.snippet || "").length : normalizeText(f.snippet || "").length)
-  }));
+  const list = (findings || []).map(f => {
+    const snippet = normalizeText(f.snippet || "");
+    return {
+      ...f,
+      snippet,
+      start: typeof f.start === "number" ? f.start : undefined,
+      end: typeof f.end === "number" ? f.end : (typeof f.start === "number" ? (f.start as number) + snippet.length : undefined)
+    };
+  });
 
   list.sort((a, b) => (b.end ?? 0) - (a.end ?? 0));
 
@@ -156,8 +159,8 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
     const snippet = f.snippet;
     if (!snippet) continue;
 
-    const end = typeof f.end === "number" ? f.end : f.start + snippet.length;
-    if (end > lastStart) {
+    const end = typeof f.end === "number" ? f.end : (typeof f.start === "number" ? f.start + snippet.length : undefined);
+    if (typeof end === "number" && end > lastStart) {
       skipped++;
       continue;
     }
@@ -218,7 +221,9 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
       }
     }
 
-    lastStart = typeof f.start === "number" ? f.start : lastStart;
+    if (typeof f.start === "number") {
+      lastStart = f.start;
+    }
   }
 
   if (skipped) notifyWarn(`Skipped ${skipped} overlaps`);

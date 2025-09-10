@@ -4,15 +4,13 @@ export async function postJson(path: string, body: unknown) {
   const apiKey = localStorage.getItem('api_key') || '';
   const schema = localStorage.getItem('schemaVersion') || '';
 
-  if (!apiKey || !schema) throw new Error('MISSING_HEADERS');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (apiKey) headers['x-api-key'] = apiKey;
+  if (schema) headers['x-schema-version'] = schema;
 
   const res = await fetch(`${apiBase}${path}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'x-schema-version': schema
-    },
+    headers,
     body: JSON.stringify(body)
   });
   return res;

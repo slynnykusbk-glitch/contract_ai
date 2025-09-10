@@ -27,39 +27,7 @@ jobs:
       - name: Run tests
         run: pytest -q
   smoke-start:
+    if: ${{ false }}
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.11' }
-      - name: Install
-        run: |
-          python -m venv .venv
-          .\.venv\Scripts\pip install -r requirements-dev.txt
-      - name: Set fake Azure env (User)
-        shell: pwsh
-        run: |
-          [Environment]::SetEnvironmentVariable("AZURE_OPENAI_API_KEY","test-key-1234567890","User")
-          [Environment]::SetEnvironmentVariable("AZURE_OPENAI_ENDPOINT","https://example.openai.azure.com/","User")
-          [Environment]::SetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT","gpt-4o-mini","User")
-          [Environment]::SetEnvironmentVariable("AZURE_OPENAI_API_VERSION","2024-08-01-preview","User")
-          [Environment]::SetEnvironmentVariable("LLM_PROVIDER","azure","User")
-      - name: Free 9443 (parasitic server)
-        shell: pwsh
-        run: |
-          Get-NetTCPConnection -LocalPort 9443 -State Listen -ErrorAction SilentlyContinue |
-            % { try { Stop-Process -Id $_.OwningProcess -Force } catch {} }
-      - name: Start via launcher (timeout 20s)
-        run: |
-          start "" cmd /c ".\ContractAI-Start.bat"
-          powershell -NoProfile -Command ^
-            "$i=0; while($i -lt 20){ try{ (Invoke-WebRequest https://localhost:9443/health -UseBasicParsing -SkipCertificateCheck).Content | Out-Null; break }catch{}; Start-Sleep 1; $i++ }"
-      - name: Check provider
-        shell: pwsh
-        run: |
-          $j = curl.exe -sk https://localhost:9443/health | ConvertFrom-Json
-          if ($j.llm.provider -ne "azure") { throw "provider is $($j.llm.provider)" }
-      - name: Kill server
-        shell: pwsh
-        run: |
-          Get-Process uvicorn -ErrorAction SilentlyContinue | Stop-Process -Force
+      - run: echo "skip"

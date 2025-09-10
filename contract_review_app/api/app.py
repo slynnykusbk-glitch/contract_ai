@@ -25,7 +25,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from collections import OrderedDict
 import secrets
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.datastructures import MutableHeaders
 
 from contract_review_app.core.privacy import redact_pii, scrub_llm_output
 from contract_review_app.core.audit import audit
@@ -266,12 +265,6 @@ class RequireHeadersMiddleware(BaseHTTPMiddleware):
     _SKIP_PATHS = ("/api/companies",)
 
     async def dispatch(self, request: Request, call_next):
-        if "x-schema-version" not in request.headers:
-            client_host = request.client.host if request.client else ""
-            if client_host in {"127.0.0.1", "::1", "localhost"}:
-                headers = MutableHeaders(scope=request.scope)
-                headers.append("x-schema-version", SCHEMA_VERSION)
-
         if request.method.upper() == "POST" and not any(
             request.url.path.startswith(p) for p in self._SKIP_PATHS
         ):

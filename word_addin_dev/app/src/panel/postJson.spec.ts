@@ -2,10 +2,13 @@ import { describe, it, expect } from 'vitest'
 import { postJson } from './api-client'
 
 describe('postJson', () => {
-  it('throws when missing headers', async () => {
-    ;(globalThis as any).document = { getElementById: () => ({ value: '' }) }
+  it('sends request even when headers missing', async () => {
+    let called = false
+    ;(globalThis as any).document = { getElementById: () => ({ value: 'https://base' }) }
     ;(globalThis as any).localStorage = { getItem: () => '' }
-    await expect(postJson('/x', {})).rejects.toThrow('MISSING_HEADERS')
+    ;(globalThis as any).fetch = async () => { called = true; return { status: 200 } }
+    await postJson('/x', {})
+    expect(called).toBe(true)
   })
 
   it('sends headers when present', async () => {

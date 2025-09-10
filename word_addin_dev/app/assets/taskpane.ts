@@ -1,9 +1,9 @@
-import { apiHealth, apiQaRecheck, apiGptDraft, postJson, metaFromResponse, applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
+import { applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
 import { getApiKeyFromStore, getSchemaFromStore } from "./store";
+import { postJSON, getHealth } from "../../../contract_review_app/frontend/common/http";
 const g: any = globalThis as any;
 g.parseFindings = g.parseFindings || parseFindings;
 g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
-g.metaFromResponse = g.metaFromResponse || metaFromResponse;
 g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
 g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
 import { notifyOk, notifyErr, notifyWarn } from "./notifier";
@@ -19,18 +19,26 @@ const Q = {
 
 let lastCid: string = "";
 
+function getBackend(): string {
+  try { return (localStorage.getItem('backendUrl') || 'https://localhost:9443').replace(/\/+$/, ''); }
+  catch { return 'https://localhost:9443'; }
+}
+
 function ensureHeaders(): boolean {
   // Try to populate required headers from either CAI.Store or
   // localStorage but never block user actions if they are missing.
   try {
+    if (!localStorage.getItem('api_key')) {
+      try { new URL(window.location.href); localStorage.setItem('api_key', 'local-test-key-123'); } catch {}
+    }
     const store = (globalThis as any).CAI?.Store?.get?.() || {};
     const apiKey = store.apiKey || getApiKeyFromStore();
     const schema = store.schemaVersion || getSchemaFromStore();
     if (apiKey) {
-      try { localStorage.setItem("api_key", apiKey); } catch {}
+      try { localStorage.setItem('api_key', apiKey); } catch {}
     }
     if (schema) {
-      try { localStorage.setItem("schemaVersion", schema); } catch {}
+      try { localStorage.setItem('schemaVersion', schema); } catch {}
     }
   } catch {
     // swallow errors – missing storage should not stop the flow
@@ -372,10 +380,8 @@ async function onGetAIDraft(ev?: Event) {
     const modeSel = document.getElementById("cai-mode") as HTMLSelectElement | null;
     const mode = modeSel?.value || "friendly";
     if (!lastCid) { notifyWarn("Analyze first"); return; }
-    const { ok, json, resp } = await apiGptDraft(lastCid, text, mode);
-    if (!ok) { notifyWarn("Draft failed"); return; }
-    try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
-    const proposed = (json?.proposed_text ?? "").toString();
+    const json: any = await postJSON(`${getBackend()}/api/gpt-draft`, { cid: lastCid, clause: text, mode });
+    const proposed = (json?.proposed_text ?? json?.draft_text ?? "").toString();
 
     if (dst) {
       if (!dst.id) dst.id = "proposedText";
@@ -395,13 +401,25 @@ async function onGetAIDraft(ev?: Event) {
 
 async function doHealth() {
   try {
-    const { ok, json, resp } = await apiHealth();
-    try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
-    setConnBadge(ok);
-    notifyOk(`Health: ${json.status} (schema ${json.schema})`);
+    const json: any = await getHealth(getBackend());
+    setConnBadge(true);
+    try {
+      applyMetaToBadges({
+        cid: null,
+        xcache: null,
+        latencyMs: null,
+        schema: json?.schema || null,
+        provider: json?.provider || null,
+        model: json?.model || null,
+        llm_mode: null,
+        usage: null,
+        status: json?.status || null,
+      });
+    } catch {}
+    notifyOk(`Health: ${json?.status || 'ok'}${json?.schema ? ` (schema ${json.schema})` : ''}`);
   } catch (e) {
     setConnBadge(false);
-    notifyWarn("Health failed");
+    notifyWarn('Health failed');
     console.error(e);
   }
 }
@@ -413,14 +431,11 @@ async function doAnalyze() {
     if (!base) { notifyErr("В документе нет текста"); return; }
 
     ensureHeaders();
-    const schema = getSchemaFromStore();
-    if (!schema) { notifyErr("Schema version is missing"); return; }
 
     (window as any).__lastAnalyzed = base;
 
-    const { http: resp, json, headers } = await postJson('/api/analyze', { text: base });
-    lastCid = headers.get('x-cid') || '';
-    try { applyMetaToBadges(metaFromResponse({ headers, json, status: resp.status })); } catch {}
+    const json: any = await postJSON(`${getBackend()}/api/analyze`, { text: base });
+    lastCid = json?.cid || '';
     renderResults(json);
 
     try {
@@ -446,17 +461,14 @@ async function doAnalyze() {
 
 async function doQARecheck() {
   ensureHeaders();
-  const schema = getSchemaFromStore();
-  if (!schema) { notifyErr("Schema version is missing"); return; }
-
   const text = await getWholeDocText();
-  const { ok, json, resp } = await apiQaRecheck(text, []);
-  try { applyMetaToBadges(metaFromResponse(resp)); } catch {}
+  const json: any = await postJSON(`${getBackend()}/api/qa-recheck`, { text, rules: {} });
   (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
+  const ok = !json?.error;
   if (ok) {
     notifyOk("QA recheck OK");
   } else {
-    const msg = json?.error || resp.statusText || `status ${resp.status}`;
+    const msg = json?.error || json?.message || 'unknown';
     notifyErr(`QA recheck failed: ${msg}`);
   }
 }

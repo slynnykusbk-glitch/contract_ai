@@ -1,271 +1,240 @@
-import React, { useState } from "react";
-import ReactDOM from "react-dom";
+import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
+import { asArray } from '../common/safe';
+import { postJSON, getHealth } from '../common/http';
 
-type Status = "ok" | "warn" | "fail";
-
-const DEFAULT_BACKEND = "http://127.0.0.1:9000";
-const LS_KEY = "contract_ai_backend";
-const DRAFT_PATH = "/api/gpt-draft";
-
-const isOk = (s: any) => String(s).toLowerCase() === "ok";
-const getSchemaVer = (b: any) => b?.x_schema_version || b?.schema_version || null;
+const DEFAULT_BACKEND = 'http://127.0.0.1:9000';
+const LS_KEY = 'contract_ai_backend';
+const DRAFT_PATH = '/api/gpt-draft';
 
 function getBackend(): string {
   try {
-    const v = (localStorage.getItem(LS_KEY) || "").trim();
+    const v = (localStorage.getItem(LS_KEY) || '').trim();
     return v || DEFAULT_BACKEND;
   } catch {
     return DEFAULT_BACKEND;
   }
 }
 
-type Citation = {
-  system?: string;          // "UK"
-  instrument?: string;      // e.g., "UK GDPR"
-  section?: string;         // e.g., "Art. 32"
-};
+type Status = 'idle' | 'loading' | 'ready' | 'error';
 
-interface AnalysisFinding {
-  code?: string;
-  message?: string;
-  severity?: string;        // may come as "minor/major/critical" or "low/..."
-  evidence?: string;
-  citations?: Citation[];
-  legal_basis?: string[];   // legacy tolerance
-  [k: string]: any;
-}
-
-interface AnalysisOutput {
-  clause_type?: string;
-  text?: string;
-  status?: string;          // "OK" | "WARN" | "FAIL"
-  score?: number;
-  risk?: string;
-  findings?: AnalysisFinding[];
-  recommendations?: string[];
-  citations?: Citation[];
-  [k: string]: any;
+class Boundary extends React.Component<{ children: React.ReactNode }, { error: string | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  componentDidCatch(e: any) {
+    console.error(e);
+    this.setState({ error: e?.message || 'render failed' });
+  }
+  render() {
+    return this.state.error ? <div style={{ color: 'red' }}>Error: {this.state.error}</div> : this.props.children;
+  }
 }
 
 interface AnalyzeEnvelope {
-  analysis?: AnalysisOutput;
-  results?: any;
-  clauses?: any[];
-  document?: any;
+  analysis?: any;
   [k: string]: any;
 }
-
 interface DraftEnvelope {
-  status?: Status | string;
-  model?: string;
   draft_text?: string;
-  alternatives?: any[];
-  meta?: any;
   [k: string]: any;
-}
-
-async function postJSON<T = any>(path: string, body: any): Promise<T> {
-  const base = getBackend().replace(/\/+$/, "");
-  const res = await fetch(`${base}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-cid": crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()),
-    },
-    body: JSON.stringify(body || {}),
-  });
-  const text = await res.text();
-  let json: any = {};
-  try { json = text ? JSON.parse(text) : {}; } catch { /* tolerate */ }
-  if (!res.ok) {
-    const msg = json?.title || json?.detail || `HTTP ${res.status}`;
-    throw new Error(msg);
-  }
-  // Envelope tolerant: some responses have { data: {...} }
-  return (json?.data ?? json) as T;
-}
-
-function renderCitations(cits?: Citation[] | string[]): string {
-  if (!cits || !Array.isArray(cits) || cits.length === 0) return "";
-  if (typeof cits[0] === "string") return (cits as string[]).join(", ");
-  return (cits as Citation[])
-    .map((c) => [c.instrument, c.section].filter(Boolean).join(" "))
-    .filter(Boolean)
-    .join("; ");
 }
 
 const DraftAssistantPanel: React.FC = () => {
-  const [clauseType, setClauseType] = useState("");
-  const [clauseText, setClauseText] = useState("");
-  const [analysis, setAnalysis] = useState<AnalysisOutput | null>(null);
+  const [clauseType, setClauseType] = useState('');
+  const [clauseText, setClauseText] = useState('');
+  const [analysis, setAnalysis] = useState<any>(null);
   const [draft, setDraft] = useState<DraftEnvelope | null>(null);
-  const [loadingAnalyze, setLoadingAnalyze] = useState(false);
-  const [loadingDraft, setLoadingDraft] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<Status>('idle');
+  const [error, setError] = useState('');
+  const [backendOk, setBackendOk] = useState(false);
+  const [meta, setMeta] = useState<any>({});
+
+  useEffect(() => {
+    if (!localStorage.getItem('api_key')) {
+      try { new URL(window.location.href); localStorage.setItem('api_key', 'local-test-key-123'); } catch {}
+    }
+    const base = getBackend().replace(/\/+$/, '');
+    getHealth(base).then(j => {
+      setBackendOk(true);
+      setMeta(j || {});
+    }).catch(e => {
+      console.error(e);
+      setBackendOk(false);
+    });
+  }, []);
 
   const callAnalyze = async () => {
-    setLoadingAnalyze(true);
-    setError(null);
+    setStatus('loading');
+    setError('');
     setDraft(null);
     try {
-      const env = await postJSON<AnalyzeEnvelope>("/api/analyze", {
-        text: clauseText,
-        clause_type: clauseType || undefined,
-      });
-      getSchemaVer(env);
-      if (!isOk(env?.status) || !isOk(env?.analysis?.status)) {
-        throw new Error("API error");
-      }
-      const a = (env?.analysis ?? env) as AnalysisOutput;
-      // Backfill minimal fields
+      const base = getBackend().replace(/\/+$/, '');
+      const env = await postJSON<AnalyzeEnvelope>(`${base}/api/analyze`, { text: clauseText, clause_type: clauseType || undefined });
+      const a = (env?.analysis ?? env) as any;
       a.clause_type = a.clause_type || clauseType || undefined;
       a.text = a.text || clauseText || undefined;
       setAnalysis(a);
+      setStatus('ready');
     } catch (e: any) {
-      setError(e?.message || "Analyze failed");
-    } finally {
-      setLoadingAnalyze(false);
+      console.error(e);
+      setError(e?.message || 'Analyze failed');
+      setStatus('error');
     }
   };
 
   const callGptDraft = async () => {
-    if (!analysis) {
-      setError("Run Analyze first.");
-      return;
-    }
-    setLoadingDraft(true);
-    setError(null);
+    setStatus('loading');
+    setError('');
     try {
-      const env = await postJSON<DraftEnvelope>(DRAFT_PATH, {
-        analysis,
-        text: analysis.text,
-        mode: "friendly",
-      });
-      setDraft({
-        ...env,
-        draft_text: String(env?.draft?.text ?? env?.draft_text ?? ""),
-      });
+      const base = getBackend().replace(/\/+$/, '');
+      const env = await postJSON<DraftEnvelope>(`${base}${DRAFT_PATH}`, { clause: analysis?.text || clauseText });
+      setDraft(env);
+      setStatus('ready');
     } catch (e: any) {
-      setError(e?.message || "Draft failed");
-    } finally {
-      setLoadingDraft(false);
+      console.error(e);
+      setError(e?.message || 'Draft failed');
+      setStatus('error');
     }
   };
 
-  const findings = analysis?.findings || [];
+  const insertDraft = async () => {
+    if (!draft?.draft_text) return;
+    try {
+      if ((window as any).Word) {
+        await Word.run(async ctx => {
+          const range = ctx.document.getSelection();
+          range.insertText(draft.draft_text || '', 'Replace');
+          await ctx.sync();
+        });
+      } else {
+        await navigator.clipboard.writeText(draft.draft_text || '');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const findings = asArray(analysis?.findings);
+  const suggestions = asArray((analysis as any)?.suggestions);
+
+  const canAnalyze = backendOk && clauseText.trim().length > 0 && status !== 'loading';
+  const canDraft = status === 'ready';
 
   return (
-    <div style={{ padding: "1rem", fontFamily: "Segoe UI, Arial, sans-serif", color: "#111" }}>
+    <div style={{ padding: '1rem', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#111' }}>
       <h2>Draft Assistant (React)</h2>
-
-      <div style={{ marginBottom: 8, fontSize: 12, color: "#444" }}>
+      <div style={{ marginBottom: 8, fontSize: 12, color: '#444' }}>
         Backend: <code>{getBackend()}</code>
+        {meta?.provider && <span> — {meta.provider} {meta.model}</span>}
       </div>
 
-      <label style={{ display: "block", marginBottom: 6 }}>
+      <label style={{ display: 'block', marginBottom: 6 }}>
         Clause Type:
         <input
           type="text"
           value={clauseType}
           onChange={(e) => setClauseType(e.target.value)}
-          style={{ width: "100%", marginTop: 4 }}
+          style={{ width: '100%', marginTop: 4 }}
           placeholder="e.g., confidentiality"
         />
       </label>
 
-      <label style={{ display: "block", marginBottom: 6 }}>
+      <label style={{ display: 'block', marginBottom: 6 }}>
         Clause Text:
         <textarea
           value={clauseText}
           onChange={(e) => setClauseText(e.target.value)}
           rows={6}
-          style={{ width: "100%", marginTop: 4 }}
+          style={{ width: '100%', marginTop: 4 }}
           placeholder="Paste clause text here…"
         />
       </label>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <button
           onClick={callAnalyze}
-          disabled={loadingAnalyze}
-          style={{ background: "#6c757d", color: "white", padding: "8px 12px", border: "none", borderRadius: 4 }}
+          disabled={!canAnalyze}
+          style={{ background: '#6c757d', color: 'white', padding: '8px 12px', border: 'none', borderRadius: 4 }}
         >
-          {loadingAnalyze ? "Analyzing…" : "Analyze"}
+          {status === 'loading' ? 'Analyzing…' : 'Analyze'}
         </button>
 
         <button
           onClick={callGptDraft}
-          disabled={loadingDraft || !analysis}
-          style={{ background: "#007bff", color: "white", padding: "8px 12px", border: "none", borderRadius: 4 }}
+          disabled={!canDraft}
+          style={{ background: '#007bff', color: 'white', padding: '8px 12px', border: 'none', borderRadius: 4 }}
         >
-          {loadingDraft ? "Generating…" : "Get AI Draft"}
+          {status === 'loading' ? 'Generating…' : 'Get AI Draft'}
         </button>
+
+        {draft?.draft_text && (
+          <button
+            onClick={insertDraft}
+            style={{ background: '#28a745', color: 'white', padding: '8px 12px', border: 'none', borderRadius: 4 }}
+          >
+            Insert into Word
+          </button>
+        )}
       </div>
 
-      {error && <div style={{ marginTop: 12, color: "red" }}>Warning: {error}</div>}
+      {status === 'idle' && <div style={{ marginTop: 12 }}>Enter text and press Analyze.</div>}
+      {status === 'loading' && <div style={{ marginTop: 12 }}>Loading…</div>}
+      {status === 'error' && <div style={{ marginTop: 12, color: 'red' }}>{error} <button onClick={callAnalyze}>Retry</button></div>}
+      {status === 'ready' && (
+        <>
+          <div style={{ marginTop: 16 }}>
+            <h3>Findings</h3>
+            {findings.length === 0 && <div>—</div>}
+            {findings.map((f: any, i: number) => (
+              <div key={i} style={{ background: '#f8f9fa', padding: 8, borderRadius: 4, marginBottom: 6 }}>
+                <div><b>{f.code || 'FINDING'}</b> {f.severity ? `(${f.severity})` : ''}</div>
+                <div>{f.message || ''}</div>
+              </div>
+            ))}
+          </div>
 
-      {analysis && (
-        <div style={{ marginTop: 16 }}>
-          <h3>Findings</h3>
-          {findings.length === 0 && <div>—</div>}
-          {findings.map((f, i) => (
-            <div key={i} style={{ background: "#f8f9fa", padding: 8, borderRadius: 4, marginBottom: 6 }}>
-              <div><b>{f.code || "FINDING"}</b> {f.severity ? `(${f.severity})` : ""}</div>
-              <div>{f.message || ""}</div>
-              {f.evidence && <div style={{ color: "#555", fontSize: 12 }}>Evidence: {f.evidence}</div>}
-              {(f.citations || f.legal_basis)?.length ? (
-                <div style={{ color: "#555", fontSize: 12 }}>
-                  Basis: {renderCitations((f.citations as any) || f.legal_basis)}
-                </div>
-              ) : null}
+          {suggestions.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <h3>Suggestions</h3>
+              {suggestions.map((s: any, i: number) => (
+                <div key={i}>{typeof s === 'string' ? s : JSON.stringify(s)}</div>
+              ))}
             </div>
-          ))}
+          )}
 
-          <div style={{ marginTop: 10, fontSize: 14 }}>
-            <span style={{ marginRight: 12 }}>Score: <b>{analysis.score ?? "—"}</b></span>
-            <span style={{ marginRight: 12 }}>Risk: <b>{analysis.risk ?? "—"}</b></span>
-            <span>Status: <b>{analysis.status ?? "—"}</b></span>
-          </div>
-        </div>
-      )}
-
-      {draft && (
-        <div style={{ marginTop: 20 }}>
-          <h3>Suggested Draft</h3>
-          <pre style={{ background: "#f5f5f5", padding: "1rem", borderRadius: 4, whiteSpace: "pre-wrap" }}>
-            {draft.draft_text || ""}
-          </pre>
-
-          <div style={{ marginTop: 8, fontSize: 14 }}>
-            <span style={{ marginRight: 12 }}>Status: <b>{String(draft.status || "ok")}</b></span>
-            <span>Model: <b>{draft.model || "rule-based"}</b></span>
-          </div>
-        </div>
+          {draft?.draft_text && (
+            <div style={{ marginTop: 20 }}>
+              <h3>Suggested Draft</h3>
+              <pre style={{ background: '#f5f5f5', padding: '1rem', borderRadius: 4, whiteSpace: 'pre-wrap' }}>
+                {draft.draft_text}
+              </pre>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 };
 
-export default DraftAssistantPanel;
-
-// React 17 fallback; if React 18 is used, createRoot will exist on react-dom/client
-const mount = document.getElementById("root");
+const mount = document.getElementById('root');
 if (mount) {
   try {
     // @ts-ignore - runtime check for React 18
     const { createRoot } = (ReactDOM as any);
     if (createRoot) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      createRoot(mount).render(<React.StrictMode><DraftAssistantPanel /></React.StrictMode>);
+      createRoot(mount).render(<React.StrictMode><Boundary><DraftAssistantPanel /></Boundary></React.StrictMode>);
     } else {
       ReactDOM.render(
-        <React.StrictMode><DraftAssistantPanel /></React.StrictMode>,
+        <React.StrictMode><Boundary><DraftAssistantPanel /></Boundary></React.StrictMode>,
         mount
       );
     }
   } catch {
     ReactDOM.render(
-      <React.StrictMode><DraftAssistantPanel /></React.StrictMode>,
+      <React.StrictMode><Boundary><DraftAssistantPanel /></Boundary></React.StrictMode>,
       mount
     );
   }

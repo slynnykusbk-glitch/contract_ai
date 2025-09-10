@@ -80,7 +80,11 @@ function loadBase(){
 }
 
 function saveApiKey(){
-  try{ const v=document.getElementById("apiKeyInput").value.trim(); localStorage.setItem(API_KEY_STORAGE, v);}catch{}
+  try{
+    const v=document.getElementById("apiKeyInput").value.trim();
+    localStorage.setItem(API_KEY_STORAGE, v);
+    CAI.Store?.setApiKey?.(v);
+  }catch{}
 }
 function loadApiKey(){
   let v="";
@@ -238,10 +242,10 @@ async function callEndpoint({name, method, path, body, dynamicPathFn}) {
       let k = document.getElementById("apiKeyInput").value.trim();
       let s = document.getElementById("schemaInput").value.trim();
       if (!k) {
-        k = origKey || (CAI.Store?.get?.().apiKey) || "";
+        k = origKey || "";
       }
       if (!s) {
-        s = origSchema || (CAI.Store?.get?.().schemaVersion) || "";
+        s = origSchema || "";
       }
       if (k) {
         localStorage.setItem(API_KEY_STORAGE, k);

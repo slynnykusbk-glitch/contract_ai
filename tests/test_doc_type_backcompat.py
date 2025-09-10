@@ -4,8 +4,9 @@ from fastapi.testclient import TestClient
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 from contract_review_app.api.app import app
+from contract_review_app.api.models import SCHEMA_VERSION
 
-client = TestClient(app)
+client = TestClient(app, headers={"x-schema-version": SCHEMA_VERSION})
 SAMPLE = "CONFIDENTIALITY AGREEMENT\nThis Agreement is made..."
 
 def test_analyze_has_both_flat_and_legacy_type():

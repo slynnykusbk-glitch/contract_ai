@@ -205,12 +205,13 @@ def extract_document_snapshot(text: str) -> DocumentSnapshot:
     subject = _extract_subject(text)
     subject_raw = subject.get("raw") if subject else None
 
-    slug, confidence, evidence, score_map = guess_doc_type(text, subject_raw)
+    slug, confidence, evidence, score_map, source = guess_doc_type(text, subject_raw)
     doc_type = slug_to_display(slug)
     if confidence < 0.1:
         doc_type = "unknown"
     if doc_type == "License (IP)" and "ip" not in text.lower():
         doc_type = "License"
+    doc_type_source = source if doc_type != "unknown" else None
     hints.extend(evidence[:5])
     parties = _extract_parties(text, hints)
     dates = _extract_dates(text, hints)
@@ -233,6 +234,7 @@ def extract_document_snapshot(text: str) -> DocumentSnapshot:
     snapshot = DocumentSnapshot(
         type=doc_type,
         type_confidence=confidence,
+        type_source=doc_type_source,
         parties=parties,
         dates=dates,
         term=term,

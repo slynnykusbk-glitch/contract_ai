@@ -371,7 +371,7 @@ def analyze_document(
     """
     t = text or ""
     text_for_match, _pd = normalized_view(t)
-    type_slug, type_conf, _, score_map = guess_doc_type(t)
+    type_slug, type_conf, _, score_map, _src = guess_doc_type(t)
     dtype = slug_to_display(type_slug)
     debug_top = [
         {"type": slug_to_display(s), "score": round(v, 3)}

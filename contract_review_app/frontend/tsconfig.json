@@ -7,5 +7,5 @@
     "strict": true,
     "esModuleInterop": true
   },
-  "include": ["draft_panel"]
+  "include": ["draft_panel", "common"]
 }

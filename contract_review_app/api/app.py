@@ -18,6 +18,7 @@ from html import escape as html_escape
 import time
 from datetime import datetime, timezone
 import logging
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
 from typing import Any, Dict, List, Optional, Tuple
@@ -1769,9 +1770,13 @@ def api_analyze(
         headers.update(tmp.headers)
         return _finalize_json("/api/analyze", cached_cid, headers)
 
-    # full parsing/classification/rule pipeline
+    # full parsing/classification/rule pipeline with timings
+    pipeline_id = uuid.uuid4().hex
+    t0 = time.perf_counter()
     parsed = analysis_parser.parse_text(txt)
+    t1 = time.perf_counter()
     analysis_classifier.classify_segments(parsed.segments)
+    t2 = time.perf_counter()
 
     seg_findings: List[Dict[str, Any]] = []
     for seg in parsed.segments:
@@ -1815,6 +1820,11 @@ def api_analyze(
     thr = order.get(str(risk_param).lower(), 1)
     # derive findings from YAML rule engine
     yaml_findings: List[Dict[str, Any]] = []
+    active_packs: List[str] = []
+    rules_loaded = 0
+    fired_rules_meta: List[Dict[str, Any]] = []
+    t3 = t2
+    t4 = t2
     try:
         from contract_review_app.legal_rules import (
             loader as _yaml_loader,
@@ -1822,9 +1832,37 @@ def api_analyze(
         )
 
         _yaml_loader.load_rule_packs()
+        t3 = time.perf_counter()
         yaml_findings = _yaml_engine.analyze(txt or "", _yaml_loader._RULES)
+        t4 = time.perf_counter()
+        active_packs = [p.get("path") for p in _yaml_loader.loaded_packs()]
+        rules_loaded = _yaml_loader.rules_count()
+
+        for rule in _yaml_loader._RULES:
+            matched: Dict[str, List[str]] = {"any": [], "all": [], "regex": []}
+            positions: List[Dict[str, int]] = []
+            for kind, pats in (rule.get("triggers") or {}).items():
+                for pat in pats:
+                    for m in pat.finditer(txt):
+                        matched.setdefault(kind, []).append(pat.pattern)
+                        positions.append({"start": m.start(), "end": m.end()})
+            if positions:
+                fired_rules_meta.append(
+                    {
+                        "rule_id": rule.get("id"),
+                        "pack": rule.get("pack"),
+                        "matched_triggers": {
+                            k: sorted(set(v)) for k, v in matched.items() if v
+                        },
+                        "requires_clause_hit": rule.get("requires_clause_hit", False),
+                        "positions": positions,
+                    }
+                )
     except Exception:
         yaml_findings = []
+        active_packs = []
+        rules_loaded = 0
+        fired_rules_meta = []
 
     if yaml_findings:
         filtered_yaml = [
@@ -1886,6 +1924,28 @@ def api_analyze(
     except Exception:
         pass
 
+    timings = {
+        "parse_ms": round((t1 - t0) * 1000, 2),
+        "classify_ms": round((t2 - t1) * 1000, 2),
+        "load_rules_ms": round((t3 - t2) * 1000, 2),
+        "run_rules_ms": round((t4 - t3) * 1000, 2),
+    }
+
+    meta = {
+        **PROVIDER_META,
+        "document_type": summary.get("type"),
+        "language": req.language,
+        "text_bytes": len(txt.encode("utf-8")),
+        "active_packs": active_packs,
+        "rules_loaded_count": rules_loaded,
+        "rules_fired_count": len(fired_rules_meta),
+        "fired_rules": fired_rules_meta,
+        "pipeline_id": pipeline_id,
+        "timings_ms": timings,
+    }
+
+    log.info("analysis meta", extra={"meta": meta})
+
     envelope = {
         "status": status_out,
         "analysis": analysis_out,
@@ -1893,7 +1953,7 @@ def api_analyze(
         "clauses": analysis_out.get("findings", []),
         "document": analysis_out.get("document", {}),
         "schema_version": SCHEMA_VERSION,
-        "meta": PROVIDER_META,
+        "meta": meta,
         "summary": summary,
     }
     IDEMPOTENCY_CACHE.set(cid, envelope)

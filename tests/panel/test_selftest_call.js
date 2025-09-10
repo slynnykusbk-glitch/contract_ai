@@ -2,17 +2,20 @@ const fs = require('fs');
 const vm = require('vm');
 const assert = require('assert');
 
+const elements = {
+  backendInput: { value: 'https://localhost:9443', textContent:'', style:{}, className:'', addEventListener: () => {} },
+  apiKeyInput: { value: 'KEY123', textContent:'', style:{}, className:'', addEventListener: () => {} },
+  schemaInput: { value: '1.0', textContent:'', style:{}, className:'', addEventListener: () => {} },
+  cidLbl: { textContent:'', style:{}, className:'', addEventListener: () => {} },
+  lastCidLbl: { textContent:'', style:{}, className:'', addEventListener: () => {} },
+  resp: { textContent:'', style:{}, className:'', addEventListener: () => {} }
+};
+
 const sandbox = {
   console,
   alert: () => {},
   document: {
-    getElementById: (id) => {
-      const el = { value: '', textContent: '', style:{}, className:'', addEventListener: () => {} };
-      if (id === 'backendInput') el.value = 'https://localhost:9443';
-      if (id === 'apiKeyInput') el.value = 'KEY123';
-      if (id === 'schemaInput') el.value = '1.0';
-      return el;
-    },
+    getElementById: id => elements[id] || { value:'', textContent:'', style:{}, className:'', addEventListener: () => {} },
     querySelector: () => ({})
   },
   localStorage: {
@@ -85,15 +88,30 @@ vm.runInNewContext(code, sandbox);
   assert.strictEqual(rHealth.xcid, 'cid-h');
   assert.strictEqual(rHealth.xschema, '1.0');
 
-  const rAnalyze = await sandbox.callEndpoint({ name:'analyze', method:'POST', path:'/api/analyze', body:{text:'hi'} });
+  // with explicit headers provided
+  let rAnalyze = await sandbox.callEndpoint({ name:'analyze', method:'POST', path:'/api/analyze', body:{text:'hi'} });
   assert.strictEqual(rAnalyze.code, 200);
   assert.strictEqual(rAnalyze.xcid, 'cid-a');
-  const sent = sandbox._lastReq;
+  let sent = sandbox._lastReq;
   assert.deepStrictEqual(JSON.parse(sent.opts.body), { text: 'hi' });
   assert.strictEqual(sent.opts.headers['content-type'], 'application/json');
   assert.strictEqual(sent.opts.headers['x-api-key'], 'KEY123');
   assert.strictEqual(sent.opts.headers['x-schema-version'], '1.0');
   assert.strictEqual(sandbox.CAI.Store.get().lastCid, 'cid-a');
+
+  // without headers in inputs or storage
+  elements.apiKeyInput.value = '';
+  elements.schemaInput.value = '';
+  sandbox.localStorage._data = {};
+  storeState.apiKey = '';
+  storeState.schemaVersion = '';
+  rAnalyze = await sandbox.callEndpoint({ name:'analyze', method:'POST', path:'/api/analyze', body:{text:'bye'} });
+  assert.strictEqual(rAnalyze.code, 200);
+  sent = sandbox._lastReq;
+  assert.deepStrictEqual(JSON.parse(sent.opts.body), { text: 'bye' });
+  assert.strictEqual(sent.opts.headers['x-api-key'], undefined);
+  assert.strictEqual(sent.opts.headers['x-schema-version'], undefined);
+
   console.log('selftest call tests ok');
 })();
 

@@ -1,0 +1,15 @@
+CONFIDENTIALITY: The parties agree to keep information strictly confidential and use it only for performing this agreement.
+
+LIABILITY: The total liability shall not exceed the fees paid, except in cases of fraud or wilful misconduct.
+
+ANTI-BRIBERY: Each party shall comply with the UK Bribery Act 2010, maintain adequate procedures, and prohibit facilitation payments.
+
+DATA PROTECTION: Each party shall comply with the UK GDPR and Data Protection Act 2018 when processing personal data.
+
+TERMINATION: Either party may terminate this Agreement upon 30 days' written notice.
+
+INTELLECTUAL PROPERTY: All intellectual property created by Supplier in performing the Services shall vest in Customer.
+
+GOVERNING LAW AND DISPUTE RESOLUTION: This Agreement is governed by the laws of England and Wales and any dispute shall be resolved by arbitration in London.
+
+PAYMENT: Supplier shall issue invoices monthly in pounds sterling, payable within 30 days, plus any applicable VAT.

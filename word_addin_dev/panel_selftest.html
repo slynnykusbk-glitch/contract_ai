@@ -49,8 +49,8 @@
     <label for="backendInput">Backend URL:</label>
     <input id="backendInput" type="text" value="https://localhost:9443" class="mono" />
     <button id="saveBtn">Save</button>
-    <label for="apiKeyInput">API Key (x-api-key):</label>
-    <input id="apiKeyInput" type="text" class="mono" style="width:140px" placeholder="required" />
+    <label for="apiKeyInput">API Key (x-api-key, optional):</label>
+    <input id="apiKeyInput" type="text" class="mono" style="width:140px" placeholder="optional" />
     <label for="schemaInput">Schema (x-schema-version):</label>
     <input id="schemaInput" type="text" class="mono" style="width:80px" placeholder="1.4" />
     <button id="saveKeyBtn">Save Headers</button>
@@ -118,6 +118,11 @@
     import { bootstrapHeaders } from "./app/assets/bootstrap.js?v=DEV";
     await bootstrapHeaders();
     await import("./app/assets/store.js?v=DEV");
+    const existingKey = localStorage.getItem('api_key') || (window.CAI?.Store?.get?.().apiKey);
+    if (existingKey) {
+      document.querySelector('label[for="apiKeyInput"]').style.display = 'none';
+      document.getElementById('apiKeyInput').style.display = 'none';
+    }
     await import("./app/assets/api-client.js?v=DEV");
     await import("./app/selftest.js?v=DEV");
   </script>

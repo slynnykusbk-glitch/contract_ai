@@ -27,11 +27,11 @@ def analyze(inp: AnalysisInput) -> AnalysisOutput:
             sev = "critical"
         msg = "No explicit governing law statement"
         if has_law_words:
-            msg += " (без явного застосовного права)"
+            msg += " (lacking explicit applicable law)"
         elif has_jur_words:
-            msg += " (не вдалося однозначно ідентифікувати)"
+            msg += " (could not be clearly identified)"
         else:
-            msg += " (відсутня або неявна)"
+            msg += " (missing or implicit)"
         findings.append(mk_finding("GLAW_MISSING", msg, sev))
     else:
         if not re.search(LAW_RE, text, flags=re.I):
@@ -43,7 +43,13 @@ def analyze(inp: AnalysisInput) -> AnalysisOutput:
                 )
             )
         else:
-            findings.append(mk_finding("GLAW_REF", "посилання на право визначено", "info"))
+            findings.append(
+                mk_finding(
+                    "GLAW_REF",
+                    "Reference to governing law specified",
+                    "info",
+                )
+            )
         # Jurisdiction clause is optional; no finding if absent
 
     out = make_output(rule_name, inp, findings, "Governing Law", "Governing Law")

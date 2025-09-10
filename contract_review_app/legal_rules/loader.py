@@ -23,12 +23,16 @@ CORE_RULES_DIR = ROOT_DIR / "core" / "rules"
 
 _ENV_DIRS = os.getenv("RULE_PACKS_DIRS")
 if _ENV_DIRS:
-    RULE_PACKS_DIRS = [Path(p.strip()) for p in _ENV_DIRS.split(os.pathsep) if p.strip()]
+    RULE_PACKS_DIRS = [
+        Path(p.strip()) for p in _ENV_DIRS.split(os.pathsep) if p.strip()
+    ]
 else:
     RULE_PACKS_DIRS = [POLICY_DIR, CORE_RULES_DIR]
 
 _RULES: List[Dict[str, Any]] = []
 _PACKS: List[Dict[str, Any]] = []
+
+ALLOWED_RULE_EXTS = {".yml", ".yaml"}
 
 # ---------------------------------------------------------------------------
 # Coverage flags (bitmask)
@@ -75,12 +79,25 @@ def load_rule_packs() -> None:
     _RULES.clear()
     _PACKS.clear()
 
+    warned_py = False
     for base in RULE_PACKS_DIRS:
         if not base.exists():
             continue
 
-        paths = sorted(base.glob("*.yaml")) if base.samefile(POLICY_DIR) else sorted(base.rglob("*.yaml"))
+        paths = (
+            sorted(p for p in base.glob("*") if p.is_file())
+            if base.samefile(POLICY_DIR)
+            else sorted(p for p in base.rglob("*") if p.is_file())
+        )
         for path in paths:
+            if "_legacy_disabled" in path.parts:
+                continue
+            suffix = path.suffix.lower()
+            if suffix not in ALLOWED_RULE_EXTS:
+                if suffix == ".py" and not warned_py:
+                    log.warning("Skipped legacy Python rules (*.py).")
+                    warned_py = True
+                continue
             try:
                 docs = list(yaml.safe_load_all(path.read_text(encoding="utf-8")))
             except Exception as exc:  # pragma: no cover
@@ -111,6 +128,7 @@ def load_rule_packs() -> None:
                     if raw.get("patterns"):
                         pats = list(raw.get("patterns", []))
                     else:
+
                         def _pull(xs):
                             for c in xs:
                                 yield c.get("regex") if isinstance(c, dict) else c
@@ -132,34 +150,74 @@ def load_rule_packs() -> None:
 
                     trig_map: Dict[str, List[re.Pattern[str]]] = {}
                     if trig_any:
-                        trig_map["any"] = _compile([(c.get("regex") if isinstance(c, dict) else c) for c in trig_any])
+                        trig_map["any"] = _compile(
+                            [
+                                (c.get("regex") if isinstance(c, dict) else c)
+                                for c in trig_any
+                            ]
+                        )
                     if trig_all:
-                        trig_map["all"] = _compile([(c.get("regex") if isinstance(c, dict) else c) for c in trig_all])
+                        trig_map["all"] = _compile(
+                            [
+                                (c.get("regex") if isinstance(c, dict) else c)
+                                for c in trig_all
+                            ]
+                        )
                     if trig_regex or raw.get("patterns"):
-                        trig_map["regex"] = _compile([(c.get("regex") if isinstance(c, dict) else c) for c in (trig_regex or raw.get("patterns", []))])
+                        trig_map["regex"] = _compile(
+                            [
+                                (c.get("regex") if isinstance(c, dict) else c)
+                                for c in (trig_regex or raw.get("patterns", []))
+                            ]
+                        )
 
-                    doc_types = list(raw.get("doc_types") or (raw.get("scope", {}) or {}).get("doc_types") or [])
-                    jurisdiction = list(raw.get("jurisdiction") or (raw.get("scope", {}) or {}).get("jurisdiction") or [])
-                    requires_clause = list(raw.get("requires_clause") or (raw.get("scope", {}) or {}).get("clauses") or [])
+                    doc_types = list(
+                        raw.get("doc_types")
+                        or (raw.get("scope", {}) or {}).get("doc_types")
+                        or []
+                    )
+                    jurisdiction = list(
+                        raw.get("jurisdiction")
+                        or (raw.get("scope", {}) or {}).get("jurisdiction")
+                        or []
+                    )
+                    requires_clause = list(
+                        raw.get("requires_clause")
+                        or (raw.get("scope", {}) or {}).get("clauses")
+                        or []
+                    )
                     deprecated = bool(raw.get("deprecated"))
+
+                    try:
+                        pack_rel = str(path.relative_to(ROOT_DIR))
+                    except ValueError:  # pragma: no cover
+                        pack_rel = str(path)
 
                     spec = {
                         "id": raw.get("id"),
-                        "clause_type": raw.get("clause_type") or (raw.get("scope", {}) or {}).get("clauses", [None])[0],
-                        "severity": str(raw.get("severity") or raw.get("risk") or raw.get("severity_level") or "medium").lower(),
+                        "clause_type": raw.get("clause_type")
+                        or (raw.get("scope", {}) or {}).get("clauses", [None])[0],
+                        "severity": str(
+                            raw.get("severity")
+                            or raw.get("risk")
+                            or raw.get("severity_level")
+                            or "medium"
+                        ).lower(),
                         "patterns": compiled_patterns,
                         "advice": raw.get("advice")
-                                  or raw.get("intent")
-                                  or (finding_section or {}).get("suggestion", {}).get("text")
-                                  or (finding_section or {}).get("message"),
-                        "law_refs": list(raw.get("law_reference")
-                                         or raw.get("law_refs")
-                                         or (finding_section or {}).get("legal_basis")
-                                         or []),
+                        or raw.get("intent")
+                        or (finding_section or {}).get("suggestion", {}).get("text")
+                        or (finding_section or {}).get("message"),
+                        "law_refs": list(
+                            raw.get("law_reference")
+                            or raw.get("law_refs")
+                            or (finding_section or {}).get("legal_basis")
+                            or []
+                        ),
                         "suggestion": (finding_section or {}).get("suggestion"),
                         "conflict_with": list(raw.get("conflict_with") or []),
                         "ops": raw.get("ops") or [],
-                        "pack": str(path.relative_to(ROOT_DIR)),
+                        "pack": pack_rel,
                         "triggers": trig_map,
                         "requires_clause_hit": bool(raw.get("requires_clause_hit")),
                         "doc_types": doc_types,
@@ -170,24 +228,32 @@ def load_rule_packs() -> None:
 
                     # Валидация схемы правила (но не прерываем загрузку)
                     try:
-                        RuleSchema.model_validate({
-                            "id": spec["id"],
-                            "doc_types": doc_types,
-                            "jurisdiction": jurisdiction,
-                            "severity": spec["severity"],
-                            "triggers": {k: [p.pattern for p in trig_map.get(k, [])] for k in trig_map.keys()},
-                            "requires_clause": requires_clause,
-                            "advice": spec["advice"],
-                            "law_refs": spec["law_refs"],
-                            "deprecated": deprecated,
-                        })
+                        RuleSchema.model_validate(
+                            {
+                                "id": spec["id"],
+                                "doc_types": doc_types,
+                                "jurisdiction": jurisdiction,
+                                "severity": spec["severity"],
+                                "triggers": {
+                                    k: [p.pattern for p in trig_map.get(k, [])]
+                                    for k in trig_map.keys()
+                                },
+                                "requires_clause": requires_clause,
+                                "advice": spec["advice"],
+                                "law_refs": spec["law_refs"],
+                                "deprecated": deprecated,
+                            }
+                        )
                     except ValidationError:
                         pass
 
                     _RULES.append(spec)
                     rule_count += 1
 
-            rel = path.relative_to(ROOT_DIR)
+            try:
+                rel = path.relative_to(ROOT_DIR)
+            except ValueError:  # pragma: no cover
+                rel = path
             _PACKS.append({"path": str(rel), "rule_count": rule_count})
 
 
@@ -198,12 +264,33 @@ load_rule_packs()
 # Public helpers
 # ---------------------------------------------------------------------------
 
+
 def rules_count() -> int:
     return len(_RULES)
 
 
 def loaded_packs() -> List[Dict[str, Any]]:
     return list(_PACKS)
+
+
+def load_rules(base_dir: Path | None = None) -> List[Dict[str, Any]]:
+    """Convenience wrapper returning loaded rules.
+
+    If *base_dir* is provided, rules are loaded only from that directory for
+    the duration of the call.
+    """
+    if base_dir is not None:
+        old_dirs = list(RULE_PACKS_DIRS)
+        try:
+            RULE_PACKS_DIRS[:] = [Path(base_dir)]
+            load_rule_packs()
+            return list(_RULES)
+        finally:
+            RULE_PACKS_DIRS[:] = old_dirs
+            load_rule_packs()
+    else:
+        load_rule_packs()
+        return list(_RULES)
 
 
 def filter_rules(
@@ -326,4 +413,5 @@ def filter_rules(
 
 def match_text(text: str) -> List[Dict[str, Any]]:
     from . import engine
+
     return engine.analyze(text or "", _RULES)

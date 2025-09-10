@@ -1,36 +1,14 @@
-"""
-Публічний API пакета правил.
-Реекспортує модулі з підпакета .rules, щоб тести могли робити:
-    from contract_review_app.legal_rules import termination, indemnity, ...
+"""Публічний API пакета правил.
+
+Legacy Python rules have been quarantined to ``core/rules/_legacy_disabled`` and
+are no longer importable via this package. Only the loader utilities and the
+registry (if available) remain public.
 """
 
-from .rules import (
-    base,
-    confidentiality,
-    definitions,
-    force_majeure,
-    governing_law,
-    indemnity,
-    jurisdiction,
-    oilgas_master_agreement,
-    termination,
-)
-
-# Публічний 'registry' — ТІЛЬКИ з кореня пакета (НЕ з .rules)
+# Публічний 'registry' — ТІЛЬКИ з кореня пакета
 try:  # noqa: F401
     from . import registry  # type: ignore
 except Exception:  # pragma: no cover
     registry = None  # type: ignore
 
-__all__ = [
-    "base",
-    "confidentiality",
-    "definitions",
-    "force_majeure",
-    "governing_law",
-    "indemnity",
-    "jurisdiction",
-    "oilgas_master_agreement",
-    "termination",
-    "registry",
-]
+__all__ = ["registry"]

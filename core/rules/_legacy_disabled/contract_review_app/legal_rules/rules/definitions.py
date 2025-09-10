@@ -1,3 +1,4 @@
+# QUARANTINED: legacy Python rule (not loaded by engine). Kept for reference only.  # flake8: noqa
 from __future__ import annotations
 import re
 from contract_review_app.core.schemas import AnalysisInput, AnalysisOutput
@@ -5,13 +6,16 @@ from .base import mk_finding, make_output
 
 rule_name = "definitions"
 
+
 def analyze(inp: AnalysisInput) -> AnalysisOutput:
     text = inp.text or ""
     findings = []
 
     # Heading presence
     if not re.search(r"\bdefinitions?\b", text, flags=re.I):
-        findings.append(mk_finding("DEF-HEAD", "Missing explicit 'Definitions' heading", "high"))
+        findings.append(
+            mk_finding("DEF-HEAD", "Missing explicit 'Definitions' heading", "high")
+        )
 
     # Uppercase terms (at least some)
     terms = re.findall(r"\b[A-Z][A-Z_ ]{2,}\b", text)
@@ -25,8 +29,18 @@ def analyze(inp: AnalysisInput) -> AnalysisOutput:
         )
 
     # “Confidential Information” consistency example
-    if re.search(r"confidential information", text, flags=re.I) and not re.search(r"means|shall mean|is defined as", text, flags=re.I):
-        s,l = re.search(r"confidential information", text, flags=re.I).span()
-        findings.append(mk_finding("DEF-CI-DEF", "Confidential Information mentioned but not clearly defined", "high", s, l))
+    if re.search(r"confidential information", text, flags=re.I) and not re.search(
+        r"means|shall mean|is defined as", text, flags=re.I
+    ):
+        s, l = re.search(r"confidential information", text, flags=re.I).span()
+        findings.append(
+            mk_finding(
+                "DEF-CI-DEF",
+                "Confidential Information mentioned but not clearly defined",
+                "high",
+                s,
+                l,
+            )
+        )
 
     return make_output(rule_name, inp, findings, "definitions", "Definitions")

@@ -522,18 +522,22 @@ window.addEventListener("DOMContentLoaded", async () => {
     const serverSchema =
       (resp.headers && resp.headers.get && resp.headers.get('x-schema-version')) ||
       (resp.json && resp.json.schema) || '';
-    if (serverSchema && storedSchema !== serverSchema) {
-      const el = document.getElementById('schemaInput');
-      if (el) el.value = serverSchema;
-      try {
-        localStorage.setItem(SCHEMA_STORAGE, serverSchema);
-        CAI.Store?.setSchemaVersion?.(serverSchema);
-      } catch {}
-      const warnEl = document.getElementById('schemaWarn');
-      if (warnEl && storedSchema) {
-        warnEl.textContent = `Schema mismatch: ${storedSchema} → ${serverSchema}`;
-        warnEl.style.display = 'inline';
+    if (serverSchema) {
+      if (storedSchema !== serverSchema) {
+        const el = document.getElementById('schemaInput');
+        if (el) el.value = serverSchema;
+        try {
+          localStorage.setItem(SCHEMA_STORAGE, serverSchema);
+          CAI.Store?.setSchemaVersion?.(serverSchema);
+        } catch {}
+        const warnEl = document.getElementById('schemaWarn');
+        if (warnEl) {
+          warnEl.textContent = `schema: ${serverSchema} (synced)`;
+          warnEl.className = 'small ok';
+          warnEl.style.display = 'inline';
+        }
       }
+      console.log(`schema: ${serverSchema} (synced)`);
     }
   } catch {
     const latEl = document.getElementById('llmLatency');

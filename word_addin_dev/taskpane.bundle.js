@@ -441,11 +441,13 @@ Suggested fix: ${fix}`;
   function renderResults(res) {
     const clause = slot("resClauseType", "clause-type");
     if (clause) clause.textContent = res?.clause_type || "\u2014";
-    const findingsArr = parseFindings(res);
+    const all = parseFindings(res);
+    const thr = getRiskThreshold();
+    const filtered = filterByThreshold(all, thr);
     const findingsList = slot("findingsList", "findings");
     if (findingsList) {
       findingsList.innerHTML = "";
-      findingsArr.forEach((f) => {
+      filtered.forEach((f) => {
         const li = document.createElement("li");
         li.textContent = typeof f === "string" ? f : JSON.stringify(f);
         findingsList.appendChild(li);
@@ -461,8 +463,14 @@ Suggested fix: ${fix}`;
         recoList.appendChild(li);
       });
     }
+    const coverage = res?.analysis?.coverage || res?.coverage || {};
+    const total = typeof coverage.rules_fired === "number" ? coverage.rules_fired : all.length;
+    const hidden = Math.max(total - filtered.length, 0);
     const count = slot("resFindingsCount", "findings-count");
-    if (count) count.textContent = String(findingsArr.length);
+    if (count) count.textContent = String(total);
+    const visHidden = slot("resFindingsVH", "findings-visible-hidden");
+    if (visHidden) visHidden.textContent = `${filtered.length} / ${hidden}`;
+    if (hidden > 0) notifyWarn(`${hidden} findings hidden by filter`);
     const pre = slot("rawJson", "raw-json");
     if (pre) pre.textContent = JSON.stringify(res ?? {}, null, 2);
   }
@@ -590,7 +598,10 @@ Suggested fix: ${fix}`;
         return;
       }
       window.__lastAnalyzed = base2;
-      const { http: resp, json, headers } = await postJson("/api/analyze", { text: base2 });
+      const resObj = globalThis.apiAnalyze ? await globalThis.apiAnalyze(base2) : await postJson("/api/analyze", { text: base2 });
+      const resp = resObj.resp || resObj.http || {};
+      const json = resObj.json || {};
+      const headers = resObj.headers || resp.headers || new Map();
       lastCid = headers.get("x-cid") || "";
       try {
         applyMetaToBadges(metaFromResponse({ headers, json, status: resp.status }));

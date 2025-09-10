@@ -20,9 +20,12 @@ const Q = {
 let lastCid: string = "";
 
 function ensureHeaders(): boolean {
+  // Always initialize headers but never block user actions.
+  // Previous versions displayed a warning and disabled buttons
+  // when headers were missing. Now we optimistically proceed.
   getApiKeyFromStore();
   getSchemaFromStore();
-  return true;
+  return true; // allow all actions regardless of header state
 }
 
 function slot(id: string, role: string): HTMLElement | null {

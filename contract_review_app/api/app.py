@@ -203,7 +203,8 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+from fastapi.exceptions import RequestValidationError
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers
@@ -2470,7 +2471,10 @@ async def gpt_draft(request: Request):
             headers,
         )
 
-    inp = GptDraftIn.model_validate(raw)
+    try:
+        inp = GptDraftIn.model_validate(raw)
+    except ValidationError as exc:
+        raise RequestValidationError(exc.errors()) from exc
     if not TRACE.get(inp.cid):
         problem = ProblemDetail(title="cid not found", status=404, detail="cid not found")
         return JSONResponse(problem.model_dump(), status_code=404)

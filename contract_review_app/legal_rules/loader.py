@@ -13,6 +13,12 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from ..corpus.normalizer import normalize_text
 
+
+def _normalize_multiline(text: str) -> str:
+    """Normalize ``text`` while preserving line breaks."""
+    return "\n".join(normalize_text(line) for line in (text or "").splitlines())
+
+
 log = logging.getLogger(__name__)
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -111,26 +117,18 @@ def load_rule_packs() -> None:
                         pats = list(raw.get("patterns", []))
                     else:
                         for cond in trig_any:
-                            if isinstance(cond, dict):
-                                pat = cond.get("regex")
-                            else:
-                                pat = cond
+                            pat = cond.get("regex") if isinstance(cond, dict) else cond
                             if pat:
                                 pats.append(pat)
                         for cond in trig_all:
-                            if isinstance(cond, dict):
-                                pat = cond.get("regex")
-                            else:
-                                pat = cond
+                            pat = cond.get("regex") if isinstance(cond, dict) else cond
                             if pat:
                                 pats.append(pat)
                         for cond in trig_regex:
-                            if isinstance(cond, dict):
-                                pat = cond.get("regex")
-                            else:
-                                pat = cond
+                            pat = cond.get("regex") if isinstance(cond, dict) else cond
                             if pat:
                                 pats.append(pat)
+
                     finding_section = raw.get("finding")
                     if not finding_section:
                         checks = raw.get("checks") or []
@@ -139,22 +137,17 @@ def load_rule_packs() -> None:
                                 if isinstance(chk, dict) and chk.get("finding"):
                                     finding_section = chk.get("finding")
                                     break
+
                     compiled_patterns = _compile(pats)
 
                     trig_map: Dict[str, List[re.Pattern[str]]] = {}
                     if trig_any:
                         trig_map["any"] = _compile(
-                            [
-                                c.get("regex") if isinstance(c, dict) else c
-                                for c in trig_any
-                            ]
+                            [c.get("regex") if isinstance(c, dict) else c for c in trig_any]
                         )
                     if trig_all:
                         trig_map["all"] = _compile(
-                            [
-                                c.get("regex") if isinstance(c, dict) else c
-                                for c in trig_all
-                            ]
+                            [c.get("regex") if isinstance(c, dict) else c for c in trig_all]
                         )
                     if trig_regex or raw.get("patterns"):
                         trig_map["regex"] = _compile(
@@ -215,8 +208,7 @@ def load_rule_packs() -> None:
                                 "doc_types": doc_types,
                                 "severity": spec["severity"],
                                 "triggers": {
-                                    k: [p.pattern for p in v]
-                                    for k, v in trig_map.items()
+                                    k: [p.pattern for p in v] for k, v in trig_map.items()
                                 },
                                 "requires_clause": requires_clause,
                                 "advice": spec["advice"],
@@ -225,9 +217,8 @@ def load_rule_packs() -> None:
                             }
                         )
                     except ValidationError:
-                        # For backward compatibility we do not abort loading on
-                        # validation errors.  The audit tool and CI checks use
-                        # the same model to report issues separately.
+                        # Backward-compat: не прерываем загрузку;
+                        # аудит и CI-проверки используют ту же схему отдельно.
                         pass
 
                     _RULES.append(spec)
@@ -259,16 +250,24 @@ def filter_rules(
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """Return matched rules and coverage info for all rules.
 
-    The first list contains dictionaries with the original rule under the
-    ``"rule"`` key and a list of matched trigger strings under ``"matches"``.
-    The second list contains coverage information for *all* rules with
-    bitwise gate flags, matched evidence and spans.
+    Returns:
+        (filtered, coverage):
+          filtered: [{ "rule": <rule>, "matches": [..] }]
+          coverage: [{
+              "doc_type": str,
+              "pack_id": str,
+              "rule_id": str,
+              "severity": str,
+              "evidence": [..],
+              "spans": [{"start": int, "end": int}, ...],
+              "flags": int (bitwise)
+          }]
     """
-
     flags_norm = 0
     try:
-        norm = normalize_text(text or "")
-    except Exception:
+        # сохраняем переносы строк для якорей ^...$ при MULTILINE
+        norm = _normalize_multiline(text or "")
+    except Exception:  # крайне редкий случай проблем нормализации
         flags_norm = TEXT_NORMALIZATION_ISSUE
         norm = text or ""
 
@@ -296,7 +295,7 @@ def filter_rules(
 
         any_pats = trig.get("any")
         if any_pats:
-            any_matches = []
+            any_matches: List[str] = []
             for p in any_pats:
                 for m in p.finditer(norm):
                     any_matches.append(m.group(0))
@@ -325,7 +324,7 @@ def filter_rules(
         if ok:
             regex_pats = trig.get("regex")
             if regex_pats:
-                regex_matches = []
+                regex_matches: List[str] = []
                 for p in regex_pats:
                     for m in p.finditer(norm):
                         regex_matches.append(m.group(0))

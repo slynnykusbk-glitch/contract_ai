@@ -13,20 +13,20 @@ rule:
       when:
         regex: "(?i)(title|ownership).*agreement documentation.*(company)"
       finding:
-        message: "Титул на Agreement Documentation закреплён за Company."
+        message: "Title to the Agreement Documentation is vested in the Company."
         severity_level: low
-        risk: "Риск отсутствует: титул у Company."
+        risk: "No risk: title is with the Company."
         suggestion:
           text: "—"
     - id: title_retained_contractor
       when:
         regex: '(?i)title.*(remain|retained).*contractor|assigned\s+later'
       finding:
-        message: "Титул на Agreement Documentation сохраняется у Contractor или передаётся позднее."
+        message: "Title to the Agreement Documentation remains with the Contractor or is assigned later."
         severity_level: high
-        risk: "Company может не получить права на документацию."
+        risk: "The Company may not obtain rights to the documentation."
         suggestion:
-          text: "Закрепите немедленное переход права на документацию к Company."
+          text: "Provide for an immediate transfer of rights to the documentation to the Company."
   outcome:
     status: pass
     risk_level: low
@@ -59,7 +59,7 @@ rule:
           - regex: '(?i)\bmodify\b'
           - regex: '(?i)modifications?\s+shall\s+vest\s+in\s+company'
       finding:
-        message: "Широкая лицензия FG IPR в пользу Company присутствует."
+        message: "Broad FG IPR licence in favour of the Company is present."
         severity_level: low
         risk: "—"
         suggestion:
@@ -76,17 +76,17 @@ rule:
           - not_regex: '(?i)\bmodify\b'
           - not_regex: '(?i)modifications?\s+shall\s+vest\s+in\s+company'
       finding:
-        message: "Лицензия FG IPR не покрывает все ключевые права."
+        message: "The FG IPR licence does not cover all key rights."
         severity_level: high
-        risk: "Company может не получить полные права на FG IPR."
+        risk: "The Company may not receive full rights to the FG IPR."
         suggestion:
-          text: "Добавьте worldwide, royalty-free, perpetual, irrevocable, transferable, sublicensable, право modify и vesting of modifications."
+          text: "Add worldwide, royalty-free, perpetual, irrevocable, transferable, sublicensable, the right to modify, and vesting of modifications."
   outcome:
     status: fail
     risk_level: high
     severity: high
-    problem: "FG licence scope неполная."
-    recommendation: "Расширить лицензию FG IPR."
+    problem: "FG licence scope is incomplete."
+    recommendation: "Expand the FG IPR licence."
   metadata:
     tags: ["ipr","foreground","licence","scope"]
 ---
@@ -107,17 +107,17 @@ rule:
           - regex: "(?i)perpetual|irrevocable"
           - regex: '(?i)only\s+for\s+the\s+duration\s+of\s+the\s+(agreement|call-?off)'
       finding:
-        message: "Конфликт срока BG-лицензии: perpetual/irrevocable vs only for the duration."
+        message: "BG licence term conflict: perpetual/irrevocable vs only for the duration."
         severity_level: high
-        risk: "Внутренняя противоречивость условий лицензии."
+        risk: "Internal inconsistency in the licence terms."
         suggestion:
-          text: "Выбрать одну модель срока и убрать конфликт."
+          text: "Choose a single term model and remove the conflict."
   outcome:
     status: fail
     risk_level: high
     severity: high
     problem: "BG licence term conflict."
-    recommendation: "Согласовать единую редакцию срока BG-лицензии."
+    recommendation: "Agree on a single formulation for the BG licence term."
   metadata:
     tags: ["ipr","background","licence","conflict","term"]
 ---
@@ -136,17 +136,17 @@ rule:
       when:
         not_regex: '(?i)irrevocably\s+and\s+unconditionally\s+waive(s)?\s+all\s+moral\s+rights'
       finding:
-        message: "Отсутствует безусловный отказ от моральных прав."
+        message: "No unconditional waiver of moral rights."
         severity_level: high
-        risk: "Автор может препятствовать использованию произведения."
+        risk: "An author may obstruct use of the work."
         suggestion:
-          text: "Вставьте безусловный и безотзывный отказ от всех моральных прав."
+          text: "Insert an unconditional and irrevocable waiver of all moral rights."
   outcome:
     status: fail
     risk_level: high
     severity: high
     problem: "No moral rights waiver."
-    recommendation: "Добавить waiver от всех авторов/исполнителей."
+    recommendation: "Add a waiver from all authors/performers."
   metadata:
     tags: ["ipr","moral rights","waiver"]
 ---
@@ -173,17 +173,17 @@ rule:
           - not_regex: '(?i)no\s+adverse\s+impact'
           - not_regex: '(?i)subject\s+to\s+(this|the)\s+agreement'
       finding:
-        message: "Условия IPR indemnity/remedies неполные."
+        message: "IPR indemnity/remedies terms are incomplete."
         severity_level: high
-        risk: "Company может остаться без эквивалентного решения и понести расходы."
+        risk: "The Company may be left without an equivalent remedy and incur costs."
         suggestion:
-          text: "Добавьте: procure licence, replace или modify с equivalent performance, без additional cost, без adverse impact и subject to this Agreement."
+          text: "Add: procure a licence, replace or modify with equivalent performance, at no additional cost, without adverse impact, and subject to this Agreement."
   outcome:
     status: fail
     risk_level: high
     severity: high
     problem: "IPR indemnity lacks full remedies."
-    recommendation: "Расширить перечень remedial условий."
+    recommendation: "Expand the list of remedial terms."
   metadata:
     tags: ["ipr","indemnity","remedies"]
 ---
@@ -204,17 +204,17 @@ rule:
           - regex: '(?i)may\s+use.*company(?:''s)?\s+(name|logo|brand|trademark)'
           - not_regex: '(?i)prior\s+written\s+consent'
       finding:
-        message: "Разрешение на использование бренда Company дано по умолчанию."
+        message: "Permission to use the Company's brand is granted by default."
         severity_level: high
-        risk: "Нежелательное использование названия/логотипов Company."
+        risk: "Unwanted use of the Company's name or logos."
         suggestion:
-          text: "Запретите использование бренда без предварительного письменного согласия Company."
+          text: "Prohibit brand use without the Company's prior written consent."
   outcome:
     status: fail
     risk_level: high
     severity: high
     problem: "Brand use allowed by default."
-    recommendation: "Добавить запрет на использование без письменного согласия."
+    recommendation: "Add a prohibition on use without written consent."
   metadata:
     tags: ["ipr","brand","consent"]
 ---
@@ -238,17 +238,17 @@ rule:
           - not_regex: "(?i)patches|updates"
           - not_regex: "(?i)manuals"
       finding:
-        message: "Определение Supplied Software неполное."
+        message: "Definition of Supplied Software is incomplete."
         severity_level: medium
-        risk: "Часть компонентов может быть исключена."
+        risk: "Some components may be excluded."
         suggestion:
-          text: "Уточните, что Supplied Software включает firmware, activation keys, test scripts, patches/updates и manuals."
+          text: "Clarify that Supplied Software includes firmware, activation keys, test scripts, patches/updates, and manuals."
   outcome:
     status: warn
     risk_level: medium
     severity: medium
     problem: "Definition of Supplied Software incomplete."
-    recommendation: "Добавить недостающие элементы."
+    recommendation: "Add the missing elements."
   metadata:
     tags: ["ipr","software","definition"]
 ---
@@ -267,17 +267,17 @@ rule:
       when:
         not_regex: '(?i)further\s+assurances|power\s+of\s+attorney'
       finding:
-        message: "Отсутствует обязанность подписывать документы/PoA для оформления прав."
+        message: "No obligation to sign documents/PoA to perfect rights."
         severity_level: medium
-        risk: "Компания может столкнуться с препятствиями при оформлении прав."
+        risk: "The Company may encounter obstacles when perfecting rights."
         suggestion:
-          text: "Добавьте обязанность подписывать документы и безотзывный PoA на Company."
+          text: "Add an obligation to sign documents and an irrevocable PoA in favour of the Company."
   outcome:
     status: warn
     risk_level: medium
     severity: medium
     problem: "No further assurances/PoA."
-    recommendation: "Вставить clause о further assurances и irrevocable PoA."
+    recommendation: "Insert a clause on further assurances and an irrevocable PoA."
   metadata:
     tags: ["ipr","assurances","poa"]
 ---
@@ -296,17 +296,17 @@ rule:
       when:
         not_regex: '(?i)open\s*source|OSS|software\s+bill\s+of\s+materials|SBOM|copyleft'
       finding:
-        message: "Отсутствуют OSS-политика/SBOM/запрет copyleft."
+        message: "No OSS policy/SBOM/copyleft restriction."
         severity_level: medium
-        risk: "Возможны нарушения лицензий OSS и copyleft-заражение."
+        risk: "Possible OSS licence violations and copyleft contamination."
         suggestion:
-          text: "Добавьте политику использования OSS, требование SBOM и запрет copyleft-заражения."
+          text: "Add an OSS usage policy, an SBOM requirement, and a prohibition on copyleft contamination."
   outcome:
     status: warn
     risk_level: medium
     severity: medium
     problem: "No OSS guardrails."
-    recommendation: "Добавить требования по OSS и SBOM."
+    recommendation: "Add OSS and SBOM requirements."
   metadata:
     tags: ["ipr","oss","sbom"]
 ---
@@ -325,16 +325,16 @@ rule:
       when:
         not_regex: "(?i)escrow"
       finding:
-        message: "Отсутствует условие о депонировании исходного кода (escrow)."
+        message: "No provision for depositing source code (escrow)."
         severity_level: medium
-        risk: "Company рискует потерять доступ к критичному ПО."
+        risk: "The Company risks losing access to critical software."
         suggestion:
-          text: "Предусмотрите escrow исходного кода с событиями release: банкротство, отказ поддерживать, нарушение."
+          text: "Provide for source code escrow with release events such as bankruptcy, refusal to support, or breach."
   outcome:
     status: warn
     risk_level: medium
     severity: medium
     problem: "No source code escrow."
-    recommendation: "Добавить escrow с release events."
+    recommendation: "Add escrow with release events."
   metadata:
     tags: ["ipr","escrow","source code"]

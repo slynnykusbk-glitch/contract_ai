@@ -268,6 +268,18 @@ def load_rule_packs() -> None:
             except ValueError:  # pragma: no cover
                 rel = path
             _PACKS.append({"path": str(rel), "rule_count": rule_count})
+    # Remove deprecated and duplicate rules by id
+    uniq: List[Dict[str, Any]] = []
+    seen: Set[str] = set()
+    for r in _RULES:
+        rid = r.get("id")
+        if r.get("deprecated"):
+            continue
+        if rid in seen:
+            continue
+        seen.add(rid)
+        uniq.append(r)
+    _RULES[:] = uniq
 
 
 # load on import

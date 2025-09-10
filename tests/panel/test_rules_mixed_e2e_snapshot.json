@@ -1,0 +1,17 @@
+[
+  "P2.INVOICE_CONTENT_VAT",
+  "P9.EINVOICE_PLATFORM_VAT_CONTROL",
+  "confidentiality",
+  "confidentiality_basic",
+  "gl_england_wales",
+  "governing_law",
+  "governing_law_basic",
+  "ip_rights",
+  "ipr.further_assurances.poa",
+  "ipr.indemnity.remedies",
+  "liability_cap_basic",
+  "pricing_payment",
+  "termination_notice_basic",
+  "title.commingling.bulk_processing",
+  "title.waivers.third_party_liens"
+]

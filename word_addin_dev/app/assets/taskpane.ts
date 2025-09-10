@@ -1,6 +1,6 @@
 import { applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
 import { getApiKeyFromStore, getSchemaFromStore } from "./store";
-import { postJSON, getHealth, getStoredKey, getStoredSchema, setStoredSchema, ensureHeadersSet } from "../../../contract_review_app/frontend/common/http";
+import { postJSON, getStoredKey, getStoredSchema, setStoredSchema, ensureHeadersSet } from "../../../contract_review_app/frontend/common/http";
 const g: any = globalThis as any;
 g.parseFindings = g.parseFindings || parseFindings;
 g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
@@ -442,14 +442,23 @@ async function onGetAIDraft(ev?: Event) {
 
 async function doHealth() {
   try {
-    const json: any = await getHealth(getBackend());
+    const prev = getStoredSchema();
+    const resp = await fetch(`${getBackend()}/health`, { method: 'GET' });
+    const json: any = await resp.json().catch(() => ({}));
+    const schema = resp.headers.get('x-schema-version') || json?.schema || null;
+    if (schema) {
+      setStoredSchema(schema);
+      if (schema !== prev) {
+        console.log(`schema: ${schema} (synced)`);
+      }
+    }
     setConnBadge(true);
     try {
       applyMetaToBadges({
         cid: null,
         xcache: null,
         latencyMs: null,
-        schema: json?.schema || null,
+        schema: schema || null,
         provider: json?.provider || null,
         model: json?.model || null,
         llm_mode: null,
@@ -457,7 +466,7 @@ async function doHealth() {
         status: json?.status || null,
       });
     } catch {}
-    notifyOk(`Health: ${json?.status || 'ok'}${json?.schema ? ` (schema ${json.schema})` : ''}`);
+    notifyOk(`Health: ${json?.status || 'ok'}${schema ? ` (schema ${schema})` : ''}`);
   } catch (e) {
     setConnBadge(false);
     notifyWarn('Health failed');

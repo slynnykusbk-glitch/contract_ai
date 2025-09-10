@@ -5,22 +5,6 @@
     return Array.isArray(arr) ? arr.filter(Boolean) : [];
   }
   window.parseFindings = parseFindings;
-  function metaFromResponse(r) {
-    const h = r.headers;
-    const js = r.json || {};
-    const llm = js.llm || js;
-    return {
-      cid: h.get("x-cid"),
-      xcache: h.get("x-cache"),
-      latencyMs: h.get("x-latency-ms"),
-      schema: h.get("x-schema-version"),
-      provider: h.get("x-provider") || llm.provider || js.provider || null,
-      model: h.get("x-model") || llm.model || js.model || null,
-      llm_mode: h.get("x-llm-mode") || llm.mode || js.mode || null,
-      usage: h.get("x-usage-total"),
-      status: r.status != null ? String(r.status) : null
-    };
-  }
   function applyMetaToBadges(m) {
     const set = (id, v) => {
       const el = document.getElementById(id);
@@ -98,46 +82,6 @@
     return { http, json, headers: hdr };
   }
   window.postJson = postJson;
-  async function req(path, { method = "GET", body = null, key = path } = {}) {
-    const headers = { "content-type": "application/json" };
-    try {
-      const store = window.CAI?.Store?.get?.() || {};
-      const apiKey = store.apiKey || localStorage.getItem("api_key");
-      if (apiKey) headers["x-api-key"] = apiKey;
-      const schema = store.schemaVersion || localStorage.getItem("schema_version");
-      if (schema) headers["x-schema-version"] = schema;
-    } catch {
-    }
-    const r = await fetch(base() + path, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : void 0,
-      credentials: "include"
-    });
-    const json = await r.json().catch(() => ({}));
-    const meta = metaFromResponse({ headers: r.headers, json, status: r.status });
-    try {
-      applyMetaToBadges(meta);
-    } catch {
-    }
-    try {
-      const w = window;
-      if (!w.__last) w.__last = {};
-      w.__last[key] = { status: r.status, req: { path, method, body }, json };
-    } catch {
-    }
-    return { ok: r.ok, json, resp: r, meta };
-  }
-  async function apiHealth() {
-    return req("/health", { key: "health" });
-  }
-  async function apiGptDraft(cid, clause, mode = "friendly") {
-    return req("/api/gpt-draft", { method: "POST", body: { cid, clause, mode }, key: "gpt-draft" });
-  }
-  async function apiQaRecheck(text, rules = {}) {
-    const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : rules || {};
-    return req("/api/qa-recheck", { method: "POST", body: { text, rules: dict }, key: "qa-recheck" });
-  }
 
   // word_addin_dev/app/assets/store.ts
   var DEFAULT_API_KEY = "";
@@ -188,6 +132,44 @@
   root.CAI.Store.get = () => ({ apiKey: getApiKeyFromStore(), schemaVersion: getSchemaFromStore() });
   root.CAI.Store.DEFAULT_BASE = root.CAI.Store.DEFAULT_BASE || "https://localhost:9443";
 
+  // contract_review_app/frontend/common/http.ts
+  var LS = { API_KEY: "api_key", SCHEMA: "schema_version" };
+  function getStoredKey() {
+    return localStorage.getItem(LS.API_KEY) ?? "";
+  }
+  function getStoredSchema() {
+    return localStorage.getItem(LS.SCHEMA) ?? "";
+  }
+  function setStoredSchema(v) {
+    if (v) localStorage.setItem(LS.SCHEMA, v);
+  }
+  function ensureHeadersSet() {
+    try {
+      if (!localStorage.getItem(LS.API_KEY)) {
+        localStorage.setItem(LS.API_KEY, "local-test-key-123");
+      }
+      if (!localStorage.getItem(LS.SCHEMA)) {
+        localStorage.setItem(LS.SCHEMA, "1.4");
+      }
+    } catch {
+    }
+  }
+  async function postJSON(url, body, extra = {}) {
+    const headers = {
+      "Content-Type": "application/json",
+      "x-api-key": getStoredKey(),
+      "x-schema-version": getStoredSchema(),
+      ...extra
+    };
+    const r = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+    const respSchema = r.headers.get("x-schema-version");
+    if (respSchema) setStoredSchema(respSchema);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data = await r.json();
+    if (data?.schema) setStoredSchema(data.schema);
+    return data;
+  }
+
   // word_addin_dev/app/assets/notifier.ts
   function notifyOk(msg) {
     try {
@@ -222,7 +204,6 @@
   var g = globalThis;
   g.parseFindings = g.parseFindings || parseFindings;
   g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
-  g.metaFromResponse = g.metaFromResponse || metaFromResponse;
   g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
   g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
   g.getWholeDocText = g.getWholeDocText || getWholeDocText;
@@ -231,33 +212,33 @@
     original: 'textarea#originalClause, textarea[name="original"], textarea[data-role="original-clause"]'
   };
   var lastCid = "";
-  function ensureHeaders() {
+  function getBackend() {
     try {
-      if (!localStorage.getItem("api_key")) {
-        try {
-          new URL(window.location.href);
-          localStorage.setItem("api_key", "local-test-key-123");
-        } catch {}
-      }
-      if (!localStorage.getItem("schema_version")) {
-        try {
-          localStorage.setItem("schema_version", "1.4");
-        } catch {}
-      }
+      return (localStorage.getItem("backendUrl") || "https://localhost:9443").replace(/\/+$/, "");
+    } catch {
+      return "https://localhost:9443";
+    }
+  }
+  function ensureHeaders() {
+    ensureHeadersSet();
+    try {
       const store = globalThis.CAI?.Store?.get?.() || {};
       const apiKey = store.apiKey || getApiKeyFromStore();
       const schema = store.schemaVersion || getSchemaFromStore();
       if (apiKey) {
         try {
           localStorage.setItem("api_key", apiKey);
-        } catch {}
+        } catch {
+        }
       }
       if (schema) {
         try {
-          localStorage.setItem("schema_version", schema);
-        } catch {}
+          setStoredSchema(schema);
+        } catch {
+        }
       }
-    } catch {}
+    } catch {
+    }
     return true;
   }
   function slot(id, role) {
@@ -342,7 +323,7 @@ Suggested fix: ${fix}`;
       ...f,
       snippet: normalizeText(f.snippet || ""),
       start: typeof f.start === "number" ? f.start : 0,
-      end: typeof f.end === "number" ? f.end : (typeof f.start === "number" ? f.start + normalizeText(f.snippet || "").length : normalizeText(f.snippet || "").length)
+      end: typeof f.end === "number" ? f.end : typeof f.start === "number" ? f.start + normalizeText(f.snippet || "").length : normalizeText(f.snippet || "").length
     }));
     list.sort((a, b) => (b.end ?? 0) - (a.end ?? 0));
     let lastStart = Number.POSITIVE_INFINITY;
@@ -468,13 +449,11 @@ Suggested fix: ${fix}`;
   function renderResults(res) {
     const clause = slot("resClauseType", "clause-type");
     if (clause) clause.textContent = res?.clause_type || "\u2014";
-    const all = parseFindings(res);
-    const thr = getRiskThreshold();
-    const filtered = filterByThreshold(all, thr);
+    const findingsArr = parseFindings(res);
     const findingsList = slot("findingsList", "findings");
     if (findingsList) {
       findingsList.innerHTML = "";
-      filtered.forEach((f) => {
+      findingsArr.forEach((f) => {
         const li = document.createElement("li");
         li.textContent = typeof f === "string" ? f : JSON.stringify(f);
         findingsList.appendChild(li);
@@ -490,14 +469,8 @@ Suggested fix: ${fix}`;
         recoList.appendChild(li);
       });
     }
-    const coverage = res?.analysis?.coverage || res?.coverage || {};
-    const total = typeof coverage.rules_fired === "number" ? coverage.rules_fired : all.length;
-    const hidden = Math.max(total - filtered.length, 0);
     const count = slot("resFindingsCount", "findings-count");
-    if (count) count.textContent = String(total);
-    const visHidden = slot("resFindingsVH", "findings-visible-hidden");
-    if (visHidden) visHidden.textContent = `${filtered.length} / ${hidden}`;
-    if (hidden > 0) notifyWarn(`${hidden} findings hidden by filter`);
+    if (count) count.textContent = String(findingsArr.length);
     const pre = slot("rawJson", "raw-json");
     if (pre) pre.textContent = JSON.stringify(res ?? {}, null, 2);
   }
@@ -570,16 +543,8 @@ Suggested fix: ${fix}`;
         notifyWarn("Analyze first");
         return;
       }
-      const { ok, json, resp } = await apiGptDraft(lastCid, text, mode);
-      if (!ok) {
-        notifyWarn("Draft failed");
-        return;
-      }
-      try {
-        applyMetaToBadges(metaFromResponse(resp));
-      } catch {
-      }
-      const proposed = (json?.proposed_text ?? "").toString();
+      const json = await postJSON(`${getBackend()}/api/gpt-draft`, { cid: lastCid, clause: text, mode });
+      const proposed = (json?.proposed_text ?? json?.draft_text ?? "").toString();
       if (dst) {
         if (!dst.id) dst.id = "proposedText";
         if (!dst.name) dst.name = "proposed";
@@ -587,23 +552,45 @@ Suggested fix: ${fix}`;
         dst.value = proposed;
         dst.dispatchEvent(new Event("input", { bubbles: true }));
         notifyOk("Draft ready");
+        onDraftReady(proposed);
       } else {
         notifyWarn("Proposed textarea not found");
+        onDraftReady("");
       }
     } catch (e) {
       notifyWarn("Draft error");
       console.error(e);
+      onDraftReady("");
     }
   }
   async function doHealth() {
     try {
-      const { ok, json, resp } = await apiHealth();
+      const prev = getStoredSchema();
+      const resp = await fetch(`${getBackend()}/health`, { method: "GET" });
+      const json = await resp.json().catch(() => ({}));
+      const schema = resp.headers.get("x-schema-version") || json?.schema || null;
+      if (schema) {
+        setStoredSchema(schema);
+        if (schema !== prev) {
+          console.log(`schema: ${schema} (synced)`);
+        }
+      }
+      setConnBadge(true);
       try {
-        applyMetaToBadges(metaFromResponse(resp));
+        applyMetaToBadges({
+          cid: null,
+          xcache: null,
+          latencyMs: null,
+          schema: schema || null,
+          provider: json?.provider || null,
+          model: json?.model || null,
+          llm_mode: null,
+          usage: null,
+          status: json?.status || null
+        });
       } catch {
       }
-      setConnBadge(ok);
-      notifyOk(`Health: ${json.status} (schema ${json.schema})`);
+      notifyOk(`Health: ${json?.status || "ok"}${schema ? ` (schema ${schema})` : ""}`);
     } catch (e) {
       setConnBadge(false);
       notifyWarn("Health failed");
@@ -612,6 +599,7 @@ Suggested fix: ${fix}`;
   }
   async function doAnalyze() {
     try {
+      onDraftReady("");
       const cached = window.__lastAnalyzed;
       const base2 = cached && cached.trim() ? cached : normalizeText(await globalThis.getWholeDocText());
       if (!base2) {
@@ -619,21 +607,23 @@ Suggested fix: ${fix}`;
         return;
       }
       ensureHeaders();
-      const schema = getSchemaFromStore();
-      if (!schema) {
-        notifyErr("Schema version is missing");
-        return;
-      }
       window.__lastAnalyzed = base2;
-      const resObj = globalThis.apiAnalyze ? await globalThis.apiAnalyze(base2) : await postJson("/api/analyze", { text: base2 });
-      const resp = resObj.resp || resObj.http || {};
-      const json = resObj.json || {};
-      const headers = resObj.headers || resp.headers || new Map();
-      lastCid = headers.get("x-cid") || "";
-      try {
-        applyMetaToBadges(metaFromResponse({ headers, json, status: resp.status }));
-      } catch {
-      }
+      const headers = {
+        "Content-Type": "application/json",
+        "x-api-key": getStoredKey(),
+        "x-schema-version": getStoredSchema()
+      };
+      const resp = await fetch(`${getBackend()}/api/analyze`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ text: base2 })
+      });
+      const respSchema = resp.headers.get("x-schema-version");
+      if (respSchema) setStoredSchema(respSchema);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+      if (json?.schema) setStoredSchema(json.schema);
+      lastCid = resp.headers.get("x-cid") || "";
       renderResults(json);
       try {
         const all = globalThis.parseFindings(json);
@@ -654,22 +644,14 @@ Suggested fix: ${fix}`;
   }
   async function doQARecheck() {
     ensureHeaders();
-    const schema = getSchemaFromStore();
-    if (!schema) {
-      notifyErr("Schema version is missing");
-      return;
-    }
     const text = await getWholeDocText();
-    const { ok, json, resp } = await apiQaRecheck(text, []);
-    try {
-      applyMetaToBadges(metaFromResponse(resp));
-    } catch {
-    }
+    const json = await postJSON(`${getBackend()}/api/qa-recheck`, { text, rules: {} });
     (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
+    const ok = !json?.error;
     if (ok) {
       notifyOk("QA recheck OK");
     } else {
-      const msg = json?.error || resp.statusText || `status ${resp.status}`;
+      const msg = json?.error || json?.message || "unknown";
       notifyErr(`QA recheck failed: ${msg}`);
     }
   }
@@ -738,6 +720,7 @@ Suggested fix: ${fix}`;
       if (dst) {
         dst.value = "";
         dst.dispatchEvent(new Event("input", { bubbles: true }));
+        onDraftReady("");
       }
       await Word.run(async (ctx) => {
         const range = ctx.document.getSelection();
@@ -776,37 +759,49 @@ Suggested fix: ${fix}`;
       const findings = globalThis.parseFindings(data);
       globalThis.annotateFindingsIntoWord(findings);
     });
+    onDraftReady("");
     wireResultsToggle();
     console.log("Panel UI wired");
     ensureHeaders();
   }
   g.wireUI = g.wireUI || wireUI;
+  function onDraftReady(text) {
+    const btn = document.getElementById("btnInsertIntoWord");
+    const show = !!text.trim();
+    btn.style.display = show ? "inline-block" : "none";
+    btn.disabled = !show;
+  }
   async function onInsertIntoWord() {
+    const dst = $(Q.proposed);
+    const txt = (dst?.value || "").trim();
+    if (!txt) {
+      notifyWarn("No draft to insert");
+      return;
+    }
     try {
-      const dst = $(Q.proposed);
-      const txt = (dst?.value || "").trim();
-      if (!txt) {
-        notifyWarn("No draft to insert");
-        return;
-      }
-      if (window.Office && window.Word) {
-        await Word.run(async (ctx) => {
-          const range = ctx.document.getSelection();
-          range.insertText(txt, "Replace");
-          await ctx.sync();
-        });
-        notifyOk("Inserted into Word");
-      } else {
-        await navigator.clipboard.writeText(txt);
-        notifyWarn("Not in Office environment; result copied to clipboard");
-      }
+      await insertIntoWord(txt);
+      notifyOk("Inserted into Word");
     } catch (e) {
-      try {
-        await navigator.clipboard.writeText($(Q.proposed)?.value || "");
-      } catch {
-      }
-      notifyWarn("Not in Office environment; result copied to clipboard");
       console.error(e);
+      await navigator.clipboard?.writeText(txt).catch(() => {
+      });
+      notifyWarn("Insert failed; draft copied to clipboard");
+    }
+  }
+  async function insertIntoWord(text) {
+    const w = window;
+    if (w?.Office?.context?.document?.setSelectedDataAsync) {
+      await new Promise(
+        (resolve, reject) => w.Office.context.document.setSelectedDataAsync(
+          text,
+          { coercionType: w.Office.CoercionType.Text },
+          (res) => res?.status === w.Office.AsyncResultStatus.Succeeded ? resolve() : reject(res?.error)
+        )
+      );
+    } else {
+      await navigator.clipboard?.writeText(text).catch(() => {
+      });
+      alert("Draft copied to clipboard (Office not ready). Paste it into the document.");
     }
   }
   async function bootstrap() {

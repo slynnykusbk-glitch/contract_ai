@@ -40,6 +40,9 @@ jobs:
               print("ERROR: Python-based rules are not allowed:\n" + "\n".join(bad))
               sys.exit(1)
           PY
+      - name: Validate rule ids (no conflicting duplicates)
+        run: |
+          python tools/validate_rules.py
       - name: Run tests
         run: pytest -q
   smoke-start:

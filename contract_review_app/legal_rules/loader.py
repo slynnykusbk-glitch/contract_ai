@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
@@ -18,21 +20,42 @@ from ..intake.normalization import normalize_for_intake
 log = logging.getLogger(__name__)
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
-POLICY_DIR = Path(__file__).resolve().parent / "policy_packs"
-CORE_RULES_DIR = ROOT_DIR / "core" / "rules"
+
+# ---------------------------------------------------------------------------
+# Rule roots and extension filter
+# ---------------------------------------------------------------------------
+
+RULE_ROOTS = [
+    "contract_review_app/legal_rules/policy_packs",
+    "core/rules",
+]
+ALLOWED_RULE_EXTS = {".yml", ".yaml"}
 
 _ENV_DIRS = os.getenv("RULE_PACKS_DIRS")
 if _ENV_DIRS:
-    RULE_PACKS_DIRS = [
-        Path(p.strip()) for p in _ENV_DIRS.split(os.pathsep) if p.strip()
-    ]
-else:
-    RULE_PACKS_DIRS = [POLICY_DIR, CORE_RULES_DIR]
+    RULE_ROOTS = [p.strip() for p in _ENV_DIRS.split(os.pathsep) if p.strip()]
+
+
+def _resolve_root(p: str | Path) -> Path:
+    path = Path(p)
+    if not path.is_absolute():
+        path = ROOT_DIR / path
+    return path
+
 
 _RULES: List[Dict[str, Any]] = []
 _PACKS: List[Dict[str, Any]] = []
 
-ALLOWED_RULE_EXTS = {".yml", ".yaml"}
+
+@dataclass
+class RuleMeta:
+    path: str
+    sha256: str
+    title: Optional[str] = None
+
+
+PICKED: Dict[str, RuleMeta] = {}
+SHADOWED: Dict[str, List[RuleMeta]] = {}
 
 # ---------------------------------------------------------------------------
 # Coverage flags (bitmask)
@@ -74,21 +97,20 @@ class RuleSchema(BaseModel):
         return val
 
 
-def load_rule_packs() -> None:
-    """Load YAML rule packs from configured directories."""
+def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
+    """Load YAML rule packs from configured directories with deduplication."""
     _RULES.clear()
     _PACKS.clear()
-    seen_ids: Set[str] = set()
+    PICKED.clear()
+    SHADOWED.clear()
     warned_py = False
-    for base in RULE_PACKS_DIRS:
+    base_dirs = [_resolve_root(p) for p in (roots or RULE_ROOTS)]
+
+    for base in base_dirs:
         if not base.exists():
             continue
 
-        paths = (
-            sorted(p for p in base.glob("*") if p.is_file())
-            if base.samefile(POLICY_DIR)
-            else sorted(p for p in base.rglob("*") if p.is_file())
-        )
+        paths = sorted(p for p in base.rglob("*") if p.is_file())
         for path in paths:
             if "_legacy_disabled" in path.parts:
                 continue
@@ -104,6 +126,8 @@ def load_rule_packs() -> None:
                 log.error("Failed to load %s: %s", path, exc)
                 continue
 
+            file_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+
             rule_count = 0
             for data in docs:
                 if not data:
@@ -113,12 +137,19 @@ def load_rule_packs() -> None:
                     rules_iter: List[Dict[str, Any]] = [data["rule"]]
                 elif isinstance(data, dict) and data.get("rules"):
                     rules_iter = list(data.get("rules") or [])
+                elif isinstance(data, dict):
+                    rules_iter = [data]
                 elif isinstance(data, list):
                     rules_iter = list(data)
                 else:
                     rules_iter = []
 
                 for raw in rules_iter:
+                    rid = raw.get("rule_id") or raw.get("id")
+                    if not rid:
+                        log.warning("Rule without rule_id: %s", path)
+                        continue
+
                     # Собираем «плоский» список pat'ов из triggers.{any,all,regex}/patterns
                     pats: List[str] = []
                     trig_any = raw.get("triggers", {}).get("any", []) or []
@@ -181,7 +212,7 @@ def load_rule_packs() -> None:
                         if "any" in dt_lc and len(dt_lc) > 1:
                             log.warning(
                                 "Rule %s mixes 'Any' with specific doc_types %s",
-                                raw.get("id"),
+                                rid,
                                 doc_types,
                             )
                     jurisdiction = list(
@@ -201,8 +232,12 @@ def load_rule_packs() -> None:
                     except ValueError:  # pragma: no cover
                         pack_rel = str(path)
 
+                    title_val = raw.get("Title") or raw.get("title")
                     spec = {
-                        "id": raw.get("id"),
+                        "id": rid,
+                        "rule_id": rid,
+                        "Title": raw.get("Title"),
+                        "title": title_val,
                         "clause_type": raw.get("clause_type")
                         or (raw.get("scope", {}) or {}).get("clauses", [None])[0],
                         "severity": str(
@@ -256,10 +291,11 @@ def load_rule_packs() -> None:
                         pass
 
                     rid = spec.get("id")
-                    if rid in seen_ids:
-                        log.warning("Duplicate rule id %s skipped from %s", rid, path)
+                    meta = RuleMeta(path=str(path), sha256=file_sha, title=title_val)
+                    if rid in PICKED:
+                        SHADOWED.setdefault(rid, []).append(meta)
                         continue
-                    seen_ids.add(rid)
+                    PICKED[rid] = meta
                     _RULES.append(spec)
                     rule_count += 1
 
@@ -268,11 +304,19 @@ def load_rule_packs() -> None:
             except ValueError:  # pragma: no cover
                 rel = path
             _PACKS.append({"path": str(rel), "rule_count": rule_count})
+    if SHADOWED:
+        ids = list(SHADOWED.keys())
+        log.warning(
+            "Shadowed %d rule ids: %s",
+            len(ids),
+            ", ".join(ids[:20]),
+        )
+
     # Remove deprecated and duplicate rules by id
     uniq: List[Dict[str, Any]] = []
     seen: Set[str] = set()
     for r in _RULES:
-        rid = r.get("id")
+        rid = r.get("id") or r.get("rule_id")
         if r.get("deprecated"):
             continue
         if rid in seen:
@@ -304,18 +348,9 @@ def load_rules(base_dir: Path | None = None) -> List[Dict[str, Any]]:
     If *base_dir* is provided, rules are loaded only from that directory for
     the duration of the call.
     """
-    if base_dir is not None:
-        old_dirs = list(RULE_PACKS_DIRS)
-        try:
-            RULE_PACKS_DIRS[:] = [Path(base_dir)]
-            load_rule_packs()
-            return list(_RULES)
-        finally:
-            RULE_PACKS_DIRS[:] = old_dirs
-            load_rule_packs()
-    else:
-        load_rule_packs()
-        return list(_RULES)
+    roots = [base_dir] if base_dir is not None else RULE_ROOTS
+    load_rule_packs(roots)
+    return list(_RULES)
 
 
 def filter_rules(

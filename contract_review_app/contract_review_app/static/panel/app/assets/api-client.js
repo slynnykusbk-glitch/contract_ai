@@ -1,4 +1,4 @@
-// app/assets/api-client.ts
+// word_addin_dev/app/assets/api-client.ts
 function parseFindings(resp) {
   const arr = resp?.analysis?.findings ?? resp?.findings ?? resp?.issues ?? [];
   return Array.isArray(arr) ? arr.filter(Boolean) : [];
@@ -46,20 +46,41 @@ function base() {
 async function postJson(path, body, opts = {}) {
   const url = base() + path;
   const headers = { "content-type": "application/json" };
-  let apiKey = opts.apiKey;
-  if (!apiKey) {
+  const apiKey = opts.apiKey ?? (() => {
     try {
-      apiKey = document.getElementById("apiKeyInput")?.value.trim() || localStorage.getItem("api_key") || "";
+      const storeKey = window.CAI?.Store?.get?.()?.apiKey;
+      if (storeKey) return storeKey;
     } catch {
-      apiKey = "";
     }
-  }
+    try {
+      return localStorage.getItem("api_key") || "";
+    } catch {
+      return "";
+    }
+  })();
   if (apiKey) {
     headers["x-api-key"] = apiKey;
-    try { localStorage.setItem("api_key", apiKey); } catch {}
-    try { window.CAI?.Store?.setApiKey?.(apiKey); } catch {}
+    try {
+      localStorage.setItem("api_key", apiKey);
+    } catch {
+    }
+    try {
+      window.CAI?.Store?.setApiKey?.(apiKey);
+    } catch {
+    }
   }
-  const schemaVersion = opts.schemaVersion || (window.CAI?.Store?.get?.().schemaVersion || "");
+  const schemaVersion = opts.schemaVersion ?? (() => {
+    try {
+      const storeSchema = window.CAI?.Store?.get?.()?.schemaVersion;
+      if (storeSchema) return storeSchema;
+    } catch {
+    }
+    try {
+      return localStorage.getItem("schemaVersion") || "";
+    } catch {
+      return "";
+    }
+  })();
   if (schemaVersion) headers["x-schema-version"] = schemaVersion;
   const http = await fetch(url, {
     method: "POST",
@@ -68,19 +89,24 @@ async function postJson(path, body, opts = {}) {
     credentials: "include"
   });
   const json = await http.json().catch(() => ({}));
+  const hdr = http.headers;
   try {
-    const h = http.headers;
-    window.CAI?.Store?.setMeta?.({ cid: h.get("x-cid") || void 0, schema: h.get("x-schema-version") || void 0 });
-  } catch {}
-  return { http, json, headers: http.headers };
+    window.CAI?.Store?.setMeta?.({ cid: hdr.get("x-cid") || void 0, schema: hdr.get("x-schema-version") || void 0 });
+  } catch {
+  }
+  return { http, json, headers: hdr };
 }
 window.postJson = postJson;
 async function req(path, { method = "GET", body = null, key = path } = {}) {
   const headers = { "content-type": "application/json" };
   try {
-    const apiKey = localStorage.getItem("api_key");
+    const store = window.CAI?.Store?.get?.() || {};
+    const apiKey = store.apiKey || localStorage.getItem("api_key");
     if (apiKey) headers["x-api-key"] = apiKey;
-  } catch {}
+    const schema = store.schemaVersion || localStorage.getItem("schemaVersion");
+    if (schema) headers["x-schema-version"] = schema;
+  } catch {
+  }
   const r = await fetch(base() + path, {
     method,
     headers,
@@ -105,46 +131,35 @@ async function apiHealth() {
   return req("/health", { key: "health" });
 }
 async function apiAnalyze(text) {
-  return req("/api/analyze", { method: "POST", body: { text, mode: "live" }, key: "analyze" });
+  return req("/api/analyze", { method: "POST", body: { text }, key: "analyze" });
 }
-async function apiGptDraft(text, mode = "friendly", extra = {}) {
-  return req("/api/gpt-draft", { method: "POST", body: { text, mode, ...extra }, key: "gpt-draft" });
+async function apiGptDraft(cid, clause, mode = "friendly") {
+  return req("/api/gpt-draft", { method: "POST", body: { cid, clause, mode }, key: "gpt-draft" });
+}
+async function apiSummary(cid) {
+  return req("/api/summary", { method: "POST", body: { cid }, key: "summary" });
+}
+async function apiSummaryGet() {
+  return req("/api/summary", { method: "GET", key: "summary" });
 }
 async function apiQaRecheck(text, rules = {}) {
-  const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
+  const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : rules || {};
   return req("/api/qa-recheck", { method: "POST", body: { text, rules: dict }, key: "qa-recheck" });
-}
-async function apiSummary(text, mode = "live") {
-  return req("/api/summary", { method: "POST", body: { text, mode }, key: "summary" });
-}
-async function apiSuggestEdits(text, findings = []) {
-  const body = { text };
-  if (Array.isArray(findings) && findings.length) body.findings = findings;
-  return req("/api/suggest_edits", { method: "POST", body, key: "suggest_edits" });
 }
 async function postRedlines(before_text, after_text) {
   const fn = window.postJson || postJson;
   return fn("/api/panel/redlines", { before_text, after_text });
 }
-async function postCitationResolve({ findings, citations }) {
-  const hasF = Array.isArray(findings) && findings.length > 0;
-  const hasC = Array.isArray(citations) && citations.length > 0;
-  if (hasF === hasC) throw new Error('Provide exactly one of findings or citations');
-  const fn = window.postJson || postJson;
-  return fn('/api/citation/resolve', hasF ? { findings } : { citations });
-}
-window.postCitationResolve = postCitationResolve;
 export {
-  postJson,
   apiAnalyze,
   apiGptDraft,
   apiHealth,
   apiQaRecheck,
   apiSummary,
-  apiSuggestEdits,
-  postRedlines,
-  postCitationResolve,
+  apiSummaryGet,
   applyMetaToBadges,
   metaFromResponse,
-  parseFindings
+  parseFindings,
+  postJson,
+  postRedlines
 };

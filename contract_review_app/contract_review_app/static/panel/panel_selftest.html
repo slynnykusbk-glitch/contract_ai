@@ -1,0 +1,136 @@
+<!-- word_addin_dev/panel_selftest.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Contract AI — Panel Self-Test (Doctor)</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root{
+      --bg:#0f1318; --panel:#0b0f14; --muted:#9ca3af; --text:#e5e7eb; --border:#1f2937; --border2:#374151;
+      --mono: ui-monospace,SFMono-Regular,Consolas,Menlo,monospace;
+      --ui: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Helvetica,Arial,sans-serif;
+      --ok:#10b981; --err:#f87171; --ink:#d1d5db;
+    }
+    html,body{ height:100%; }
+    body { background:var(--bg); color:var(--text); font-family:var(--ui); margin:0; }
+    .wrap { max-width:1100px; margin:28px auto; padding:0 16px; }
+    h1 { font-size:22px; margin:0 0 12px; display:flex; align-items:center; gap:10px; }
+    .muted { color:var(--muted); font-weight:500; }
+    .badge { display:inline-block; padding:3px 8px; border-radius:999px; border:1px solid var(--border2); color:var(--muted); font-size:12px; }
+    .row { display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+    input[type=text]{ width:420px; background:#111827; color:var(--text); border:1px solid var(--border2); border-radius:6px; padding:8px 10px; }
+    button { background:#111827; color:var(--text); border:1px solid var(--border2); border-radius:6px; padding:8px 10px; cursor:pointer; }
+    button:hover { background:#0b1220; }
+    .card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px; margin-top:14px; }
+    .card h3 { margin:0 0 8px; font-size:14px; color:var(--muted);}
+    .pre { white-space:pre-wrap; word-break:break-word; font-family:var(--mono); font-size:12px;
+           background:#0a0d12; border:1px solid var(--border); border-radius:6px; padding:8px; color:var(--ink); min-height:48px;}
+    .mono{ font-family:var(--mono); }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { border-bottom:1px solid var(--border); padding:6px 8px; text-align:left; }
+    th { color:var(--muted); font-weight:600; }
+    tr:last-child td { border-bottom:none; }
+    .ok { color:var(--ok); }
+    .err{ color:var(--err); }
+    .pill{ display:inline-block; padding:2px 6px; border-radius:999px; border:1px solid var(--border2); font-size:12px; }
+    .btns { display:flex; flex-wrap:wrap; gap:8px; }
+    .small { font-size:12px; color:var(--muted); }
+    .snapshot-row { display:flex; gap:8px; font-size:13px; }
+    .snapshot-row > div:first-child { width:100px; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Contract AI — <span class="muted">Panel Self-Test</span> <span class="badge">Doctor</span></h1>
+
+  <div class="row">
+    <label for="backendInput">Backend URL:</label>
+    <input id="backendInput" type="text" value="https://localhost:9443" class="mono" />
+    <button id="saveBtn">Save</button>
+    <label for="apiKeyInput">API Key (x-api-key, optional):</label>
+    <input id="apiKeyInput" type="text" class="mono" style="width:140px" placeholder="optional" />
+    <label for="schemaInput">Schema (x-schema-version):</label>
+    <input id="schemaInput" type="text" class="mono" style="width:80px" placeholder="1.4" />
+    <button id="saveKeyBtn">Save Headers</button>
+    <button id="runAllBtn">Run All</button>
+    <button id="pingBtn">Ping LLM</button>
+    <span class="small">Saved in localStorage. Headers optional in DEV.</span>
+    <span id="schemaWarn" class="small err" style="display:none;"></span>
+  </div>
+
+  <div class="row">
+    <textarea id="testText" placeholder="Sample text" style="flex:1; min-height:60px;">Governing law: England and Wales.</textarea>
+  </div>
+
+  <div class="row" id="llmInfo">LLM: <span id="llmProv">—</span> / <span id="llmModel">—</span> / <span id="llmLatency">—</span> <span id="llmBadge" class="badge" style="display:none;background:#facc15;color:#000;">MOCK</span></div>
+
+    <div class="card">
+      <h3>Tests</h3>
+      <div class="btns" id="testsBtns" style="margin-bottom:8px;"></div>
+      <div class="small">CID used for requests: <span id="cidLbl" class="mono pill"></span></div>
+      <div class="small">Last response CID (from headers): <span id="lastCidLbl" class="mono pill"></span></div>
+      <div style="overflow:auto;">
+        <table id="statusTbl">
+          <thead>
+            <tr>
+              <th style="width:160px;">Test</th>
+              <th>HTTP</th>
+              <th>x-cid</th>
+              <th>x-cache</th>
+              <th>x-schema-version</th>
+              <th>latency</th>
+              <th>status</th>
+            </tr>
+          </thead>
+          <tbody id="statusBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Last Response JSON</h3>
+      <div id="resp" class="pre"></div>
+    </div>
+
+    <div class="card">
+      <h3>Document Snapshot</h3>
+      <div class="snapshot-row">
+        <div>Type:</div><div data-snap-type>—</div>
+      </div>
+      <div class="snapshot-row">
+        <div>Confidence:</div><div data-snap-type-confidence>—</div>
+      </div>
+      <div id="docSnap" class="pre"></div>
+    </div>
+
+    <div class="card">
+      <h3>Trace Payload</h3>
+      <div id="trace" class="pre"></div>
+    </div>
+
+    <p class="small muted">Tip: For local dev, ensure the backend sends headers: x-cid, x-cache, x-schema-version="1.4".</p>
+  </div>
+
+    <script>window.__DEV_DEFAULT_API_KEY__ = "{{DEFAULT_API_KEY}}";</script>
+  <script type="module">
+    import { bootstrapHeaders } from "./app/assets/bootstrap.js?v=DEV";
+    await bootstrapHeaders();
+    await import("./app/assets/store.js?v=DEV");
+    const existingKey = localStorage.getItem('api_key') || (window.CAI?.Store?.get?.().apiKey);
+    if (existingKey) {
+      document.querySelector('label[for="apiKeyInput"]').style.display = 'none';
+      document.getElementById('apiKeyInput').style.display = 'none';
+    }
+    await import("./app/assets/api-client.js?v=DEV");
+    await import("./app/selftest.js?v=DEV");
+  </script>
+  <script nomodule>
+    document.querySelector('#last_json')?.insertAdjacentHTML(
+      'afterbegin',
+      '<div style=\"color:#f66\">Your runtime is too old for ES modules. Please update Office/Edge.</div>'
+    );
+  </script>
+</body>
+</html>

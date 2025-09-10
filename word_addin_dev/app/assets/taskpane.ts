@@ -20,11 +20,21 @@ const Q = {
 let lastCid: string = "";
 
 function ensureHeaders(): boolean {
-  // Always initialize headers but never block user actions.
-  // Previous versions displayed a warning and disabled buttons
-  // when headers were missing. Now we optimistically proceed.
-  getApiKeyFromStore();
-  getSchemaFromStore();
+  // Try to populate required headers from either CAI.Store or
+  // localStorage but never block user actions if they are missing.
+  try {
+    const store = (globalThis as any).CAI?.Store?.get?.() || {};
+    const apiKey = store.apiKey || getApiKeyFromStore();
+    const schema = store.schemaVersion || getSchemaFromStore();
+    if (apiKey) {
+      try { localStorage.setItem("api_key", apiKey); } catch {}
+    }
+    if (schema) {
+      try { localStorage.setItem("schemaVersion", schema); } catch {}
+    }
+  } catch {
+    // swallow errors – missing storage should not stop the flow
+  }
   return true; // allow all actions regardless of header state
 }
 
@@ -402,9 +412,8 @@ async function doAnalyze() {
     const base = cached && cached.trim() ? cached : normalizeText(await (globalThis as any).getWholeDocText());
     if (!base) { notifyErr("В документе нет текста"); return; }
 
-    const apiKey = getApiKeyFromStore();
+    ensureHeaders();
     const schema = getSchemaFromStore();
-    if (!apiKey) { notifyErr("API key is missing"); return; }
     if (!schema) { notifyErr("Schema version is missing"); return; }
 
     (window as any).__lastAnalyzed = base;
@@ -436,9 +445,8 @@ async function doAnalyze() {
 }
 
 async function doQARecheck() {
-  const apiKey = getApiKeyFromStore();
+  ensureHeaders();
   const schema = getSchemaFromStore();
-  if (!apiKey) { notifyErr("API key is missing"); return; }
   if (!schema) { notifyErr("Schema version is missing"); return; }
 
   const text = await getWholeDocText();

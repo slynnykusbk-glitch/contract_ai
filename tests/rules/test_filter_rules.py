@@ -41,12 +41,19 @@ def test_filter_rules(monkeypatch):
         "This Confidentiality clause explains the term and termination clause. "
         "Payment is due. A NonCompete clause applies."
     )
-    res = loader.filter_rules(text, doc_type="MSA", clause_types=["Termination", "Payment"])
+    filtered, coverage = loader.filter_rules(
+        text, doc_type="MSA", clause_types=["Termination", "Payment"]
+    )
 
-    ids = {r["rule"]["id"] for r in res}
+    ids = {r["rule"]["id"] for r in filtered}
     assert ids == {"R2", "R3", "R4"}
 
-    matches = {r["rule"]["id"]: r["matches"] for r in res}
+    matches = {r["rule"]["id"]: r["matches"] for r in filtered}
     assert any(m.lower().startswith("term") for m in matches["R2"])
     assert any("noncompete" in m.lower() for m in matches["R3"])
     assert any("pay" in m.lower() for m in matches["R4"])
+
+    cov_map = {c["rule_id"]: c for c in coverage}
+    assert len(coverage) == 4
+    assert cov_map["R1"]["flags"] & loader.DOC_TYPE_MISMATCH
+    assert cov_map["R2"]["flags"] & loader.FIRED

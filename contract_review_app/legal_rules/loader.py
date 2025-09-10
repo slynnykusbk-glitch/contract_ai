@@ -6,7 +6,7 @@ import os
 import re
 import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -29,6 +29,17 @@ else:
 
 _RULES: List[Dict[str, Any]] = []
 _PACKS: List[Dict[str, Any]] = []
+
+
+# Bit flags representing gating results for rule coverage
+SCHEMA_MISMATCH = 1 << 0
+DOC_TYPE_MISMATCH = 1 << 1
+JURISDICTION_MISMATCH = 1 << 2
+NO_CLAUSE = 1 << 3
+REGEX_MISS = 1 << 4
+WHEN_FALSE = 1 << 5
+TEXT_NORMALIZATION_ISSUE = 1 << 6
+FIRED = 1 << 7
 
 
 def _compile(patterns: Iterable[str]) -> List[re.Pattern[str]]:
@@ -245,37 +256,54 @@ def loaded_packs() -> List[Dict[str, Any]]:
 
 def filter_rules(
     text: str, doc_type: str, clause_types: Iterable[str]
-) -> List[Dict[str, Any]]:
-    """Return rules matching ``doc_type``/``clause_types`` triggered by ``text``.
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Return matched rules and coverage info for all rules.
 
-    The returned list contains dictionaries with the original rule under the
+    The first list contains dictionaries with the original rule under the
     ``"rule"`` key and a list of matched trigger strings under ``"matches"``.
+    The second list contains coverage information for *all* rules with
+    bitwise gate flags, matched evidence and spans.
     """
 
-    norm = normalize_text(text or "")
+    flags_norm = 0
+    try:
+        norm = normalize_text(text or "")
+    except Exception:
+        flags_norm = TEXT_NORMALIZATION_ISSUE
+        norm = text or ""
+
     doc_type_lc = (doc_type or "").lower()
     clause_set: Set[str] = {c.lower() for c in clause_types or []}
 
     filtered: List[Dict[str, Any]] = []
+    coverage: List[Dict[str, Any]] = []
     for rule in _RULES:
+        rule_flags = flags_norm
+        matches: List[str] = []
+        spans: List[Dict[str, int]] = []
+
         rule_doc_types = [d.lower() for d in rule.get("doc_types", [])]
         if rule_doc_types and "any" not in rule_doc_types:
             if not doc_type_lc or doc_type_lc not in rule_doc_types:
-                continue
+                rule_flags |= DOC_TYPE_MISMATCH
 
         req_clauses = {c.lower() for c in rule.get("requires_clause", [])}
         if req_clauses and clause_set.isdisjoint(req_clauses):
-            continue
+            rule_flags |= NO_CLAUSE
 
         trig = rule.get("triggers") or {}
-        matches: List[str] = []
         ok = True
 
         any_pats = trig.get("any")
         if any_pats:
-            any_matches = [m.group(0) for p in any_pats for m in p.finditer(norm)]
+            any_matches = []
+            for p in any_pats:
+                for m in p.finditer(norm):
+                    any_matches.append(m.group(0))
+                    spans.append({"start": m.start(), "end": m.end()})
             if not any_matches:
                 ok = False
+                rule_flags |= REGEX_MISS
             else:
                 matches.extend(any_matches)
 
@@ -287,24 +315,44 @@ def filter_rules(
                     m = pat.search(norm)
                     if not m:
                         ok = False
+                        rule_flags |= REGEX_MISS
                         break
                     all_matches.append(m.group(0))
+                    spans.append({"start": m.start(), "end": m.end()})
                 if ok:
                     matches.extend(all_matches)
 
         if ok:
             regex_pats = trig.get("regex")
             if regex_pats:
-                regex_matches = [m.group(0) for p in regex_pats for m in p.finditer(norm)]
+                regex_matches = []
+                for p in regex_pats:
+                    for m in p.finditer(norm):
+                        regex_matches.append(m.group(0))
+                        spans.append({"start": m.start(), "end": m.end()})
                 if not regex_matches:
                     ok = False
+                    rule_flags |= REGEX_MISS
                 else:
                     matches.extend(regex_matches)
 
-        if ok:
+        if ok and not rule_flags:
+            rule_flags |= FIRED
             filtered.append({"rule": rule, "matches": matches})
 
-    return filtered
+        coverage.append(
+            {
+                "doc_type": doc_type_lc,
+                "pack_id": rule.get("pack"),
+                "rule_id": rule.get("id"),
+                "severity": rule.get("severity"),
+                "evidence": matches,
+                "spans": spans,
+                "flags": rule_flags,
+            }
+        )
+
+    return filtered, coverage
 
 
 def match_text(text: str) -> List[Dict[str, Any]]:

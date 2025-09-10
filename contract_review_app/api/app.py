@@ -1779,10 +1779,12 @@ def api_analyze(
     t2 = time.perf_counter()
 
     seg_findings: List[Dict[str, Any]] = []
+    clause_types_set: set[str] = set()
     for seg in parsed.segments:
         clause_type = seg.get("clause_type")
         if not clause_type:
             continue
+        clause_types_set.add(clause_type)
 
         for f in seg.get("findings", []) or []:
             f2 = dict(f)
@@ -1799,6 +1801,8 @@ def api_analyze(
             )
         except Exception:
             pass
+
+    snap = extract_document_snapshot(txt)
 
     # resolve citations for each finding after final list is determined
     def _add_citations(lst: List[Dict[str, Any]]):
@@ -1832,32 +1836,49 @@ def api_analyze(
         )
 
         _yaml_loader.load_rule_packs()
+        filtered = _yaml_loader.filter_rules(
+            txt or "", doc_type=snap.type, clause_types=clause_types_set
+        )
         t3 = time.perf_counter()
-        yaml_findings = _yaml_engine.analyze(txt or "", _yaml_loader._RULES)
+        yaml_findings = _yaml_engine.analyze(
+            txt or "", [r["rule"] for r in filtered]
+        )
         t4 = time.perf_counter()
         active_packs = [p.get("path") for p in _yaml_loader.loaded_packs()]
         rules_loaded = _yaml_loader.rules_count()
 
-        for rule in _yaml_loader._RULES:
-            matched: Dict[str, List[str]] = {"any": [], "all": [], "regex": []}
+        for item in filtered:
+            rule = item["rule"]
+            matched: Dict[str, List[str]] = {}
             positions: List[Dict[str, int]] = []
             for kind, pats in (rule.get("triggers") or {}).items():
                 for pat in pats:
-                    for m in pat.finditer(txt):
+                    matches = list(pat.finditer(txt))
+                    if matches:
                         matched.setdefault(kind, []).append(pat.pattern)
-                        positions.append({"start": m.start(), "end": m.end()})
-            if positions:
+                        for m in matches:
+                            positions.append({"start": m.start(), "end": m.end()})
+            if matched:
                 fired_rules_meta.append(
                     {
                         "rule_id": rule.get("id"),
                         "pack": rule.get("pack"),
                         "matched_triggers": {
-                            k: sorted(set(v)) for k, v in matched.items() if v
+                            k: sorted(set(v)) for k, v in matched.items()
                         },
-                        "requires_clause_hit": rule.get("requires_clause_hit", False),
+                        "requires_clause_hit": rule.get(
+                            "requires_clause_hit", False
+                        ),
                         "positions": positions,
                     }
                 )
+
+        meta_map = {m["rule_id"]: m for m in fired_rules_meta}
+        for f in yaml_findings:
+            meta = meta_map.get(f.get("rule_id"))
+            if meta:
+                f["matched_triggers"] = meta.get("matched_triggers", {})
+                f["trigger_positions"] = meta.get("positions", [])
     except Exception:
         yaml_findings = []
         active_packs = []
@@ -1906,7 +1927,6 @@ def api_analyze(
     if os.getenv("FEATURE_LLM_ANALYZE", "0") == "1":
         pass
 
-    snap = extract_document_snapshot(txt)
     snap.rules_count = _discover_rules_count()
     summary = snap.model_dump()
     _ensure_legacy_doc_type(summary)

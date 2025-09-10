@@ -3,7 +3,7 @@
 rules:
   - id: P1.ALL_INCLUSIVE_RATES
     version: "1.0"
-    title: "All-inclusive rates; вне перечня не оплачивается"
+    title: "All-inclusive rates; items outside the list are not payable"
     scope:
       jurisdiction: ["Any"]
       doc_types: ["Any"]
@@ -13,7 +13,7 @@ rules:
         - regex: "(?i)all[- ]inclusive (rates|pricing)"
         - regex: "(?i)no (additional|separate) charges.*unless.*(listed|set out)"
     severity: medium
-    advice: "Подтвердить полный список исключений (доставка/упаковка/страхование, минималка)."
+    advice: "Confirm the full list of exclusions (delivery, packaging, insurance, minimum order)."
     law_reference:
       - "Contract admin best practice"
     suggest_text:
@@ -30,7 +30,7 @@ rules:
         - regex: "(?i)invoice must (include|contain).*VAT"
         - regex: "(?i)(PO|Call[- ]Off|timesheets|GRN)"
     severity: high
-    advice: "Сверить с HMRC VAT Notice 700/700/21 (реквизиты, хранение 6 лет)."
+    advice: "Check against HMRC VAT Notice 700/700/21 (required details, six-year retention)."
     law_reference:
       - "HMRC VAT Notice 700"
       - "HMRC 700/21"
@@ -47,7 +47,7 @@ rules:
       any:
         - regex: '(?i)no payment for invoices submitted later than .*?\(?(\d+)\)?\s*days'
     severity: high
-    advice: "Подсветить риск несоразмерности; carve-outs для спорных сумм/финальных сверок; для public/construction — manual review."
+    advice: "Highlight risk of disproportionality; include carve-outs for disputed amounts and final reconciliations; for public or construction, perform manual review."
     law_reference:
       - "UCTA reasonableness"
       - "PCR 2015 Reg.113"
@@ -67,7 +67,7 @@ rules:
         - regex: '(?i)payment (term|due).*?(\d+)\s*days'
         - regex: "(?i)interest.*late payment"
     severity: high
-    advice: 'Если нет договорного «существенного средства», указать статутный режим (Late Payment Act: BOE base +8%, фикс. сбор + разумные расходы).'
+    advice: "If no contractual substantial remedy exists, cite the statutory regime (Late Payment Act: BOE base +8%, fixed charge plus reasonable costs)."
     law_reference:
       - "Late Payment of Commercial Debts (Interest) Act 1998"
       - "Late Payment of Commercial Debts Regs 2013"
@@ -85,7 +85,7 @@ rules:
         - regex: "(?i)(contracting authority|utility).*30.*days"
         - regex: '(?i)Reg(ulation)?\.?\s*113'
     severity: high
-    advice: "Включить 30-дневку во всю цепочку субов; прописать механизмы."
+    advice: "Flow down the 30-day term through all subcontract tiers and specify enforcement mechanisms."
     law_reference:
       - "PCR 2015 Reg.113"
     ops: ["public_sector"]
@@ -102,7 +102,7 @@ rules:
       any:
         - regex: "(?i)Construction Act|HGCRA|pay[- ]less notice|payment notice"
     severity: critical
-    advice: "Сроки и содержание уведомлений; запрет pay-when-paid (кроме upstream insolvency)."
+    advice: "Clarify timing and content of notices; prohibit pay-when-paid clauses except for upstream insolvency."
     law_reference:
       - "HGCRA 1996 s.110A"
       - "HGCRA 1996 s.111"
@@ -121,7 +121,7 @@ rules:
       any:
         - regex: '(?i)(set[- ]off|withhold|deduct)'
     severity: medium
-    advice: "Подсветить односторонность; для supplier — рекомендовать mutual netting/лимиты."
+    advice: "Flag one-sidedness; for suppliers, recommend mutual netting or limits."
     law_reference:
       - "General contract law"
     suggest_text:
@@ -137,7 +137,7 @@ rules:
       any:
         - regex: "(?i)pay.*undisputed (amount|portion)"
     severity: medium
-    advice: "Таймер урегулирования спора (напр., 10 BD) и кредит-ноты."
+    advice: "Include a dispute resolution timer (e.g., 10 business days) and a credit note mechanism."
     law_reference:
       - "Best practice"
     suggest_text:
@@ -153,12 +153,12 @@ rules:
       any:
         - regex: '(?i)(e[- ]invoice|SAP Business Network|Commerce Automation|3[- ]way match)'
     severity: high
-    advice: "HMRC требования: аутентичность/целостность/читабельность; ретенция ≥6 лет; fallback-канал."
+    advice: "Meet HMRC requirements: authenticity, integrity, readability; retain records for at least six years; provide a fallback channel."
     law_reference:
       - "HMRC VAT 700/63"
       - "HMRC VAT 700"
     suggest_text:
-      friendly: "Maintain authenticity, integrity, readability of e-invoices and retain records ≥6 years with fallback channel."
+      friendly: "Maintain authenticity, integrity, readability of e-invoices and retain records for at least 6 years with a fallback channel."
   - id: P10.REIMBURSABLES_NET_OF_REBATES
     version: "1.0"
     title: "Reimbursables net of rebates/discounts"
@@ -170,7 +170,7 @@ rules:
       any:
         - regex: '(?i)(reimbursable|pass[- ]through|net of rebates)'
     severity: medium
-    advice: "Приложить 3rd-party счета и отчёт по скидкам; лимит fee."
+    advice: "Attach third-party invoices and rebate reports; cap the handling fee."
     law_reference:
       - "Procurement best practice"
     suggest_text:
@@ -187,7 +187,7 @@ rules:
         - regex: "(?i)no payment for (idle|standby).*contractor (fault|failure)"
         - regex: "(?i)efficiency.*adjust(ment)?"
     severity: high
-    advice: "Требуются метрики эффективности и события простоя."
+    advice: "Define efficiency metrics and idle-event reporting."
     law_reference:
       - "Services contracting practice"
     suggest_text:
@@ -203,7 +203,7 @@ rules:
       any:
         - regex: "(?i)may not assign (receivables|amounts due|right to payment)"
     severity: high
-    advice: "Если применимы Business Contract Terms (Assignment of Receivables) Regs 2018, запрет 'of no effect'; добавить carve-out."
+    advice: "If Business Contract Terms (Assignment of Receivables) Regulations 2018 apply, the prohibition is of no effect; add a carve-out."
     law_reference:
       - "SI 2018/1254"
     suggest_text:

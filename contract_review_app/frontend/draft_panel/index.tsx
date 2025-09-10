@@ -73,6 +73,7 @@ const DraftAssistantPanel: React.FC = () => {
       const base = getBackend().replace(/\/+$/, '');
       const env = await postJSON<AnalyzeEnvelope>(`${base}/api/analyze`, { text: clauseText, clause_type: clauseType || undefined });
       const a = (env?.analysis ?? env) as any;
+      a.cid = a.cid || (env as any)?.cid;
       a.clause_type = a.clause_type || clauseType || undefined;
       a.text = a.text || clauseText || undefined;
       setAnalysis(a);
@@ -89,7 +90,10 @@ const DraftAssistantPanel: React.FC = () => {
     setError('');
     try {
       const base = getBackend().replace(/\/+$/, '');
-      const env = await postJSON<DraftEnvelope>(`${base}${DRAFT_PATH}`, { clause: analysis?.text || clauseText });
+      const env = await postJSON<DraftEnvelope>(`${base}${DRAFT_PATH}`, {
+        cid: (analysis as any)?.cid,
+        clause: analysis?.text || clauseText,
+      });
       setDraft(env);
       setStatus('ready');
     } catch (e: any) {

@@ -1,6 +1,6 @@
 import { applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
 import { getApiKeyFromStore, getSchemaFromStore } from "./store";
-import { postJSON, getHealth } from "../../../contract_review_app/frontend/common/http";
+import { postJSON, getHealth, getStoredKey, getStoredSchema, setStoredSchema } from "../../../contract_review_app/frontend/common/http";
 const g: any = globalThis as any;
 g.parseFindings = g.parseFindings || parseFindings;
 g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
@@ -434,8 +434,22 @@ async function doAnalyze() {
 
     (window as any).__lastAnalyzed = base;
 
-    const json: any = await postJSON(`${getBackend()}/api/analyze`, { text: base });
-    lastCid = json?.cid || '';
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      'x-api-key': getStoredKey(),
+      'x-schema-version': getStoredSchema(),
+    };
+    const resp = await fetch(`${getBackend()}/api/analyze`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ text: base }),
+    });
+    const respSchema = resp.headers.get('x-schema-version');
+    if (respSchema) setStoredSchema(respSchema);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json: any = await resp.json();
+    if (json?.schema) setStoredSchema(json.schema);
+    lastCid = resp.headers.get('x-cid') || '';
     renderResults(json);
 
     try {

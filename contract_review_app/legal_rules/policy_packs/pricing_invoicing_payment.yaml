@@ -6,7 +6,7 @@ rules:
     title: "All-inclusive rates; items outside the list are not payable"
     scope:
       jurisdiction: ["Any"]
-      doc_types: ["Any"]
+      doc_types: ["MSA (Services)", "Consultancy"]
       clauses: ["pricing"]
     triggers:
       any:
@@ -23,7 +23,7 @@ rules:
     title: "VAT invoice content and supporting documents"
     scope:
       jurisdiction: ["Any"]
-      doc_types: ["Any"]
+      doc_types: ["MSA (Services)", "Consultancy"]
       clauses: ["invoice"]
     triggers:
       any:
@@ -41,7 +41,7 @@ rules:
     title: "Late invoice submission time bar"
     scope:
       jurisdiction: ["Any"]
-      doc_types: ["Any"]
+      doc_types: ["MSA (Services)", "Consultancy"]
       clauses: ["invoice"]
     triggers:
       any:
@@ -60,7 +60,7 @@ rules:
     title: "Payment term and late payment interest"
     scope:
       jurisdiction: ["Any"]
-      doc_types: ["Any"]
+      doc_types: ["MSA (Services)", "Consultancy"]
       clauses: ["payment"]
     triggers:
       any:
@@ -78,7 +78,7 @@ rules:
     title: "Public sector 30-day payment cascade"
     scope:
       jurisdiction: ["Any"]
-      doc_types: ["Any"]
+      doc_types: ["MSA (Services)", "Consultancy"]
       clauses: ["payment"]
     triggers:
       any:
@@ -96,7 +96,7 @@ rules:
     title: "Construction Act payment and pay-less notices"
     scope:
       jurisdiction: ["Any"]
-      doc_types: ["Any"]
+      doc_types: ["MSA (Services)", "Consultancy"]
       clauses: ["payment"]
     triggers:
       any:
@@ -115,7 +115,7 @@ rules:
     title: "Broad/asymmetric set-off or withholding"
     scope:
       jurisdiction: ["Any"]
-      doc_types: ["Any"]
+      doc_types: ["MSA (Services)", "Consultancy"]
       clauses: ["payment"]
     triggers:
       any:
@@ -131,7 +131,7 @@ rules:
     title: "Pay undisputed portion promptly"
     scope:
       jurisdiction: ["Any"]
-      doc_types: ["Any"]
+      doc_types: ["MSA (Services)", "Consultancy"]
       clauses: ["payment"]
     triggers:
       any:
@@ -147,7 +147,7 @@ rules:
     title: "E-invoicing platform and VAT controls"
     scope:
       jurisdiction: ["Any"]
-      doc_types: ["Any"]
+      doc_types: ["MSA (Services)", "Consultancy"]
       clauses: ["invoice"]
     triggers:
       any:
@@ -164,7 +164,7 @@ rules:
     title: "Reimbursables net of rebates/discounts"
     scope:
       jurisdiction: ["Any"]
-      doc_types: ["Any"]
+      doc_types: ["MSA (Services)", "Consultancy"]
       clauses: ["pricing"]
     triggers:
       any:
@@ -180,7 +180,7 @@ rules:
     title: "No pay for idle time or low efficiency"
     scope:
       jurisdiction: ["Any"]
-      doc_types: ["Any"]
+      doc_types: ["MSA (Services)", "Consultancy"]
       clauses: ["payment"]
     triggers:
       any:
@@ -197,7 +197,7 @@ rules:
     title: "Receivables assignment restrictions"
     scope:
       jurisdiction: ["Any"]
-      doc_types: ["Any"]
+      doc_types: ["MSA (Services)", "Consultancy"]
       clauses: ["payment"]
     triggers:
       any:

@@ -13,6 +13,13 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from ..corpus.normalizer import normalize_text
 
+
+def _normalize_multiline(text: str) -> str:
+    """Normalize ``text`` while preserving line breaks."""
+
+    return "\n".join(normalize_text(line) for line in (text or "").splitlines())
+
+
 log = logging.getLogger(__name__)
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -263,7 +270,7 @@ def filter_rules(
     ``"rule"`` key and a list of matched trigger strings under ``"matches"``.
     """
 
-    norm = normalize_text(text or "")
+    norm = _normalize_multiline(text)
     doc_type_lc = (doc_type or "").lower()
     juris_lc = (jurisdiction or "").lower()
     clause_set: Set[str] = {c.lower() for c in clause_types or []}
@@ -315,7 +322,9 @@ def filter_rules(
         if ok:
             regex_pats = trig.get("regex")
             if regex_pats:
-                regex_matches = [m.group(0) for p in regex_pats for m in p.finditer(norm)]
+                regex_matches = [
+                    m.group(0) for p in regex_pats for m in p.finditer(norm)
+                ]
                 if not regex_matches:
                     ok = False
                 else:

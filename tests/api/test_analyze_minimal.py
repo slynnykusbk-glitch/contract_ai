@@ -19,6 +19,7 @@ def test_analyze_minimal():
     assert resp.headers.get("x-cid")
     data = resp.json()
     assert isinstance(data.get("analysis"), dict) and data["analysis"]
+    assert isinstance(data["analysis"].get("findings"), list)
 
 
 @settings(deadline=None, max_examples=25)

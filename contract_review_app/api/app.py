@@ -26,6 +26,17 @@ from typing import Any, Dict, List, Optional, Tuple
 from collections import OrderedDict
 import secrets
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.errors import ServerErrorMiddleware
+try:  # Starlette <0.37 compatibility
+    from starlette.middleware.timeout import TimeoutMiddleware
+except Exception:  # pragma: no cover
+    class TimeoutMiddleware:  # type: ignore
+        def __init__(self, app, timeout=60):
+            self.app = app
+            self.timeout = timeout
+
+        async def __call__(self, scope, receive, send):
+            await self.app(scope, receive, send)
 
 from contract_review_app.core.privacy import redact_pii, scrub_llm_output
 from contract_review_app.core.audit import audit
@@ -50,6 +61,9 @@ TRACE = TraceStore(TRACE_MAX)
 # flag indicating whether rule engine is usable
 _RULE_ENGINE_OK = True
 _RULE_ENGINE_ERR = ""
+
+# Stable CID used when clients do not supply one
+_PROCESS_CID = str(uuid.uuid4())
 
 
 class NormalizeAndTraceMiddleware(BaseHTTPMiddleware):
@@ -267,6 +281,12 @@ class RequireHeadersMiddleware(BaseHTTPMiddleware):
     _SKIP_PATHS = ("/api/companies",)
 
     async def dispatch(self, request: Request, call_next):
+        headers = request.headers
+        schema = headers.get("x-schema-version") or os.getenv("SCHEMA_VERSION", SCHEMA_VERSION)
+        cid = headers.get("x-cid") or _PROCESS_CID
+        request.state.schema_version = schema
+        request.state.cid = cid
+
         if request.method.upper() == "POST" and not any(
             request.url.path.startswith(p) for p in self._SKIP_PATHS
         ):
@@ -283,7 +303,8 @@ class RequireHeadersMiddleware(BaseHTTPMiddleware):
                     getattr(request.state, "started_at", time.perf_counter()),
                 )
                 return resp
-        return await call_next(request)
+        response = await call_next(request)
+        return response
 
 
 # --------------------------------------------------------------------
@@ -649,8 +670,6 @@ app = FastAPI(
     responses=_default_responses,
 )
 register_error_handlers(app)
-app.add_middleware(NormalizeAndTraceMiddleware)
-app.add_middleware(RequireHeadersMiddleware)
 
 # ---------------------------- Panel sub-app ----------------------------
 panel_app = FastAPI()
@@ -971,6 +990,14 @@ def require_llm_enabled() -> None:
 
 # Optional legacy LLM API removed
 
+# Middleware stack: CORS -> Error -> Timeout -> Trace -> RequireHeaders -> Router
+app.add_middleware(RequireHeadersMiddleware)
+app.add_middleware(NormalizeAndTraceMiddleware)
+app.add_middleware(
+    TimeoutMiddleware,
+    timeout=float(os.getenv("REQUEST_TIMEOUT_S", "60")),
+)
+app.add_middleware(ServerErrorMiddleware, debug=_env_truthy("DEV_MODE"))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
@@ -1030,7 +1057,7 @@ async def add_response_headers(request: Request, call_next):
         try:
             request.state.json = json.loads(body.decode("utf-8"))
         except (json.JSONDecodeError, UnicodeDecodeError):
-            cid = request.headers.get("x-cid") or compute_cid(request)
+            cid = getattr(request.state, "cid", request.headers.get("x-cid") or _PROCESS_CID)
             return _problem_response(
                 400,
                 "Bad JSON",
@@ -1047,7 +1074,7 @@ async def add_response_headers(request: Request, call_next):
 @app.middleware("http")
 async def _trace_mw(request: Request, call_next):
     t0 = time.perf_counter()
-    req_cid = request.headers.get("x-cid") or compute_cid(request)
+    req_cid = getattr(request.state, "cid", request.headers.get("x-cid") or _PROCESS_CID)
     try:
         response: Response = await call_next(request)
     except Exception as ex:
@@ -1748,10 +1775,10 @@ def api_analyze(
     cached = an_cache.get(doc_hash)
     if cached:
         resp_json = cached["resp"]
-        cid = cached["cid"]
+        resp_cid = cached["cid"]
         headers = {
             "x-cache": "hit",
-            "x-cid": cid,
+            "x-cid": resp_cid,
             "x-doc-hash": doc_hash,
             "ETag": etag,
         }
@@ -1760,19 +1787,19 @@ def api_analyze(
         headers.update(tmp.headers)
         return _finalize_json("/api/analyze", resp_json, headers)
 
-    cid = compute_cid(request)
-    cached_cid = IDEMPOTENCY_CACHE.get(cid)
-    if cached_cid is not None:
+    req_hash = compute_cid(request)
+    cached_resp = IDEMPOTENCY_CACHE.get(req_hash)
+    if cached_resp is not None:
         headers = {
             "x-cache": "hit",
-            "x-cid": cid,
+            "x-cid": request.state.cid,
             "x-doc-hash": doc_hash,
             "ETag": etag,
         }
         tmp = Response()
         _set_llm_headers(tmp, PROVIDER_META)
         headers.update(tmp.headers)
-        return _finalize_json("/api/analyze", cached_cid, headers)
+        return _finalize_json("/api/analyze", cached_resp, headers)
 
     # full parsing/classification/rule pipeline with timings
     pipeline_id = uuid.uuid4().hex
@@ -1832,6 +1859,7 @@ def api_analyze(
     rules_loaded = 0
     fired_rules_meta: List[Dict[str, Any]] = []
     coverage_rules: List[Dict[str, Any]] = []
+    filtered_rules: List[Dict[str, Any]] = []
     t3 = t2
     t4 = t2
     try:
@@ -1841,7 +1869,7 @@ def api_analyze(
         )
 
         _yaml_loader.load_rule_packs()
-        filtered = _yaml_loader.filter_rules(
+        filtered_rules = _yaml_loader.filter_rules(
             txt or "",
             doc_type=snap.type,
             clause_types=clause_types_set,
@@ -1849,19 +1877,19 @@ def api_analyze(
         )
         t3 = time.perf_counter()
         yaml_findings = _yaml_engine.analyze(
-            txt or "", [r["rule"] for r in filtered if not r.get("status")]
+            txt or "", [r["rule"] for r in filtered_rules if not r.get("status")]
         )
         t4 = time.perf_counter()
         active_packs = [p.get("path") for p in _yaml_loader.loaded_packs()]
         rules_loaded = _yaml_loader.rules_count()
 
         coverage_rules = []
-        for item in filtered:
+        for item in filtered_rules:
             rid = item["rule"].get("id")
             st = item.get("status", "matched")
             coverage_rules.append({"rule_id": rid, "status": st})
 
-        for item in filtered:
+        for item in filtered_rules:
             rule = item["rule"]
             matched: Dict[str, List[str]] = {}
             positions: List[Dict[str, int]] = []
@@ -1899,6 +1927,7 @@ def api_analyze(
         rules_loaded = 0
         fired_rules_meta = []
         coverage_rules = []
+        filtered_rules = []
 
     if yaml_findings:
         filtered_yaml = [
@@ -1919,13 +1948,13 @@ def api_analyze(
         else:
             findings = []
     else:
-        filtered = [
+        seg_filtered = [
             f
             for f in seg_findings
             if order.get(str(f.get("severity", "")).lower(), 1) >= thr
         ]
-        if filtered:
-            findings = filtered
+        if seg_filtered:
+            findings = seg_filtered
         elif thr <= 1:
             findings = seg_findings[:1]
         elif seg_findings:
@@ -1966,6 +1995,14 @@ def api_analyze(
         "run_rules_ms": round((t4 - t3) * 1000, 2),
     }
 
+    debug_meta = {
+        "pipeline": pipeline_id,
+        "packs": active_packs,
+        "rules_loaded": rules_loaded,
+        "rules_evaluated": len(filtered_rules),
+        "rules_triggered": len(fired_rules_meta),
+    }
+
     meta = {
         **PROVIDER_META,
         "document_type": summary.get("type"),
@@ -1977,6 +2014,7 @@ def api_analyze(
         "fired_rules": fired_rules_meta,
         "pipeline_id": pipeline_id,
         "timings_ms": timings,
+        "debug": debug_meta,
     }
 
     log.info("analysis meta", extra={"meta": meta})
@@ -1995,14 +2033,14 @@ def api_analyze(
         "doc_type": {"value": snap.type, "source": snap.type_source},
         "rules": coverage_rules,
     }
-    IDEMPOTENCY_CACHE.set(cid, envelope)
-    rec = {"resp": envelope, "cid": cid}
+    IDEMPOTENCY_CACHE.set(req_hash, envelope)
+    rec = {"resp": envelope, "cid": request.state.cid}
     an_cache.set(doc_hash, rec)
-    cid_index.set(cid, {"hash": doc_hash})
+    cid_index.set(request.state.cid, {"hash": doc_hash})
 
     headers = {
         "x-cache": "miss",
-        "x-cid": cid,
+        "x-cid": request.state.cid,
         "x-doc-hash": doc_hash,
         "ETag": etag,
     }
@@ -2122,11 +2160,11 @@ async def api_summary_post(
             "hash not found",
             error_code="hash_not_found",
             detail="hash not found",
-            cid=compute_cid(request),
+            cid=getattr(request.state, "cid", compute_cid(request)),
         )
         _set_std_headers(
             resp,
-            cid=compute_cid(request),
+            cid=getattr(request.state, "cid", compute_cid(request)),
             xcache="miss",
             schema=SCHEMA_VERSION,
             latency_ms=_now_ms() - t0,
@@ -2373,7 +2411,7 @@ async def api_suggest_edits(
             SuggestEdit(span=clamped_span, rationale=rationale, citations=[citation])
         )
 
-    cid = x_cid or compute_cid(request)
+    cid = x_cid or getattr(request.state, "cid", _PROCESS_CID)
     headers = {"x-cache": "miss", "x-cid": cid, "x-schema-version": SCHEMA_VERSION}
     payload = SuggestResponse(suggestions=suggestions).model_dump()
 
@@ -2497,7 +2535,7 @@ async def gpt_draft(request: Request):
         return JSONResponse(problem.model_dump(), status_code=400)
 
     started = time.perf_counter()
-    req_cid = compute_cid(request)
+    req_cid = getattr(request.state, "cid", compute_cid(request))
     raw_json = _json_dumps_safe(inp.model_dump(exclude_none=True))
     etag = _sha256_hex(raw_json)
     inm = request.headers.get("if-none-match")
@@ -2820,7 +2858,7 @@ async def api_calloff_validate(
             "Payload too large",
             error_code="payload_too_large",
             detail="Request body exceeds limits",
-            cid=x_cid or compute_cid(request),
+            cid=x_cid or getattr(request.state, "cid", _PROCESS_CID),
         )
     except Exception:
         return _problem_response(
@@ -2828,7 +2866,7 @@ async def api_calloff_validate(
             "Bad JSON",
             error_code="bad_json",
             detail="Request body is not valid JSON",
-            cid=x_cid or compute_cid(request),
+            cid=x_cid or getattr(request.state, "cid", _PROCESS_CID),
         )
 
     cid = x_cid or _sha256_hex(str(t0) + json.dumps(payload, sort_keys=True)[:128])

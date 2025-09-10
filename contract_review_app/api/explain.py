@@ -98,7 +98,7 @@ def _gather_evidence(citations: List[Citation]) -> List[Evidence]:
 @router.post("/explain", response_model=ExplainResponse, dependencies=[Depends(require_api_key_and_schema)])
 async def api_explain(body: ExplainRequest, request: Request) -> JSONResponse:
     started = time.perf_counter()
-    cid = compute_cid(request)
+    cid = getattr(request.state, "cid", compute_cid(request))
 
     text = body.text or ""
     doc_hash = hashlib.sha256(text.encode("utf-8")).hexdigest() if text else None

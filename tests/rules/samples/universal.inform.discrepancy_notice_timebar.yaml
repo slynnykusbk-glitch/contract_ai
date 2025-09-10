@@ -1,0 +1,6 @@
+negative:
+- Generic unrelated text.
+- Another clause without keywords.
+positive:
+- This clause mentions discrepanc notice.
+- This clause refers to notify .*discrepanc.

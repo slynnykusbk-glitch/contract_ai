@@ -8,7 +8,7 @@ rule:
     clauses: ["working hours","overtime","performance"]
   triggers:
     any:
-      - regex: "(?i)working\\s+hours|overtime|out\\-of\\-hours"
+      - regex: "(?i)working\\s+hours|overtime|out[-\\s]?of[-\\s]?hours"
   checks:
     - id: "no_overtime_approval"
       when:

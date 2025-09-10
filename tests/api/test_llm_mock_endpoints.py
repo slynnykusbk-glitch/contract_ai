@@ -28,3 +28,10 @@ def test_llm_mock_endpoints():
     assert r1.status_code == 200
     r2 = client.post("/api/suggest_edits", json={"text": "Hi", "findings": []})
     assert r2.status_code == 200
+
+
+def test_llm_mock_invalid_gpt_draft_payload():
+    client = _create_client()
+    resp = client.post("/api/gpt-draft", json={"cid": "only"})
+    assert resp.status_code == 422
+    assert isinstance(resp.json().get("detail"), list)

@@ -388,13 +388,15 @@ async function onGetAIDraft(ev?: Event) {
       dst.value = proposed;
       dst.dispatchEvent(new Event("input", { bubbles: true }));
       notifyOk("Draft ready");
-      try { await insertIntoWord(proposed); } catch {}
+      onDraftReady(proposed);
     } else {
       notifyWarn("Proposed textarea not found");
+      onDraftReady('');
     }
   } catch (e) {
     notifyWarn("Draft error");
     console.error(e);
+    onDraftReady('');
   }
 }
 
@@ -425,6 +427,7 @@ async function doHealth() {
 
 async function doAnalyze() {
   try {
+    onDraftReady('');
     const cached = (window as any).__lastAnalyzed as string | undefined;
     const base = cached && cached.trim() ? cached : normalizeText(await (globalThis as any).getWholeDocText());
     if (!base) { notifyErr("В документе нет текста"); return; }
@@ -542,6 +545,7 @@ async function onRejectAll() {
     if (dst) {
       dst.value = "";
       dst.dispatchEvent(new Event("input", { bubbles: true }));
+      onDraftReady('');
     }
     await Word.run(async ctx => {
       const range = ctx.document.getSelection();
@@ -577,12 +581,20 @@ function wireUI() {
     (globalThis as any).annotateFindingsIntoWord(findings);
   });
 
+  onDraftReady('');
   wireResultsToggle();
   console.log("Panel UI wired");
   ensureHeaders();
 }
 
 g.wireUI = g.wireUI || wireUI;
+
+function onDraftReady(text: string) {
+  const btn = document.getElementById('btnInsertIntoWord') as HTMLButtonElement;
+  const show = !!text.trim();
+  btn.style.display = show ? 'inline-block' : 'none';
+  btn.disabled = !show;
+}
 
 async function onInsertIntoWord() {
   const dst = $(Q.proposed);

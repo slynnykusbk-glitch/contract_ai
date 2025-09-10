@@ -88,3 +88,37 @@ def test_filter_rules_preserves_newlines(monkeypatch):
     cov = coverage[0]
     assert cov["flags"] & loader.FIRED
     assert cov["spans"] and cov["spans"][0]["start"] < cov["spans"][0]["end"]
+
+
+def test_filter_rules_skips_triggers_on_gate_failure(monkeypatch):
+    class ExplodingPattern:
+        def finditer(self, _text):
+            raise AssertionError("trigger evaluated")
+
+        search = finditer
+
+    sample_rules = [
+        {
+            "id": "R_doc",
+            "doc_types": ["NDA"],
+            "requires_clause": [],
+            "triggers": {"any": [ExplodingPattern()]},
+        },
+        {
+            "id": "R_clause",
+            "doc_types": ["Any"],
+            "requires_clause": ["Payment"],
+            "triggers": {"regex": [ExplodingPattern()]},
+        },
+    ]
+
+    monkeypatch.setattr(loader, "_RULES", sample_rules)
+
+    filtered, coverage = loader.filter_rules(
+        "text", doc_type="MSA", clause_types=["Termination"]
+    )
+
+    assert filtered == []
+    cov_map = {c["rule_id"]: c for c in coverage}
+    assert cov_map["R_doc"]["flags"] & loader.DOC_TYPE_MISMATCH
+    assert cov_map["R_clause"]["flags"] & loader.NO_CLAUSE

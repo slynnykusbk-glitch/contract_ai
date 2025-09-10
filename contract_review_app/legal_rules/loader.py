@@ -290,6 +290,20 @@ def filter_rules(
         if req_clauses and clause_set.isdisjoint(req_clauses):
             rule_flags |= NO_CLAUSE
 
+        if rule_flags & (DOC_TYPE_MISMATCH | NO_CLAUSE):
+            coverage.append(
+                {
+                    "doc_type": doc_type_lc,
+                    "pack_id": rule.get("pack"),
+                    "rule_id": rule.get("id"),
+                    "severity": rule.get("severity"),
+                    "evidence": matches,
+                    "spans": spans,
+                    "flags": rule_flags,
+                }
+            )
+            continue
+
         trig = rule.get("triggers") or {}
         ok = True
 

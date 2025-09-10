@@ -12,11 +12,11 @@ rule:
     - when:
         regex: '(?i)free (from|of).*(lien|charge|encumbrance|retention of title|rot)'
       finding:
-        message: "Титул переходит свободным от ROT/линов/обременений."
+        message: "Title passes free of ROT/liens/encumbrances."
         severity_level: low
-        risk: "Снижен риск третьих лиц на товары."
+        risk: "Reduced risk of third-party claims on goods."
         suggestion:
-          text: "Оставьте запрет любых прав удержания субпоставщиков; требуйте waivers."
+          text: "Include prohibition on subcontractor liens; require waivers."
   outcome:
     status: pass
     risk_level: low
@@ -47,20 +47,20 @@ rule:
           - regex: '(?i)upon.*payment'
           - regex: '(?i)upon.*delivery to (the )?carrier'
       finding:
-        message: "Закреплён ранний переход титула (изготовление/идентификация/оплата/сдача перевозчику)."
+        message: "Early title transfer is established (manufacture/identification/payment/delivery to carrier)."
         severity_level: low
-        risk: "Снижен риск при банкротстве поставщика."
+        risk: "Reduced risk if supplier becomes insolvent."
         suggestion:
-          text: "Убедитесь, что охватывает WIP/off-site, чертежи и данные."
+          text: "Ensure it covers WIP/off-site items, drawings, and data."
     - id: only_final_acceptance
       when:
         regex: '(?i)title.+only.+final acceptance'
       finding:
-        message: "Титул переходит только после финальной приемки без раннего vesting."
+        message: "Title passes only upon final acceptance with no early vesting."
         severity_level: high
-        risk: "Company рискует при предоплате и off-site."
+        risk: "Company is exposed when prepaying or for off-site items."
         suggestion:
-          text: "Переход титула должен происходить при изготовлении/идентификации/оплате или сдаче перевозчику."
+          text: "Require title transfer on manufacture/identification/payment or delivery to the carrier."
   outcome:
     status: pass
     risk_level: low
@@ -89,11 +89,11 @@ rule:
           - regex: '(?i)termination|insolvency'
           - regex: '(?i)right to (enter|access).*(premises|site|warehouse)'
       finding:
-        message: "Есть право Company войти на площадки/склады и изъять своё имущество."
+        message: "Company has the right to enter sites/warehouses and retrieve its property."
         severity_level: medium
-        risk: "Снижен риск потерь при дефолте поставщика."
+        risk: "Reduced losses if the supplier defaults."
         suggestion:
-          text: "Добейтесь предварительных согласий от владельцев площадок/3PL (landlord waivers)."
+          text: "Obtain prior consents from site owners/3PLs (landlord waivers)."
   outcome:
     status: pass
     risk_level: medium
@@ -122,11 +122,11 @@ rule:
           - regex: '(?i)sublicen(c|s)able|group'
           - regex: '(?i)shall survive termination|not terminate on termination'
       finding:
-        message: "Лицензия на встроенное ПО бессрочная, переживает расторжение; ключи/прошивки/мануалы должны поставляться."
+        message: "Embedded software licence is perpetual and survives termination; keys/firmware/manuals must be supplied."
         severity_level: high
-        risk: "Исключён риск блокировки эксплуатации оборудования."
+        risk: "Eliminates risk of equipment being unusable."
         suggestion:
-          text: "Проверьте наличие ключей/прошивок/мануалов и права модификации для сервиса."
+          text: "Confirm availability of keys/firmware/manuals and rights to modify for servicing."
   outcome:
     status: pass
     risk_level: low
@@ -158,22 +158,22 @@ rule:
           - regex: '(?i)(register|inventory|record)'
           - regex: '(?i)(audit|inspect)'
       finding:
-        message: "Имущество маркируется 'Property of Company', хранится отдельно, ведётся реестр и право аудита."
+        message: "Property is marked 'Property of Company', stored separately, with a register and audit right."
         severity_level: low
-        risk: "Снижен риск потери или смешения."
+        risk: "Lower risk of loss or commingling."
         suggestion:
-          text: "Уточните поля реестра и право инспекции."
+          text: "Define register fields and inspection right."
     - id: missing_register_or_audit
       when:
         all:
           - regex: '(?i)(mark|label|tag|identify).*property of company'
           - not_regex: '(?i)(register|inventory|audit|inspect)'
       finding:
-        message: "Нет упоминания реестра или права инспекции Company."
+        message: "No mention of a register or Company's inspection right."
         severity_level: medium
-        risk: "Может быть трудно отслеживать имущество."
+        risk: "Tracking the property may be difficult."
         suggestion:
-          text: "Добавьте реестр с деталями и право Company на аудит."
+          text: "Include a detailed register and Company's audit right."
   outcome:
     status: pass
     risk_level: medium
@@ -200,22 +200,22 @@ rule:
       when:
         regex: '(?i)title.*(risk per clause|incoterms)'
       finding:
-        message: "Есть увязка титула с разделом Risk/Incoterms."
+        message: "Title is cross-referenced with the Risk/Incoterms section."
         severity_level: low
-        risk: "Минимизирован риск расхождений."
+        risk: "Minimizes inconsistency risk."
         suggestion:
-          text: "Убедитесь, что cross-ref совпадает с разделом Risk."
+          text: "Ensure the cross-reference matches the Risk section."
     - id: no_cross_ref
       when:
         all:
           - regex: '(?i)title.*pass'
           - not_regex: '(?i)(risk|incoterms)'
       finding:
-        message: "Титул указан без привязки к разделу Risk/Incoterms."
+        message: "Title is stated without linking to the Risk/Incoterms section."
         severity_level: medium
-        risk: "Риск расхождения между переходом титула и рисков."
+        risk: "Risk of misalignment between title transfer and risk."
         suggestion:
-          text: "Добавьте ссылку на раздел Risk или условия Инкотермс."
+          text: "Add a reference to the Risk clause or Incoterms."
   outcome:
     status: pass
     risk_level: low
@@ -244,22 +244,22 @@ rule:
           - regex: '(?i)(commingl|mix)'
           - regex: '(?i)proportion|proportionate|shared ownership'
       finding:
-        message: "Регулируется смешение: долевая собственность пропорционально оплате."
+        message: "Commingling addressed: fractional ownership proportional to payment."
         severity_level: low
-        risk: "Снижен риск потери титула при смешении."
+        risk: "Reduced risk of losing title in a mix."
         suggestion:
-          text: "Опишите порядок фиксации доли и переработки."
+          text: "Describe how the share is recorded and processed."
     - id: commingling_not_addressed
       when:
         all:
           - regex: '(?i)(commingl|mix|processing|bulk)'
           - not_regex: '(?i)proportion|ownership'
       finding:
-        message: "Отсутствуют правила долевой собственности при смешении/переработке."
+        message: "No rules on fractional ownership for commingling/processing."
         severity_level: medium
-        risk: "Титул Company может быть утрачен."
+        risk: "Company may lose title."
         suggestion:
-          text: "Запретите смешение без согласия и установите долевую собственность."
+          text: "Prohibit mixing without consent and set proportional ownership."
   outcome:
     status: pass
     risk_level: low
@@ -289,22 +289,22 @@ rule:
           - regex: '(?i)title (revert|return)s? to (supplier|contractor)'
           - regex: '(?i)(remove|collect|dispose|logistics)'
       finding:
-        message: "При отказе титул возвращается поставщику, он вывозит/утилизирует товар."
+        message: "On rejection, title reverts to the supplier who removes/disposes of the goods."
         severity_level: low
-        risk: "Снижен риск зависшего имущества."
+        risk: "Reduces risk of stranded property."
         suggestion:
-          text: "Установите сроки и процедуру вывоза/утилизации."
+          text: "Specify timing and process for removal/disposal."
     - id: no_reversion_rules
       when:
         all:
           - regex: '(?i)(reject|rejection|return)'
           - not_regex: '(?i)title (revert|return)s?'
       finding:
-        message: "Не урегулирована реверсия титула при отказе/возврате."
+        message: "No title reversion rules on rejection/return."
         severity_level: medium
-        risk: "Company может остаться с нежеланным имуществом."
+        risk: "Company may be left with unwanted goods."
         suggestion:
-          text: "Пропишите автоматическую реверсию титула и обязанности по вывозу."
+          text: "Provide automatic title reversion and removal obligations."
   outcome:
     status: pass
     risk_level: medium
@@ -331,20 +331,20 @@ rule:
       when:
         regex: '(?i)waiver(s)? of (lien|retention of title|rot)'
       finding:
-        message: "Субы/хранители предоставляют безотзывные waivers ROT/линов."
+        message: "Subcontractors/warehousers provide irrevocable ROT/lien waivers."
         severity_level: high
-        risk: "Устранён риск прав третьих лиц."
+        risk: "Removes risk of third-party rights."
         suggestion:
-          text: "Закрепите форму waiver, приемлемую Company."
+          text: "Specify a waiver form acceptable to Company."
     - id: lien_allowed
       when:
         regex: '(?i)(subcontractor|warehouseman|bailee).*(lien|retention of title)'
       finding:
-        message: "Допускаются права удержания субподрядчиков/складов."
+        message: "Subcontractors/warehouses are allowed lien rights."
         severity_level: high
-        risk: "Company может потерять контроль над имуществом."
+        risk: "Company may lose control of its property."
         suggestion:
-          text: "Требуйте безотзывные waivers любых прав удержания."
+          text: "Require irrevocable waivers of all lien rights."
   outcome:
     status: pass
     risk_level: high
@@ -372,22 +372,22 @@ rule:
       when:
         regex: '(?i)title.*shall not affect.*((importer|exporter) of record|customs)'
       finding:
-        message: "Переход титула не влияет на IoR/EoR и таможенные документы."
+        message: "Title transfer does not affect IoR/EoR or customs documents."
         severity_level: low
-        risk: "Снижен риск таможенных споров."
+        risk: "Reduced risk of customs disputes."
         suggestion:
-          text: "Убедитесь, что инвойсы/packing/origin/HS codes соответствуют IoR/EoR."
+          text: "Ensure invoices/packing/origin/HS codes match the IoR/EoR."
     - id: customs_not_addressed
       when:
         all:
           - regex: '(?i)title'
           - not_regex: '(?i)(importer of record|exporter of record|customs)'
       finding:
-        message: "Нет увязки перехода титула с IoR/EoR и таможенными документами."
+        message: "No link between title transfer and IoR/EoR or customs documents."
         severity_level: medium
-        risk: "Риск несоответствия таможенным требованиям."
+        risk: "Risk of customs non-compliance."
         suggestion:
-          text: "Уточните, что титул не меняет IoR/EoR и документы."
+          text: "Clarify that title does not change IoR/EoR or documentation."
   outcome:
     status: pass
     risk_level: low

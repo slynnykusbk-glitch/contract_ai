@@ -587,14 +587,16 @@ function wireUI() {
 g.wireUI = g.wireUI || wireUI;
 
 async function onInsertIntoWord() {
+  const dst = $(Q.proposed);
+  const txt = (dst?.value || "").trim();
+  if (!txt) { notifyWarn("No draft to insert"); return; }
   try {
-    const dst = $(Q.proposed);
-    const txt = (dst?.value || "").trim();
-    if (!txt) { notifyWarn("No draft to insert"); return; }
     await insertIntoWord(txt);
     notifyOk("Inserted into Word");
   } catch (e) {
     console.error(e);
+    await navigator.clipboard?.writeText(txt).catch(() => {});
+    notifyWarn("Insert failed; draft copied to clipboard");
   }
 }
 

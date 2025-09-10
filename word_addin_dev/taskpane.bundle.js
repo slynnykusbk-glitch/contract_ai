@@ -49,6 +49,11 @@
     const headers = { "content-type": "application/json" };
     const apiKey = opts.apiKey ?? (() => {
       try {
+        const storeKey = window.CAI?.Store?.get?.()?.apiKey;
+        if (storeKey) return storeKey;
+      } catch {
+      }
+      try {
         return localStorage.getItem("api_key") || "";
       } catch {
         return "";
@@ -66,6 +71,11 @@
       }
     }
     const schemaVersion = opts.schemaVersion ?? (() => {
+      try {
+        const storeSchema = window.CAI?.Store?.get?.()?.schemaVersion;
+        if (storeSchema) return storeSchema;
+      } catch {
+      }
       try {
         return localStorage.getItem("schemaVersion") || "";
       } catch {
@@ -91,12 +101,10 @@
   async function req(path, { method = "GET", body = null, key = path } = {}) {
     const headers = { "content-type": "application/json" };
     try {
-      const apiKey = localStorage.getItem("api_key");
+      const store = window.CAI?.Store?.get?.() || {};
+      const apiKey = store.apiKey || localStorage.getItem("api_key");
       if (apiKey) headers["x-api-key"] = apiKey;
-    } catch {
-    }
-    try {
-      const schema = localStorage.getItem("schemaVersion");
+      const schema = store.schemaVersion || localStorage.getItem("schemaVersion");
       if (schema) headers["x-schema-version"] = schema;
     } catch {
     }
@@ -224,8 +232,24 @@
   };
   var lastCid = "";
   function ensureHeaders() {
-    getApiKeyFromStore();
-    getSchemaFromStore();
+    try {
+      const store = globalThis.CAI?.Store?.get?.() || {};
+      const apiKey = store.apiKey || getApiKeyFromStore();
+      const schema = store.schemaVersion || getSchemaFromStore();
+      if (apiKey) {
+        try {
+          localStorage.setItem("api_key", apiKey);
+        } catch {
+        }
+      }
+      if (schema) {
+        try {
+          localStorage.setItem("schemaVersion", schema);
+        } catch {
+        }
+      }
+    } catch {
+    }
     return true;
   }
   function slot(id, role) {
@@ -551,12 +575,8 @@ Suggested fix: ${fix}`;
         notifyErr("\u0412 \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u0435 \u043D\u0435\u0442 \u0442\u0435\u043A\u0441\u0442\u0430");
         return;
       }
-      const apiKey = getApiKeyFromStore();
+      ensureHeaders();
       const schema = getSchemaFromStore();
-      if (!apiKey) {
-        notifyErr("API key is missing");
-        return;
-      }
       if (!schema) {
         notifyErr("Schema version is missing");
         return;
@@ -587,12 +607,8 @@ Suggested fix: ${fix}`;
     }
   }
   async function doQARecheck() {
-    const apiKey = getApiKeyFromStore();
+    ensureHeaders();
     const schema = getSchemaFromStore();
-    if (!apiKey) {
-      notifyErr("API key is missing");
-      return;
-    }
     if (!schema) {
       notifyErr("Schema version is missing");
       return;

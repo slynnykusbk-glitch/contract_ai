@@ -89,6 +89,10 @@ export async function postJson(path: string, body: any, opts: { apiKey?: string;
   const url = base() + path;
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   const apiKey = opts.apiKey ?? (() => {
+    try {
+      const storeKey = (window as any).CAI?.Store?.get?.()?.apiKey;
+      if (storeKey) return storeKey;
+    } catch {}
     try { return localStorage.getItem('api_key') || ''; } catch { return ''; }
   })();
   if (apiKey) {
@@ -97,6 +101,10 @@ export async function postJson(path: string, body: any, opts: { apiKey?: string;
     try { (window as any).CAI?.Store?.setApiKey?.(apiKey); } catch {}
   }
   const schemaVersion = opts.schemaVersion ?? (() => {
+    try {
+      const storeSchema = (window as any).CAI?.Store?.get?.()?.schemaVersion;
+      if (storeSchema) return storeSchema;
+    } catch {}
     try { return localStorage.getItem('schemaVersion') || ''; } catch { return ''; }
   })();
   if (schemaVersion) headers['x-schema-version'] = schemaVersion;
@@ -118,11 +126,10 @@ export async function postJson(path: string, body: any, opts: { apiKey?: string;
 async function req(path: string, { method='GET', body=null, key=path }: { method?: string; body?: any; key?: string } = {}) {
   const headers: Record<string, string> = { 'content-type':'application/json' };
   try {
-    const apiKey = localStorage.getItem('api_key');
+    const store = (window as any).CAI?.Store?.get?.() || {};
+    const apiKey = store.apiKey || localStorage.getItem('api_key');
     if (apiKey) headers['x-api-key'] = apiKey;
-  } catch {}
-  try {
-    const schema = localStorage.getItem('schemaVersion');
+    const schema = store.schemaVersion || localStorage.getItem('schemaVersion');
     if (schema) headers['x-schema-version'] = schema;
   } catch {}
 

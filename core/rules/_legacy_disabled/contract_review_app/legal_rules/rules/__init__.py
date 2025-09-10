@@ -1,3 +1,4 @@
+# QUARANTINED: legacy Python rule (not loaded by engine). Kept for reference only.  # flake8: noqa
 # contract_review_app/legal_rules/rules/__init__.py
 """
 Light-weight re-export for the shared rules registry.
@@ -14,6 +15,10 @@ from __future__ import annotations
 
 # The canonical registry lives in `contract_review_app.legal_rules.registry`.
 # Re-export it under the name `registry`.
-from ..registry import RULES_REGISTRY as registry, list_rule_names, normalize_clause_type  # noqa: F401
+from ..registry import (
+    RULES_REGISTRY as registry,
+    list_rule_names,
+    normalize_clause_type,
+)  # noqa: F401
 
 __all__ = ["registry", "list_rule_names", "normalize_clause_type"]

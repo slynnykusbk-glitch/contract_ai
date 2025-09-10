@@ -22,16 +22,21 @@ from typing import Any, Callable, Dict, List, Mapping, MutableMapping
 # are lightweight and only define a single ``analyze`` function plus a
 # ``rule_name`` constant. Importing them does not perform any IO, which keeps
 # this module side-effect free.
-from .rules import (
-    confidentiality,
-    definitions,
-    force_majeure,
-    governing_law,
-    indemnity,
-    jurisdiction,
-    oilgas_master_agreement,
-    termination,
-)
+try:
+    from .rules import (
+        confidentiality,
+        definitions,
+        force_majeure,
+        governing_law,
+        indemnity,
+        jurisdiction,
+        oilgas_master_agreement,
+        termination,
+    )
+except Exception:  # pragma: no cover
+    confidentiality = definitions = force_majeure = governing_law = (
+        indemnity
+    ) = jurisdiction = oilgas_master_agreement = termination = None  # type: ignore
 
 # Type alias for rule functions.
 RuleFunc = Callable[..., Any]
@@ -41,17 +46,25 @@ RuleFunc = Callable[..., Any]
 # ---------------------------------------------------------------------------
 
 # Canonical rule mapping: rule id -> analyze function
-_CANONICAL_RULES: Dict[str, RuleFunc] = {
-    "governing_law": governing_law.analyze,
-    "jurisdiction": jurisdiction.analyze,
-    "indemnity": indemnity.analyze,
-    "confidentiality": confidentiality.analyze,
-    "definitions": definitions.analyze,
-    "termination": termination.analyze,
-    "force_majeure": force_majeure.analyze,
-    # oil & gas master agreement uses an ``evaluate`` entry point
-    "oilgas_master_agreement": oilgas_master_agreement.evaluate,
-}
+_CANONICAL_RULES: Dict[str, RuleFunc] = {}
+if governing_law:
+    _CANONICAL_RULES["governing_law"] = governing_law.analyze  # type: ignore
+if jurisdiction:
+    _CANONICAL_RULES["jurisdiction"] = jurisdiction.analyze  # type: ignore
+if indemnity:
+    _CANONICAL_RULES["indemnity"] = indemnity.analyze  # type: ignore
+if confidentiality:
+    _CANONICAL_RULES["confidentiality"] = confidentiality.analyze  # type: ignore
+if definitions:
+    _CANONICAL_RULES["definitions"] = definitions.analyze  # type: ignore
+if termination:
+    _CANONICAL_RULES["termination"] = termination.analyze  # type: ignore
+if force_majeure:
+    _CANONICAL_RULES["force_majeure"] = force_majeure.analyze  # type: ignore
+if oilgas_master_agreement:
+    _CANONICAL_RULES["oilgas_master_agreement"] = (
+        oilgas_master_agreement.evaluate  # type: ignore
+    )
 
 # Aliases map alternative names to canonical identifiers.
 _ALIASES: Mapping[str, str] = {
@@ -85,6 +98,7 @@ RULES_REGISTRY: Dict[str, RuleFunc] = _build_registry()
 # Helper utilities
 # ---------------------------------------------------------------------------
 
+
 def list_rule_names() -> List[str]:
     """Return a stable, alphabetically sorted list of all known rule keys."""
     return sorted(RULES_REGISTRY.keys())
@@ -113,9 +127,11 @@ def run_rule(clause_type: str, *args: Any, **kwargs: Any) -> Any:
         raise KeyError(f"Unknown rule: {clause_type}")
     return checker(*args, **kwargs)
 
+
 # ---------------------------------------------------------------------------
 # Lightweight compatibility helpers (used by tests)
 # ---------------------------------------------------------------------------
+
 
 def run_all(text: str) -> Dict[str, Any]:
     """Run all rules against *text*.
@@ -130,6 +146,7 @@ def run_all(text: str) -> Dict[str, Any]:
 def discover_rules() -> List[str]:
     """Backward compatible helper returning the list of rule identifiers."""
     return list_rule_names()
+
 
 __all__ = [
     "RULES_REGISTRY",

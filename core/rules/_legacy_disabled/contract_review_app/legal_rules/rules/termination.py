@@ -1,9 +1,11 @@
+# QUARANTINED: legacy Python rule (not loaded by engine). Kept for reference only.  # flake8: noqa
 from __future__ import annotations
 import re
 from contract_review_app.core.schemas import AnalysisInput, AnalysisOutput, Diagnostic
 from .base import mk_finding, make_output
 
 rule_name = "termination"
+
 
 def analyze(inp: AnalysisInput) -> AnalysisOutput:
     text = inp.text or ""
@@ -23,13 +25,27 @@ def analyze(inp: AnalysisInput) -> AnalysisOutput:
     # For cause & cure period
     if re.search(r"\bfor cause\b|\bmaterial breach\b", text, flags=re.I):
         if not re.search(r"\b(cure|remed(y|ies))\b", text, flags=re.I):
-            findings.append(mk_finding("TER-CURE", "For-cause termination without cure period", "high"))
+            findings.append(
+                mk_finding(
+                    "TER-CURE", "For-cause termination without cure period", "high"
+                )
+            )
         if not re.search(r"\b\d{1,3}\s*(calendar\s*)?days?\b", text, flags=re.I):
-            findings.append(mk_finding("TER-NOTICE", "No explicit notice period for termination", "medium"))
+            findings.append(
+                mk_finding(
+                    "TER-NOTICE", "No explicit notice period for termination", "medium"
+                )
+            )
 
     # Convenience termination
-    if re.search(r"\bfor convenience\b|\bat any time\b", text, flags=re.I) and not re.search(r"\bnotice\b", text, flags=re.I):
-        findings.append(mk_finding("TER-CONV-NOTICE", "Termination for convenience missing notice", "high"))
+    if re.search(
+        r"\bfor convenience\b|\bat any time\b", text, flags=re.I
+    ) and not re.search(r"\bnotice\b", text, flags=re.I):
+        findings.append(
+            mk_finding(
+                "TER-CONV-NOTICE", "Termination for convenience missing notice", "high"
+            )
+        )
 
     # Effects of termination
     out = make_output(rule_name, inp, findings, "Termination", "Termination")

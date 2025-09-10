@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List
 
+import logging
 import re
 import yaml
 
@@ -18,105 +19,44 @@ def _preprocess_yaml(raw: str) -> str:
     """
     return re.sub(r":\s*{", ": {", raw)
 
-from .models import FindingV2, ENGINE_VERSION
-from .types import RuleFormat, RuleSource
-from .vm import RuleVM
-from .yaml_schema import RuleYaml
+
+from .models import FindingV2, ENGINE_VERSION  # noqa: E402
+from .types import RuleFormat, RuleSource  # noqa: E402
+from .vm import RuleVM  # noqa: E402
+from .yaml_schema import RuleYaml  # noqa: E402
+
+ALLOWED_RULE_EXTS = {".yml", ".yaml"}
+log = logging.getLogger(__name__)
 
 
 # ---------- Discover: no YAML parsing, detect by file presence ----------
 def discover(root: Path) -> List[RuleSource]:
     root_path = Path(root)
-    file_map: Dict[Tuple[str, str], Dict[str, Path]] = {}
+    sources: List[RuleSource] = []
+    warned_py = False
 
     for path in root_path.rglob("*"):
-        if not path.is_file() or path.suffix not in {".py", ".yaml"}:
+        if not path.is_file() or "_legacy_disabled" in path.parts:
             continue
-        base = path.with_suffix("")  # same basename for .py / .yaml
-        key = (str(base), path.parent.name)
-        entry = file_map.setdefault(key, {})
-        entry["py" if path.suffix == ".py" else "yaml"] = path
-
-    sources: List[RuleSource] = []
-    for (base, pack), files in sorted(file_map.items()):
-        name = Path(base).name
-        py_file = files.get("py")
-        yaml_file = files.get("yaml")
-
-        if py_file and yaml_file:
-            # if YAML contains an id -> treat pair as hybrid, otherwise fall back
-            # to the Python-only rule.
-            has_id = False
-            try:
-                raw = yaml_file.read_text(encoding="utf-8")
-                data = yaml.safe_load(_preprocess_yaml(raw)) or {}
-                has_id = bool(data.get("id"))
-            except Exception:
-                pass
-            if has_id:
-                sources.append(
-                    RuleSource(
-                        id=name,
-                        pack=pack,
-                        format=RuleFormat.HYBRID,
-                        path=yaml_file,
-                        py_path=py_file,
-                        yaml_path=yaml_file,
-                    )
-                )
-            else:
-                sources.append(
-                    RuleSource(
-                        id=name,
-                        pack=pack,
-                        format=RuleFormat.PYTHON,
-                        path=py_file,
-                        py_path=py_file,
-                        yaml_path=yaml_file,
-                    )
-                )
-        elif py_file:
-            sources.append(
-                RuleSource(
-                    id=name,
-                    pack=pack,
-                    format=RuleFormat.PYTHON,
-                    path=py_file,
-                    py_path=py_file,
-                )
+        suffix = path.suffix.lower()
+        if suffix == ".py":
+            if not warned_py:
+                log.warning("Skipped legacy Python rules (*.py).")
+                warned_py = True
+            continue
+        if suffix not in ALLOWED_RULE_EXTS:
+            continue
+        name = path.stem
+        pack = path.parent.name
+        sources.append(
+            RuleSource(
+                id=name,
+                pack=pack,
+                format=RuleFormat.YAML,
+                path=path,
+                yaml_path=path,
             )
-        else:  # yaml only
-            # treat as hybrid if YAML references a python impl via ``python:``
-            py_ref = None
-            try:
-                raw = yaml_file.read_text(encoding="utf-8")
-                data = yaml.safe_load(_preprocess_yaml(raw)) or {}
-                py_name = data.get("python")
-                if isinstance(py_name, str):
-                    py_ref = yaml_file.parent / py_name
-            except Exception:
-                py_ref = None
-            if py_ref and py_ref.exists():
-                sources.append(
-                    RuleSource(
-                        id=name,
-                        pack=pack,
-                        format=RuleFormat.HYBRID,
-                        path=yaml_file,  # main spec
-                        py_path=py_ref,
-                        yaml_path=yaml_file,
-                    )
-                )
-            else:
-                sources.append(
-                    RuleSource(
-                        id=name,
-                        pack=pack,
-                        format=RuleFormat.YAML,
-                        path=yaml_file,  # type: ignore[arg-type]
-                        yaml_path=yaml_file,
-                    )
-                )
+        )
     return sources
 
 
@@ -187,7 +127,9 @@ class PolicyPackLoader:
         self._sources = discover(self.root)
         return self._sources
 
-    def execute(self, source: RuleSource | List[RuleSource], context: Dict[str, Any]) -> List[FindingV2]:
+    def execute(
+        self, source: RuleSource | List[RuleSource], context: Dict[str, Any]
+    ) -> List[FindingV2]:
         if isinstance(source, list):
             findings: List[FindingV2] = []
             for s in source:
@@ -197,6 +139,6 @@ class PolicyPackLoader:
 
     def run_all(self, context: Dict[str, Any]) -> List[FindingV2]:
         findings: List[FindingV2] = []
-        for src in (self._sources or self.discover()):
+        for src in self._sources or self.discover():
             findings.extend(execute(src, context))
         return findings

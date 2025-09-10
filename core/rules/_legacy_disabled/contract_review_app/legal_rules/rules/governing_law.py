@@ -1,3 +1,4 @@
+# QUARANTINED: legacy Python rule (not loaded by engine). Kept for reference only.  # flake8: noqa
 from __future__ import annotations
 import re
 from contract_review_app.core.schemas import AnalysisInput, AnalysisOutput
@@ -6,7 +7,10 @@ from .base import mk_finding, make_output
 rule_name = "governing_law"
 RULE_NAME = rule_name
 
-LAW_RE = r"(laws? of (england(?: and wales)?|scotland|northern ireland|united kingdom|uk))"
+LAW_RE = (
+    r"(laws? of (england(?: and wales)?|scotland|northern ireland|united kingdom|uk))"
+)
+
 
 def analyze(inp: AnalysisInput) -> AnalysisOutput:
     text = inp.text or ""

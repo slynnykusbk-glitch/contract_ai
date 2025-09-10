@@ -69,11 +69,7 @@ function bindClick(sel: string, fn: (e: Event) => Promise<void>) {
     try {
       await fn(e);
     } catch (err: any) {
-      if (err?.message === 'MISSING_HEADERS') {
-        notifyWarn('Set API key and schema first');
-      } else {
-        notifyWarn('Request failed');
-      }
+      notifyWarn('Request failed');
     }
   });
   b.disabled = false;

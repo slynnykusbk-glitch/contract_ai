@@ -109,15 +109,8 @@ function setCidLabels(){
   document.getElementById("lastCidLbl").textContent = lastCid || "(none yet)";
 }
 function checkHeaders(){
-  const apiKey = loadApiKey();
-  const schema = loadSchemaVersion();
-  const ok = !!apiKey && !!schema;
-  const warn = document.getElementById('hdrWarn');
-  if (warn) warn.style.display = ok ? 'none' : 'inline';
-  const ids = ['runAllBtn','pingBtn'];
-  ids.forEach(id => { const b = document.getElementById(id); if (b && 'disabled' in b) b.disabled = !ok; });
-  const tests = document.getElementById('testsBtns');
-  if (tests) Array.from(tests.querySelectorAll('button')).forEach(b => { b.disabled = !ok; });
+  loadApiKey();
+  loadSchemaVersion();
 }
 function setJSON(elId, obj){
   const el = document.getElementById(elId);

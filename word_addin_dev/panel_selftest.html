@@ -56,9 +56,8 @@
     <button id="saveKeyBtn">Save Headers</button>
     <button id="runAllBtn">Run All</button>
     <button id="pingBtn">Ping LLM</button>
-    <span class="small">Saved in localStorage. Both headers are required.</span>
+    <span class="small">Saved in localStorage. Headers optional in DEV.</span>
     <span id="schemaWarn" class="small err" style="display:none;"></span>
-    <div id="hdrWarn" class="small err" style="display:none;">Set API key &amp; schema (Save Headers)</div>
   </div>
 
   <div class="row">
@@ -114,9 +113,14 @@
     <p class="small muted">Tip: For local dev, ensure the backend sends headers: x-cid, x-cache, x-schema-version="1.4".</p>
   </div>
 
-    <script type="module" src="./app/assets/store.js?v=DEV"></script>
-  <script type="module" src="./app/assets/api-client.js?v=DEV"></script>
-  <script type="module" src="./app/selftest.js?v=DEV"></script>
+    <script>window.__DEV_DEFAULT_API_KEY__ = "{{DEFAULT_API_KEY}}";</script>
+  <script type="module">
+    import { bootstrapHeaders } from "./app/assets/bootstrap.js?v=DEV";
+    await bootstrapHeaders();
+    await import("./app/assets/store.js?v=DEV");
+    await import("./app/assets/api-client.js?v=DEV");
+    await import("./app/selftest.js?v=DEV");
+  </script>
   <script nomodule>
     document.querySelector('#last_json')?.insertAdjacentHTML(
       'afterbegin',

@@ -1,8 +1,9 @@
 from fastapi.testclient import TestClient
 
 from contract_review_app.api.app import app
+from contract_review_app.api.models import SCHEMA_VERSION
 
-client = TestClient(app)
+client = TestClient(app, headers={"x-schema-version": SCHEMA_VERSION})
 
 
 def test_api_analyze_returns_type():
@@ -13,5 +14,9 @@ def test_api_analyze_returns_type():
     resp = client.post("/api/analyze", json={"text": text})
     assert resp.status_code == 200
     data = resp.json()
-    summary = data.get("analysis", {}).get("summary", {})
-    assert summary.get("len") == len(text)
+    summary = data.get("summary", {})
+    assert isinstance(summary.get("type"), str)
+    assert summary.get("doc_type", {}).get("source") in {"title", "keywords", "classifier"}
+    rc = data.get("rules_coverage", {})
+    assert rc.get("doc_type", {}).get("value") == summary.get("type")
+    assert any(r.get("status") == "doc_type_mismatch" for r in rc.get("rules", []))

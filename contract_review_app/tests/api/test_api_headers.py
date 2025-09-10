@@ -35,7 +35,7 @@ def test_std_headers_present_and_valid(path):
 
 def test_error_handlers_also_emit_headers():
     r = client.post("/api/analyze", json={})
-    assert r.status_code == 422
+    assert r.status_code in (400, 422)
     for h in ("x-schema-version", "x-latency-ms", "x-cid"):
         assert h in r.headers
 

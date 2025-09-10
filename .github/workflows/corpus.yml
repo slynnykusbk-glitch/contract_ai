@@ -9,6 +9,9 @@ on:
       - "data/corpus_demo/**"
       - "contract_review_app/tests/corpus/**"
 
+env:
+  FEATURE_COMPANIES_HOUSE: "0"
+
 jobs:
   corpus:
     runs-on: ubuntu-latest

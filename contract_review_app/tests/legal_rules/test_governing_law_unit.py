@@ -17,9 +17,11 @@ def test_ok_england_and_wales_with_conflict_exclusion():
     assert out.status in {
         "OK",
         "WARN",
-    }  # має бути OK; якщо знайдено середні зауваження — WARN
+    }  # should be OK; WARN if medium-severity findings are present
     assert out.status == "OK"
-    assert any("посилання на право" in f.message.lower() for f in out.findings)
+    assert any(
+        "reference to governing law" in f.message.lower() for f in out.findings
+    )
     assert out.diagnostics.get("rule") == gl.RULE_NAME
     assert len(out.diagnostics.get("citations", [])) > 0
 
@@ -32,11 +34,11 @@ def test_warn_jurisdiction_only_no_governing_law():
     out = gl.analyze(_mk_input(txt))
 
     assert out.status == "WARN"
-    # має бути зауваження про відсутність явного права
+    # should warn about missing explicit governing law
     issues = " | ".join(f.message.lower() for f in out.findings)
     assert (
-        "без явного застосовного права" in issues
-        or "не вдалося однозначно ідентифікувати" in issues
+        "lacking explicit applicable law" in issues
+        or "could not be clearly identified" in issues
     )
 
 
@@ -45,6 +47,6 @@ def test_fail_no_clause_at_all():
     out = gl.analyze(_mk_input(txt))
 
     assert out.status == "FAIL"
-    assert any("відсутня або неявна" in f.message.lower() for f in out.findings)
-    # підказки/рекомендації повинні бути
+    assert any("missing or implicit" in f.message.lower() for f in out.findings)
+    # recommendations should be present
     assert len(out.recommendations) >= 1

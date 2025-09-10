@@ -1,0 +1,5382 @@
+[
+  {
+    "rule_id": "13.AUDIT.ISO19011",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\binternal\\s+audit\\b",
+        "(?i)\\bISO\\s*19011\\b",
+        "(?i)\\bCAPA\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.AUDIT.ISO19011",
+    "pack": "core/rules/quality/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\binternal\\s+audit\\b",
+        "(?i)\\bISO\\s*19011\\b",
+        "(?i)\\bCAPA\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.COST.NOSHOW_FAIL",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)(?=.*\\b(costs?|expenses?)\\b)(?=.*\\b(no[-\\s]?show|not\\s+ready|re[-\\s]?test)\\b)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.COST.NOSHOW_FAIL",
+    "pack": "core/rules/quality/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)(?=.*\\b(costs?|expenses?)\\b)(?=.*\\b(no[-\\s]?show|not\\s+ready|re[-\\s]?test)\\b)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.EQUIP.CERT.LOLER_PUWER",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(lifting|crane|hoist|sling|shackle|SWL|work\\s+equipment|PUWER|LOLER)\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.EQUIP.CERT.LOLER_PUWER",
+    "pack": "core/rules/quality/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(lifting|crane|hoist|sling|shackle|SWL|work\\s+equipment|PUWER|LOLER)\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.HIDDEN.WORKS",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bhidden\\s+works?\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.HIDDEN.WORKS",
+    "pack": "core/rules/quality/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bhidden\\s+works?\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.INSPECT.NO_WAIVER",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\binspection\\b.*\\bdoes\\s+not\\b.*\\b(relieve|waive)\\b",
+        "(?i)\\bdefect\\b.*\\bnot\\b.*\\bpaid\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.INSPECT.NO_WAIVER",
+    "pack": "core/rules/quality/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\binspection\\b.*\\bdoes\\s+not\\b.*\\b(relieve|waive)\\b",
+        "(?i)\\bdefect\\b.*\\bnot\\b.*\\bpaid\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.ITP.EXISTS",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(Inspection\\s*&\\s*Test\\s*Plan|ITP)\\b",
+        "(?i)\\b(Hold|Witness|Monitor|Review)\\s*point(s)?\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.ITP.EXISTS",
+    "pack": "core/rules/quality/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(Inspection\\s*&\\s*Test\\s*Plan|ITP)\\b",
+        "(?i)\\b(Hold|Witness|Monitor|Review)\\s*point(s)?\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.ITP.NOTICE",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(Hold|Witness)\\b.*\\b(\\d+|five)\\s+day(s)?\\b",
+        "(?i)\\b(\\d+|five)\\s+day(s)?\\b.*\\b(Hold|Witness)\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.ITP.NOTICE",
+    "pack": "core/rules/quality/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(Hold|Witness)\\b.*\\b(\\d+|five)\\s+day(s)?\\b",
+        "(?i)\\b(\\d+|five)\\s+day(s)?\\b.*\\b(Hold|Witness)\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.LAB.ISO17025",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(ISO\\s*/?IEC\\s*17025|accredited\\s+laborator(y|ies))\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.LAB.ISO17025",
+    "pack": "core/rules/quality/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(ISO\\s*/?IEC\\s*17025|accredited\\s+laborator(y|ies))\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.MARKING.UKCA_CE",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(UKCA|CE\\s*mark)\\b",
+        "(?i)\\bPED\\s*2016\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.MARKING.UKCA_CE",
+    "pack": "core/rules/quality/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(UKCA|CE\\s*mark)\\b",
+        "(?i)\\bPED\\s*2016\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.MOC.FORMAL",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bmanagement\\s+of\\s+change\\b",
+        "(?i)\\bMOC\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.MOC.FORMAL",
+    "pack": "core/rules/quality/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bmanagement\\s+of\\s+change\\b",
+        "(?i)\\bMOC\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.QMS.ISO9001",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(quality management system|QMS|ISO\\s*9001|API\\s*Q1|API\\s*Q2|AS9100|IATF\\s*16949)\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.QMS.ISO9001",
+    "pack": "core/rules/quality/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(quality management system|QMS|ISO\\s*9001|API\\s*Q1|API\\s*Q2|AS9100|IATF\\s*16949)\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.QP.REQUIRED",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bquality\\s+plan\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.QP.REQUIRED",
+    "pack": "core/rules/quality/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bquality\\s+plan\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.SHIP.BLOCK",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bno\\s+shipment\\b.*\\b(final\\s+inspection|waiver)\\b",
+        "(?i)\\bshipment\\b.*\\bwithout\\b.*\\b(final\\s+inspection|waiver)\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "13.SHIP.BLOCK",
+    "pack": "core/rules/quality/quality_inspections.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bno\\s+shipment\\b.*\\b(final\\s+inspection|waiver)\\b",
+        "(?i)\\bshipment\\b.*\\bwithout\\b.*\\b(final\\s+inspection|waiver)\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P1.ALL_INCLUSIVE_RATES",
+    "pack": "contract_review_app/legal_rules/policy_packs/pricing_invoicing_payment.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)all[- ]inclusive (rates|pricing)",
+        "(?i)no (additional|separate) charges.*unless.*(listed|set out)"
+      ]
+    },
+    "requires_clause": [
+      "pricing"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P1.ALL_INCLUSIVE_RATES",
+    "pack": "core/rules/pricing_invoicing/pricing_invoicing_payment.yml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)all[- ]inclusive (rates|pricing)",
+        "(?i)no (additional|separate) charges.*unless.*(listed|set out)"
+      ]
+    },
+    "requires_clause": [
+      "pricing"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P10.REIMBURSABLES_NET_OF_REBATES",
+    "pack": "contract_review_app/legal_rules/policy_packs/pricing_invoicing_payment.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)(reimbursable|pass[- ]through|net of rebates)"
+      ]
+    },
+    "requires_clause": [
+      "pricing"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P10.REIMBURSABLES_NET_OF_REBATES",
+    "pack": "core/rules/pricing_invoicing/pricing_invoicing_payment.yml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)(reimbursable|pass[- ]through|net of rebates)"
+      ]
+    },
+    "requires_clause": [
+      "pricing"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P11.NO_PAY_IDLE_EFFICIENCY",
+    "pack": "contract_review_app/legal_rules/policy_packs/pricing_invoicing_payment.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)no payment for (idle|standby).*contractor (fault|failure)",
+        "(?i)efficiency.*adjust(ment)?"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P11.NO_PAY_IDLE_EFFICIENCY",
+    "pack": "core/rules/pricing_invoicing/pricing_invoicing_payment.yml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)no payment for (idle|standby).*contractor (fault|failure)",
+        "(?i)efficiency.*adjust(ment)?"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P12.RECEIVABLES_ASSIGNMENT_PERMITTED",
+    "pack": "contract_review_app/legal_rules/policy_packs/pricing_invoicing_payment.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)may not assign (receivables|amounts due|right to payment)"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P12.RECEIVABLES_ASSIGNMENT_PERMITTED",
+    "pack": "core/rules/pricing_invoicing/pricing_invoicing_payment.yml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)may not assign (receivables|amounts due|right to payment)"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P2.INVOICE_CONTENT_VAT",
+    "pack": "contract_review_app/legal_rules/policy_packs/pricing_invoicing_payment.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)invoice must (include|contain).*VAT",
+        "(?i)(PO|Call[- ]Off|timesheets|GRN)"
+      ]
+    },
+    "requires_clause": [
+      "invoice"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P2.INVOICE_CONTENT_VAT",
+    "pack": "core/rules/pricing_invoicing/pricing_invoicing_payment.yml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)invoice must (include|contain).*VAT",
+        "(?i)(PO|Call[- ]Off|timesheets|GRN)"
+      ]
+    },
+    "requires_clause": [
+      "invoice"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P3.LATE_INVOICE_TIMEBAR",
+    "pack": "contract_review_app/legal_rules/policy_packs/pricing_invoicing_payment.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)no payment for invoices submitted later than .*?\\(?(\\d+)\\)?\\s*days"
+      ]
+    },
+    "requires_clause": [
+      "invoice"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P3.LATE_INVOICE_TIMEBAR",
+    "pack": "core/rules/pricing_invoicing/pricing_invoicing_payment.yml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)no payment for invoices submitted later than .*?\\(?(\\d+)\\)?\\s*days"
+      ]
+    },
+    "requires_clause": [
+      "invoice"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P4.PAYMENT_TERMS_AND_INTEREST",
+    "pack": "contract_review_app/legal_rules/policy_packs/pricing_invoicing_payment.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)payment (term|due).*?(\\d+)\\s*days",
+        "(?i)interest.*late payment"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P4.PAYMENT_TERMS_AND_INTEREST",
+    "pack": "core/rules/pricing_invoicing/pricing_invoicing_payment.yml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)payment (term|due).*?(\\d+)\\s*days",
+        "(?i)interest.*late payment"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P5.PUBLIC_30DAYS_CASCADE",
+    "pack": "contract_review_app/legal_rules/policy_packs/pricing_invoicing_payment.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)(contracting authority|utility).*30.*days",
+        "(?i)Reg(ulation)?\\.?\\s*113"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P5.PUBLIC_30DAYS_CASCADE",
+    "pack": "core/rules/pricing_invoicing/pricing_invoicing_payment.yml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)(contracting authority|utility).*30.*days",
+        "(?i)Reg(ulation)?\\.?\\s*113"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P6.CONSTRUCTION_PAY_NOTICES",
+    "pack": "contract_review_app/legal_rules/policy_packs/pricing_invoicing_payment.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Construction Act|HGCRA|pay[- ]less notice|payment notice"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P6.CONSTRUCTION_PAY_NOTICES",
+    "pack": "core/rules/pricing_invoicing/pricing_invoicing_payment.yml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Construction Act|HGCRA|pay[- ]less notice|payment notice"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P7.SETOFF_SCOPE",
+    "pack": "contract_review_app/legal_rules/policy_packs/pricing_invoicing_payment.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)(set[- ]off|withhold|deduct)"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P7.SETOFF_SCOPE",
+    "pack": "core/rules/pricing_invoicing/pricing_invoicing_payment.yml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)(set[- ]off|withhold|deduct)"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P8.PAY_UNDISPUTED",
+    "pack": "contract_review_app/legal_rules/policy_packs/pricing_invoicing_payment.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)pay.*undisputed (amount|portion)"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P8.PAY_UNDISPUTED",
+    "pack": "core/rules/pricing_invoicing/pricing_invoicing_payment.yml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)pay.*undisputed (amount|portion)"
+      ]
+    },
+    "requires_clause": [
+      "payment"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P9.EINVOICE_PLATFORM_VAT_CONTROL",
+    "pack": "contract_review_app/legal_rules/policy_packs/pricing_invoicing_payment.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)(e[- ]invoice|SAP Business Network|Commerce Automation|3[- ]way match)"
+      ]
+    },
+    "requires_clause": [
+      "invoice"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "P9.EINVOICE_PLATFORM_VAT_CONTROL",
+    "pack": "core/rules/pricing_invoicing/pricing_invoicing_payment.yml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)(e[- ]invoice|SAP Business Network|Commerce Automation|3[- ]way match)"
+      ]
+    },
+    "requires_clause": [
+      "invoice"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "VARIATIONS.CHANGE_IN_LAW_TAXES_BUSINESS_EXCLUDED",
+    "pack": "contract_review_app/legal_rules/policy_packs/variations_clause14.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)change in law.*taxes.*business in general.*does not entitle"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "VARIATIONS.CONTRACTOR_INITIATED_LIMITED",
+    "pack": "contract_review_app/legal_rules/policy_packs/variations_clause14.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)may\\s+only\\s+request\\s+.*variation order.*(company\\s+instruction|breach\\s+by\\s+company|change in law)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "VARIATIONS.DISAGREE_PROCEED_NO_COND_SIGN",
+    "pack": "contract_review_app/legal_rules/policy_packs/variations_clause14.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)disagrees.*proceed immediately",
+        "(?i)sign contingent"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "VARIATIONS.MITIGATION_DUTY",
+    "pack": "contract_review_app/legal_rules/policy_packs/variations_clause14.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)no\\s+(increase|adjustment).*mitigate"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "VARIATIONS.NOM_ONLY",
+    "pack": "contract_review_app/legal_rules/policy_packs/variations_clause14.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)None of the scope, pricing, or time schedule.*Clause\\s*14\\s+or\\s+Clause\\s*31(?:\\.6)?"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "VARIATIONS.RATE_IMMUTABILITY_BASELINE",
+    "pack": "contract_review_app/legal_rules/policy_packs/variations_clause14.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)rates?\\s+fixed\\s+for\\s+the\\s+term"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "VARIATIONS.RATE_PARITY_CPA",
+    "pack": "contract_review_app/legal_rules/policy_packs/variations_clause14.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)same\\s+rates.*critical\\s+path\\s+analysis"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "VARIATIONS.TIMEBAR_IMMEDIATE_OFFSHORE_3D",
+    "pack": "contract_review_app/legal_rules/policy_packs/variations_clause14.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)immediately.*offshore.*not\\s+later\\s+than\\s*\\(3\\)\\s+days"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "VARIATIONS.VOR_5BD",
+    "pack": "contract_review_app/legal_rules/policy_packs/variations_clause14.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)variation order request.*as soon as reasonably practicable.*five\\s*\\(5\\)\\s*business\\s*days"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "VARIATIONS.WAIVER_CUMULATIVE_CARDINAL",
+    "pack": "contract_review_app/legal_rules/policy_packs/variations_clause14.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)waives.*cardinal change.*cumulative impact"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "assignment",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)assign"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "audit",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)audit"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "company_provided_items",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)company provided items"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "confidentiality",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)confidential"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "confidentiality_basic",
+    "pack": "contract_review_app/legal_rules/policy_packs/core_en_v1.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "cpi.ccc.insurance.cover_required",
+    "pack": "contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(care,?\\s+custody\\s+and\\s+control|\\bCCC\\b)\\b|\\b(risk\\s+in\\s+(?:CPI|customer\\s+property))\\b"
+      ]
+    },
+    "requires_clause": [
+      "insurance",
+      "risk",
+      "company provided items"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.ccc.insurance.cover_required",
+    "pack": "core/rules/company_provided_items/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(care,?\\s+custody\\s+and\\s+control|\\bCCC\\b)\\b|\\b(risk\\s+in\\s+(?:CPI|customer\\s+property))\\b"
+      ]
+    },
+    "requires_clause": [
+      "insurance",
+      "risk",
+      "company provided items"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.export.controls.sanctions",
+    "pack": "contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(export|ship|cross[-\\s]?border|customs|import)\\b.*\\b(company\\s+provided\\s+items|customer\\s+property|owner[-\\s]?furnished|free[-\\s]?issue)\\b"
+      ]
+    },
+    "requires_clause": [
+      "export",
+      "sanctions",
+      "logistics",
+      "company provided items"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.export.controls.sanctions",
+    "pack": "core/rules/company_provided_items/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(export|ship|cross[-\\s]?border|customs|import)\\b.*\\b(company\\s+provided\\s+items|customer\\s+property|owner[-\\s]?furnished|free[-\\s]?issue)\\b"
+      ]
+    },
+    "requires_clause": [
+      "export",
+      "sanctions",
+      "logistics",
+      "company provided items"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.incident.loss.damage.reporting",
+    "pack": "contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(loss|lost|damage|damaged)\\b.*\\b(company\\s+provided\\s+items|customer\\s+property|owner[-\\s]?furnished|free[-\\s]?issue)\\b"
+      ]
+    },
+    "requires_clause": [
+      "company provided items",
+      "incidents",
+      "reports"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.incident.loss.damage.reporting",
+    "pack": "core/rules/company_provided_items/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(loss|lost|damage|damaged)\\b.*\\b(company\\s+provided\\s+items|customer\\s+property|owner[-\\s]?furnished|free[-\\s]?issue)\\b"
+      ]
+    },
+    "requires_clause": [
+      "company provided items",
+      "incidents",
+      "reports"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.marking.tracking.required",
+    "pack": "contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(company\\s+provided\\s+items|owner[-\\s]?furnished|free[-\\s]?issue\\s+materials|customer\\s+property)\\b"
+      ]
+    },
+    "requires_clause": [
+      "company provided items",
+      "customer property"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.marking.tracking.required",
+    "pack": "core/rules/company_provided_items/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(company\\s+provided\\s+items|owner[-\\s]?furnished|free[-\\s]?issue\\s+materials|customer\\s+property)\\b"
+      ]
+    },
+    "requires_clause": [
+      "company provided items",
+      "customer property"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.no_lien.required",
+    "pack": "contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(lien|charge|encumbrance)s?\\b"
+      ]
+    },
+    "requires_clause": [
+      "liens",
+      "company provided items",
+      "claims"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.no_lien.required",
+    "pack": "core/rules/company_provided_items/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(lien|charge|encumbrance)s?\\b"
+      ]
+    },
+    "requires_clause": [
+      "liens",
+      "company provided items",
+      "claims"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.receipt.notice_window.latent",
+    "pack": "contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(notify|notice)\\b.*\\bwithin\\s+24\\s*hours\\b"
+      ]
+    },
+    "requires_clause": [
+      "company provided items",
+      "owner-furnished",
+      "free-issue materials"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.receipt.notice_window.latent",
+    "pack": "core/rules/company_provided_items/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(notify|notice)\\b.*\\bwithin\\s+24\\s*hours\\b"
+      ]
+    },
+    "requires_clause": [
+      "company provided items",
+      "owner-furnished",
+      "free-issue materials"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.register.exhaustive_list",
+    "pack": "contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(company\\s+provided\\s+items|owner[-\\s]?furnished|free[-\\s]?issue\\s+materials|customer\\s+property)\\b.*\\b(including|include)\\b.*\\b(without\\s+limitation|not\\s+limited)\\b"
+      ]
+    },
+    "requires_clause": [
+      "company provided items",
+      "owner-furnished",
+      "free-issue materials",
+      "customer property"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.register.exhaustive_list",
+    "pack": "core/rules/company_provided_items/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(company\\s+provided\\s+items|owner[-\\s]?furnished|free[-\\s]?issue\\s+materials|customer\\s+property)\\b.*\\b(including|include)\\b.*\\b(without\\s+limitation|not\\s+limited)\\b"
+      ]
+    },
+    "requires_clause": [
+      "company provided items",
+      "owner-furnished",
+      "free-issue materials",
+      "customer property"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.storage.lifting.loler_puwer",
+    "pack": "contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(crane|hoist|lift|lifting|slings?|rigging)\\b"
+      ]
+    },
+    "requires_clause": [
+      "HSE",
+      "company provided items",
+      "materials handling"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.storage.lifting.loler_puwer",
+    "pack": "core/rules/company_provided_items/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(crane|hoist|lift|lifting|slings?|rigging)\\b"
+      ]
+    },
+    "requires_clause": [
+      "HSE",
+      "company provided items",
+      "materials handling"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.use.only.for.project",
+    "pack": "contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(company\\s+provided\\s+items|owner[-\\s]?furnished|free[-\\s]?issue\\s+materials|customer\\s+property)\\b"
+      ]
+    },
+    "requires_clause": [
+      "company provided items",
+      "use",
+      "scope"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.use.only.for.project",
+    "pack": "core/rules/company_provided_items/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(company\\s+provided\\s+items|owner[-\\s]?furnished|free[-\\s]?issue\\s+materials|customer\\s+property)\\b"
+      ]
+    },
+    "requires_clause": [
+      "company provided items",
+      "use",
+      "scope"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.waste.disposal.duty_of_care",
+    "pack": "contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(scrap|waste|dispose|disposal)\\b"
+      ]
+    },
+    "requires_clause": [
+      "waste",
+      "disposal",
+      "company provided items"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "cpi.waste.disposal.duty_of_care",
+    "pack": "core/rules/company_provided_items/company_provided_items_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(scrap|waste|dispose|disposal)\\b"
+      ]
+    },
+    "requires_clause": [
+      "waste",
+      "disposal",
+      "company provided items"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "dispute_resolution",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)dispute notice"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "export_hmrc",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)exporter of record"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "force_majeure",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)force majeure"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "gl_england_wales",
+    "pack": "contract_review_app/legal_rules/policy_packs/governing_law_england_wales.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)governing law",
+        "(?i)laws of england and wales"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "gl_jurisdiction_conflict",
+    "pack": "core/rules/uk/interpretation/18_gl_jurisdiction_conflict.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "governing_law",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)laws of england and wales"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "governing_law_basic",
+    "pack": "contract_review_app/legal_rules/policy_packs/core_en_v1.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "hse_life_saving",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)life saving rules"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "ic.agency.no_authority_to_bind",
+    "pack": "contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bmay\\s+enter\\s+into\\s+contracts\\s+on\\s+behalf\\s+of\\s+the\\s+company\\b",
+        "(?i)\\bauthority\\s+to\\s+bind\\s+the\\s+company\\b"
+      ]
+    },
+    "requires_clause": [
+      "independent contractor",
+      "authority",
+      "procurement"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.agency.no_authority_to_bind",
+    "pack": "core/rules/independent_contractor/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bmay\\s+enter\\s+into\\s+contracts\\s+on\\s+behalf\\s+of\\s+the\\s+company\\b",
+        "(?i)\\bauthority\\s+to\\s+bind\\s+the\\s+company\\b"
+      ]
+    },
+    "requires_clause": [
+      "independent contractor",
+      "authority",
+      "procurement"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.awr.agency_workers_equal_treatment",
+    "pack": "contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bagency\\s+worker\\b|\\bemployment\\s+business\\b|\\bAWR\\s*2010\\b"
+      ]
+    },
+    "requires_clause": [
+      "agency",
+      "AWR",
+      "independent contractor"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.awr.agency_workers_equal_treatment",
+    "pack": "core/rules/independent_contractor/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bagency\\s+worker\\b|\\bemployment\\s+business\\b|\\bAWR\\s*2010\\b"
+      ]
+    },
+    "requires_clause": [
+      "agency",
+      "AWR",
+      "independent contractor"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.hse.carveout.required",
+    "pack": "contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bhealth\\s+and\\s+safety\\b|\\bHSE\\b|\\bsite\\s+rules\\b"
+      ]
+    },
+    "requires_clause": [
+      "HSE",
+      "independent contractor",
+      "policies"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.hse.carveout.required",
+    "pack": "core/rules/independent_contractor/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bhealth\\s+and\\s+safety\\b|\\bHSE\\b|\\bsite\\s+rules\\b"
+      ]
+    },
+    "requires_clause": [
+      "HSE",
+      "independent contractor",
+      "policies"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.ir35.offpayroll.sds_process",
+    "pack": "contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bIR35\\b|\\boff\\-?payroll\\b|\\bStatus\\s+Determination\\s+Statement\\b|\\bPSC\\b|\\bpersonal\\s+service\\s+company\\b"
+      ]
+    },
+    "requires_clause": [
+      "taxes",
+      "independent contractor",
+      "IR35",
+      "off-payroll"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.ir35.offpayroll.sds_process",
+    "pack": "core/rules/independent_contractor/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bIR35\\b|\\boff\\-?payroll\\b|\\bStatus\\s+Determination\\s+Statement\\b|\\bPSC\\b|\\bpersonal\\s+service\\s+company\\b"
+      ]
+    },
+    "requires_clause": [
+      "taxes",
+      "independent contractor",
+      "IR35",
+      "off-payroll"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.medical.data.minimisation",
+    "pack": "contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bmedical\\s+records\\b|\\bfull\\s+medical\\s+history\\b|\\bhealth\\s+records\\b"
+      ]
+    },
+    "requires_clause": [
+      "HSE",
+      "medical",
+      "data protection",
+      "privacy"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.medical.data.minimisation",
+    "pack": "core/rules/independent_contractor/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bmedical\\s+records\\b|\\bfull\\s+medical\\s+history\\b|\\bhealth\\s+records\\b"
+      ]
+    },
+    "requires_clause": [
+      "HSE",
+      "medical",
+      "data protection",
+      "privacy"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.mutuality.moo.minimum_hours",
+    "pack": "contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bcompany\\s+shall\\s+provide\\s+work\\b.*\\bcontractor\\s+shall\\s+accept\\b",
+        "(?i)\\bminimum\\s+(?:hours|days)\\b|\\bguaranteed\\s+hours\\b"
+      ]
+    },
+    "requires_clause": [
+      "independent contractor",
+      "scheduling",
+      "SLA"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.mutuality.moo.minimum_hours",
+    "pack": "core/rules/independent_contractor/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bcompany\\s+shall\\s+provide\\s+work\\b.*\\bcontractor\\s+shall\\s+accept\\b",
+        "(?i)\\bminimum\\s+(?:hours|days)\\b|\\bguaranteed\\s+hours\\b"
+      ]
+    },
+    "requires_clause": [
+      "independent contractor",
+      "scheduling",
+      "SLA"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.removal.right.objective_non_discrimination",
+    "pack": "contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bcompany\\s+may\\s+remove\\s+any\\s+individual\\s+at\\s+any\\s+time\\s+for\\s+any\\s+reason\\b"
+      ]
+    },
+    "requires_clause": [
+      "personnel",
+      "independent contractor",
+      "conduct",
+      "HSE"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.removal.right.objective_non_discrimination",
+    "pack": "core/rules/independent_contractor/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bcompany\\s+may\\s+remove\\s+any\\s+individual\\s+at\\s+any\\s+time\\s+for\\s+any\\s+reason\\b"
+      ]
+    },
+    "requires_clause": [
+      "personnel",
+      "independent contractor",
+      "conduct",
+      "HSE"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.status.control.methods",
+    "pack": "contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bcompany\\s+shall\\s+(?:direct|control)\\s+how,?\\s+when,?\\s+and\\s+where\\s+the\\s+services\\s+are\\s+performed\\b",
+        "(?i)\\bfixed\\s+hours\\b.*\\b(as\\s+directed\\s+by\\s+the\\s+company)\\b"
+      ]
+    },
+    "requires_clause": [
+      "independent contractor",
+      "personnel",
+      "management",
+      "working time"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.status.control.methods",
+    "pack": "core/rules/independent_contractor/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bcompany\\s+shall\\s+(?:direct|control)\\s+how,?\\s+when,?\\s+and\\s+where\\s+the\\s+services\\s+are\\s+performed\\b",
+        "(?i)\\bfixed\\s+hours\\b.*\\b(as\\s+directed\\s+by\\s+the\\s+company)\\b"
+      ]
+    },
+    "requires_clause": [
+      "independent contractor",
+      "personnel",
+      "management",
+      "working time"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.substitution.absent_or_personal_service",
+    "pack": "contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bshall\\s+provide\\s+the\\s+services\\s+personally\\b",
+        "(?i)\\bno\\s+right\\s+to\\s+substitut(e|ion)\\b"
+      ]
+    },
+    "requires_clause": [
+      "independent contractor",
+      "personnel"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.substitution.absent_or_personal_service",
+    "pack": "core/rules/independent_contractor/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bshall\\s+provide\\s+the\\s+services\\s+personally\\b",
+        "(?i)\\bno\\s+right\\s+to\\s+substitut(e|ion)\\b"
+      ]
+    },
+    "requires_clause": [
+      "independent contractor",
+      "personnel"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.vicarious.liability.supervision_language",
+    "pack": "contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bcompany\\s+shall\\s+supervise\\s+and\\s+control\\s+(?:contractor|supplier)\\s+personnel\\b"
+      ]
+    },
+    "requires_clause": [
+      "independent contractor",
+      "HSE",
+      "management"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ic.vicarious.liability.supervision_language",
+    "pack": "core/rules/independent_contractor/independent_contractor_universal.yaml",
+    "doc_types": [
+      "Independent Contractor Agreement"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bcompany\\s+shall\\s+supervise\\s+and\\s+control\\s+(?:contractor|supplier)\\s+personnel\\b"
+      ]
+    },
+    "requires_clause": [
+      "independent contractor",
+      "HSE",
+      "management"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "insurance_noncompliance",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)additional insured"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "ip_rights",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)intellectual property"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "ip_rights_basic",
+    "pack": "contract_review_app/legal_rules/policy_packs/core_en_v1.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "ipr.agreement_docs_title.company",
+    "pack": "contract_review_app/legal_rules/policy_packs/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)agreement documentation"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.agreement_docs_title.company",
+    "pack": "core/rules/ipr/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)agreement documentation"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.bg.licence.conflict",
+    "pack": "contract_review_app/legal_rules/policy_packs/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)background\\s+(intellectual\\s+property|ipr)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.bg.licence.conflict",
+    "pack": "core/rules/ipr/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)background\\s+(intellectual\\s+property|ipr)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.brand.use.prohibition",
+    "pack": "contract_review_app/legal_rules/policy_packs/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)company(?:'s)?\\s+(name|logo|brand|trademark)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.brand.use.prohibition",
+    "pack": "core/rules/ipr/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)company(?:'s)?\\s+(name|logo|brand|trademark)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.fg.licence.scope",
+    "pack": "contract_review_app/legal_rules/policy_packs/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)foreground\\s+(intellectual\\s+property|ipr)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.fg.licence.scope",
+    "pack": "core/rules/ipr/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)foreground\\s+(intellectual\\s+property|ipr)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.further_assurances.poa",
+    "pack": "contract_review_app/legal_rules/policy_packs/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)intellectual\\s+property|ipr"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.further_assurances.poa",
+    "pack": "core/rules/ipr/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)intellectual\\s+property|ipr"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.indemnity.remedies",
+    "pack": "contract_review_app/legal_rules/policy_packs/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)intellectual\\s+property",
+        "(?i)ipr"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.indemnity.remedies",
+    "pack": "core/rules/ipr/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)intellectual\\s+property",
+        "(?i)ipr"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.moral_rights.waiver",
+    "pack": "contract_review_app/legal_rules/policy_packs/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)moral\\s+rights"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.moral_rights.waiver",
+    "pack": "core/rules/ipr/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)moral\\s+rights"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.oss.guardrails",
+    "pack": "contract_review_app/legal_rules/policy_packs/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)software"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.oss.guardrails",
+    "pack": "core/rules/ipr/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)software"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.source_code.escrow",
+    "pack": "contract_review_app/legal_rules/policy_packs/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)source\\s+code"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.source_code.escrow",
+    "pack": "core/rules/ipr/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)source\\s+code"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.supplied_software.definition",
+    "pack": "contract_review_app/legal_rules/policy_packs/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)supplied\\s+software"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "ipr.supplied_software.definition",
+    "pack": "core/rules/ipr/ipr_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)supplied\\s+software"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "jurisdiction_basic",
+    "pack": "contract_review_app/legal_rules/policy_packs/core_en_v1.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "liability_cap",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)liability.*cap"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "liability_cap_basic",
+    "pack": "contract_review_app/legal_rules/policy_packs/core_en_v1.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "notices",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)notice[s]? in writing"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "payment_terms_basic",
+    "pack": "contract_review_app/legal_rules/policy_packs/core_en_v1.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "placeholder_police",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "pricing_payment",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)invoice"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "quality.audit.iso19011",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_clause13.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\binternal\\s+audit\\b(?![^.]*\\bISO\\s*19011\\b)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "quality.company.rights.reject_nonconforming",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_clause13.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bcompany\\b[^.]{0,80}\\binspect\\b(?![^.]*\\breject\\b)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "quality.costs.not_ready_or_repeat",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_clause13.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(not\\s+ready|unsuccessful\\s+test)\\b[^.]*\\bcosts\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "quality.equipment.certificates_pre_dispatch",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_clause13.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bequipment\\b[^.]*\\bwithout\\b[^.]*\\b(test|inspection|certificate)\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "quality.equipment.site_tests_swl",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_clause13.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\blifting\\s+equipment\\b[^.]*\\bwithout\\b[^.]*\\b(test|SWL)\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "quality.hidden_work_prove_compliance",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_clause13.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bhidden\\s+work\\b[^.]*\\b(inaccessible|covered)\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "quality.itp.hw_notice_5d",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_clause13.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bITP\\b[^.]*\\b(no\\s+hold|no\\s+witness|no\\s+monitor|no\\s+advance\\s+notice|without\\s+hold|without\\s+witness|without\\s+monitor)\\b",
+        "(?i)\\bno\\s+hold,?\\s*witness,?\\s*monitor\\b",
+        "(?i)\\bno\\s+advance\\s+notice\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "quality.itp.required",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_clause13.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bITP\\b[^.]*\\b(not\\s+required|without\\s+ITP|no\\s+ITP)\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "quality.moc.qms_changes",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_clause13.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bchange\\b[^.]*\\bwithout\\b[^.]*\\bmanagement\\s+of\\s+change\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "quality.no_ship_without_final_inspection",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_clause13.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\b(?:may|will|can)\\b[^.]*?\\bship\\b[^.]*?\\bwithout\\b[^.]*?\\bfinal\\s+inspection\\b"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "quality.qms.iso_required",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_clause13.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bquality management system\\b(?![^.]*\\b(ISO\\s*9001|API\\s*Spec\\s*Q1|API\\s*Spec\\s*Q2|equivalent)\\b)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "quality.qp.iso10005.required",
+    "pack": "contract_review_app/legal_rules/policy_packs/quality_clause13.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)\\bquality plan\\b(?![^.]*\\bISO\\s*10005\\b)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "risk_structure",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)risk of loss"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "subcontracts",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)subcontract"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "subcontracts.ban_pay_when_paid",
+    "pack": "contract_review_app/legal_rules/policy_packs/subcontracts_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bpay\\s*\\-?\\s*when\\s*\\-?\\s*paid\\b|\\bpay\\s*\\-?\\s*if\\s*\\-?\\s*paid\\b"
+      ]
+    },
+    "requires_clause": [
+      "payments",
+      "subcontracts",
+      "construction"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "subcontracts.ban_pay_when_paid",
+    "pack": "core/rules/subcontracts/subcontracts_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bpay\\s*\\-?\\s*when\\s*\\-?\\s*paid\\b|\\bpay\\s*\\-?\\s*if\\s*\\-?\\s*paid\\b"
+      ]
+    },
+    "requires_clause": [
+      "payments",
+      "subcontracts",
+      "construction"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "subcontracts.copies_audit_rights",
+    "pack": "contract_review_app/legal_rules/policy_packs/subcontracts_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bsub\\-?contract(?:or|ing|s)?s?\\b"
+      ]
+    },
+    "requires_clause": [
+      "audit",
+      "governance",
+      "subcontracts"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "subcontracts.copies_audit_rights",
+    "pack": "core/rules/subcontracts/subcontracts_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bsub\\-?contract(?:or|ing|s)?s?\\b"
+      ]
+    },
+    "requires_clause": [
+      "audit",
+      "governance",
+      "subcontracts"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "subcontracts.data_protection_art28",
+    "pack": "contract_review_app/legal_rules/policy_packs/subcontracts_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "all": [
+        "(?i)\\bsub\\-?contract(?:or|ing|s)?s?\\b|\\bsub\\-?processor\\b",
+        "(?i)\\bpersonal\\s+data|processor|controller\\b"
+      ]
+    },
+    "requires_clause": [
+      "data protection",
+      "privacy",
+      "subcontracts"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "subcontracts.data_protection_art28",
+    "pack": "core/rules/subcontracts/subcontracts_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "all": [
+        "(?i)\\bsub\\-?contract(?:or|ing|s)?s?\\b|\\bsub\\-?processor\\b",
+        "(?i)\\bpersonal\\s+data|processor|controller\\b"
+      ]
+    },
+    "requires_clause": [
+      "data protection",
+      "privacy",
+      "subcontracts"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "subcontracts.flowdown_minimum_set",
+    "pack": "contract_review_app/legal_rules/policy_packs/subcontracts_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bsub\\-?contract(?:or|ing|s)?s?\\b"
+      ]
+    },
+    "requires_clause": [
+      "subcontracts",
+      "compliance",
+      "ip",
+      "audit",
+      "security"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "subcontracts.flowdown_minimum_set",
+    "pack": "core/rules/subcontracts/subcontracts_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bsub\\-?contract(?:or|ing|s)?s?\\b"
+      ]
+    },
+    "requires_clause": [
+      "subcontracts",
+      "compliance",
+      "ip",
+      "audit",
+      "security"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "subcontracts.prior_consent",
+    "pack": "contract_review_app/legal_rules/policy_packs/subcontracts_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bsub\\-?contract(?:or|ing|s)?s?\\b",
+        "(?i)\\boutsourc(?:e|ing)\\b"
+      ]
+    },
+    "requires_clause": [
+      "subcontracts",
+      "outsourcing",
+      "third-party"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "subcontracts.prior_consent",
+    "pack": "core/rules/subcontracts/subcontracts_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bsub\\-?contract(?:or|ing|s)?s?\\b",
+        "(?i)\\boutsourc(?:e|ing)\\b"
+      ]
+    },
+    "requires_clause": [
+      "subcontracts",
+      "outsourcing",
+      "third-party"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "subcontracts.step_in_third_party_alignment",
+    "pack": "contract_review_app/legal_rules/policy_packs/subcontracts_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bstep\\-?in\\b|\\bnovat(e|ion)\\b|\\bassign(?:ment)?\\s+of\\s+sub\\-?contract\\b"
+      ]
+    },
+    "requires_clause": [
+      "subcontracts",
+      "third-party rights",
+      "collateral warranty"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "subcontracts.step_in_third_party_alignment",
+    "pack": "core/rules/subcontracts/subcontracts_universal.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bstep\\-?in\\b|\\bnovat(e|ion)\\b|\\bassign(?:ment)?\\s+of\\s+sub\\-?contract\\b"
+      ]
+    },
+    "requires_clause": [
+      "subcontracts",
+      "third-party rights",
+      "collateral warranty"
+    ],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "termination_cause",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)terminate.*for cause"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "termination_convenience",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)terminate.*for convenience"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "termination_notice_basic",
+    "pack": "contract_review_app/legal_rules/policy_packs/core_en_v1.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "third_party_rights",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)third party rights"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "title.clean.free_of_liens",
+    "pack": "contract_review_app/legal_rules/policy_packs/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)title.*(pass|transfer|vest).*free (from|of).*(lien|charge|encumbrance|retention of title|rot)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.clean.free_of_liens",
+    "pack": "core/rules/title/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)title.*(pass|transfer|vest).*free (from|of).*(lien|charge|encumbrance|retention of title|rot)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.commingling.bulk_processing",
+    "pack": "contract_review_app/legal_rules/policy_packs/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)(commingl|mix|processing|bulk)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.commingling.bulk_processing",
+    "pack": "core/rules/title/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)(commingl|mix|processing|bulk)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.customs.ior_alignment",
+    "pack": "contract_review_app/legal_rules/policy_packs/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)title",
+        "(?i)importer of record|exporter of record|customs"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.customs.ior_alignment",
+    "pack": "core/rules/title/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)title",
+        "(?i)importer of record|exporter of record|customs"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.delivery_up.access_right",
+    "pack": "contract_review_app/legal_rules/policy_packs/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)right to (enter|access).*(premises|site|warehouse)",
+        "(?i)delivery[- ]?up|recover (company|its) property"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.delivery_up.access_right",
+    "pack": "core/rules/title/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)right to (enter|access).*(premises|site|warehouse)",
+        "(?i)delivery[- ]?up|recover (company|its) property"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.embedded_software.perpetual_licence",
+    "pack": "contract_review_app/legal_rules/policy_packs/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)embedded (software|firmware)|software (embedded|supplied)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.embedded_software.perpetual_licence",
+    "pack": "core/rules/title/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)embedded (software|firmware)|software (embedded|supplied)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.marking.register.audit",
+    "pack": "contract_review_app/legal_rules/policy_packs/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)property of company",
+        "(?i)company property"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.marking.register.audit",
+    "pack": "core/rules/title/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)property of company",
+        "(?i)company property"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.rejection.return_reversion",
+    "pack": "contract_review_app/legal_rules/policy_packs/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)reject|rejection|return"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.rejection.return_reversion",
+    "pack": "core/rules/title/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)reject|rejection|return"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.risk.cross_reference",
+    "pack": "contract_review_app/legal_rules/policy_packs/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)title"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.risk.cross_reference",
+    "pack": "core/rules/title/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)title"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.vesting.early_wip_offsite",
+    "pack": "contract_review_app/legal_rules/policy_packs/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)title.*(pass|vest)",
+        "(?i)vesting"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.vesting.early_wip_offsite",
+    "pack": "core/rules/title/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)title.*(pass|vest)",
+        "(?i)vesting"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.waivers.third_party_liens",
+    "pack": "contract_review_app/legal_rules/policy_packs/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)(lien|retention of title|rot|waiver)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "title.waivers.third_party_liens",
+    "pack": "core/rules/title/title_core.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)(lien|retention of title|rot|waiver)"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": true
+  },
+  {
+    "rule_id": "uk.calloff.exclude_other_terms",
+    "pack": "core/rules/uk/calloff/01_calloff_exclude_other_terms.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Call[-\\s]?Off|Purchase\\s+Order\\b|Order\\b"
+      ]
+    },
+    "requires_clause": [
+      "call-off",
+      "orders",
+      "clause_2_2"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.calloff.formation_by_performance_controls",
+    "pack": "core/rules/uk/calloff/02_calloff_formation_by_performance_controls.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)effective\\s+upon\\s+performance|acceptance\\s+by\\s+performance|upon\\s+commencement\\s+of\\s+Work"
+      ]
+    },
+    "requires_clause": [
+      "call-off",
+      "orders",
+      "formation",
+      "precedence"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.calloff.minimum_content",
+    "pack": "core/rules/uk/calloff/03_calloff_minimum_content.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Call[-\\s]?Off|Order\\b"
+      ]
+    },
+    "requires_clause": [
+      "call-off",
+      "orders",
+      "content"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.bipr.perimeter_and_license",
+    "pack": "core/rules/uk/definitions/b_block/01_bipr_perimeter_and_license.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Background\\s+Intellectual\\s+Property|BIPR\\b"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "ip",
+      "bipr",
+      "foreground",
+      "clause_17"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.bribe.ukba_poca_fcpa",
+    "pack": "core/rules/uk/definitions/b_block/02_bribe_ukba_poca_fcpa.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Bribe|Anti[-\\s]?Bribery"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "anti-bribery",
+      "compliance",
+      "audit",
+      "termination",
+      "subcontracting"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.business_day.precision",
+    "pack": "core/rules/uk/definitions/b_block/03_business_day_precision.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA",
+      "NDA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Business\\s+Day\\s+means"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "business day",
+      "notices",
+      "payments"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.indemnify.controls_and_negligence",
+    "pack": "core/rules/uk/definitions/i_to_p_block/02_indemnify_controls.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)defend,?\\s*indemnif(y|ies)|hold\\s+harmless|release"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "indemnity",
+      "liability",
+      "insurance",
+      "ip"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.invitee.scope_and_exclusions",
+    "pack": "core/rules/uk/definitions/i_to_p_block/04_invitee_scope.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Invitee"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "hse",
+      "site",
+      "liability"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.ior.calloff_requirements",
+    "pack": "core/rules/uk/definitions/i_to_p_block/01_importer_of_record.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Importer\\s+of\\s+Record|\\bIoR\\b",
+        "(?i)Call[-\\s]?Off"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "call-off",
+      "logistics",
+      "imports",
+      "tax"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.ipclaim.mechanics_and_carveouts",
+    "pack": "core/rules/uk/definitions/i_to_p_block/05_ip_rights_claim_mechanics.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)IP\\s+Rights?\\s+Claim|Intellectual\\s+Property\\s+Claim"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "ip",
+      "indemnity",
+      "remedies"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.iprights.coverage_and_moral_rights",
+    "pack": "core/rules/uk/definitions/i_to_p_block/03_ip_rights_coverage.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA",
+      "NDA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Intellectual\\s+Property\\s+Rights|IP\\s+Rights"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "ip",
+      "clause_17"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.key_personnel.list_ld_controls",
+    "pack": "core/rules/uk/definitions/i_to_p_block/06_key_personnel_controls.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Key\\s+Personnel"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "call-off",
+      "personnel",
+      "ld",
+      "liquidated damages"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.legal_fault.fm_indemnities_consistency",
+    "pack": "core/rules/uk/definitions/i_to_p_block/07_legal_fault_consistency.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Legal\\s+Fault|fault\\s+of\\s+a\\s+party"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "force majeure",
+      "indemnity",
+      "knock-for-knock"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.nonconformity.scope_and_priority",
+    "pack": "core/rules/uk/definitions/i_to_p_block/08_nonconformity_vs_defect.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Nonconform(ity|ing)"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "quality",
+      "defect",
+      "acceptance",
+      "codes"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.parties.calloff_specificity_crtpa",
+    "pack": "core/rules/uk/definitions/i_to_p_block/09_parties_calloff_specificity.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Parties?|Party\\b"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "parties",
+      "call-off",
+      "third party rights",
+      "agency"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.permit.authorisations_matrix",
+    "pack": "core/rules/uk/definitions/i_to_p_block/10_permit_authorisations_matrix.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Permit(s)?\\b"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "permit",
+      "authorisations",
+      "compliance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.personal_injury.scope_and_el_insurance",
+    "pack": "core/rules/uk/definitions/i_to_p_block/11_personal_injury_scope_and_insurance.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Personal\\s+Injury"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "liability",
+      "insurance",
+      "knock-for-knock"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.personnel.coverage_ir35_awr",
+    "pack": "core/rules/uk/definitions/i_to_p_block/12_personnel_ir35_awr.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA",
+      "NDA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Personnel"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "personnel",
+      "tax",
+      "immigration"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.property.exclusions_title_risk",
+    "pack": "core/rules/uk/definitions/i_to_p_block/13_property_exclusions_title_risk.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Property\\s+means"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "property",
+      "title",
+      "risk",
+      "insurance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.site.ownership_access_risk",
+    "pack": "core/rules/uk/definitions/s_to_w_block/01_site_ownership_access_risk.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bSite\\b\\s+means"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "site",
+      "worksite",
+      "risk",
+      "insurance",
+      "call-off"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.specs.versioning_and_variations",
+    "pack": "core/rules/uk/definitions/s_to_w_block/02_specifications_versioning_variations.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Specifications?\\s+means"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "specifications",
+      "variation",
+      "codes",
+      "fitness"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.subcontractor.flowdown_audit",
+    "pack": "core/rules/uk/definitions/s_to_w_block/03_subcontractor_flowdown_audit.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Subcontractor\\s+means"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "subcontractor",
+      "compliance",
+      "audit",
+      "anti-bribery",
+      "export",
+      "ip"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.supplied_software.scope_licence_escrow",
+    "pack": "core/rules/uk/definitions/s_to_w_block/04_supplied_software_scope_licence_escrow.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Supplied\\s+Software\\s+means"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "software",
+      "ip",
+      "licence",
+      "escrow"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.tariff_code.classification",
+    "pack": "core/rules/uk/definitions/s_to_w_block/05_tariff_code_classification.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Tariff\\s+Code|Commodity\\s+Code"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "imports",
+      "tax",
+      "customs"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.taxes.matrix_withholding_grossup",
+    "pack": "core/rules/uk/definitions/s_to_w_block/06_taxes_matrix_withholding_grossup.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Taxes?\\s+means"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "tax",
+      "payments",
+      "withholding",
+      "incoterms"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.third_party.crtpa_alignment",
+    "pack": "core/rules/uk/definitions/s_to_w_block/07_third_party_crtpa_alignment.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Third\\s+Party\\s+means"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "third party rights",
+      "crpta"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.trade_tariff.source_recency",
+    "pack": "core/rules/uk/definitions/s_to_w_block/08_trade_tariff_source_recency.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Trade\\s+Tariff"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "imports",
+      "customs",
+      "tax"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.tupe.eli_requirements",
+    "pack": "core/rules/uk/definitions/s_to_w_block/09_tupe_eli_requirements.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)TUPE|Transfer\\s+of\\s+Undertakings\\s+\\(Protection\\s+of\\s+Employment\\)"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "tupe",
+      "personnel",
+      "data protection"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.variation.gate",
+    "pack": "core/rules/uk/definitions/s_to_w_block/10_variation_gate.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Variation\\s+means"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "variation",
+      "change control"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.variation.order_contents",
+    "pack": "core/rules/uk/definitions/s_to_w_block/11_variation_order_contents.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Variation\\s+Order\\b"
+      ]
+    },
+    "requires_clause": [
+      "variation",
+      "call-off",
+      "scope",
+      "price",
+      "schedule",
+      "risk"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.vat.registration_place_of_supply_zero_rating",
+    "pack": "core/rules/uk/definitions/s_to_w_block/13_vat_registration_place_of_supply_zero_rating.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)VAT\\s+means|Value\\s+Added\\s+Tax"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "tax",
+      "vat",
+      "invoicing",
+      "imports"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.vor.process",
+    "pack": "core/rules/uk/definitions/s_to_w_block/12_variation_order_request_process.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Variation\\s+Order\\s+Request|\\bVOR\\b"
+      ]
+    },
+    "requires_clause": [
+      "variation",
+      "process"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.work.scope_boundary_interfaces",
+    "pack": "core/rules/uk/definitions/s_to_w_block/14_work_scope_boundary_interfaces.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Work\\s+means"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "work",
+      "scope",
+      "qa",
+      "variation",
+      "ld"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.def.worksite.inclusion_exclusions",
+    "pack": "core/rules/uk/definitions/s_to_w_block/15_worksite_inclusion_exclusions.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Worksite\\s+means"
+      ]
+    },
+    "requires_clause": [
+      "definitions",
+      "worksite",
+      "site",
+      "hse",
+      "insurance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_1a.xrefs_links_exist",
+    "pack": "core/rules/uk/interpretation/2_2_rules/01_xrefs_links.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Preamble|Recitals?|Clause\\s+\\d|Exhibit\\s+[A-Z]"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "definitions",
+      "recitals"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_1b.time_basis_calendar_vs_business",
+    "pack": "core/rules/uk/interpretation/2_2_rules/02_time_periods_basis.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b\\d+\\s+days?\\b"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "notices",
+      "payments"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_1c.number_gender_presumption",
+    "pack": "core/rules/uk/interpretation/2_2_rules/03_number_gender.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)singular\\s+includes\\s+the\\s+plural|plural\\s+includes\\s+the\\s+singular"
+      ]
+    },
+    "requires_clause": [
+      "interpretation"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_1d.including_is_without_limitation",
+    "pack": "core/rules/uk/interpretation/2_2_rules/04_including_non_exhaustive.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)including|in\\s+particular"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "specifications",
+      "scope"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_1e.company_vs_Company_defined_term",
+    "pack": "core/rules/uk/interpretation/2_2_rules/05_company_vs_Company.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\bcompany\\b"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "definitions",
+      "parties"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_1f.person_scope_broad",
+    "pack": "core/rules/uk/interpretation/2_2_rules/06_person_scope.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)person\\s+includes"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "definitions"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_1g.dynamic_incorp_requires_variation",
+    "pack": "core/rules/uk/interpretation/2_2_rules/07_dynamic_incorp_variation.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)as\\s+(amended|updated)\\s+from\\s+time\\s+to\\s+time"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "policies",
+      "standards",
+      "variation"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_1h.approvals_in_writing_by_reps",
+    "pack": "core/rules/uk/interpretation/2_2_rules/08_approvals_writing_reps.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Approval\\s+must\\s+be\\s+in\\s+writing"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "approvals",
+      "representatives",
+      "notices"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_1i.writing_email_esign_alignment",
+    "pack": "core/rules/uk/interpretation/2_2_rules/09_writing_email_esign.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)writing|written"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "notices",
+      "variation",
+      "approvals"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_1j.calloff_incorporates_msa",
+    "pack": "core/rules/uk/interpretation/2_2_rules/10_calloff_incorp_msa.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA",
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Call[-\\s]?Off"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "call-off",
+      "precedence"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_1k.subcontracts_flowdown_audit",
+    "pack": "core/rules/uk/interpretation/2_2_rules/11_subcontracts_flowdown.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Subcontracts?\\s+means"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "subcontracts",
+      "compliance",
+      "audit"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_2.headings_no_effect",
+    "pack": "core/rules/uk/interpretation/2_2_rules/12_headings_no_effect.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)headings?\\s+are\\s+for\\s+convenience"
+      ]
+    },
+    "requires_clause": [
+      "interpretation"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_3.precedence_agreement_alpha_risk",
+    "pack": "core/rules/uk/interpretation/2_2_rules/13_precedence_agreement_alpha.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)order\\s+of\\s+precedence|precedence"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "precedence"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_4.precedence_calloff",
+    "pack": "core/rules/uk/interpretation/2_2_rules/14_precedence_calloff.yaml",
+    "doc_types": [
+      "Call-Off",
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Call[-\\s]?Off"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "call-off",
+      "precedence"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_5.ambiguity_pre_dr_checks",
+    "pack": "core/rules/uk/interpretation/2_2_rules/15_ambiguity_dr_checks.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)dispute\\s+resolution|escalation"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "dispute resolution",
+      "precedence"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_6.mutually_explanatory_scope_creep_guard",
+    "pack": "core/rules/uk/interpretation/2_2_rules/16_correlative_scope_creep.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA",
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)mutually\\s+explanatory|correlative"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "scope",
+      "variation",
+      "specifications"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.int.2_2_7.stringency_fitness_priority",
+    "pack": "core/rules/uk/interpretation/2_2_rules/17_stringency_fitness.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA",
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)stricter|stringency|fitness\\s+for\\s+purpose"
+      ]
+    },
+    "requires_clause": [
+      "interpretation",
+      "specifications",
+      "fitness",
+      "variation"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.master.exhibitj.deed_formalities",
+    "pack": "core/rules/uk/master/recitals_and_clauses1/06_exhibitj_deed_formalities.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Exhibit\\s+J|Parent\\s+Company\\s+Guarantee|Performance\\s+Bond|Letter\\s+of\\s+Credit"
+      ]
+    },
+    "requires_clause": [
+      "exhibit_j",
+      "guarantee",
+      "bond",
+      "letter_of_credit"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.master.incorp.dynamic_refs_change_control",
+    "pack": "core/rules/uk/master/recitals_and_clauses1/05_incorp_dynamic_refs_change_control.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)as\\s+may\\s+be\\s+updated\\s+from\\s+time\\s+to\\s+time"
+      ]
+    },
+    "requires_clause": [
+      "1.1",
+      "incorporation",
+      "standards",
+      "policies"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.master.incorp.heavy_terms_notice",
+    "pack": "core/rules/uk/master/recitals_and_clauses1/04_incorp_heavy_terms_notice.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA",
+      "NDA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)by reference (are|is) incorporated"
+      ]
+    },
+    "requires_clause": [
+      "1.1",
+      "incorporation",
+      "exhibits",
+      "policies"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.master.incorp.placeholders_clean",
+    "pack": "core/rules/uk/master/recitals_and_clauses1/03_incorp_placeholders_clean.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA",
+      "NDA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)by reference (are|is) incorporated",
+        "(?i)Exhibit\\s+J|PCG|Performance\\s+Bond|Letter\\s+of\\s+Credit"
+      ]
+    },
+    "requires_clause": [
+      "1.1",
+      "incorporation",
+      "exhibits",
+      "exhibit_j"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.master.recitals.no_min_purchase",
+    "pack": "core/rules/uk/master/recitals_and_clauses1/01_recitals_no_minimum_purchase.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA",
+      "NDA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)therefore agree as follows",
+        "(?i)recitals?|preamble"
+      ]
+    },
+    "requires_clause": [
+      "recitals",
+      "preamble"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.master.recitals.no_operational_shall",
+    "pack": "core/rules/uk/master/recitals_and_clauses1/02_recitals_no_operational_shall.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA",
+      "NDA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)recitals?|preamble"
+      ]
+    },
+    "requires_clause": [
+      "recitals",
+      "preamble"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.master.supplemental.priority",
+    "pack": "core/rules/uk/master/recitals_and_clauses1/08_supplemental_docs_priority.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)supplemental\\s+document|purchase\\s+order|PO\\b"
+      ]
+    },
+    "requires_clause": [
+      "1.3",
+      "supplemental",
+      "purchase_orders",
+      "order_of_precedence"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.master.term.extensions_notice",
+    "pack": "core/rules/uk/master/recitals_and_clauses1/07_term_extensions_notices.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)initial\\s+term|extend(ed)?\\s+term|Effective\\s+Date"
+      ]
+    },
+    "requires_clause": [
+      "1.2",
+      "term",
+      "extensions",
+      "survival"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.parties.identity",
+    "pack": "core/rules/uk/parties/01_identity.yaml",
+    "doc_types": [
+      "Master Agreement",
+      "NDA",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Company No\\.",
+        "(?i)incorporated in (England and Wales|Scotland)"
+      ]
+    },
+    "requires_clause": [
+      "preamble",
+      "parties",
+      "notices"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.calloff.contract_execution_authority",
+    "pack": "core/rules/uk/section3/08_calloff_contract_execution.yaml",
+    "doc_types": [
+      "Call-Off",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)subject\\s+to\\s+board\\s+approval",
+        "(?i)authorised\\s+signatory"
+      ]
+    },
+    "requires_clause": [
+      "call-off",
+      "execution",
+      "authority"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.calloff.minimum_contents",
+    "pack": "core/rules/uk/section3/11_calloff_minimum_contents.yaml",
+    "doc_types": [
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Call[-\\s]?Off"
+      ]
+    },
+    "requires_clause": [
+      "call-off"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.calloff.unacceptable_conditions_3_11",
+    "pack": "core/rules/uk/section3/15_unacceptable_conditions.yaml",
+    "doc_types": [
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)conditional\\s+signature|subject\\s+to\\s+negotiation|subject\\s+to\\s+supplier\\s+terms"
+      ]
+    },
+    "requires_clause": [
+      "call-off",
+      "acceptance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.coventurers.agent_model_cap",
+    "pack": "core/rules/uk/section3/16_coventurers_agent_model.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Co-?venturers|joint\\s+operations|JV"
+      ]
+    },
+    "requires_clause": [
+      "coventurers",
+      "liability",
+      "crpta"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.editorial.typos_numbering_block",
+    "pack": "core/rules/uk/section3/04_typo_numbering_blocker.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Notwithstanding\\s+C\\s+Company",
+        "(?i)foregoing[\\s\\S]{0,40}of\\s+this\\s+Clause\\s+3\\.10\\.3",
+        "(?i)partrial\\s+shipment"
+      ]
+    },
+    "requires_clause": [
+      "section3",
+      "ld",
+      "general"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.exclusivity.non_exclusive",
+    "pack": "core/rules/uk/section3/06_non_exclusive.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)exclusive\\s+supplier|right\\s+of\\s+first\\s+refusal|ROFR"
+      ]
+    },
+    "requires_clause": [
+      "section3",
+      "exclusivity"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.ld.only_remedy_gates",
+    "pack": "core/rules/uk/section3/03_ld_only_remedy_gate.yaml",
+    "doc_types": [
+      "Call-Off",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)only\\s+remedy\\s+for\\s+delay"
+      ]
+    },
+    "requires_clause": [
+      "delay",
+      "ld",
+      "remedies"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.ld.parameters_case_law",
+    "pack": "core/rules/uk/section3/14_ld_parameters_and_cases.yaml",
+    "doc_types": [
+      "Call-Off",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)liquidated\\s+damages|LDs?"
+      ]
+    },
+    "requires_clause": [
+      "ld",
+      "schedule",
+      "termination"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.nom.mods_enforcement_3_12_3_13",
+    "pack": "core/rules/uk/section3/13_nom_mods_enforcement.yaml",
+    "doc_types": [
+      "Call-Off",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)modify|amend|override|var(y|iation)"
+      ]
+    },
+    "requires_clause": [
+      "modification",
+      "nom"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.nullity.foreign_terms_3_13",
+    "pack": "core/rules/uk/section3/17_foreign_terms_nullity.yaml",
+    "doc_types": [
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Supplier\\s+Terms\\s+apply|General\\s+Terms\\s+and\\s+Conditions\\s+of\\s+Sale"
+      ]
+    },
+    "requires_clause": [
+      "modification",
+      "precedence"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.order.acceptance_triggers_channels",
+    "pack": "core/rules/uk/section3/10_order_acceptance_triggers.yaml",
+    "doc_types": [
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)acceptance\\s+by\\s+performance|signature|written\\s+confirmation"
+      ]
+    },
+    "requires_clause": [
+      "call-off",
+      "acceptance",
+      "notices"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.order.channels_align_29",
+    "pack": "core/rules/uk/section3/07_order_channels_alignment.yaml",
+    "doc_types": [
+      "Call-Off",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)written\\s+acknowledgement|acknowledgment|acknowledge\\s+in\\s+writing"
+      ]
+    },
+    "requires_clause": [
+      "call-off",
+      "notices",
+      "interpretation"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.order.start_as_acceptance_guard",
+    "pack": "core/rules/uk/section3/02_start_work_acceptance_guard.yaml",
+    "doc_types": [
+      "Call-Off",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)commencement\\s+of\\s+performance\\s+constitutes\\s+acceptance|start\\s+work\\s+constitutes\\s+acceptance"
+      ]
+    },
+    "requires_clause": [
+      "call-off",
+      "formation"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.po.exclude_supplier_terms",
+    "pack": "core/rules/uk/section3/01_po_excludes_supplier_terms.yaml",
+    "doc_types": [
+      "Call-Off",
+      "Master Agreement",
+      "MSA",
+      "PO"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Supplier\\s+Terms\\s+apply|terms\\s+on\\s+(the\\s+)?back|subject\\s+to\\s+supplier\\s+terms",
+        "(?i)to\\s+the\\s+exclusion\\s+of\\s+all\\s+other\\s+terms"
+      ]
+    },
+    "requires_clause": [
+      "call-off",
+      "precedence",
+      "purchase order"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.po.per_entity_responsibility",
+    "pack": "core/rules/uk/section3/09_po_chain_per_entity.yaml",
+    "doc_types": [
+      "PO",
+      "Call-Off",
+      "MSA"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)joint(ly)?\\s+and\\s+severally\\s+liable|any\\s+Group\\s+entity\\s+shall\\s+be\\s+responsible"
+      ]
+    },
+    "requires_clause": [
+      "call-off",
+      "purchase order"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.reliance.entire_nonreliance_alignment",
+    "pack": "core/rules/uk/section3/12_reliance_vs_entire.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Company\\s+may\\s+rely\\s+on\\s+representations|tender|offer",
+        "(?i)entire\\s+agreement|non[-\\s]?reliance"
+      ]
+    },
+    "requires_clause": [
+      "reliance",
+      "entire",
+      "misrepresentation"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s3.volume.no_min_commit",
+    "pack": "core/rules/uk/section3/05_no_minimum_commitment.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)minimum\\s+(purchase|order|hours|commitment)|requirements\\s+contract",
+        "(?i)Nothing\\s+in\\s+this\\s+Agreement\\s+shall\\s+be\\s+construed\\s+as\\s+a\\s+guarantee"
+      ]
+    },
+    "requires_clause": [
+      "section3",
+      "volume",
+      "tender"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s4.cr.apparent_authority_controls",
+    "pack": "core/rules/uk/section4/03_apparent_authority_controls.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off",
+      "Minutes"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)minutes\\s+of\\s+meeting|MoM|agreed\\s+in\\s+meeting",
+        "(?i)instruction\\s+register|delegation\\s+register"
+      ]
+    },
+    "requires_clause": [
+      "representatives",
+      "governance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s4.cr.appointment_and_scope",
+    "pack": "core/rules/uk/section4/01_cr_appointment_and_scope.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Company\\s+Representative\\s*\\(|\\bCR\\b"
+      ]
+    },
+    "requires_clause": [
+      "representatives",
+      "clause 4"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s4.cr.nom_shield",
+    "pack": "core/rules/uk/section4/02_cr_nom_shield.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Company\\s+Representative\\s+may\\s+(amend|modify|waive)",
+        "(?i)oral\\s+modification|email\\s+modification|verbal\\s+agreement"
+      ]
+    },
+    "requires_clause": [
+      "representatives",
+      "modification",
+      "clause 4",
+      "clause 3.12",
+      "clause 3.13"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s4.ctr.appointment_and_limits",
+    "pack": "core/rules/uk/section4/04_ctr_appointment_and_limits.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Contractor\\s+Representative\\s*\\(|\\bCTR\\b"
+      ]
+    },
+    "requires_clause": [
+      "representatives",
+      "clause 4"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s4.ctr.change_consent_sla",
+    "pack": "core/rules/uk/section4/06_ctr_change_consent_sla.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off",
+      "Notice"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)change\\s+of\\s+CTR|replace\\s+the\\s+Contractor\\s+Representative"
+      ]
+    },
+    "requires_clause": [
+      "representatives",
+      "clause 4"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s4.delegation.notice_and_register",
+    "pack": "core/rules/uk/section4/05_delegation_and_substitution.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off",
+      "Notice"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)delegate|delegation|substitute|alternate\\s+representative"
+      ]
+    },
+    "requires_clause": [
+      "representatives",
+      "delegation",
+      "clause 4"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s4.governance.chain_of_command",
+    "pack": "core/rules/uk/section4/10_chain_of_command_clarity.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)conflicting\\s+instructions|two\\s+masters|dual\\s+reporting"
+      ]
+    },
+    "requires_clause": [
+      "representatives",
+      "governance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s4.hse.stop_work_authority",
+    "pack": "core/rules/uk/section4/09_stop_work_authority.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off",
+      "HSE Policy"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Stop\\s*Work\\s*Authority|SWA|right\\s+to\\s+stop\\s+work"
+      ]
+    },
+    "requires_clause": [
+      "representatives",
+      "HSE",
+      "safety"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s4.instructions.trigger_vo",
+    "pack": "core/rules/uk/section4/08_instruction_triggers_vo.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off",
+      "Instruction"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)instruct|instruction|direction"
+      ]
+    },
+    "requires_clause": [
+      "representatives",
+      "variations",
+      "clause 14"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk.s4.reps.notice_channels_alignment",
+    "pack": "core/rules/uk/section4/07_notice_channels_alignment.yaml",
+    "doc_types": [
+      "MSA",
+      "Call-Off",
+      "Notice"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)send\\s+or\\s+receive\\s+notices|notice\\s+address|acknowledgement\\s+in\\s+writing"
+      ]
+    },
+    "requires_clause": [
+      "representatives",
+      "notices",
+      "clause 29",
+      "interpretation 2.2.1(i)"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk_bribery_act_missing",
+    "pack": "core/rules/uk/definitions/17_bribery_act_missing.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk_ca_1985_outdated",
+    "pack": "core/rules/uk/definitions/16_outdated_companies_act_1985.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk_dpa_1998_outdated",
+    "pack": "core/rules/uk/personnel/13_outdated_dpa_1998.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk_fraud_exclusion_invalid",
+    "pack": "core/rules/uk/section3/19_liability_fraud_exclusion_invalid.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk_poca_tipping_off",
+    "pack": "core/rules/uk/section3/18_confidentiality_poca_tipping_off_carveout.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "uk_ucta_2_1_invalid",
+    "pack": "core/rules/uk/section3/20_liability_ucta_2_1_invalid.yaml",
+    "doc_types": [],
+    "triggers": {},
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.inform.deemed_laws_change",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/inform/02_deemed_laws_change.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)deemed\\s+to\\s+be\\s+aware\\s+of\\s+all\\s+applicable\\s+laws|knows\\s+all\\s+laws"
+      ]
+    },
+    "requires_clause": [
+      "inform itself",
+      "law compliance",
+      "change in law"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.inform.deemed_pricing_voeot",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/inform/03_deemed_pricing_voeot.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)sufficient\\s+(rates|prices)|adequacy\\s+of\\s+pricing"
+      ]
+    },
+    "requires_clause": [
+      "pricing",
+      "inform itself",
+      "variations",
+      "EOT"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.inform.deemed_scope_clarity",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/inform/01_deemed_scope_clarity.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)deemed\\s+to\\s+have\\s+(satisfied|informed)\\s+itself|contractor\\s+has\\s+informed\\s+itself"
+      ]
+    },
+    "requires_clause": [
+      "pre-contract diligence",
+      "inform itself",
+      "scope",
+      "performance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.inform.discrepancy_notice_timebar",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/inform/05_discrepancy_notice_timebar.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)(discrepanc|inconsisten|error)\\s+notice|notify\\s+.*(discrepanc|error)"
+      ]
+    },
+    "requires_clause": [
+      "inform itself",
+      "notice",
+      "discrepancies",
+      "time bar"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.inform.employer_corrects_variation",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/inform/06_employer_corrects_variation.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)Customer|Employer|Company.*(error|discrepanc|inconsisten)"
+      ]
+    },
+    "requires_clause": [
+      "discrepancies",
+      "variation",
+      "EOT"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.inform.employer_info_nonreliance",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/inform/04_employer_info_nonreliance.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)(Customer|Employer|Company)\\s+Provided\\s+Information|provided\\s+by\\s+(Customer|Employer|Company)"
+      ]
+    },
+    "requires_clause": [
+      "information",
+      "non-reliance",
+      "misrepresentation"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.inform.implied_scope_limit",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/inform/07_implied_scope_limit.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)all\\s+things\\s+necessary|everything\\s+required\\s+to\\s+perform"
+      ]
+    },
+    "requires_clause": [
+      "scope",
+      "variation",
+      "performance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.inform.notice_formalities",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/inform/11_notice_formalities.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)notice|written\\s+notice|notify"
+      ]
+    },
+    "requires_clause": [
+      "notice",
+      "communication",
+      "time bar"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.inform.physical_conditions_unforeseen",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/inform/08_physical_conditions_unforeseen.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)physical\\s+conditions|site\\s+conditions|ground\\s+conditions"
+      ]
+    },
+    "requires_clause": [
+      "site conditions",
+      "physical conditions",
+      "risk",
+      "EOT",
+      "variation"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.inform.resources_breakdown_carveouts",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/inform/09_resources_breakdown_carveouts.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)availability\\s+of\\s+personnel|equipment\\s+breakdown|failure\\s+of\\s+equipment"
+      ]
+    },
+    "requires_clause": [
+      "resources",
+      "equipment",
+      "risk",
+      "force majeure"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.inform.stop_work_on_conflict",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/inform/12_stop_work_on_conflict.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)safety|legal\\s+compliance|stop\\-work|permit\\-to\\-work|PTW"
+      ]
+    },
+    "requires_clause": [
+      "HSE",
+      "compliance",
+      "discrepancies",
+      "instructions"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.inform.transport_employer_items",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/inform/10_transport_employer_items.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)(Company|Customer|Employer)\\s+Provided\\s+(Items|Equipment)|CPI"
+      ]
+    },
+    "requires_clause": [
+      "logistics",
+      "risk",
+      "company provided items"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.cooperate_eot",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/03_cooperate_eot.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)cooperate|coordination|third\\-party|interface|delay|extension\\s+of\\s+time|EOT"
+      ]
+    },
+    "requires_clause": [
+      "performance",
+      "cooperation",
+      "schedule"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.document_control_handover",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/05_document_control_handover.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)revision|latest\\s+issue|document\\s+control|handover|as\\-built|O\\&M|manual"
+      ]
+    },
+    "requires_clause": [
+      "document control",
+      "handover",
+      "performance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.exhibits_policies_conflicts",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/15_exhibits_policies_conflicts.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)policy|policies|exhibit|appendix|annex|order\\s+of\\s+precedence"
+      ]
+    },
+    "requires_clause": [
+      "policies",
+      "exhibits",
+      "precedence"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.goods_software_incoterms",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/11_goods_software_incoterms.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)software|licen[cs]e|key|password|packing\\s+list|bill\\s+of\\s+lading|air\\s+waybill|incoterms|DDP|DAP|FCA|EXW"
+      ]
+    },
+    "requires_clause": [
+      "goods",
+      "software",
+      "delivery",
+      "incoterms"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.inspection_acceptance_window",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/12_inspection_acceptance_window.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)inspect|inspection|acceptance|reject|deemed"
+      ]
+    },
+    "requires_clause": [
+      "inspection",
+      "acceptance",
+      "goods",
+      "deliverables"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.instructions_variation_gate",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/14_instructions_variation_gate.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)instruction|direction|method|means|variation|change\\s+order|VO|VOR"
+      ]
+    },
+    "requires_clause": [
+      "instructions",
+      "variation",
+      "change control"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.materials_management",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/06_materials_management.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)materials|warehouse|inventory|non\\-conforming|quarantine|Company\\s+Provided"
+      ]
+    },
+    "requires_clause": [
+      "materials",
+      "warehouse",
+      "CPI"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.permits_rtw",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/04_permits_rtw.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)permit|authorisation|authorization|licen[cs]e|visa|right\\-to\\-work|RTW"
+      ]
+    },
+    "requires_clause": [
+      "permits",
+      "authorisations",
+      "immigration",
+      "performance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.rental_equipment",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/13_rental_equipment.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)rent|hire|leased\\s+equipment"
+      ]
+    },
+    "requires_clause": [
+      "rental",
+      "equipment",
+      "hire"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.reporting_early_warning",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/07_reporting_early_warning.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)report|progress|early\\s+warning|risk\\s+register"
+      ]
+    },
+    "requires_clause": [
+      "reporting",
+      "risk",
+      "performance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.resources_sufficiency",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/02_resources_sufficiency.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)resources|personnel|equipment|materials|capacity"
+      ]
+    },
+    "requires_clause": [
+      "performance",
+      "resources"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.rsc_vs_ffp_priority",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/01_standard_rsc_vs_ffp.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)reasonable\\s+skill\\s+and\\s+care|RSC|fitness\\s+for\\s+purpose|fit\\s+for\\s+purpose|KPI|performance\\s+standard"
+      ]
+    },
+    "requires_clause": [
+      "performance",
+      "services",
+      "work"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.schedule_recovery",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/08_schedule_recovery.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)key\\s+dates|milestone|slippage|recovery\\s+plan|accelerat"
+      ]
+    },
+    "requires_clause": [
+      "schedule",
+      "recovery",
+      "performance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.site_ptw_partial_occupation",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/09_site_ptw_partial_occupation.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)site|worksite|permit\\-to\\-work|PTW|partial\\s+occupation|possession"
+      ]
+    },
+    "requires_clause": [
+      "site",
+      "worksite",
+      "HSE",
+      "acceptance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.performance.working_hours_overtime",
+    "pack": "contract_review_app/legal_rules/policy_packs/universal/performance/10_working_hours_overtime.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)working\\s+hours|overtime|out\\-of\\-hours"
+      ]
+    },
+    "requires_clause": [
+      "working hours",
+      "overtime",
+      "performance"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "universal.personnel.gdpr_personnel_data",
+    "pack": "core/rules/universal/personnel/12_gdpr_personnel_data.yaml",
+    "doc_types": [
+      "Any"
+    ],
+    "triggers": {
+      "any": [
+        "(?i)\\b(GDPR|data\\s+protection|personal\\s+data|special\\s+category|health\\s+data|biometric|genetic)\\b"
+      ]
+    },
+    "requires_clause": [
+      "privacy",
+      "data protection",
+      "personnel"
+    ],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "variations",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)variation order"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  },
+  {
+    "rule_id": "warranty",
+    "pack": "contract_review_app/legal_rules/policy_packs/msa_oilgas_uk_v1.yaml",
+    "doc_types": [],
+    "triggers": {
+      "any": [
+        "(?i)warranty"
+      ]
+    },
+    "requires_clause": [],
+    "deprecated": false,
+    "duplicates": false
+  }
+]

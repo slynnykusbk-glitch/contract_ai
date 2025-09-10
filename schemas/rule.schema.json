@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RuleSchema",
+  "type": "object",
+  "required": ["rule_id"],
+  "properties": {
+    "rule_id": {"type": "string"},
+    "doc_types": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "default": "medium"
+    },
+    "triggers": {
+      "type": "object",
+      "properties": {
+        "any": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "all": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "regex": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false,
+      "default": {}
+    },
+    "requires_clause": {
+      "type": "array",
+      "items": {"type": "string"},
+      "default": []
+    },
+    "advice": {"type": "string"},
+    "law_refs": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {"type": "string"},
+          {
+            "type": "object",
+            "properties": {
+              "system": {"type": "string"},
+              "section": {"type": "string"},
+              "instrument": {"type": "string"}
+            },
+            "required": [],
+            "additionalProperties": true
+          }
+        ]
+      },
+      "default": []
+    },
+    "deprecated": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}
+

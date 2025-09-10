@@ -6,10 +6,12 @@ import os
 import re
 import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
+
+from ..corpus.normalizer import normalize_text
 
 log = logging.getLogger(__name__)
 
@@ -239,6 +241,70 @@ def rules_count() -> int:
 
 def loaded_packs() -> List[Dict[str, Any]]:
     return list(_PACKS)
+
+
+def filter_rules(
+    text: str, doc_type: str, clause_types: Iterable[str]
+) -> List[Dict[str, Any]]:
+    """Return rules matching ``doc_type``/``clause_types`` triggered by ``text``.
+
+    The returned list contains dictionaries with the original rule under the
+    ``"rule"`` key and a list of matched trigger strings under ``"matches"``.
+    """
+
+    norm = normalize_text(text or "")
+    doc_type_lc = (doc_type or "").lower()
+    clause_set: Set[str] = {c.lower() for c in clause_types or []}
+
+    filtered: List[Dict[str, Any]] = []
+    for rule in _RULES:
+        rule_doc_types = [d.lower() for d in rule.get("doc_types", [])]
+        if rule_doc_types and "any" not in rule_doc_types:
+            if not doc_type_lc or doc_type_lc not in rule_doc_types:
+                continue
+
+        req_clauses = {c.lower() for c in rule.get("requires_clause", [])}
+        if req_clauses and clause_set.isdisjoint(req_clauses):
+            continue
+
+        trig = rule.get("triggers") or {}
+        matches: List[str] = []
+        ok = True
+
+        any_pats = trig.get("any")
+        if any_pats:
+            any_matches = [m.group(0) for p in any_pats for m in p.finditer(norm)]
+            if not any_matches:
+                ok = False
+            else:
+                matches.extend(any_matches)
+
+        if ok:
+            all_pats = trig.get("all")
+            if all_pats:
+                all_matches: List[str] = []
+                for pat in all_pats:
+                    m = pat.search(norm)
+                    if not m:
+                        ok = False
+                        break
+                    all_matches.append(m.group(0))
+                if ok:
+                    matches.extend(all_matches)
+
+        if ok:
+            regex_pats = trig.get("regex")
+            if regex_pats:
+                regex_matches = [m.group(0) for p in regex_pats for m in p.finditer(norm)]
+                if not regex_matches:
+                    ok = False
+                else:
+                    matches.extend(regex_matches)
+
+        if ok:
+            filtered.append({"rule": rule, "matches": matches})
+
+    return filtered
 
 
 def match_text(text: str) -> List[Dict[str, Any]]:

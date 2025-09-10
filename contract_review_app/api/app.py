@@ -1837,7 +1837,7 @@ def api_analyze(
         )
 
         _yaml_loader.load_rule_packs()
-        filtered = _yaml_loader.filter_rules(
+        filtered, coverage = _yaml_loader.filter_rules(
             txt or "", doc_type=snap.type, clause_types=clause_types_set
         )
         t3 = time.perf_counter()
@@ -1885,6 +1885,7 @@ def api_analyze(
         active_packs = []
         rules_loaded = 0
         fired_rules_meta = []
+        coverage = []
 
     if yaml_findings:
         filtered_yaml = [
@@ -1965,6 +1966,7 @@ def api_analyze(
         "timings_ms": timings,
     }
 
+
     log.info("analysis meta", extra={"meta": meta})
 
     envelope = {
@@ -1977,6 +1979,8 @@ def api_analyze(
         "meta": meta,
         "summary": summary,
     }
+    if debug == "coverage":
+        envelope["rules_coverage"] = coverage
     IDEMPOTENCY_CACHE.set(cid, envelope)
     rec = {"resp": envelope, "cid": cid}
     an_cache.set(doc_hash, rec)

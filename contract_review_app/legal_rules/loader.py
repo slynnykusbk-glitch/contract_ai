@@ -6,7 +6,7 @@ import os
 import re
 import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -16,7 +16,6 @@ from ..corpus.normalizer import normalize_text
 
 def _normalize_multiline(text: str) -> str:
     """Normalize ``text`` while preserving line breaks."""
-
     return "\n".join(normalize_text(line) for line in (text or "").splitlines())
 
 
@@ -36,6 +35,17 @@ else:
 
 _RULES: List[Dict[str, Any]] = []
 _PACKS: List[Dict[str, Any]] = []
+
+
+# Bit flags representing gating results for rule coverage
+SCHEMA_MISMATCH = 1 << 0
+DOC_TYPE_MISMATCH = 1 << 1
+JURISDICTION_MISMATCH = 1 << 2
+NO_CLAUSE = 1 << 3
+REGEX_MISS = 1 << 4
+WHEN_FALSE = 1 << 5
+TEXT_NORMALIZATION_ISSUE = 1 << 6
+FIRED = 1 << 7
 
 
 def _compile(patterns: Iterable[str]) -> List[re.Pattern[str]]:
@@ -107,26 +117,18 @@ def load_rule_packs() -> None:
                         pats = list(raw.get("patterns", []))
                     else:
                         for cond in trig_any:
-                            if isinstance(cond, dict):
-                                pat = cond.get("regex")
-                            else:
-                                pat = cond
+                            pat = cond.get("regex") if isinstance(cond, dict) else cond
                             if pat:
                                 pats.append(pat)
                         for cond in trig_all:
-                            if isinstance(cond, dict):
-                                pat = cond.get("regex")
-                            else:
-                                pat = cond
+                            pat = cond.get("regex") if isinstance(cond, dict) else cond
                             if pat:
                                 pats.append(pat)
                         for cond in trig_regex:
-                            if isinstance(cond, dict):
-                                pat = cond.get("regex")
-                            else:
-                                pat = cond
+                            pat = cond.get("regex") if isinstance(cond, dict) else cond
                             if pat:
                                 pats.append(pat)
+
                     finding_section = raw.get("finding")
                     if not finding_section:
                         checks = raw.get("checks") or []
@@ -135,22 +137,17 @@ def load_rule_packs() -> None:
                                 if isinstance(chk, dict) and chk.get("finding"):
                                     finding_section = chk.get("finding")
                                     break
+
                     compiled_patterns = _compile(pats)
 
                     trig_map: Dict[str, List[re.Pattern[str]]] = {}
                     if trig_any:
                         trig_map["any"] = _compile(
-                            [
-                                c.get("regex") if isinstance(c, dict) else c
-                                for c in trig_any
-                            ]
+                            [c.get("regex") if isinstance(c, dict) else c for c in trig_any]
                         )
                     if trig_all:
                         trig_map["all"] = _compile(
-                            [
-                                c.get("regex") if isinstance(c, dict) else c
-                                for c in trig_all
-                            ]
+                            [c.get("regex") if isinstance(c, dict) else c for c in trig_all]
                         )
                     if trig_regex or raw.get("patterns"):
                         trig_map["regex"] = _compile(
@@ -211,8 +208,7 @@ def load_rule_packs() -> None:
                                 "doc_types": doc_types,
                                 "severity": spec["severity"],
                                 "triggers": {
-                                    k: [p.pattern for p in v]
-                                    for k, v in trig_map.items()
+                                    k: [p.pattern for p in v] for k, v in trig_map.items()
                                 },
                                 "requires_clause": requires_clause,
                                 "advice": spec["advice"],
@@ -221,9 +217,8 @@ def load_rule_packs() -> None:
                             }
                         )
                     except ValidationError:
-                        # For backward compatibility we do not abort loading on
-                        # validation errors.  The audit tool and CI checks use
-                        # the same model to report issues separately.
+                        # Backward-compat: не прерываем загрузку;
+                        # аудит и CI-проверки используют ту же схему отдельно.
                         pass
 
                     _RULES.append(spec)
@@ -252,37 +247,62 @@ def loaded_packs() -> List[Dict[str, Any]]:
 
 def filter_rules(
     text: str, doc_type: str, clause_types: Iterable[str]
-) -> List[Dict[str, Any]]:
-    """Return rules matching ``doc_type``/``clause_types`` triggered by ``text``.
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Return matched rules and coverage info for all rules.
 
-    The returned list contains dictionaries with the original rule under the
-    ``"rule"`` key and a list of matched trigger strings under ``"matches"``.
+    Returns:
+        (filtered, coverage):
+          filtered: [{ "rule": <rule>, "matches": [..] }]
+          coverage: [{
+              "doc_type": str,
+              "pack_id": str,
+              "rule_id": str,
+              "severity": str,
+              "evidence": [..],
+              "spans": [{"start": int, "end": int}, ...],
+              "flags": int (bitwise)
+          }]
     """
+    flags_norm = 0
+    try:
+        # сохраняем переносы строк для якорей ^...$ при MULTILINE
+        norm = _normalize_multiline(text or "")
+    except Exception:  # крайне редкий случай проблем нормализации
+        flags_norm = TEXT_NORMALIZATION_ISSUE
+        norm = text or ""
 
-    norm = _normalize_multiline(text)
     doc_type_lc = (doc_type or "").lower()
     clause_set: Set[str] = {c.lower() for c in clause_types or []}
 
     filtered: List[Dict[str, Any]] = []
+    coverage: List[Dict[str, Any]] = []
     for rule in _RULES:
+        rule_flags = flags_norm
+        matches: List[str] = []
+        spans: List[Dict[str, int]] = []
+
         rule_doc_types = [d.lower() for d in rule.get("doc_types", [])]
         if rule_doc_types and "any" not in rule_doc_types:
             if not doc_type_lc or doc_type_lc not in rule_doc_types:
-                continue
+                rule_flags |= DOC_TYPE_MISMATCH
 
         req_clauses = {c.lower() for c in rule.get("requires_clause", [])}
         if req_clauses and clause_set.isdisjoint(req_clauses):
-            continue
+            rule_flags |= NO_CLAUSE
 
         trig = rule.get("triggers") or {}
-        matches: List[str] = []
         ok = True
 
         any_pats = trig.get("any")
         if any_pats:
-            any_matches = [m.group(0) for p in any_pats for m in p.finditer(norm)]
+            any_matches: List[str] = []
+            for p in any_pats:
+                for m in p.finditer(norm):
+                    any_matches.append(m.group(0))
+                    spans.append({"start": m.start(), "end": m.end()})
             if not any_matches:
                 ok = False
+                rule_flags |= REGEX_MISS
             else:
                 matches.extend(any_matches)
 
@@ -294,26 +314,44 @@ def filter_rules(
                     m = pat.search(norm)
                     if not m:
                         ok = False
+                        rule_flags |= REGEX_MISS
                         break
                     all_matches.append(m.group(0))
+                    spans.append({"start": m.start(), "end": m.end()})
                 if ok:
                     matches.extend(all_matches)
 
         if ok:
             regex_pats = trig.get("regex")
             if regex_pats:
-                regex_matches = [
-                    m.group(0) for p in regex_pats for m in p.finditer(norm)
-                ]
+                regex_matches: List[str] = []
+                for p in regex_pats:
+                    for m in p.finditer(norm):
+                        regex_matches.append(m.group(0))
+                        spans.append({"start": m.start(), "end": m.end()})
                 if not regex_matches:
                     ok = False
+                    rule_flags |= REGEX_MISS
                 else:
                     matches.extend(regex_matches)
 
-        if ok:
+        if ok and not rule_flags:
+            rule_flags |= FIRED
             filtered.append({"rule": rule, "matches": matches})
 
-    return filtered
+        coverage.append(
+            {
+                "doc_type": doc_type_lc,
+                "pack_id": rule.get("pack"),
+                "rule_id": rule.get("id"),
+                "severity": rule.get("severity"),
+                "evidence": matches,
+                "spans": spans,
+                "flags": rule_flags,
+            }
+        )
+
+    return filtered, coverage
 
 
 def match_text(text: str) -> List[Dict[str, Any]]:

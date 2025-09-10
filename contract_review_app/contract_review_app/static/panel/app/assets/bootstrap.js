@@ -13,4 +13,3 @@ export async function bootstrapHeaders() {
     if (k) localStorage.setItem('api_key', k);
   }
 }
-bootstrapHeaders();

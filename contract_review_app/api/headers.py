@@ -10,7 +10,8 @@ from .models import SCHEMA_VERSION
 def apply_std_headers(response: Response, request: Request, started_at: float) -> None:
     """Apply standard headers to the response."""
     latency_ms = int((time.perf_counter() - started_at) * 1000)
-    cid = compute_cid(request)
-    response.headers["x-schema-version"] = SCHEMA_VERSION
+    cid = getattr(request.state, "cid", request.headers.get("x-cid") or compute_cid(request))
+    schema = getattr(request.state, "schema_version", SCHEMA_VERSION)
+    response.headers["x-schema-version"] = schema
     response.headers["x-latency-ms"] = str(latency_ms)
     response.headers["x-cid"] = cid

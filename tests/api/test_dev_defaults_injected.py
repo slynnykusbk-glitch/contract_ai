@@ -9,10 +9,12 @@ def test_dev_defaults_injected_when_missing(monkeypatch):
     monkeypatch.setenv("FEATURE_REQUIRE_API_KEY", "1")
     monkeypatch.setenv("API_KEY", "secret")
     monkeypatch.setenv("DEFAULT_API_KEY", "secret")
+    monkeypatch.setenv("SCHEMA_VERSION", "1.4")
     client = TestClient(app)
     resp = client.post("/api/analyze", json={"text": "hi"})
     assert resp.status_code == 200
     assert resp.headers.get("x-schema-version") == SCHEMA_VERSION
+    assert "debug" in resp.json().get("meta", {})
 
 
 def test_prod_missing_api_key_401(monkeypatch):

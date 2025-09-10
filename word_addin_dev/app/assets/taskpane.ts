@@ -1,4 +1,6 @@
 import { applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
+import { normalizeText, dedupeFindings, severityRank } from "./dedupe";
+export { normalizeText, dedupeFindings } from "./dedupe";
 import { getApiKeyFromStore, getSchemaFromStore } from "./store";
 import { postJSON, getStoredKey, getStoredSchema, setStoredSchema, ensureHeadersSet } from "../../../contract_review_app/frontend/common/http";
 const g: any = globalThis as any;
@@ -50,15 +52,6 @@ function slot(id: string, role: string): HTMLElement | null {
   ) || document.getElementById(id);
 }
 
-export function normalizeText(s: string | undefined | null): string {
-  if (!s) return "";
-  return s
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .replace(/[ \t]+/g, " ")
-    .trim();
-}
-
 function getRiskThreshold(): "low" | "medium" | "high" {
   const sel = (document.getElementById("selectRiskThreshold") as HTMLSelectElement | null)
     || (document.getElementById("riskThreshold") as HTMLSelectElement | null);
@@ -87,35 +80,6 @@ export function setAddCommentsOnAnalyze(val: boolean): void {
 function isDryRunAnnotateEnabled(): boolean {
   const cb = document.getElementById("cai-dry-run-annotate") as HTMLInputElement | null;
   return cb ? !!cb.checked : false;
-}
-
-export function dedupeFindings(findings: AnalyzeFinding[]): AnalyzeFinding[] {
-  const map = new Map<string, AnalyzeFinding>();
-  let invalid = 0, dupes = 0;
-  for (const f of findings || []) {
-    const snippet = normalizeText(f.snippet || "");
-    const start = typeof f.start === "number" ? f.start : undefined;
-    const end = typeof f.end === "number" ? f.end : (start !== undefined ? start + snippet.length : undefined);
-    if (typeof start !== "number" || typeof end !== "number" || end <= start || end - start > 10000) {
-      invalid++;
-      continue;
-    }
-    const key = `${f.rule_id || ""}|${start}|${end}|${snippet}`;
-    const ex = map.get(key);
-    if (!ex || severityRank(f.severity) > severityRank(ex.severity)) {
-      map.set(key, { ...f, snippet, start, end });
-    } else {
-      dupes++;
-    }
-  }
-  const res = Array.from(map.values());
-  console.log("panel:annotate", `dedupe dropped ${invalid} invalid, ${dupes} duplicates`);
-  return res;
-}
-
-function severityRank(s?: string): number {
-  const m = (s || "").toLowerCase();
-  return m === "high" ? 3 : m === "medium" ? 2 : 1;
 }
 
 function filterByThreshold(list: AnalyzeFinding[], thr: "low" | "medium" | "high"): AnalyzeFinding[] {

@@ -41,7 +41,9 @@ def test_filter_rules(monkeypatch):
         "This Confidentiality clause explains the term and termination clause. "
         "Payment is due. A NonCompete clause applies."
     )
-    res = loader.filter_rules(text, doc_type="MSA", clause_types=["Termination", "Payment"])
+    res = loader.filter_rules(
+        text, doc_type="MSA", clause_types=["Termination", "Payment"]
+    )
 
     ids = {r["rule"]["id"] for r in res}
     assert ids == {"R2", "R3", "R4"}
@@ -50,3 +52,25 @@ def test_filter_rules(monkeypatch):
     assert any(m.lower().startswith("term") for m in matches["R2"])
     assert any("noncompete" in m.lower() for m in matches["R3"])
     assert any("pay" in m.lower() for m in matches["R4"])
+
+
+def test_filter_rules_preserves_newlines(monkeypatch):
+    anchored_rule = [
+        {
+            "id": "R_line",
+            "doc_types": ["Any"],
+            "requires_clause": [],
+            "triggers": {
+                "regex": [re.compile(r"^2\. Second clause", re.I | re.MULTILINE)]
+            },
+        }
+    ]
+
+    monkeypatch.setattr(loader, "_RULES", anchored_rule)
+
+    text = "1. First clause\n2. Second clause"
+    res = loader.filter_rules(text, doc_type="MSA", clause_types=[])
+
+    assert len(res) == 1
+    assert res[0]["rule"]["id"] == "R_line"
+    assert res[0]["matches"] == ["2. Second clause"]

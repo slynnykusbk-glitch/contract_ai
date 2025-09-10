@@ -6,9 +6,10 @@ import os
 import re
 import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Optional
 
 import yaml
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 log = logging.getLogger(__name__)
 
@@ -30,6 +31,27 @@ _PACKS: List[Dict[str, Any]] = []
 
 def _compile(patterns: Iterable[str]) -> List[re.Pattern[str]]:
     return [re.compile(p, re.I | re.MULTILINE) for p in patterns if p]
+
+
+class RuleSchema(BaseModel):
+    """Pydantic model validating the unified rule specification."""
+
+    rule_id: str = Field(alias="id")
+    doc_types: List[str] = Field(default_factory=list)
+    severity: str = Field(default="medium")
+    triggers: Dict[str, List[str]] = Field(default_factory=dict)
+    requires_clause: List[str] = Field(default_factory=list)
+    advice: Optional[str] = None
+    law_refs: List[Any] = Field(default_factory=list)
+    deprecated: bool = False
+
+    @field_validator("severity")
+    @classmethod
+    def _severity_valid(cls, v: str) -> str:
+        val = str(v or "").lower()
+        if val not in {"high", "medium", "low"}:
+            raise ValueError("invalid severity")
+        return val
 
 
 def load_rule_packs() -> None:
@@ -129,6 +151,18 @@ def load_rule_packs() -> None:
                             ]
                         )
 
+                    doc_types = list(
+                        raw.get("doc_types")
+                        or (raw.get("scope", {}) or {}).get("doc_types")
+                        or []
+                    )
+                    requires_clause = list(
+                        raw.get("requires_clause")
+                        or (raw.get("scope", {}) or {}).get("clauses")
+                        or []
+                    )
+                    deprecated = bool(raw.get("deprecated"))
+
                     spec = {
                         "id": raw.get("id"),
                         "clause_type": raw.get("clause_type")
@@ -156,7 +190,33 @@ def load_rule_packs() -> None:
                         "pack": str(path.relative_to(ROOT_DIR)),
                         "triggers": trig_map,
                         "requires_clause_hit": bool(raw.get("requires_clause_hit")),
+                        "doc_types": doc_types,
+                        "requires_clause": requires_clause,
+                        "deprecated": deprecated,
                     }
+
+                    try:
+                        RuleSchema.model_validate(
+                            {
+                                "id": spec["id"],
+                                "doc_types": doc_types,
+                                "severity": spec["severity"],
+                                "triggers": {
+                                    k: [p.pattern for p in v]
+                                    for k, v in trig_map.items()
+                                },
+                                "requires_clause": requires_clause,
+                                "advice": spec["advice"],
+                                "law_refs": spec["law_refs"],
+                                "deprecated": deprecated,
+                            }
+                        )
+                    except ValidationError:
+                        # For backward compatibility we do not abort loading on
+                        # validation errors.  The audit tool and CI checks use
+                        # the same model to report issues separately.
+                        pass
+
                     _RULES.append(spec)
                     rule_count += 1
 

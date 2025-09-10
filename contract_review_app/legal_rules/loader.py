@@ -1,24 +1,19 @@
+# contract_review_app/legal_rules/loader.py
 """YAML rule loader for policy and core rule packs."""
 
 from __future__ import annotations
 
+import logging
 import os
 import re
-import logging
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
-from ..corpus.normalizer import normalize_text
-
-
-def _normalize_multiline(text: str) -> str:
-    """Normalize ``text`` while preserving line breaks."""
-
-    return "\n".join(normalize_text(line) for line in (text or "").splitlines())
-
+# Новая нормализация при intake: кавычки/дефисы -> ASCII, сжатие пробелов, сохранение \n
+from ..intake.normalization import normalize_for_intake
 
 log = logging.getLogger(__name__)
 
@@ -28,17 +23,28 @@ CORE_RULES_DIR = ROOT_DIR / "core" / "rules"
 
 _ENV_DIRS = os.getenv("RULE_PACKS_DIRS")
 if _ENV_DIRS:
-    RULE_PACKS_DIRS = [
-        Path(p.strip()) for p in _ENV_DIRS.split(os.pathsep) if p.strip()
-    ]
+    RULE_PACKS_DIRS = [Path(p.strip()) for p in _ENV_DIRS.split(os.pathsep) if p.strip()]
 else:
     RULE_PACKS_DIRS = [POLICY_DIR, CORE_RULES_DIR]
 
 _RULES: List[Dict[str, Any]] = []
 _PACKS: List[Dict[str, Any]] = []
 
+# ---------------------------------------------------------------------------
+# Coverage flags (bitmask)
+# ---------------------------------------------------------------------------
+SCHEMA_MISMATCH = 1 << 0
+DOC_TYPE_MISMATCH = 1 << 1
+JURISDICTION_MISMATCH = 1 << 2
+NO_CLAUSE = 1 << 3
+REGEX_MISS = 1 << 4
+WHEN_FALSE = 1 << 5
+TEXT_NORMALIZATION_ISSUE = 1 << 6
+FIRED = 1 << 7
+
 
 def _compile(patterns: Iterable[str]) -> List[re.Pattern[str]]:
+    """Compile regex patterns with IGNORECASE|MULTILINE by default (inline flags respected)."""
     return [re.compile(p, re.I | re.MULTILINE) for p in patterns if p]
 
 
@@ -66,21 +72,18 @@ class RuleSchema(BaseModel):
 
 def load_rule_packs() -> None:
     """Load YAML rule packs from configured directories."""
-
     _RULES.clear()
     _PACKS.clear()
 
     for base in RULE_PACKS_DIRS:
         if not base.exists():
             continue
-        if base.samefile(POLICY_DIR):
-            paths = sorted(base.glob("*.yaml"))
-        else:
-            paths = sorted(base.rglob("*.yaml"))
+
+        paths = sorted(base.glob("*.yaml")) if base.samefile(POLICY_DIR) else sorted(base.rglob("*.yaml"))
         for path in paths:
             try:
                 docs = list(yaml.safe_load_all(path.read_text(encoding="utf-8")))
-            except Exception as exc:  # pragma: no cover - load error
+            except Exception as exc:  # pragma: no cover
                 log.error("Failed to load %s: %s", path, exc)
                 continue
 
@@ -99,6 +102,7 @@ def load_rule_packs() -> None:
                     rules_iter = []
 
                 for raw in rules_iter:
+                    # Собираем «плоский» список pat'ов из triggers.{any,all,regex}/patterns
                     pats: List[str] = []
                     trig_any = raw.get("triggers", {}).get("any", []) or []
                     trig_all = raw.get("triggers", {}).get("all", []) or []
@@ -107,27 +111,14 @@ def load_rule_packs() -> None:
                     if raw.get("patterns"):
                         pats = list(raw.get("patterns", []))
                     else:
-                        for cond in trig_any:
-                            if isinstance(cond, dict):
-                                pat = cond.get("regex")
-                            else:
-                                pat = cond
-                            if pat:
-                                pats.append(pat)
-                        for cond in trig_all:
-                            if isinstance(cond, dict):
-                                pat = cond.get("regex")
-                            else:
-                                pat = cond
-                            if pat:
-                                pats.append(pat)
-                        for cond in trig_regex:
-                            if isinstance(cond, dict):
-                                pat = cond.get("regex")
-                            else:
-                                pat = cond
-                            if pat:
-                                pats.append(pat)
+                        def _pull(xs):
+                            for c in xs:
+                                yield c.get("regex") if isinstance(c, dict) else c
+
+                        pats.extend([p for p in _pull(trig_any) if p])
+                        pats.extend([p for p in _pull(trig_all) if p])
+                        pats.extend([p for p in _pull(trig_regex) if p])
+
                     finding_section = raw.get("finding")
                     if not finding_section:
                         checks = raw.get("checks") or []
@@ -136,69 +127,35 @@ def load_rule_packs() -> None:
                                 if isinstance(chk, dict) and chk.get("finding"):
                                     finding_section = chk.get("finding")
                                     break
+
                     compiled_patterns = _compile(pats)
 
                     trig_map: Dict[str, List[re.Pattern[str]]] = {}
                     if trig_any:
-                        trig_map["any"] = _compile(
-                            [
-                                c.get("regex") if isinstance(c, dict) else c
-                                for c in trig_any
-                            ]
-                        )
+                        trig_map["any"] = _compile([(c.get("regex") if isinstance(c, dict) else c) for c in trig_any])
                     if trig_all:
-                        trig_map["all"] = _compile(
-                            [
-                                c.get("regex") if isinstance(c, dict) else c
-                                for c in trig_all
-                            ]
-                        )
+                        trig_map["all"] = _compile([(c.get("regex") if isinstance(c, dict) else c) for c in trig_all])
                     if trig_regex or raw.get("patterns"):
-                        trig_map["regex"] = _compile(
-                            [
-                                c.get("regex") if isinstance(c, dict) else c
-                                for c in (trig_regex or raw.get("patterns", []))
-                            ]
-                        )
+                        trig_map["regex"] = _compile([(c.get("regex") if isinstance(c, dict) else c) for c in (trig_regex or raw.get("patterns", []))])
 
-                    doc_types = list(
-                        raw.get("doc_types")
-                        or (raw.get("scope", {}) or {}).get("doc_types")
-                        or []
-                    )
-                    jurisdiction = list(
-                        raw.get("jurisdiction")
-                        or (raw.get("scope", {}) or {}).get("jurisdiction")
-                        or []
-                    )
-                    requires_clause = list(
-                        raw.get("requires_clause")
-                        or (raw.get("scope", {}) or {}).get("clauses")
-                        or []
-                    )
+                    doc_types = list(raw.get("doc_types") or (raw.get("scope", {}) or {}).get("doc_types") or [])
+                    jurisdiction = list(raw.get("jurisdiction") or (raw.get("scope", {}) or {}).get("jurisdiction") or [])
+                    requires_clause = list(raw.get("requires_clause") or (raw.get("scope", {}) or {}).get("clauses") or [])
                     deprecated = bool(raw.get("deprecated"))
 
                     spec = {
                         "id": raw.get("id"),
-                        "clause_type": raw.get("clause_type")
-                        or (raw.get("scope", {}) or {}).get("clauses", [None])[0],
-                        "severity": str(
-                            raw.get("severity")
-                            or raw.get("risk")
-                            or raw.get("severity_level")
-                            or "medium",
-                        ).lower(),
+                        "clause_type": raw.get("clause_type") or (raw.get("scope", {}) or {}).get("clauses", [None])[0],
+                        "severity": str(raw.get("severity") or raw.get("risk") or raw.get("severity_level") or "medium").lower(),
                         "patterns": compiled_patterns,
                         "advice": raw.get("advice")
-                        or raw.get("intent")
-                        or (finding_section or {}).get("suggestion", {}).get("text")
-                        or (finding_section or {}).get("message"),
-                        "law_refs": list(
-                            raw.get("law_reference")
-                            or raw.get("law_refs")
-                            or (finding_section or {}).get("legal_basis")
-                            or []
-                        ),
+                                  or raw.get("intent")
+                                  or (finding_section or {}).get("suggestion", {}).get("text")
+                                  or (finding_section or {}).get("message"),
+                        "law_refs": list(raw.get("law_reference")
+                                         or raw.get("law_refs")
+                                         or (finding_section or {}).get("legal_basis")
+                                         or []),
                         "suggestion": (finding_section or {}).get("suggestion"),
                         "conflict_with": list(raw.get("conflict_with") or []),
                         "ops": raw.get("ops") or [],
@@ -211,27 +168,20 @@ def load_rule_packs() -> None:
                         "deprecated": deprecated,
                     }
 
+                    # Валидация схемы правила (но не прерываем загрузку)
                     try:
-                        RuleSchema.model_validate(
-                            {
-                                "id": spec["id"],
-                                "doc_types": doc_types,
-                                "jurisdiction": jurisdiction,
-                                "severity": spec["severity"],
-                                "triggers": {
-                                    k: [p.pattern for p in v]
-                                    for k, v in trig_map.items()
-                                },
-                                "requires_clause": requires_clause,
-                                "advice": spec["advice"],
-                                "law_refs": spec["law_refs"],
-                                "deprecated": deprecated,
-                            }
-                        )
+                        RuleSchema.model_validate({
+                            "id": spec["id"],
+                            "doc_types": doc_types,
+                            "jurisdiction": jurisdiction,
+                            "severity": spec["severity"],
+                            "triggers": {k: [p.pattern for p in trig_map.get(k, [])] for k in trig_map.keys()},
+                            "requires_clause": requires_clause,
+                            "advice": spec["advice"],
+                            "law_refs": spec["law_refs"],
+                            "deprecated": deprecated,
+                        })
                     except ValidationError:
-                        # For backward compatibility we do not abort loading on
-                        # validation errors.  The audit tool and CI checks use
-                        # the same model to report issues separately.
                         pass
 
                     _RULES.append(spec)
@@ -244,11 +194,9 @@ def load_rule_packs() -> None:
 # load on import
 load_rule_packs()
 
-
 # ---------------------------------------------------------------------------
 # Public helpers
 # ---------------------------------------------------------------------------
-
 
 def rules_count() -> int:
     return len(_RULES)
@@ -262,47 +210,67 @@ def filter_rules(
     text: str,
     doc_type: str,
     clause_types: Iterable[str],
-    jurisdiction: str | None = None,
-) -> List[Dict[str, Any]]:
-    """Return rules matching ``doc_type``/``clause_types`` triggered by ``text``.
-
-    The returned list contains dictionaries with the original rule under the
-    ``"rule"`` key and a list of matched trigger strings under ``"matches"``.
+    jurisdiction: Optional[str] = None,
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
+    Return (matched_rules, coverage).
 
-    norm = _normalize_multiline(text)
+    matched_rules: [{ "rule": <rule>, "matches": [evidence...] }]
+    coverage: [{ "doc_type": ..., "jurisdiction": ..., "pack_id": ..., "rule_id": ...,
+                 "severity": ..., "evidence": [...], "spans": [{"start":..,"end":..}],
+                 "flags": <bitmask> }]
+    """
+    # Нормализация входа с сохранением \n; ошибки — в флаг
+    flags_norm = 0
+    try:
+        norm = normalize_for_intake(text or "")
+    except Exception:
+        norm = text or ""
+        flags_norm = TEXT_NORMALIZATION_ISSUE
+
     doc_type_lc = (doc_type or "").lower()
     juris_lc = (jurisdiction or "").lower()
-    clause_set: Set[str] = {c.lower() for c in clause_types or []}
+    clause_set: Set[str] = {c.lower() for c in (clause_types or [])}
 
     filtered: List[Dict[str, Any]] = []
+    coverage: List[Dict[str, Any]] = []
+
     for rule in _RULES:
+        rule_flags = flags_norm
+        matches: List[str] = []
+        spans: List[Dict[str, int]] = []
+
+        # Gate: doc_type
         rule_doc_types = [d.lower() for d in rule.get("doc_types", [])]
         if rule_doc_types and "any" not in rule_doc_types:
             if not doc_type_lc or doc_type_lc not in rule_doc_types:
-                filtered.append({"rule": rule, "status": "doc_type_mismatch"})
-                continue
+                rule_flags |= DOC_TYPE_MISMATCH
 
+        # Gate: jurisdiction
         rule_juris = [j.lower() for j in rule.get("jurisdiction", [])]
         if rule_juris and "any" not in rule_juris:
             if not juris_lc or juris_lc not in rule_juris:
-                filtered.append({"rule": rule, "status": "jurisdiction_mismatch"})
-                continue
+                rule_flags |= JURISDICTION_MISMATCH
 
+        # Gate: requires_clause
         req_clauses = {c.lower() for c in rule.get("requires_clause", [])}
         if req_clauses and clause_set.isdisjoint(req_clauses):
-            filtered.append({"rule": rule, "status": "clause_mismatch"})
-            continue
+            rule_flags |= NO_CLAUSE
 
-        trig = rule.get("triggers") or {}
-        matches: List[str] = []
+        # Triggers
         ok = True
+        trig = rule.get("triggers") or {}
 
         any_pats = trig.get("any")
         if any_pats:
-            any_matches = [m.group(0) for p in any_pats for m in p.finditer(norm)]
+            any_matches: List[str] = []
+            for p in any_pats:
+                for m in p.finditer(norm):
+                    any_matches.append(m.group(0))
+                    spans.append({"start": m.start(), "end": m.end()})
             if not any_matches:
                 ok = False
+                rule_flags |= REGEX_MISS
             else:
                 matches.extend(any_matches)
 
@@ -310,35 +278,52 @@ def filter_rules(
             all_pats = trig.get("all")
             if all_pats:
                 all_matches: List[str] = []
-                for pat in all_pats:
-                    m = pat.search(norm)
+                for p in all_pats:
+                    m = p.search(norm)
                     if not m:
                         ok = False
+                        rule_flags |= REGEX_MISS
                         break
                     all_matches.append(m.group(0))
+                    spans.append({"start": m.start(), "end": m.end()})
                 if ok:
                     matches.extend(all_matches)
 
         if ok:
             regex_pats = trig.get("regex")
             if regex_pats:
-                regex_matches = [
-                    m.group(0) for p in regex_pats for m in p.finditer(norm)
-                ]
+                regex_matches: List[str] = []
+                for p in regex_pats:
+                    for m in p.finditer(norm):
+                        regex_matches.append(m.group(0))
+                        spans.append({"start": m.start(), "end": m.end()})
                 if not regex_matches:
                     ok = False
+                    rule_flags |= REGEX_MISS
                 else:
                     matches.extend(regex_matches)
 
-        if ok:
+        # Матч засчитываем только если нет gate-флагов и триггеры прошли
+        if ok and not rule_flags:
+            rule_flags |= FIRED
             filtered.append({"rule": rule, "matches": matches})
-        else:
-            filtered.append({"rule": rule, "status": "trigger_mismatch"})
 
-    return filtered
+        coverage.append(
+            {
+                "doc_type": doc_type_lc,
+                "jurisdiction": juris_lc,
+                "pack_id": rule.get("pack"),
+                "rule_id": rule.get("id"),
+                "severity": rule.get("severity"),
+                "evidence": matches,
+                "spans": spans,
+                "flags": rule_flags,
+            }
+        )
+
+    return filtered, coverage
 
 
 def match_text(text: str) -> List[Dict[str, Any]]:
     from . import engine
-
     return engine.analyze(text or "", _RULES)

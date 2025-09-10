@@ -8,7 +8,7 @@ rule:
     clauses: ["information","non-reliance","misrepresentation"]
   triggers:
     any:
-      - regex: "(?i)(Customer|Employer|Company)\\s+Provided\\s+Information|provided\\s+by\\s+(Customer|Employer|Company)"
+      - regex: "(?i)(customer|employer|company)\\s+provided\\s+information|information\\s+provided\\s+by\\s+(customer|employer|company)"
   checks:
     - id: "disclaimer_without_basis"
       when:

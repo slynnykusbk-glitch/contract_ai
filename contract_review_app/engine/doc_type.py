@@ -56,8 +56,27 @@ def _match_keywords(haystack: str, keywords: List[str]) -> Tuple[int, List[str]]
     return cnt, hits
 
 
-def guess_doc_type(text: str, subject: str | None = None) -> Tuple[str, float, List[str], Dict[str, float]]:
-    """Return (slug, confidence, evidence_strings, score_by_type)."""
+ABBREV_MAP = {
+    "NDA": "nda",
+    "MSA": "msa_services",
+    "DPA": "dpa_uk_gdpr",
+    "SPA": "spa_shares",
+}
+
+
+def _fallback_doc_type(title: str, body: str) -> str:
+    upper = title.upper()
+    for abbr, slug in ABBREV_MAP.items():
+        if abbr in upper:
+            return slug
+    for abbr, slug in ABBREV_MAP.items():
+        if abbr in body.upper():
+            return slug
+    return "unknown"
+
+
+def guess_doc_type(text: str, subject: str | None = None) -> Tuple[str, float, List[str], Dict[str, float], str]:
+    """Return (slug, confidence, evidence_strings, score_by_type, source)."""
     t = text or ""
     # normalize text
     lowered = t.lower()
@@ -67,11 +86,17 @@ def guess_doc_type(text: str, subject: str | None = None) -> Tuple[str, float, L
 
     score_raw: Dict[str, float] = {}
     evidences: Dict[str, List[str]] = {}
+    title_hits_map: Dict[str, int] = {}
+    body_hits_map: Dict[str, int] = {}
+    subj_hits_map: Dict[str, int] = {}
 
     for slug, cfg in DOC_TYPE_PATTERNS.items():
         title_hits, title_ev = _match_keywords(title, cfg.get("title_keywords", []))
         subject_hits, subject_ev = _match_keywords(subj, cfg.get("title_keywords", []))
         body_hits, body_ev = _match_keywords(lowered, cfg.get("body_keywords", []))
+        title_hits_map[slug] = title_hits + subject_hits
+        subj_hits_map[slug] = subject_hits
+        body_hits_map[slug] = body_hits
         boost = 0.0
         boost_ev: List[str] = []
         for phrase, weight in cfg.get("boost_phrases", {}).items():
@@ -95,5 +120,17 @@ def guess_doc_type(text: str, subject: str | None = None) -> Tuple[str, float, L
     best_slug = max(score_raw, key=score_raw.get) if score_raw else "unknown"
     confidence = score_by_type.get(best_slug, 0.0)
     evidence = evidences.get(best_slug, [])
-    return best_slug, round(confidence, 2), evidence, score_by_type
+    source = "classifier"
+    if title_hits_map.get(best_slug):
+        source = "title"
+    elif body_hits_map.get(best_slug):
+        source = "keywords"
+    if max_score == 0.0:
+        fb = _fallback_doc_type(title, lowered)
+        if fb != "unknown":
+            best_slug = fb
+            source = "title"
+            confidence = 0.5
+            score_by_type = {fb: 1.0}
+    return best_slug, round(confidence, 2), evidence, score_by_type, source
 

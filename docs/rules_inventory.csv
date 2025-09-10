@@ -1,0 +1,251 @@
+pack,rule_id,schema,doc_types,jurisdictions,has_triggers,has_checks
+contract_review_app/legal_rules/policy_packs/variations_clause14.yaml,VARIATIONS.NOM_ONLY,,,,True,True
+contract_review_app/legal_rules/policy_packs/variations_clause14.yaml,VARIATIONS.VOR_5BD,,,,True,True
+contract_review_app/legal_rules/policy_packs/variations_clause14.yaml,VARIATIONS.RATE_PARITY_CPA,,,,True,True
+contract_review_app/legal_rules/policy_packs/variations_clause14.yaml,VARIATIONS.DISAGREE_PROCEED_NO_COND_SIGN,,,,True,True
+contract_review_app/legal_rules/policy_packs/variations_clause14.yaml,VARIATIONS.CONTRACTOR_INITIATED_LIMITED,,,,True,True
+contract_review_app/legal_rules/policy_packs/variations_clause14.yaml,VARIATIONS.CHANGE_IN_LAW_TAXES_BUSINESS_EXCLUDED,,,,True,True
+contract_review_app/legal_rules/policy_packs/variations_clause14.yaml,VARIATIONS.TIMEBAR_IMMEDIATE_OFFSHORE_3D,,,,True,True
+contract_review_app/legal_rules/policy_packs/variations_clause14.yaml,VARIATIONS.WAIVER_CUMULATIVE_CARDINAL,,,,True,True
+contract_review_app/legal_rules/policy_packs/variations_clause14.yaml,VARIATIONS.MITIGATION_DUTY,,,,True,True
+contract_review_app/legal_rules/policy_packs/variations_clause14.yaml,VARIATIONS.RATE_IMMUTABILITY_BASELINE,,,,True,True
+contract_review_app/legal_rules/policy_packs/ipr_core.yaml,ipr.agreement_docs_title.company,,,,True,True
+contract_review_app/legal_rules/policy_packs/ipr_core.yaml,ipr.fg.licence.scope,,,,True,True
+contract_review_app/legal_rules/policy_packs/ipr_core.yaml,ipr.bg.licence.conflict,,,,True,True
+contract_review_app/legal_rules/policy_packs/ipr_core.yaml,ipr.moral_rights.waiver,,,,True,True
+contract_review_app/legal_rules/policy_packs/ipr_core.yaml,ipr.indemnity.remedies,,,,True,True
+contract_review_app/legal_rules/policy_packs/ipr_core.yaml,ipr.brand.use.prohibition,,,,True,True
+contract_review_app/legal_rules/policy_packs/ipr_core.yaml,ipr.supplied_software.definition,,,,True,True
+contract_review_app/legal_rules/policy_packs/ipr_core.yaml,ipr.further_assurances.poa,,,,True,True
+contract_review_app/legal_rules/policy_packs/ipr_core.yaml,ipr.oss.guardrails,,,,True,True
+contract_review_app/legal_rules/policy_packs/ipr_core.yaml,ipr.source_code.escrow,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_inspections.yaml,13.QMS.ISO9001,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_inspections.yaml,13.QP.REQUIRED,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_inspections.yaml,13.AUDIT.ISO19011,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_inspections.yaml,13.MOC.FORMAL,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_inspections.yaml,13.ITP.EXISTS,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_inspections.yaml,13.ITP.NOTICE,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_inspections.yaml,13.COST.NOSHOW_FAIL,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_inspections.yaml,13.INSPECT.NO_WAIVER,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_inspections.yaml,13.HIDDEN.WORKS,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_inspections.yaml,13.SHIP.BLOCK,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_inspections.yaml,13.EQUIP.CERT.LOLER_PUWER,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_inspections.yaml,13.LAB.ISO17025,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_inspections.yaml,13.MARKING.UKCA_CE,,,,True,True
+contract_review_app/legal_rules/policy_packs/title_core.yaml,title.clean.free_of_liens,,,,True,True
+contract_review_app/legal_rules/policy_packs/title_core.yaml,title.vesting.early_wip_offsite,,,,True,True
+contract_review_app/legal_rules/policy_packs/title_core.yaml,title.delivery_up.access_right,,,,True,True
+contract_review_app/legal_rules/policy_packs/title_core.yaml,title.embedded_software.perpetual_licence,,,,True,True
+contract_review_app/legal_rules/policy_packs/title_core.yaml,title.marking.register.audit,,,,True,True
+contract_review_app/legal_rules/policy_packs/title_core.yaml,title.risk.cross_reference,,,,True,True
+contract_review_app/legal_rules/policy_packs/title_core.yaml,title.commingling.bulk_processing,,,,True,True
+contract_review_app/legal_rules/policy_packs/title_core.yaml,title.rejection.return_reversion,,,,True,True
+contract_review_app/legal_rules/policy_packs/title_core.yaml,title.waivers.third_party_liens,,,,True,True
+contract_review_app/legal_rules/policy_packs/title_core.yaml,title.customs.ior_alignment,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_clause13.yaml,quality.qms.iso_required,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_clause13.yaml,quality.qp.iso10005.required,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_clause13.yaml,quality.audit.iso19011,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_clause13.yaml,quality.moc.qms_changes,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_clause13.yaml,quality.itp.required,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_clause13.yaml,quality.itp.hw_notice_5d,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_clause13.yaml,quality.company.rights.reject_nonconforming,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_clause13.yaml,quality.hidden_work_prove_compliance,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_clause13.yaml,quality.no_ship_without_final_inspection,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_clause13.yaml,quality.equipment.certificates_pre_dispatch,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_clause13.yaml,quality.equipment.site_tests_swl,,,,True,True
+contract_review_app/legal_rules/policy_packs/quality_clause13.yaml,quality.costs.not_ready_or_repeat,,,,True,True
+contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml,cpi.register.exhaustive_list,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml,cpi.receipt.notice_window.latent,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml,cpi.marking.tracking.required,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml,cpi.storage.lifting.loler_puwer,,Any,UK,True,True
+contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml,cpi.ccc.insurance.cover_required,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml,cpi.no_lien.required,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml,cpi.waste.disposal.duty_of_care,,Any,UK,True,True
+contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml,cpi.use.only.for.project,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml,cpi.incident.loss.damage.reporting,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/company_provided_items_universal.yaml,cpi.export.controls.sanctions,,Any,UK,True,True
+contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml,ic.status.control.methods,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml,ic.substitution.absent_or_personal_service,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml,ic.mutuality.moo.minimum_hours,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml,ic.agency.no_authority_to_bind,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml,ic.removal.right.objective_non_discrimination,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml,ic.ir35.offpayroll.sds_process,,Any,UK,True,True
+contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml,ic.vicarious.liability.supervision_language,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml,ic.hse.carveout.required,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml,ic.awr.agency_workers_equal_treatment,,Any,UK,True,True
+contract_review_app/legal_rules/policy_packs/independent_contractor_universal.yaml,ic.medical.data.minimisation,,Any,UK;EU,True,True
+contract_review_app/legal_rules/policy_packs/universal/inform/05_discrepancy_notice_timebar.yaml,universal.inform.discrepancy_notice_timebar,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/inform/08_physical_conditions_unforeseen.yaml,universal.inform.physical_conditions_unforeseen,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/inform/04_employer_info_nonreliance.yaml,universal.inform.employer_info_nonreliance,,Any,UK;Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/inform/02_deemed_laws_change.yaml,universal.inform.deemed_laws_change,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/inform/10_transport_employer_items.yaml,universal.inform.transport_employer_items,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/inform/06_employer_corrects_variation.yaml,universal.inform.employer_corrects_variation,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/inform/09_resources_breakdown_carveouts.yaml,universal.inform.resources_breakdown_carveouts,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/inform/03_deemed_pricing_voeot.yaml,universal.inform.deemed_pricing_voeot,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/inform/11_notice_formalities.yaml,universal.inform.notice_formalities,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/inform/01_deemed_scope_clarity.yaml,universal.inform.deemed_scope_clarity,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/inform/12_stop_work_on_conflict.yaml,universal.inform.stop_work_on_conflict,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/inform/07_implied_scope_limit.yaml,universal.inform.implied_scope_limit,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/04_permits_rtw.yaml,universal.performance.permits_rtw,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/06_materials_management.yaml,universal.performance.materials_management,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/11_goods_software_incoterms.yaml,universal.performance.goods_software_incoterms,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/10_working_hours_overtime.yaml,universal.performance.working_hours_overtime,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/09_site_ptw_partial_occupation.yaml,universal.performance.site_ptw_partial_occupation,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/01_standard_rsc_vs_ffp.yaml,universal.performance.rsc_vs_ffp_priority,,Any,UK;Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/13_rental_equipment.yaml,universal.performance.rental_equipment,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/03_cooperate_eot.yaml,universal.performance.cooperate_eot,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/05_document_control_handover.yaml,universal.performance.document_control_handover,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/15_exhibits_policies_conflicts.yaml,universal.performance.exhibits_policies_conflicts,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/14_instructions_variation_gate.yaml,universal.performance.instructions_variation_gate,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/02_resources_sufficiency.yaml,universal.performance.resources_sufficiency,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/07_reporting_early_warning.yaml,universal.performance.reporting_early_warning,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/08_schedule_recovery.yaml,universal.performance.schedule_recovery,,Any,Any,True,True
+contract_review_app/legal_rules/policy_packs/universal/performance/12_inspection_acceptance_window.yaml,universal.performance.inspection_acceptance_window,,Any,UK;Any,True,True
+core/rules/universal/personnel/12_gdpr_personnel_data.yaml,universal.personnel.gdpr_personnel_data,,Any,Any,True,True
+core/rules/uk/section4/09_stop_work_authority.yaml,uk.s4.hse.stop_work_authority,,MSA;Call-Off;HSE Policy,UK,True,True
+core/rules/uk/section4/03_apparent_authority_controls.yaml,uk.s4.cr.apparent_authority_controls,,MSA;Call-Off;Minutes,UK,True,True
+core/rules/uk/section4/08_instruction_triggers_vo.yaml,uk.s4.instructions.trigger_vo,,MSA;Call-Off;Instruction,UK,True,True
+core/rules/uk/section4/10_chain_of_command_clarity.yaml,uk.s4.governance.chain_of_command,,MSA;Call-Off,UK,True,True
+core/rules/uk/section4/07_notice_channels_alignment.yaml,uk.s4.reps.notice_channels_alignment,,MSA;Call-Off;Notice,UK,True,True
+core/rules/uk/section4/01_cr_appointment_and_scope.yaml,uk.s4.cr.appointment_and_scope,,MSA;Call-Off,UK,True,True
+core/rules/uk/section4/05_delegation_and_substitution.yaml,uk.s4.delegation.notice_and_register,,MSA;Call-Off;Notice,UK,True,True
+core/rules/uk/section4/04_ctr_appointment_and_limits.yaml,uk.s4.ctr.appointment_and_limits,,MSA;Call-Off,UK,True,True
+core/rules/uk/section4/02_cr_nom_shield.yaml,uk.s4.cr.nom_shield,,MSA;Call-Off,UK,True,True
+core/rules/uk/section4/06_ctr_change_consent_sla.yaml,uk.s4.ctr.change_consent_sla,,MSA;Call-Off;Notice,UK,True,True
+core/rules/uk/interpretation/18_gl_jurisdiction_conflict.yaml,gl_jurisdiction_conflict,,,,False,False
+core/rules/uk/interpretation/2_2_rules/16_correlative_scope_creep.yaml,uk.int.2_2_6.mutually_explanatory_scope_creep_guard,,Master Agreement;MSA;Call-Off,UK,True,True
+core/rules/uk/interpretation/2_2_rules/05_company_vs_Company.yaml,uk.int.2_2_1e.company_vs_Company_defined_term,,Master Agreement;MSA,UK,True,True
+core/rules/uk/interpretation/2_2_rules/03_number_gender.yaml,uk.int.2_2_1c.number_gender_presumption,,Master Agreement;MSA,UK,True,True
+core/rules/uk/interpretation/2_2_rules/13_precedence_agreement_alpha.yaml,uk.int.2_2_3.precedence_agreement_alpha_risk,,Master Agreement;MSA,UK,True,True
+core/rules/uk/interpretation/2_2_rules/12_headings_no_effect.yaml,uk.int.2_2_2.headings_no_effect,,Master Agreement;MSA,UK,True,False
+core/rules/uk/interpretation/2_2_rules/07_dynamic_incorp_variation.yaml,uk.int.2_2_1g.dynamic_incorp_requires_variation,,Master Agreement;MSA,UK,True,True
+core/rules/uk/interpretation/2_2_rules/02_time_periods_basis.yaml,uk.int.2_2_1b.time_basis_calendar_vs_business,,Master Agreement;MSA,UK,True,True
+core/rules/uk/interpretation/2_2_rules/11_subcontracts_flowdown.yaml,uk.int.2_2_1k.subcontracts_flowdown_audit,,Master Agreement;MSA,UK,True,True
+core/rules/uk/interpretation/2_2_rules/04_including_non_exhaustive.yaml,uk.int.2_2_1d.including_is_without_limitation,,Master Agreement;MSA,UK,True,True
+core/rules/uk/interpretation/2_2_rules/10_calloff_incorp_msa.yaml,uk.int.2_2_1j.calloff_incorporates_msa,,Master Agreement;MSA;Call-Off,UK,True,True
+core/rules/uk/interpretation/2_2_rules/01_xrefs_links.yaml,uk.int.2_2_1a.xrefs_links_exist,,Master Agreement;MSA,UK,True,True
+core/rules/uk/interpretation/2_2_rules/15_ambiguity_dr_checks.yaml,uk.int.2_2_5.ambiguity_pre_dr_checks,,Master Agreement;MSA,UK,True,True
+core/rules/uk/interpretation/2_2_rules/09_writing_email_esign.yaml,uk.int.2_2_1i.writing_email_esign_alignment,,Master Agreement;MSA,UK,True,True
+core/rules/uk/interpretation/2_2_rules/17_stringency_fitness.yaml,uk.int.2_2_7.stringency_fitness_priority,,Master Agreement;MSA;Call-Off,UK,True,True
+core/rules/uk/interpretation/2_2_rules/08_approvals_writing_reps.yaml,uk.int.2_2_1h.approvals_in_writing_by_reps,,Master Agreement;MSA,UK,True,True
+core/rules/uk/interpretation/2_2_rules/14_precedence_calloff.yaml,uk.int.2_2_4.precedence_calloff,,Call-Off;Master Agreement;MSA,UK,True,True
+core/rules/uk/interpretation/2_2_rules/06_person_scope.yaml,uk.int.2_2_1f.person_scope_broad,,Master Agreement;MSA,UK,True,True
+core/rules/uk/personnel/13_outdated_dpa_1998.yaml,uk_dpa_1998_outdated,,,,False,False
+core/rules/uk/master/recitals_and_clauses1/05_incorp_dynamic_refs_change_control.yaml,uk.master.incorp.dynamic_refs_change_control,,Master Agreement;MSA,UK,True,True
+core/rules/uk/master/recitals_and_clauses1/06_exhibitj_deed_formalities.yaml,uk.master.exhibitj.deed_formalities,,Master Agreement;MSA,UK,True,True
+core/rules/uk/master/recitals_and_clauses1/03_incorp_placeholders_clean.yaml,uk.master.incorp.placeholders_clean,,Master Agreement;MSA;NDA,UK,True,True
+core/rules/uk/master/recitals_and_clauses1/08_supplemental_docs_priority.yaml,uk.master.supplemental.priority,,Master Agreement;MSA,UK,True,True
+core/rules/uk/master/recitals_and_clauses1/02_recitals_no_operational_shall.yaml,uk.master.recitals.no_operational_shall,,Master Agreement;MSA;NDA,UK,True,True
+core/rules/uk/master/recitals_and_clauses1/04_incorp_heavy_terms_notice.yaml,uk.master.incorp.heavy_terms_notice,,Master Agreement;MSA;NDA,UK,True,True
+core/rules/uk/master/recitals_and_clauses1/07_term_extensions_notices.yaml,uk.master.term.extensions_notice,,Master Agreement;MSA,UK,True,True
+core/rules/uk/master/recitals_and_clauses1/01_recitals_no_minimum_purchase.yaml,uk.master.recitals.no_min_purchase,,Master Agreement;MSA;NDA,UK,True,True
+core/rules/uk/definitions/16_outdated_companies_act_1985.yaml,uk_ca_1985_outdated,,,,False,False
+core/rules/uk/definitions/17_bribery_act_missing.yaml,uk_bribery_act_missing,,,,False,False
+core/rules/uk/definitions/i_to_p_block/12_personnel_ir35_awr.yaml,uk.def.personnel.coverage_ir35_awr,,Master Agreement;MSA;NDA,UK,True,True
+core/rules/uk/definitions/i_to_p_block/06_key_personnel_controls.yaml,uk.def.key_personnel.list_ld_controls,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/i_to_p_block/07_legal_fault_consistency.yaml,uk.def.legal_fault.fm_indemnities_consistency,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/i_to_p_block/05_ip_rights_claim_mechanics.yaml,uk.def.ipclaim.mechanics_and_carveouts,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/i_to_p_block/13_property_exclusions_title_risk.yaml,uk.def.property.exclusions_title_risk,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/i_to_p_block/11_personal_injury_scope_and_insurance.yaml,uk.def.personal_injury.scope_and_el_insurance,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/i_to_p_block/10_permit_authorisations_matrix.yaml,uk.def.permit.authorisations_matrix,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/i_to_p_block/04_invitee_scope.yaml,uk.def.invitee.scope_and_exclusions,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/i_to_p_block/03_ip_rights_coverage.yaml,uk.def.iprights.coverage_and_moral_rights,,Master Agreement;MSA;NDA,UK,True,True
+core/rules/uk/definitions/i_to_p_block/08_nonconformity_vs_defect.yaml,uk.def.nonconformity.scope_and_priority,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/i_to_p_block/09_parties_calloff_specificity.yaml,uk.def.parties.calloff_specificity_crtpa,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/i_to_p_block/02_indemnify_controls.yaml,uk.def.indemnify.controls_and_negligence,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/i_to_p_block/01_importer_of_record.yaml,uk.def.ior.calloff_requirements,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/b_block/02_bribe_ukba_poca_fcpa.yaml,uk.def.bribe.ukba_poca_fcpa,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/b_block/01_bipr_perimeter_and_license.yaml,uk.def.bipr.perimeter_and_license,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/b_block/03_business_day_precision.yaml,uk.def.business_day.precision,,Master Agreement;MSA;NDA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/03_subcontractor_flowdown_audit.yaml,uk.def.subcontractor.flowdown_audit,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/07_third_party_crtpa_alignment.yaml,uk.def.third_party.crtpa_alignment,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/08_trade_tariff_source_recency.yaml,uk.def.trade_tariff.source_recency,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/14_work_scope_boundary_interfaces.yaml,uk.def.work.scope_boundary_interfaces,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/05_tariff_code_classification.yaml,uk.def.tariff_code.classification,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/13_vat_registration_place_of_supply_zero_rating.yaml,uk.def.vat.registration_place_of_supply_zero_rating,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/02_specifications_versioning_variations.yaml,uk.def.specs.versioning_and_variations,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/06_taxes_matrix_withholding_grossup.yaml,uk.def.taxes.matrix_withholding_grossup,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/01_site_ownership_access_risk.yaml,uk.def.site.ownership_access_risk,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/09_tupe_eli_requirements.yaml,uk.def.tupe.eli_requirements,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/15_worksite_inclusion_exclusions.yaml,uk.def.worksite.inclusion_exclusions,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/11_variation_order_contents.yaml,uk.def.variation.order_contents,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/10_variation_gate.yaml,uk.def.variation.gate,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/04_supplied_software_scope_licence_escrow.yaml,uk.def.supplied_software.scope_licence_escrow,,Master Agreement;MSA,UK,True,True
+core/rules/uk/definitions/s_to_w_block/12_variation_order_request_process.yaml,uk.def.vor.process,,Master Agreement;MSA,UK,True,True
+core/rules/uk/section3/05_no_minimum_commitment.yaml,uk.s3.volume.no_min_commit,,MSA;Call-Off,UK,True,True
+core/rules/uk/section3/12_reliance_vs_entire.yaml,uk.s3.reliance.entire_nonreliance_alignment,,MSA;Call-Off,UK,True,True
+core/rules/uk/section3/03_ld_only_remedy_gate.yaml,uk.s3.ld.only_remedy_gates,,Call-Off;MSA,UK,True,True
+core/rules/uk/section3/14_ld_parameters_and_cases.yaml,uk.s3.ld.parameters_case_law,,Call-Off;MSA,UK,True,True
+core/rules/uk/section3/16_coventurers_agent_model.yaml,uk.s3.coventurers.agent_model_cap,,MSA;Call-Off,UK,True,True
+core/rules/uk/section3/02_start_work_acceptance_guard.yaml,uk.s3.order.start_as_acceptance_guard,,Call-Off;MSA,UK,True,True
+core/rules/uk/section3/08_calloff_contract_execution.yaml,uk.s3.calloff.contract_execution_authority,,Call-Off;MSA,UK,True,True
+core/rules/uk/section3/20_liability_ucta_2_1_invalid.yaml,uk_ucta_2_1_invalid,,,,False,False
+core/rules/uk/section3/18_confidentiality_poca_tipping_off_carveout.yaml,uk_poca_tipping_off,,,,False,False
+core/rules/uk/section3/15_unacceptable_conditions.yaml,uk.s3.calloff.unacceptable_conditions_3_11,,Call-Off,UK,True,True
+core/rules/uk/section3/09_po_chain_per_entity.yaml,uk.s3.po.per_entity_responsibility,,PO;Call-Off;MSA,UK,True,True
+core/rules/uk/section3/04_typo_numbering_blocker.yaml,uk.s3.editorial.typos_numbering_block,,MSA;Call-Off,UK,True,True
+core/rules/uk/section3/13_nom_mods_enforcement.yaml,uk.s3.nom.mods_enforcement_3_12_3_13,,Call-Off;MSA,UK,True,True
+core/rules/uk/section3/19_liability_fraud_exclusion_invalid.yaml,uk_fraud_exclusion_invalid,,,,False,False
+core/rules/uk/section3/07_order_channels_alignment.yaml,uk.s3.order.channels_align_29,,Call-Off;MSA,UK,True,True
+core/rules/uk/section3/17_foreign_terms_nullity.yaml,uk.s3.nullity.foreign_terms_3_13,,Call-Off,UK,True,True
+core/rules/uk/section3/01_po_excludes_supplier_terms.yaml,uk.s3.po.exclude_supplier_terms,,Call-Off;Master Agreement;MSA;PO,UK,True,True
+core/rules/uk/section3/11_calloff_minimum_contents.yaml,uk.s3.calloff.minimum_contents,,Call-Off,UK,True,True
+core/rules/uk/section3/06_non_exclusive.yaml,uk.s3.exclusivity.non_exclusive,,MSA;Call-Off,UK,True,True
+core/rules/uk/section3/10_order_acceptance_triggers.yaml,uk.s3.order.acceptance_triggers_channels,,Call-Off,UK,True,True
+core/rules/uk/parties/01_identity.yaml,uk.parties.identity,,Master Agreement;NDA;MSA,UK,True,True
+core/rules/uk/calloff/02_calloff_formation_by_performance_controls.yaml,uk.calloff.formation_by_performance_controls,,Master Agreement;MSA,UK,True,True
+core/rules/uk/calloff/03_calloff_minimum_content.yaml,uk.calloff.minimum_content,,Master Agreement;MSA,UK,True,True
+core/rules/uk/calloff/01_calloff_exclude_other_terms.yaml,uk.calloff.exclude_other_terms,,Master Agreement;MSA,UK,True,True
+core/rules/quality/quality_inspections.yaml,13.QMS.ISO9001,,,,True,True
+core/rules/quality/quality_inspections.yaml,13.QP.REQUIRED,,,,True,True
+core/rules/quality/quality_inspections.yaml,13.AUDIT.ISO19011,,,,True,True
+core/rules/quality/quality_inspections.yaml,13.MOC.FORMAL,,,,True,True
+core/rules/quality/quality_inspections.yaml,13.ITP.EXISTS,,,,True,True
+core/rules/quality/quality_inspections.yaml,13.ITP.NOTICE,,,,True,True
+core/rules/quality/quality_inspections.yaml,13.COST.NOSHOW_FAIL,,,,True,True
+core/rules/quality/quality_inspections.yaml,13.INSPECT.NO_WAIVER,,,,True,True
+core/rules/quality/quality_inspections.yaml,13.HIDDEN.WORKS,,,,True,True
+core/rules/quality/quality_inspections.yaml,13.SHIP.BLOCK,,,,True,True
+core/rules/quality/quality_inspections.yaml,13.EQUIP.CERT.LOLER_PUWER,,,,True,True
+core/rules/quality/quality_inspections.yaml,13.LAB.ISO17025,,,,True,True
+core/rules/quality/quality_inspections.yaml,13.MARKING.UKCA_CE,,,,True,True
+core/rules/independent_contractor/independent_contractor_universal.yaml,ic.status.control.methods,,Any,Any,True,True
+core/rules/independent_contractor/independent_contractor_universal.yaml,ic.substitution.absent_or_personal_service,,Any,Any,True,True
+core/rules/independent_contractor/independent_contractor_universal.yaml,ic.mutuality.moo.minimum_hours,,Any,Any,True,True
+core/rules/independent_contractor/independent_contractor_universal.yaml,ic.agency.no_authority_to_bind,,Any,Any,True,True
+core/rules/independent_contractor/independent_contractor_universal.yaml,ic.removal.right.objective_non_discrimination,,Any,Any,True,True
+core/rules/independent_contractor/independent_contractor_universal.yaml,ic.ir35.offpayroll.sds_process,,Any,UK,True,True
+core/rules/independent_contractor/independent_contractor_universal.yaml,ic.vicarious.liability.supervision_language,,Any,Any,True,True
+core/rules/independent_contractor/independent_contractor_universal.yaml,ic.hse.carveout.required,,Any,Any,True,True
+core/rules/independent_contractor/independent_contractor_universal.yaml,ic.awr.agency_workers_equal_treatment,,Any,UK,True,True
+core/rules/independent_contractor/independent_contractor_universal.yaml,ic.medical.data.minimisation,,Any,UK;EU,True,True
+core/rules/ipr/ipr_core.yaml,ipr.agreement_docs_title.company,,,,True,True
+core/rules/ipr/ipr_core.yaml,ipr.fg.licence.scope,,,,True,True
+core/rules/ipr/ipr_core.yaml,ipr.bg.licence.conflict,,,,True,True
+core/rules/ipr/ipr_core.yaml,ipr.moral_rights.waiver,,,,True,True
+core/rules/ipr/ipr_core.yaml,ipr.indemnity.remedies,,,,True,True
+core/rules/ipr/ipr_core.yaml,ipr.brand.use.prohibition,,,,True,True
+core/rules/ipr/ipr_core.yaml,ipr.supplied_software.definition,,,,True,True
+core/rules/ipr/ipr_core.yaml,ipr.further_assurances.poa,,,,True,True
+core/rules/ipr/ipr_core.yaml,ipr.oss.guardrails,,,,True,True
+core/rules/ipr/ipr_core.yaml,ipr.source_code.escrow,,,,True,True
+core/rules/title/title_core.yaml,title.clean.free_of_liens,,,,True,True
+core/rules/title/title_core.yaml,title.vesting.early_wip_offsite,,,,True,True
+core/rules/title/title_core.yaml,title.delivery_up.access_right,,,,True,True
+core/rules/title/title_core.yaml,title.embedded_software.perpetual_licence,,,,True,True
+core/rules/title/title_core.yaml,title.marking.register.audit,,,,True,True
+core/rules/title/title_core.yaml,title.risk.cross_reference,,,,True,True
+core/rules/title/title_core.yaml,title.commingling.bulk_processing,,,,True,True
+core/rules/title/title_core.yaml,title.rejection.return_reversion,,,,True,True
+core/rules/title/title_core.yaml,title.waivers.third_party_liens,,,,True,True
+core/rules/title/title_core.yaml,title.customs.ior_alignment,,,,True,True
+core/rules/company_provided_items/company_provided_items_universal.yaml,cpi.register.exhaustive_list,,Any,Any,True,True
+core/rules/company_provided_items/company_provided_items_universal.yaml,cpi.receipt.notice_window.latent,,Any,Any,True,True
+core/rules/company_provided_items/company_provided_items_universal.yaml,cpi.marking.tracking.required,,Any,Any,True,True
+core/rules/company_provided_items/company_provided_items_universal.yaml,cpi.storage.lifting.loler_puwer,,Any,UK,True,True
+core/rules/company_provided_items/company_provided_items_universal.yaml,cpi.ccc.insurance.cover_required,,Any,Any,True,True
+core/rules/company_provided_items/company_provided_items_universal.yaml,cpi.no_lien.required,,Any,Any,True,True
+core/rules/company_provided_items/company_provided_items_universal.yaml,cpi.waste.disposal.duty_of_care,,Any,UK,True,True
+core/rules/company_provided_items/company_provided_items_universal.yaml,cpi.use.only.for.project,,Any,Any,True,True
+core/rules/company_provided_items/company_provided_items_universal.yaml,cpi.incident.loss.damage.reporting,,Any,Any,True,True
+core/rules/company_provided_items/company_provided_items_universal.yaml,cpi.export.controls.sanctions,,Any,UK,True,True

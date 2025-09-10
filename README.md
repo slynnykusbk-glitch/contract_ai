@@ -46,6 +46,10 @@ application start. If these checks fail, `/health` reports a non-OK status
 so deployments can detect missing dependencies. PyYAML must be present or
 `/api/analyze` will not load rule packs.
 
+Rules whose configured document types do not match the analyzed document are
+now reported with the status `doc_type_mismatch` in rule coverage data. The
+UI panel surfaces this status so missing coverage is visible during checks.
+
 ## Word Add-in
 
 After running an analysis the task pane displays the current CID. You can open

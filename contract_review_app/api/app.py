@@ -621,6 +621,9 @@ def _ensure_legacy_doc_type(summary: dict) -> None:
         "confidence": score,
         "candidates": [{"type": t, "score": score}] if t else [],
     }
+    src = summary.get("type_source")
+    if src:
+        summary["doc_type"]["source"] = src
 
 
 # --------------------------------------------------------------------
@@ -1828,6 +1831,7 @@ def api_analyze(
     active_packs: List[str] = []
     rules_loaded = 0
     fired_rules_meta: List[Dict[str, Any]] = []
+    coverage_rules: List[Dict[str, Any]] = []
     t3 = t2
     t4 = t2
     try:
@@ -1838,15 +1842,24 @@ def api_analyze(
 
         _yaml_loader.load_rule_packs()
         filtered = _yaml_loader.filter_rules(
-            txt or "", doc_type=snap.type, clause_types=clause_types_set
+            txt or "",
+            doc_type=snap.type,
+            clause_types=clause_types_set,
+            jurisdiction=snap.jurisdiction,
         )
         t3 = time.perf_counter()
         yaml_findings = _yaml_engine.analyze(
-            txt or "", [r["rule"] for r in filtered]
+            txt or "", [r["rule"] for r in filtered if not r.get("status")]
         )
         t4 = time.perf_counter()
         active_packs = [p.get("path") for p in _yaml_loader.loaded_packs()]
         rules_loaded = _yaml_loader.rules_count()
+
+        coverage_rules = []
+        for item in filtered:
+            rid = item["rule"].get("id")
+            st = item.get("status", "matched")
+            coverage_rules.append({"rule_id": rid, "status": st})
 
         for item in filtered:
             rule = item["rule"]
@@ -1885,6 +1898,7 @@ def api_analyze(
         active_packs = []
         rules_loaded = 0
         fired_rules_meta = []
+        coverage_rules = []
 
     if yaml_findings:
         filtered_yaml = [
@@ -1976,6 +1990,10 @@ def api_analyze(
         "schema_version": SCHEMA_VERSION,
         "meta": meta,
         "summary": summary,
+    }
+    envelope["rules_coverage"] = {
+        "doc_type": {"value": snap.type, "source": snap.type_source},
+        "rules": coverage_rules,
     }
     IDEMPOTENCY_CACHE.set(cid, envelope)
     rec = {"resp": envelope, "cid": cid}

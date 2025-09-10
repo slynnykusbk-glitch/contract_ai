@@ -23,3 +23,10 @@ def test_document_type_classifier(expected: str, text: str):
     snap = extract_document_snapshot(text)
     assert snap.type == expected
     assert snap.type_confidence >= 0.6
+
+
+def test_document_type_abbrev_fallback():
+    text = "NDA\nText without keywords"
+    snap = extract_document_snapshot(text)
+    assert snap.type == "NDA"
+    assert snap.type_source == "title"

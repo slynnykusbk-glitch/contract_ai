@@ -8,7 +8,7 @@ rule:
   title: "Control over methods/hours risks employee/worker status"
   scope:
     jurisdiction: ["Any"]
-    doc_types: ["Any"]
+    doc_types: ["Consultancy"]
     clauses: ["independent contractor","personnel","management","working time"]
   triggers:
     any:
@@ -47,7 +47,7 @@ rule:
   title: "Personal service only / no substitution — status risk"
   scope:
     jurisdiction: ["Any"]
-    doc_types: ["Any"]
+    doc_types: ["Consultancy"]
     clauses: ["independent contractor","personnel"]
   triggers:
     any:
@@ -85,7 +85,7 @@ rule:
   title: "Mutuality of obligations / guaranteed work or acceptance duty"
   scope:
     jurisdiction: ["Any"]
-    doc_types: ["Any"]
+    doc_types: ["Consultancy"]
     clauses: ["independent contractor","scheduling","SLA"]
   triggers:
     any:
@@ -123,7 +123,7 @@ rule:
   title: "Agency firewall — no authority to bind the Company"
   scope:
     jurisdiction: ["Any"]
-    doc_types: ["Any"]
+    doc_types: ["Consultancy"]
     clauses: ["independent contractor","authority","procurement"]
   triggers:
     any:
@@ -161,7 +161,7 @@ rule:
   title: "Right to remove personnel must be objective and non-discriminatory"
   scope:
     jurisdiction: ["Any"]
-    doc_types: ["Any"]
+    doc_types: ["Consultancy"]
     clauses: ["personnel","independent contractor","conduct","HSE"]
   triggers:
     any:
@@ -198,7 +198,7 @@ rule:
   title: "Off-payroll (IR35) — SDS, reasonable care, change notifications"
   scope:
     jurisdiction: ["UK"]
-    doc_types: ["Any"]
+    doc_types: ["Consultancy"]
     clauses: ["taxes","independent contractor","IR35","off-payroll"]
   triggers:
     any:
@@ -238,7 +238,7 @@ rule:
   title: "Avoid language of supervision/control to reduce vicarious liability"
   scope:
     jurisdiction: ["Any"]
-    doc_types: ["Any"]
+    doc_types: ["Consultancy"]
     clauses: ["independent contractor","HSE","management"]
   triggers:
     any:
@@ -275,7 +275,7 @@ rule:
   title: "H&S/site rules carve-out must not create employment-like control"
   scope:
     jurisdiction: ["Any"]
-    doc_types: ["Any"]
+    doc_types: ["Consultancy"]
     clauses: ["HSE","independent contractor","policies"]
   triggers:
     any:
@@ -315,7 +315,7 @@ rule:
   title: "If agency model used — ensure AWR 2010 equal treatment after 12 weeks"
   scope:
     jurisdiction: ["UK"]
-    doc_types: ["Any"]
+    doc_types: ["Consultancy"]
     clauses: ["agency","AWR","independent contractor"]
   triggers:
     any:
@@ -353,7 +353,7 @@ rule:
   title: "Medical data — special category; require fitness certificate, not full records"
   scope:
     jurisdiction: ["UK","EU"]
-    doc_types: ["Any"]
+    doc_types: ["Consultancy"]
     clauses: ["HSE","medical","data protection","privacy"]
   triggers:
     any:

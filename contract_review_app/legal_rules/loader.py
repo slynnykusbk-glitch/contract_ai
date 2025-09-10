@@ -78,7 +78,7 @@ def load_rule_packs() -> None:
     """Load YAML rule packs from configured directories."""
     _RULES.clear()
     _PACKS.clear()
-
+    seen_ids: Set[str] = set()
     warned_py = False
     for base in RULE_PACKS_DIRS:
         if not base.exists():
@@ -176,6 +176,14 @@ def load_rule_packs() -> None:
                         or (raw.get("scope", {}) or {}).get("doc_types")
                         or []
                     )
+                    if doc_types:
+                        dt_lc = [str(d).lower() for d in doc_types]
+                        if "any" in dt_lc and len(dt_lc) > 1:
+                            log.warning(
+                                "Rule %s mixes 'Any' with specific doc_types %s",
+                                raw.get("id"),
+                                doc_types,
+                            )
                     jurisdiction = list(
                         raw.get("jurisdiction")
                         or (raw.get("scope", {}) or {}).get("jurisdiction")
@@ -247,6 +255,11 @@ def load_rule_packs() -> None:
                     except ValidationError:
                         pass
 
+                    rid = spec.get("id")
+                    if rid in seen_ids:
+                        log.warning("Duplicate rule id %s skipped from %s", rid, path)
+                        continue
+                    seen_ids.add(rid)
                     _RULES.append(spec)
                     rule_count += 1
 

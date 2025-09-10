@@ -1,4 +1,5 @@
 """YAML rule loader for policy and core rule packs."""
+
 from __future__ import annotations
 
 import os
@@ -17,7 +18,9 @@ CORE_RULES_DIR = ROOT_DIR / "core" / "rules"
 
 _ENV_DIRS = os.getenv("RULE_PACKS_DIRS")
 if _ENV_DIRS:
-    RULE_PACKS_DIRS = [Path(p.strip()) for p in _ENV_DIRS.split(os.pathsep) if p.strip()]
+    RULE_PACKS_DIRS = [
+        Path(p.strip()) for p in _ENV_DIRS.split(os.pathsep) if p.strip()
+    ]
 else:
     RULE_PACKS_DIRS = [POLICY_DIR, CORE_RULES_DIR]
 
@@ -65,10 +68,28 @@ def load_rule_packs() -> None:
 
                 for raw in rules_iter:
                     pats: List[str] = []
+                    trig_any = raw.get("triggers", {}).get("any", []) or []
+                    trig_all = raw.get("triggers", {}).get("all", []) or []
+                    trig_regex = raw.get("triggers", {}).get("regex", []) or []
+
                     if raw.get("patterns"):
                         pats = list(raw.get("patterns", []))
                     else:
-                        for cond in raw.get("triggers", {}).get("any", []):
+                        for cond in trig_any:
+                            if isinstance(cond, dict):
+                                pat = cond.get("regex")
+                            else:
+                                pat = cond
+                            if pat:
+                                pats.append(pat)
+                        for cond in trig_all:
+                            if isinstance(cond, dict):
+                                pat = cond.get("regex")
+                            else:
+                                pat = cond
+                            if pat:
+                                pats.append(pat)
+                        for cond in trig_regex:
                             if isinstance(cond, dict):
                                 pat = cond.get("regex")
                             else:
@@ -83,6 +104,31 @@ def load_rule_packs() -> None:
                                 if isinstance(chk, dict) and chk.get("finding"):
                                     finding_section = chk.get("finding")
                                     break
+                    compiled_patterns = _compile(pats)
+
+                    trig_map: Dict[str, List[re.Pattern[str]]] = {}
+                    if trig_any:
+                        trig_map["any"] = _compile(
+                            [
+                                c.get("regex") if isinstance(c, dict) else c
+                                for c in trig_any
+                            ]
+                        )
+                    if trig_all:
+                        trig_map["all"] = _compile(
+                            [
+                                c.get("regex") if isinstance(c, dict) else c
+                                for c in trig_all
+                            ]
+                        )
+                    if trig_regex or raw.get("patterns"):
+                        trig_map["regex"] = _compile(
+                            [
+                                c.get("regex") if isinstance(c, dict) else c
+                                for c in (trig_regex or raw.get("patterns", []))
+                            ]
+                        )
+
                     spec = {
                         "id": raw.get("id"),
                         "clause_type": raw.get("clause_type")
@@ -93,7 +139,7 @@ def load_rule_packs() -> None:
                             or raw.get("severity_level")
                             or "medium",
                         ).lower(),
-                        "patterns": _compile(pats),
+                        "patterns": compiled_patterns,
                         "advice": raw.get("advice")
                         or raw.get("intent")
                         or (finding_section or {}).get("suggestion", {}).get("text")
@@ -107,6 +153,9 @@ def load_rule_packs() -> None:
                         "suggestion": (finding_section or {}).get("suggestion"),
                         "conflict_with": list(raw.get("conflict_with") or []),
                         "ops": raw.get("ops") or [],
+                        "pack": str(path.relative_to(ROOT_DIR)),
+                        "triggers": trig_map,
+                        "requires_clause_hit": bool(raw.get("requires_clause_hit")),
                     }
                     _RULES.append(spec)
                     rule_count += 1
@@ -136,4 +185,3 @@ def match_text(text: str) -> List[Dict[str, Any]]:
     from . import engine
 
     return engine.analyze(text or "", _RULES)
-

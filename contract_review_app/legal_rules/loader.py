@@ -11,7 +11,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set
 import yaml
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
-from ..corpus.normalizer import normalize_text
+from ..intake.normalization import normalize_for_intake
 
 log = logging.getLogger(__name__)
 
@@ -252,7 +252,7 @@ def filter_rules(
     ``"rule"`` key and a list of matched trigger strings under ``"matches"``.
     """
 
-    norm = normalize_text(text or "")
+    norm = normalize_for_intake(text or "")
     doc_type_lc = (doc_type or "").lower()
     clause_set: Set[str] = {c.lower() for c in clause_types or []}
 

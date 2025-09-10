@@ -50,3 +50,23 @@ def test_filter_rules(monkeypatch):
     assert any(m.lower().startswith("term") for m in matches["R2"])
     assert any("noncompete" in m.lower() for m in matches["R3"])
     assert any("pay" in m.lower() for m in matches["R4"])
+
+
+def test_filter_rules_preserves_newlines(monkeypatch):
+    sample_rules = [
+        {
+            "id": "R5",
+            "doc_types": ["MSA"],
+            "requires_clause": [],
+            "triggers": {
+                "regex": [re.compile(r"^second", re.I | re.MULTILINE)]
+            },
+        },
+    ]
+
+    monkeypatch.setattr(loader, "_RULES", sample_rules)
+
+    text = "first line\nSecond line"
+    res = loader.filter_rules(text, doc_type="MSA", clause_types=[])
+    assert {r["rule"]["id"] for r in res} == {"R5"}
+    assert any(m.lower().startswith("second") for m in res[0]["matches"])

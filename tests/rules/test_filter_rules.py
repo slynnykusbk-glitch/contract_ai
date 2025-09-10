@@ -42,11 +42,10 @@ def test_filter_rules(monkeypatch):
         "Payment is due. A NonCompete clause applies."
     )
     res = loader.filter_rules(text, doc_type="MSA", clause_types=["Termination", "Payment"])
+    statuses = {r["rule"]["id"]: r.get("status") for r in res}
+    assert statuses["R1"] == "doc_type_mismatch"
 
-    ids = {r["rule"]["id"] for r in res}
-    assert ids == {"R2", "R3", "R4"}
-
-    matches = {r["rule"]["id"]: r["matches"] for r in res}
+    matches = {r["rule"]["id"]: r.get("matches", []) for r in res if r.get("matches")}
     assert any(m.lower().startswith("term") for m in matches["R2"])
     assert any("noncompete" in m.lower() for m in matches["R3"])
     assert any("pay" in m.lower() for m in matches["R4"])

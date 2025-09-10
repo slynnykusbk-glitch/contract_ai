@@ -228,7 +228,7 @@ def to_panel_shape(ssot: dict | Any) -> Tuple[dict, dict, list[dict]]:
 
     doc_summary = _get(doc, "summary", {}) or {}
     if "type" not in doc_summary:
-        slug, conf, _, score_map = guess_doc_type(str(_get(doc, "text", "")))
+        slug, conf, _, score_map, _src = guess_doc_type(str(_get(doc, "text", "")))
         dtype = slug_to_display(slug)
         debug_top = [
             {"type": slug_to_display(s), "score": round(v, 3)}

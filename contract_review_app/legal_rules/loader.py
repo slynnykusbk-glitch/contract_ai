@@ -40,6 +40,7 @@ class RuleSchema(BaseModel):
 
     rule_id: str = Field(alias="id")
     doc_types: List[str] = Field(default_factory=list)
+    jurisdiction: List[str] = Field(default_factory=list)
     severity: str = Field(default="medium")
     triggers: Dict[str, List[str]] = Field(default_factory=dict)
     requires_clause: List[str] = Field(default_factory=list)
@@ -158,6 +159,11 @@ def load_rule_packs() -> None:
                         or (raw.get("scope", {}) or {}).get("doc_types")
                         or []
                     )
+                    jurisdiction = list(
+                        raw.get("jurisdiction")
+                        or (raw.get("scope", {}) or {}).get("jurisdiction")
+                        or []
+                    )
                     requires_clause = list(
                         raw.get("requires_clause")
                         or (raw.get("scope", {}) or {}).get("clauses")
@@ -193,6 +199,7 @@ def load_rule_packs() -> None:
                         "triggers": trig_map,
                         "requires_clause_hit": bool(raw.get("requires_clause_hit")),
                         "doc_types": doc_types,
+                        "jurisdiction": jurisdiction,
                         "requires_clause": requires_clause,
                         "deprecated": deprecated,
                     }
@@ -202,6 +209,7 @@ def load_rule_packs() -> None:
                             {
                                 "id": spec["id"],
                                 "doc_types": doc_types,
+                                "jurisdiction": jurisdiction,
                                 "severity": spec["severity"],
                                 "triggers": {
                                     k: [p.pattern for p in v]
@@ -244,7 +252,10 @@ def loaded_packs() -> List[Dict[str, Any]]:
 
 
 def filter_rules(
-    text: str, doc_type: str, clause_types: Iterable[str]
+    text: str,
+    doc_type: str,
+    clause_types: Iterable[str],
+    jurisdiction: str | None = None,
 ) -> List[Dict[str, Any]]:
     """Return rules matching ``doc_type``/``clause_types`` triggered by ``text``.
 
@@ -254,6 +265,7 @@ def filter_rules(
 
     norm = normalize_text(text or "")
     doc_type_lc = (doc_type or "").lower()
+    juris_lc = (jurisdiction or "").lower()
     clause_set: Set[str] = {c.lower() for c in clause_types or []}
 
     filtered: List[Dict[str, Any]] = []
@@ -261,10 +273,18 @@ def filter_rules(
         rule_doc_types = [d.lower() for d in rule.get("doc_types", [])]
         if rule_doc_types and "any" not in rule_doc_types:
             if not doc_type_lc or doc_type_lc not in rule_doc_types:
+                filtered.append({"rule": rule, "status": "doc_type_mismatch"})
+                continue
+
+        rule_juris = [j.lower() for j in rule.get("jurisdiction", [])]
+        if rule_juris and "any" not in rule_juris:
+            if not juris_lc or juris_lc not in rule_juris:
+                filtered.append({"rule": rule, "status": "jurisdiction_mismatch"})
                 continue
 
         req_clauses = {c.lower() for c in rule.get("requires_clause", [])}
         if req_clauses and clause_set.isdisjoint(req_clauses):
+            filtered.append({"rule": rule, "status": "clause_mismatch"})
             continue
 
         trig = rule.get("triggers") or {}
@@ -303,6 +323,8 @@ def filter_rules(
 
         if ok:
             filtered.append({"rule": rule, "matches": matches})
+        else:
+            filtered.append({"rule": rule, "status": "trigger_mismatch"})
 
     return filtered
 

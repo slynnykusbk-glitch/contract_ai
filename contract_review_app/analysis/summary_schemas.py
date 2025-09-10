@@ -39,6 +39,7 @@ class ConditionsVsWarranties(AppBaseModel):
 class DocumentSnapshot(AppBaseModel):
     type: str = "unknown"
     type_confidence: float = 0.0
+    type_source: Optional[str] = None
     parties: List[Party] = Field(default_factory=list)
     dates: Dict[str, Optional[str]] = Field(default_factory=dict)
     term: TermInfo = Field(default_factory=TermInfo)

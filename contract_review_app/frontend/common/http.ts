@@ -11,6 +11,19 @@ export function setStoredSchema(v: string) {
   if (v) localStorage.setItem(LS.SCHEMA, v);
 }
 
+export function ensureHeadersSet() {
+  try {
+    if (!localStorage.getItem(LS.API_KEY)) {
+      localStorage.setItem(LS.API_KEY, 'local-test-key-123');
+    }
+    if (!localStorage.getItem(LS.SCHEMA)) {
+      localStorage.setItem(LS.SCHEMA, '1.4');
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export async function postJSON<T>(url: string, body: unknown, extra: HeadersMap = {}): Promise<T> {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',

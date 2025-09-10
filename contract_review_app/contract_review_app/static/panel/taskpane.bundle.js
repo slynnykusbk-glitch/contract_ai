@@ -77,7 +77,7 @@
       } catch {
       }
       try {
-        return localStorage.getItem("schemaVersion") || "";
+        return localStorage.getItem("schema_version") || "";
       } catch {
         return "";
       }
@@ -104,7 +104,7 @@
       const store = window.CAI?.Store?.get?.() || {};
       const apiKey = store.apiKey || localStorage.getItem("api_key");
       if (apiKey) headers["x-api-key"] = apiKey;
-      const schema = store.schemaVersion || localStorage.getItem("schemaVersion");
+      const schema = store.schemaVersion || localStorage.getItem("schema_version");
       if (schema) headers["x-schema-version"] = schema;
     } catch {
     }
@@ -147,8 +147,8 @@
       if (localStorage.getItem("api_key") === null) {
         localStorage.setItem("api_key", DEFAULT_API_KEY);
       }
-      if (localStorage.getItem("schemaVersion") === null) {
-        localStorage.setItem("schemaVersion", DEFAULT_SCHEMA);
+      if (localStorage.getItem("schema_version") === null) {
+        localStorage.setItem("schema_version", DEFAULT_SCHEMA);
       }
     } catch {
     }
@@ -169,14 +169,14 @@
   }
   function getSchemaFromStore() {
     try {
-      return localStorage.getItem("schemaVersion") || DEFAULT_SCHEMA;
+      return localStorage.getItem("schema_version") || DEFAULT_SCHEMA;
     } catch {
       return DEFAULT_SCHEMA;
     }
   }
   function setSchemaVersion(v) {
     try {
-      localStorage.setItem("schemaVersion", v);
+      localStorage.setItem("schema_version", v);
     } catch {
     }
   }
@@ -233,23 +233,31 @@
   var lastCid = "";
   function ensureHeaders() {
     try {
+      if (!localStorage.getItem("api_key")) {
+        try {
+          new URL(window.location.href);
+          localStorage.setItem("api_key", "local-test-key-123");
+        } catch {}
+      }
+      if (!localStorage.getItem("schema_version")) {
+        try {
+          localStorage.setItem("schema_version", "1.4");
+        } catch {}
+      }
       const store = globalThis.CAI?.Store?.get?.() || {};
       const apiKey = store.apiKey || getApiKeyFromStore();
       const schema = store.schemaVersion || getSchemaFromStore();
       if (apiKey) {
         try {
           localStorage.setItem("api_key", apiKey);
-        } catch {
-        }
+        } catch {}
       }
       if (schema) {
         try {
-          localStorage.setItem("schemaVersion", schema);
-        } catch {
-        }
+          localStorage.setItem("schema_version", schema);
+        } catch {}
       }
-    } catch {
-    }
+    } catch {}
     return true;
   }
   function slot(id, role) {

@@ -105,7 +105,7 @@ export async function postJson(path: string, body: any, opts: { apiKey?: string;
       const storeSchema = (window as any).CAI?.Store?.get?.()?.schemaVersion;
       if (storeSchema) return storeSchema;
     } catch {}
-    try { return localStorage.getItem('schemaVersion') || ''; } catch { return ''; }
+    try { return localStorage.getItem('schema_version') || ''; } catch { return ''; }
   })();
   if (schemaVersion) headers['x-schema-version'] = schemaVersion;
   const http = await fetch(url, {
@@ -129,7 +129,7 @@ async function req(path: string, { method='GET', body=null, key=path }: { method
     const store = (window as any).CAI?.Store?.get?.() || {};
     const apiKey = store.apiKey || localStorage.getItem('api_key');
     if (apiKey) headers['x-api-key'] = apiKey;
-    const schema = store.schemaVersion || localStorage.getItem('schemaVersion');
+    const schema = store.schemaVersion || localStorage.getItem('schema_version');
     if (schema) headers['x-schema-version'] = schema;
   } catch {}
 

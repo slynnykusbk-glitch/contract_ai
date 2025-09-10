@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { asArray } from '../common/safe';
-import { postJSON, getHealth } from '../common/http';
+import { postJSON, getHealth, ensureHeadersSet } from '../common/http';
 
 const DEFAULT_BACKEND = 'http://127.0.0.1:9000';
 const LS_KEY = 'contract_ai_backend';
@@ -54,9 +54,7 @@ const DraftAssistantPanel: React.FC = () => {
   const [findingsLimit, setFindingsLimit] = useState(PAGE_SIZE);
 
   useEffect(() => {
-    if (!localStorage.getItem('api_key')) {
-      try { new URL(window.location.href); localStorage.setItem('api_key', 'local-test-key-123'); } catch {}
-    }
+    ensureHeadersSet();
     const base = getBackend().replace(/\/+$/, '');
     getHealth(base).then(j => {
       setBackendOk(true);

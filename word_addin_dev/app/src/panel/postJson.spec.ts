@@ -15,7 +15,7 @@ describe('postJson', () => {
     let captured: any = null
     ;(globalThis as any).document = { getElementById: () => ({ value: 'https://base' }) }
     ;(globalThis as any).localStorage = {
-      getItem: (k: string) => (k === 'api_key' ? 'KEY' : k === 'schemaVersion' ? '1.2' : '')
+      getItem: (k: string) => (k === 'api_key' ? 'KEY' : k === 'schema_version' ? '1.2' : '')
     }
     ;(globalThis as any).fetch = async (url: string, opts: any) => {
       captured = opts

@@ -1,6 +1,6 @@
 import { applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
 import { getApiKeyFromStore, getSchemaFromStore } from "./store";
-import { postJSON, getHealth, getStoredKey, getStoredSchema, setStoredSchema } from "../../../contract_review_app/frontend/common/http";
+import { postJSON, getHealth, getStoredKey, getStoredSchema, setStoredSchema, ensureHeadersSet } from "../../../contract_review_app/frontend/common/http";
 const g: any = globalThis as any;
 g.parseFindings = g.parseFindings || parseFindings;
 g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
@@ -27,10 +27,8 @@ function getBackend(): string {
 function ensureHeaders(): boolean {
   // Try to populate required headers from either CAI.Store or
   // localStorage but never block user actions if they are missing.
+  ensureHeadersSet();
   try {
-    if (!localStorage.getItem('api_key')) {
-      try { new URL(window.location.href); localStorage.setItem('api_key', 'local-test-key-123'); } catch {}
-    }
     const store = (globalThis as any).CAI?.Store?.get?.() || {};
     const apiKey = store.apiKey || getApiKeyFromStore();
     const schema = store.schemaVersion || getSchemaFromStore();
@@ -38,7 +36,7 @@ function ensureHeaders(): boolean {
       try { localStorage.setItem('api_key', apiKey); } catch {}
     }
     if (schema) {
-      try { localStorage.setItem('schemaVersion', schema); } catch {}
+      try { setStoredSchema(schema); } catch {}
     }
   } catch {
     // swallow errors – missing storage should not stop the flow

@@ -30,7 +30,7 @@ code = code.replace(/export\s+\{[\s\S]*?\};?/g, '');
 vm.runInNewContext(code, sandbox);
 
 (async () => {
-  sandbox.localStorage._data = { 'api_key': 'KEY_LS', 'schemaVersion': '1.2' };
+  sandbox.localStorage._data = { 'api_key': 'KEY_LS', 'schema_version': '1.2' };
   await sandbox.postJson('/test', { a: 1 });
   assert.strictEqual(lastReq.headers['x-api-key'], 'KEY_LS');
   assert.strictEqual(lastReq.headers['x-schema-version'], '1.2');

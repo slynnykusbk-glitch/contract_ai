@@ -139,18 +139,37 @@ export async function mapFindingToRange(
 
 export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
   const base = normalizeText((window as any).__lastAnalyzed || "");
-  for (const f of findings) {
-    const snippet = normalizeText(f.snippet || "");
+
+  const list = (findings || []).map(f => ({
+    ...f,
+    snippet: normalizeText(f.snippet || ""),
+    start: typeof f.start === "number" ? f.start : 0,
+    end: typeof f.end === "number" ? f.end : (typeof f.start === "number" ? (f.start as number) + normalizeText(f.snippet || "").length : normalizeText(f.snippet || "").length)
+  }));
+
+  list.sort((a, b) => (b.end ?? 0) - (a.end ?? 0));
+
+  let lastStart = Number.POSITIVE_INFINITY;
+  let skipped = 0;
+
+  for (const f of list) {
+    const snippet = f.snippet;
     if (!snippet) continue;
+
+    const end = typeof f.end === "number" ? f.end : f.start + snippet.length;
+    if (end > lastStart) {
+      skipped++;
+      continue;
+    }
 
     const occIdx = (() => {
       if (typeof f.start !== "number" || !snippet) return 0;
       let idx = -1, n = 0;
-      while ((idx = base.indexOf(snippet, idx + 1)) !== -1 && idx < (f.start as number)) n++;
+      while ((idx = base.indexOf(snippet, idx + 1)) !== -1 && idx < f.start) n++;
       return n;
     })();
 
-    try {
+    const tryInsert = async () => {
       await Word.run(async ctx => {
         const body = ctx.document.body;
 
@@ -163,7 +182,7 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
           const token = (() => {
             const tokens = snippet.replace(/[^\p{L}\p{N} ]/gu, " ").split(" ").filter(x => x.length >= 12);
             if (tokens.length) return tokens.sort((a, b) => b.length - a.length)[0].slice(0, 64);
-            const i = Math.max(0, (f.start ?? 0));
+            const i = Math.max(0, f.start ?? 0);
             return base.slice(i, i + 40);
           })();
 
@@ -183,10 +202,26 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
         }
         await ctx.sync();
       });
+    };
+
+    try {
+      await tryInsert();
     } catch (e) {
-      console.warn("annotate error", e);
+      if (String(e).includes("0xA7210002")) {
+        try {
+          await tryInsert();
+        } catch (e2) {
+          console.warn("annotate retry failed", e2);
+        }
+      } else {
+        console.warn("annotate error", e);
+      }
     }
+
+    lastStart = typeof f.start === "number" ? f.start : lastStart;
   }
+
+  if (skipped) notifyWarn(`Skipped ${skipped} overlaps`);
 }
 
 g.annotateFindingsIntoWord = g.annotateFindingsIntoWord || annotateFindingsIntoWord;

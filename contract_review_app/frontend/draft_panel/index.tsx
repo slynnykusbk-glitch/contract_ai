@@ -50,6 +50,8 @@ const DraftAssistantPanel: React.FC = () => {
   const [error, setError] = useState('');
   const [backendOk, setBackendOk] = useState(false);
   const [meta, setMeta] = useState<any>({});
+  const PAGE_SIZE = 100;
+  const [findingsLimit, setFindingsLimit] = useState(PAGE_SIZE);
 
   useEffect(() => {
     if (!localStorage.getItem('api_key')) {
@@ -92,6 +94,7 @@ const DraftAssistantPanel: React.FC = () => {
       const env = await postJSON<DraftEnvelope>(`${base}${DRAFT_PATH}`, { clause: analysis?.text || clauseText });
       setDraft(env);
       setStatus('ready');
+      try { await insertIntoWord(env?.draft_text || ''); } catch {}
     } catch (e: any) {
       console.error(e);
       setError(e?.message || 'Draft failed');
@@ -99,28 +102,32 @@ const DraftAssistantPanel: React.FC = () => {
     }
   };
 
-  const insertDraft = async () => {
-    if (!draft?.draft_text) return;
-    try {
-      if ((window as any).Word) {
-        await Word.run(async ctx => {
-          const range = ctx.document.getSelection();
-          range.insertText(draft.draft_text || '', 'Replace');
-          await ctx.sync();
-        });
-      } else {
-        await navigator.clipboard.writeText(draft.draft_text || '');
-      }
-    } catch (e) {
-      console.error(e);
+  async function insertIntoWord(text: string) {
+    const w: any = window as any;
+    if (w?.Office?.context?.document?.setSelectedDataAsync) {
+      await new Promise<void>((resolve, reject) =>
+        w.Office.context.document.setSelectedDataAsync(
+          text,
+          { coercionType: w.Office.CoercionType.Text },
+          (res: any) =>
+            res?.status === w.Office.AsyncResultStatus.Succeeded
+              ? resolve()
+              : reject(res?.error),
+        ),
+      );
+    } else {
+      await navigator.clipboard?.writeText(text).catch(() => {});
+      alert('Draft copied to clipboard (Office not ready). Paste it into the document.');
     }
-  };
+  }
 
   const findings = asArray(analysis?.findings);
   const suggestions = asArray((analysis as any)?.suggestions);
 
   const canAnalyze = backendOk && clauseText.trim().length > 0 && status !== 'loading';
   const canDraft = status === 'ready';
+
+  useEffect(() => { setFindingsLimit(PAGE_SIZE); }, [analysis]);
 
   return (
     <div style={{ padding: '1rem', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#111' }}>
@@ -171,10 +178,10 @@ const DraftAssistantPanel: React.FC = () => {
 
         {draft?.draft_text && (
           <button
-            onClick={insertDraft}
+            onClick={() => insertIntoWord(draft.draft_text || '')}
             style={{ background: '#28a745', color: 'white', padding: '8px 12px', border: 'none', borderRadius: 4 }}
           >
-            Insert into Word
+            Insert result into Word
           </button>
         )}
       </div>
@@ -187,12 +194,15 @@ const DraftAssistantPanel: React.FC = () => {
           <div style={{ marginTop: 16 }}>
             <h3>Findings</h3>
             {findings.length === 0 && <div>—</div>}
-            {findings.map((f: any, i: number) => (
+            {findings.slice(0, findingsLimit).map((f: any, i: number) => (
               <div key={i} style={{ background: '#f8f9fa', padding: 8, borderRadius: 4, marginBottom: 6 }}>
                 <div><b>{f.code || 'FINDING'}</b> {f.severity ? `(${f.severity})` : ''}</div>
                 <div>{f.message || ''}</div>
               </div>
             ))}
+            {findingsLimit < findings.length && (
+              <button onClick={() => setFindingsLimit(findingsLimit + PAGE_SIZE)}>Load more</button>
+            )}
           </div>
 
           {suggestions.length > 0 && (

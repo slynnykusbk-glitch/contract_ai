@@ -27,9 +27,11 @@ from collections import OrderedDict
 import secrets
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.errors import ServerErrorMiddleware
+
 try:  # Starlette <0.37 compatibility
     from starlette.middleware.timeout import TimeoutMiddleware
 except Exception:  # pragma: no cover
+
     class TimeoutMiddleware:  # type: ignore
         def __init__(self, app, timeout=60):
             self.app = app
@@ -37,6 +39,7 @@ except Exception:  # pragma: no cover
 
         async def __call__(self, scope, receive, send):
             await self.app(scope, receive, send)
+
 
 from contract_review_app.core.privacy import redact_pii, scrub_llm_output
 from contract_review_app.core.audit import audit
@@ -218,7 +221,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+)
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers
@@ -282,7 +292,9 @@ class RequireHeadersMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         headers = request.headers
-        schema = headers.get("x-schema-version") or os.getenv("SCHEMA_VERSION", SCHEMA_VERSION)
+        schema = headers.get("x-schema-version") or os.getenv(
+            "SCHEMA_VERSION", SCHEMA_VERSION
+        )
         cid = headers.get("x-cid") or _PROCESS_CID
         request.state.schema_version = schema
         request.state.cid = cid
@@ -1057,7 +1069,9 @@ async def add_response_headers(request: Request, call_next):
         try:
             request.state.json = json.loads(body.decode("utf-8"))
         except (json.JSONDecodeError, UnicodeDecodeError):
-            cid = getattr(request.state, "cid", request.headers.get("x-cid") or _PROCESS_CID)
+            cid = getattr(
+                request.state, "cid", request.headers.get("x-cid") or _PROCESS_CID
+            )
             return _problem_response(
                 400,
                 "Bad JSON",
@@ -1074,7 +1088,9 @@ async def add_response_headers(request: Request, call_next):
 @app.middleware("http")
 async def _trace_mw(request: Request, call_next):
     t0 = time.perf_counter()
-    req_cid = getattr(request.state, "cid", request.headers.get("x-cid") or _PROCESS_CID)
+    req_cid = getattr(
+        request.state, "cid", request.headers.get("x-cid") or _PROCESS_CID
+    )
     try:
         response: Response = await call_next(request)
     except Exception as ex:
@@ -1790,6 +1806,9 @@ def api_analyze(
     req_hash = compute_cid(request)
     cached_resp = IDEMPOTENCY_CACHE.get(req_hash)
     if cached_resp is not None:
+        # map the current CID to the cached response for downstream summary calls
+        IDEMPOTENCY_CACHE.set(request.state.cid, cached_resp)
+        cid_index.set(request.state.cid, {"hash": doc_hash})
         headers = {
             "x-cache": "hit",
             "x-cid": request.state.cid,
@@ -1908,9 +1927,7 @@ def api_analyze(
                         "matched_triggers": {
                             k: sorted(set(v)) for k, v in matched.items()
                         },
-                        "requires_clause_hit": rule.get(
-                            "requires_clause_hit", False
-                        ),
+                        "requires_clause_hit": rule.get("requires_clause_hit", False),
                         "positions": positions,
                     }
                 )
@@ -2034,6 +2051,8 @@ def api_analyze(
         "rules": coverage_rules,
     }
     IDEMPOTENCY_CACHE.set(req_hash, envelope)
+    # also cache by response CID so summary lookups succeed
+    IDEMPOTENCY_CACHE.set(request.state.cid, envelope)
     rec = {"resp": envelope, "cid": request.state.cid}
     an_cache.set(doc_hash, rec)
     cid_index.set(request.state.cid, {"hash": doc_hash})
@@ -2490,8 +2509,6 @@ class RedlinesOut(BaseModel):
     diff_html: str
 
 
-
-
 @router.post(
     "/api/gpt-draft",
     response_model=DraftOut,
@@ -2528,7 +2545,9 @@ async def gpt_draft(request: Request):
     except ValidationError as exc:
         raise RequestValidationError(exc.errors()) from exc
     if not TRACE.get(inp.cid):
-        problem = ProblemDetail(title="cid not found", status=404, detail="cid not found")
+        problem = ProblemDetail(
+            title="cid not found", status=404, detail="cid not found"
+        )
         return JSONResponse(problem.model_dump(), status_code=404)
     if LLM_CONFIG.provider == "azure" and not PROVIDER_META.get("valid_config"):
         problem = _llm_key_problem()
@@ -2633,7 +2652,10 @@ async def gpt_draft(request: Request):
         "gpt_draft",
         request.headers.get("x-user"),
         None,
-        {"before_text_len": len(before_text or ""), "after_text_len": len(after_text or "")},
+        {
+            "before_text_len": len(before_text or ""),
+            "after_text_len": len(after_text or ""),
+        },
     )
     return resp
 
@@ -2714,7 +2736,10 @@ async def gpt_draft(request: Request):
         "gpt_draft",
         request.headers.get("x-user"),
         None,
-        {"before_text_len": len(before_text or ""), "after_text_len": len(after_text or "")},
+        {
+            "before_text_len": len(before_text or ""),
+            "after_text_len": len(after_text or ""),
+        },
     )
     return resp
 

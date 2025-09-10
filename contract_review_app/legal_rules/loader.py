@@ -42,6 +42,21 @@ def _compile(patterns: Iterable[str]) -> List[re.Pattern[str]]:
     return [re.compile(p, re.I | re.MULTILINE) for p in patterns if p]
 
 
+_INLINE_FLAG_RE = re.compile(r"^\(\?[aiLmsux]*\)")
+
+
+def _line_anchored(pat: re.Pattern[str]) -> bool:
+    """Return ``True`` if ``pat`` begins with a line-start anchor.
+
+    Inline flags like ``(?i)`` are stripped before the check so patterns such as
+    ``(?i)^foo`` are detected correctly. Patterns using ``^`` inside a character
+    class are not considered anchored.
+    """
+
+    stripped = _INLINE_FLAG_RE.sub("", pat.pattern)
+    return stripped.startswith("^")
+
+
 class RuleSchema(BaseModel):
     """Pydantic model validating the unified rule specification."""
 
@@ -260,6 +275,7 @@ def filter_rules(
     """
 
     norm = _normalize_multiline(text)
+    flat_norm = norm.replace("\n", " ")
     doc_type_lc = (doc_type or "").lower()
     clause_set: Set[str] = {c.lower() for c in clause_types or []}
 
@@ -280,7 +296,10 @@ def filter_rules(
 
         any_pats = trig.get("any")
         if any_pats:
-            any_matches = [m.group(0) for p in any_pats for m in p.finditer(norm)]
+            any_matches: List[str] = []
+            for p in any_pats:
+                text_src = norm if _line_anchored(p) else flat_norm
+                any_matches.extend(m.group(0) for m in p.finditer(text_src))
             if not any_matches:
                 ok = False
             else:
@@ -291,7 +310,8 @@ def filter_rules(
             if all_pats:
                 all_matches: List[str] = []
                 for pat in all_pats:
-                    m = pat.search(norm)
+                    text_src = norm if _line_anchored(pat) else flat_norm
+                    m = pat.search(text_src)
                     if not m:
                         ok = False
                         break
@@ -302,9 +322,10 @@ def filter_rules(
         if ok:
             regex_pats = trig.get("regex")
             if regex_pats:
-                regex_matches = [
-                    m.group(0) for p in regex_pats for m in p.finditer(norm)
-                ]
+                regex_matches: List[str] = []
+                for p in regex_pats:
+                    text_src = norm if _line_anchored(p) else flat_norm
+                    regex_matches.extend(m.group(0) for m in p.finditer(text_src))
                 if not regex_matches:
                     ok = False
                 else:

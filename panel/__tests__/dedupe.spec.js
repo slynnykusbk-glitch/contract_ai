@@ -1,4 +1,5 @@
-const { dedupeFindings } = require('../../build/dedupe.js');
+require('ts-node/register');
+const { dedupeFindings } = require('../../word_addin_dev/app/assets/dedupe');
 
 describe('dedupeFindings', () => {
   it('returns single entry for exact duplicates', () => {

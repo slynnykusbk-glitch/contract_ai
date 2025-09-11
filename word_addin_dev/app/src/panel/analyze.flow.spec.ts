@@ -47,9 +47,11 @@ describe('dev bootstrap', () => {
       return { status: 200, json: async () => ({}) } as any
     }
     ;(globalThis as any).Word = { run: async (fn: any) => fn({ document: { body: { load: () => {}, text: '' }, getSelection: () => ({ load: () => {}, text: '' }) }, sync: async () => {} }) }
-    ;(globalThis as any).Office = { onReady: () => Promise.resolve() }
+    ;(globalThis as any).Office = { onReady: () => Promise.resolve() };
 
-    await import('./index')
+    (globalThis as any).__CAI_TESTING__ = true;
+    const mod = await import('./index')
+    await mod.startPanel()
 
     expect(store['api_key']).toBe('local-test-key-123')
     expect(store['schema_version']).toBe('1.5')

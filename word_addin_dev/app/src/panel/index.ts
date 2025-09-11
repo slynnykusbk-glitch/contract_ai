@@ -2,6 +2,12 @@ import { notifyOk, notifyWarn } from '../../assets/notifier';
 import { postJson } from './api-client';
 import { ensureHeadersSet, getHealth, getStoredSchema } from '../../../../contract_review_app/frontend/common/http';
 
+const $ = <T extends HTMLElement = HTMLElement>(sel: string) =>
+  document.querySelector(sel) as T | null;
+
+const show = (el: HTMLElement | null) => { if (el) el.hidden = false; };
+const hide = (el: HTMLElement | null) => { if (el) el.hidden = true; };
+
 let lastCid = '';
 
 function updateStatusChip() {
@@ -72,7 +78,7 @@ async function doQARecheck(text: string) {
 }
 
 function bindClick(sel: string, fn: (e: Event) => Promise<void>) {
-  const b = document.querySelector(sel) as HTMLButtonElement | null;
+  const b = $<HTMLButtonElement>(sel);
   if (!b) return;
   b.addEventListener('click', async e => {
     try {
@@ -84,12 +90,34 @@ function bindClick(sel: string, fn: (e: Event) => Promise<void>) {
   b.disabled = false;
 }
 
-Office.onReady().then(async () => {
+export function wireDom() {
+  const btn = $<HTMLButtonElement>('#btnInsertIntoWord');
+  if (btn) btn.addEventListener('click', onInsertIntoWord);
+  else console.warn('btnInsertIntoWord missing');
+}
+
+export function onDraftReady() {
+  show($('#btnInsertIntoWord'));
+}
+
+export async function onInsertIntoWord() {
+  const txt = ($<HTMLTextAreaElement>('#txtDraft')?.value ?? '').trim();
+  if (!txt) { notifyWarn('No draft text'); return; }
+  await Word.run(async (context) => {
+    const sel = context.document.getSelection();
+    sel.insertText(txt, Word.InsertLocation.replace);
+    await context.sync();
+  }).catch(e => console.error('Word.run failed', e));
+}
+
+export async function startPanel() {
+  await Office.onReady();
+  wireDom();
   ensureHeadersSet();
   updateStatusChip();
-  const analyzeBtn = document.querySelector('#btnAnalyze') as HTMLButtonElement | null;
+  const analyzeBtn = $<HTMLButtonElement>('#btnAnalyze');
   if (analyzeBtn) analyzeBtn.disabled = true;
-  const base = (document.getElementById('backendUrl') as HTMLInputElement)?.value || 'https://localhost:9443';
+  const base = ($<HTMLInputElement>('#backendUrl')?.value || (document.getElementById('backendUrl') as HTMLInputElement | null)?.value || 'https://localhost:9443');
   try {
     await getHealth(base);
     if (analyzeBtn) analyzeBtn.disabled = false;
@@ -112,4 +140,13 @@ Office.onReady().then(async () => {
     await doQARecheck(text);
   });
   notifyOk('Panel init OK');
-});
+}
+
+if (!(globalThis as any).__CAI_TESTING__) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => { void startPanel(); });
+  } else {
+    void startPanel();
+  }
+}
+

@@ -171,6 +171,12 @@ def _finalize_json(
     hdrs = dict(headers or {})
     cid = hdrs.get("x-cid") or secrets.token_hex(32)
     hdrs["x-cid"] = cid
+    rule_count = 0
+    try:
+        rule_count = int(payload.get("meta", {}).get("rules_evaluated", 0))
+    except Exception:
+        rule_count = 0
+    hdrs["x-rule-count"] = str(rule_count)
     return JSONResponse(payload, status_code=status_code, headers=hdrs)
 
 
@@ -2028,6 +2034,7 @@ def api_analyze(
         "active_packs": active_packs,
         "rules_loaded_count": rules_loaded,
         "rules_fired_count": len(fired_rules_meta),
+        "rules_evaluated": len(filtered_rules),
         "fired_rules": fired_rules_meta,
         "pipeline_id": pipeline_id,
         "timings_ms": timings,

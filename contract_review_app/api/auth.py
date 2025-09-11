@@ -25,10 +25,11 @@ def require_api_key_and_schema(request: Request) -> None:
 
     dev_mode = _env_truthy("DEV_MODE")
     if dev_mode:
-        api_key = request.headers.get("x-api-key") or os.getenv(
+        headers = request.headers
+        api_key = headers.get("x-api-key") or os.getenv(
             "DEFAULT_API_KEY", "local-test-key-123"
         )
-        schema = request.headers.get("x-schema-version") or os.getenv(
+        schema = headers.get("x-schema-version") or os.getenv(
             "SCHEMA_VERSION", SCHEMA_VERSION
         )
         request.state.api_key = api_key

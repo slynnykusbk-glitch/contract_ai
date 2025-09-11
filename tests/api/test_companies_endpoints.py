@@ -19,15 +19,34 @@ os.environ["FEATURE_COMPANIES_HOUSE"] = "1"
 @respx.mock
 def test_search_endpoint():
     respx.get(f"{BASE}/search/companies").respond(
-        json={"items": []}, headers={"ETag": "s1"}
+        json={
+            "items": [
+                {
+                    "company_number": "42",
+                    "title": "ACME",
+                    "address_snippet": "1 Road, City",
+                    "company_status": "active",
+                }
+            ]
+        },
+        headers={"ETag": "s1"},
     )
+    expected = [
+        {
+            "company_number": "42",
+            "company_name": "ACME",
+            "address_snippet": "1 Road, City",
+            "status": "active",
+        }
+    ]
     r = client.post("/api/companies/search", json={"query": "ACME"})
     assert r.status_code == 200
-    assert r.json()["items"] == []
+    assert r.json() == expected
     assert r.headers.get("ETag") == "s1"
     assert r.headers.get("x-cache") == "miss"
     r2 = client.get("/api/companies/search", params={"q": "ACME"})
     assert r2.status_code == 200
+    assert r2.json() == expected
 
 
 @respx.mock

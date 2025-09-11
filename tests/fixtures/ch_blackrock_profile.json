@@ -1,0 +1,24 @@
+{
+  "company_number": "02022650",
+  "company_name": "BLACK ROCK (UK) LIMITED",
+  "company_status": "active",
+  "type": "ltd",
+  "jurisdiction": "england-wales",
+  "date_of_creation": "1986-05-20",
+  "registered_office_address": {
+    "address_line_1": "12 THROGMORTON AVENUE",
+    "address_line_2": "CITY OF LONDON",
+    "postal_code": "EC2N 2DL",
+    "locality": "LONDON",
+    "country": "UNITED KINGDOM"
+  },
+  "sic_codes": ["70229"],
+  "accounts": {
+    "last_accounts": {"made_up_to": "2023-12-31"},
+    "next_accounts": {"due_on": "2024-12-31"}
+  },
+  "confirmation_statement": {
+    "last_made_up_to": "2024-06-20",
+    "next_due": "2025-07-04"
+  }
+}

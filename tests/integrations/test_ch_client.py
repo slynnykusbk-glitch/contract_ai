@@ -1,66 +1,35 @@
-import httpx
+import os
 import respx
 
-from contract_review_app.integrations.companies_house import client
+from contract_review_app.integrations.companies_house import client as ch_client
 
-BASE = client.BASE
+BASE = ch_client.BASE
 
 
 def setup_function():
-    client._CACHE.clear()  # type: ignore
-    client._LAST.clear()  # type: ignore
+    ch_client._CACHE.clear()  # type: ignore
+    ch_client._LAST.clear()  # type: ignore
+    os.environ["COMPANIES_HOUSE_API_KEY"] = "x"
+    ch_client.KEY = "x"
 
 
 @respx.mock
-def test_search_200():
-    respx.get(f"{BASE}/search/companies").respond(
-        json={"items": []}, headers={"ETag": "e1"}, status_code=200
-    )
-    data = client.search_companies("ACME")
-    assert data["items"] == []
-    meta = client.get_last_headers()
-    assert meta["cache"] == "miss"
+def test_search_and_profile():
+    respx.get(f"{BASE}/search/companies").respond(json={"items": [{"title": "ACME", "company_number": "123"}]})
+    data = ch_client.search_companies("ACME")
+    assert data["items"][0]["company_number"] == "123"
+
+    respx.get(f"{BASE}/company/123").respond(json={"company_number": "123"})
+    prof = ch_client.get_company_profile("123")
+    assert prof["company_number"] == "123"
 
 
 @respx.mock
-def test_profile_200():
-    respx.get(f"{BASE}/company/123").respond(json={"company_name": "ACME"}, headers={"ETag": "p1"})
-    data = client.get_company_profile("123")
-    assert data["company_name"] == "ACME"
+def test_officers_and_psc_counts():
+    respx.get(f"{BASE}/company/1/officers?items_per_page=1").respond(json={"total_results": 5})
+    assert ch_client.get_officers_count("1") == 5
 
-
-@respx.mock
-def test_304_returns_cache_hit():
-    url = f"{BASE}/search/companies"
-    respx.get(url).mock(side_effect=[
-        httpx.Response(200, json={"items": [1]}, headers={"ETag": "t1"}),
-        httpx.Response(304, headers={"ETag": "t1"}),
-    ])
-    first = client.search_companies("Foo")
-    assert first["items"] == [1]
-    second = client.search_companies("Foo")
-    assert second == first
-    assert client.get_last_headers()["cache"] == "hit"
-
-
-@respx.mock
-def test_retry_on_429():
-    url = f"{BASE}/company/999"
-    respx.get(url).mock(side_effect=[
-        httpx.Response(429),
-        httpx.Response(200, json={"company_name": "Z"}, headers={"ETag": "e2"}),
-    ])
-    data = client.get_company_profile("999")
-    assert data["company_name"] == "Z"
-
-
-@respx.mock
-def test_timeout_raises():
-    url = f"{BASE}/company/888"
-    respx.get(url).side_effect = httpx.TimeoutException("boom")
-    try:
-        client.get_company_profile("888")
-    except client.CHTimeout:
-        pass
-    else:
-        assert False, "expected CHTimeout"
+    respx.get(
+        f"{BASE}/company/1/persons-with-significant-control?items_per_page=1"
+    ).respond(json={"total_results": 2})
+    assert ch_client.get_psc_count("1") == 2

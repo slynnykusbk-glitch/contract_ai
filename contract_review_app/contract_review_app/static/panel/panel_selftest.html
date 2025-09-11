@@ -120,8 +120,10 @@
     await import("./app/assets/store.js?v=DEV");
     const existingKey = localStorage.getItem('api_key') || (window.CAI?.Store?.get?.().apiKey);
     if (existingKey) {
-      document.querySelector('label[for="apiKeyInput"]').style.display = 'none';
-      document.getElementById('apiKeyInput').style.display = 'none';
+      const lbl = document.querySelector('label[for="apiKeyInput"]');
+      if (lbl) lbl.style.display = 'none';
+      const inputEl = document.getElementById('apiKeyInput');
+      if (inputEl) inputEl.style.display = 'none';
     }
     await import("./app/assets/api-client.js?v=DEV");
     await import("./app/selftest.js?v=DEV");

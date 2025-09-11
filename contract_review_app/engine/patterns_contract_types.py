@@ -39,4 +39,23 @@ CONTRACT_TYPE_PATTERNS: Dict[str, Dict[str, Any]] = {
         ],
         "negative": ["no guarantee"],
     },
+    "nda": {
+        "title_keywords": [
+            "non-disclosure",
+            "confidentiality",
+            "confidentiality agreement",
+            "non-disclosure agreement",
+            "mutual nda",
+            "one-way nda",
+        ],
+        "body_keywords": [
+            "confidential information",
+            "disclosing party",
+            "receiving party",
+            "permitted purpose",
+            "non-disclosure",
+            "term of confidentiality",
+            "return or destroy",
+        ],
+    },
 }

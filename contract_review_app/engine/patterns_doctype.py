@@ -16,7 +16,14 @@ from typing import Any, Dict, List
 
 DOC_TYPE_PATTERNS: Dict[str, Dict[str, Any]] = {
     "nda": {
-        "title_keywords": ["non-disclosure", "confidentiality"],
+        "title_keywords": [
+            "non-disclosure",
+            "confidentiality",
+            "confidentiality agreement",
+            "non-disclosure agreement",
+            "mutual nda",
+            "one-way nda",
+        ],
         "body_keywords": [
             "confidential information",
             "disclosing party",

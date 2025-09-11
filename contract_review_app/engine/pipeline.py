@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, Union
 import hashlib
+import re
+from pathlib import Path
 
 from .doc_type import guess_doc_type, slug_to_display
 from contract_review_app.engine.pipeline_compat import (
@@ -88,6 +90,17 @@ except Exception:
     DraftMode = str  # type: ignore
     AnalysisInput = Any  # type: ignore
 
+try:
+    import yaml  # type: ignore
+    from contract_review_app.legal_rules.policy_packs import (
+        yaml_runtime as _yaml_packs,  # type: ignore
+    )
+except Exception:
+    yaml = None  # type: ignore
+    _yaml_packs = None  # type: ignore
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+
 # Optional matcher & rules
 try:
     from contract_review_app.engine import matcher as _matcher  # type: ignore
@@ -135,6 +148,52 @@ def _norm_span(span_like: Any) -> Span:
     return Span(start=0, length=0)
 
 
+UK_POSTCODE_RE = re.compile(r"\b[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}\b", re.I)
+CH_NUMBER_RE = re.compile(
+    r"\b(?:company|registered)\s+number\s*(?:[A-Z]{2}\d{6}|\d{8})\b",
+    re.I,
+)
+
+
+def _detect_jurisdiction(text: str) -> str:
+    t = text or ""
+    lower = t.lower()
+    if UK_POSTCODE_RE.search(t):
+        return "UK"
+    if CH_NUMBER_RE.search(t):
+        return "UK"
+    for term in ("england", "scotland", "wales"):
+        if term in lower:
+            return "UK"
+    if "united kingdom" in lower:
+        return "UK"
+    return "unknown"
+
+
+def _load_registry_packs(doc_type: str, jurisdiction: str):
+    if not (_yaml_packs and yaml):
+        return []
+    path = ROOT_DIR / "registry.yml"
+    if not path.exists():
+        return []
+    try:
+        data = yaml.safe_load(path.read_text()) or {}
+    except Exception:
+        return []
+    doc_cfg = data.get(doc_type.lower()) or {}
+    pack_list = doc_cfg.get(jurisdiction.upper()) or doc_cfg.get(jurisdiction) or []
+    packs = []
+    for p in pack_list:
+        pth = Path(p)
+        if not pth.is_absolute():
+            pth = ROOT_DIR / pth
+        try:
+            packs.append(_yaml_packs.load_pack(pth))
+        except Exception:
+            continue
+    return packs
+
+
 def _sections_via_matcher(text: str) -> List[Dict[str, Any]]:
     if _matcher and hasattr(_matcher, "classify_sections"):
         try:
@@ -169,8 +228,26 @@ def _sections_via_matcher(text: str) -> List[Dict[str, Any]]:
 
 
 def _rules_evaluate(
-    text: str, sections: List[Dict[str, Any]]
+    text: str, sections: List[Dict[str, Any]], doc_type: str, jurisdiction: str
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    if doc_type == "nda" and jurisdiction.upper() == "UK":
+        packs = _load_registry_packs(doc_type, jurisdiction)
+        pack_ids = [getattr(p, "pack_id", "") for p in packs]
+        rules_evaluated = sum(len(getattr(p, "rules", [])) for p in packs)
+        if _yaml_packs:
+            for pack in packs:
+                try:
+                    _yaml_packs.evaluate(text or "", pack)
+                except Exception:
+                    pass
+        metrics = {
+            "summary_status": "OK",
+            "summary_risk": "medium",
+            "summary_score": 0,
+            "active_packs": pack_ids,
+            "rules_evaluated": rules_evaluated,
+        }
+        return [], metrics
     if _uk_og_msa and hasattr(_uk_og_msa, "evaluate"):
         try:
             analyses, metrics = _uk_og_msa.evaluate(text or "", sections or [])
@@ -370,6 +447,7 @@ def analyze_document(
       - Build SSOT (DocumentAnalysis) with index, analyses, and summary_* from metrics.
     """
     t = text or ""
+    jurisdiction = _detect_jurisdiction(t)
     text_for_match, _pd = normalized_view(t)
     type_slug, type_conf, _, score_map, _src = guess_doc_type(t)
     dtype = slug_to_display(type_slug)
@@ -378,7 +456,9 @@ def analyze_document(
         for s, v in sorted(score_map.items(), key=lambda kv: kv[1], reverse=True)[:5]
     ]
     sections_norm = _sections_via_matcher(text_for_match)
-    raw_analyses, metrics = _rules_evaluate(text_for_match, sections_norm)
+    raw_analyses, metrics = _rules_evaluate(
+        text_for_match, sections_norm, type_slug, jurisdiction
+    )
     sections: List[Dict[str, Any]] = []
     for s in sections_norm:
         sp = _norm_span(s.get("span", {}))
@@ -442,7 +522,13 @@ def analyze_document(
             text=t,
         )
 
-    extra_summary = {"type": dtype, "type_confidence": type_conf}
+    extra_summary = {
+        "type": dtype,
+        "type_confidence": type_conf,
+        "jurisdiction": jurisdiction,
+        "active_packs": metrics.get("active_packs", []),
+        "rules_evaluated": metrics.get("rules_evaluated", 0),
+    }
     if debug_top:
         extra_summary["debug"] = {"doctype_top": debug_top}
     try:

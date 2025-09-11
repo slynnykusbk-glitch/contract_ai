@@ -1,7 +1,10 @@
 import os
-
 import pytest
 from fastapi.testclient import TestClient
+
+os.environ.setdefault("FEATURE_INTEGRATIONS", "1")
+os.environ.setdefault("FEATURE_COMPANIES_HOUSE", "1")
+os.environ.setdefault("CH_API_KEY", "x")
 
 from contract_review_app.api.app import app
 from contract_review_app.api.models import SCHEMA_VERSION

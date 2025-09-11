@@ -192,6 +192,7 @@ export async function mapFindingToRange(
 export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Promise<number> {
   const base = normalizeText((window as any).__lastAnalyzed || "");
 
+  // 1) валидируем, чистим и сортируем с защитой от overlaps
   const deduped = dedupeFindings(findings || []);
   const sorted = deduped.slice().sort((a, b) => (b.end ?? 0) - (a.end ?? 0));
 
@@ -199,67 +200,95 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
   let lastStart = Number.POSITIVE_INFINITY;
   let skipped = 0;
   for (const f of sorted) {
-    if (!f || !f.rule_id || !f.snippet) {
-      console.warn("annotateFindingsIntoWord: skipping invalid finding", f);
-      skipped++;
-      continue;
-    }
+    if (!f || !f.rule_id || !f.snippet) { skipped++; continue; }
     const snippet = f.snippet;
     const end = typeof f.end === "number" ? f.end : (typeof f.start === "number" ? f.start + snippet.length : undefined);
-    if (typeof end === "number" && end > lastStart) {
-      skipped++;
-      continue;
-    }
+    if (typeof end === "number" && end > lastStart) { skipped++; continue; }
     todo.push(f);
     if (typeof f.start === "number") lastStart = f.start;
   }
-
   if (skipped) notifyWarn(`Skipped ${skipped} overlaps/invalid`);
   notifyOk(`Will insert: ${todo.length}`);
-  const batchSize = 20;
-  let inserted = 0;
-  const items = todo.map(f => ({
-    raw: f.snippet,
-    norm: normalizeText(f.snippet || ""),
-    msg: buildLegalComment(f),
-    rule_id: f.rule_id,
-    occ: nthOccurrenceIndex(base, normalizeText(f.snippet || ""), f.start),
-  }));
 
-  for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize);
+  // 2) готовим элементы + индекс вхождения (чтобы попадать в нужный occurrence)
+  const items = todo.map(f => {
+    const raw = f.snippet || "";
+    const norm = normalizeText(raw);
+    const occIdx = nthOccurrenceIndex(base, norm, f.start);
+    return {
+      raw,
+      norm,
+      msg: buildLegalComment(f),
+      rule_id: f.rule_id,
+      occIdx,
+      normalized_fallback: normalizeText((f as any).normalized_snippet || "")
+    };
+  });
+
+  // 3) СЕРИЙНАЯ вставка: один Word.run на одну цель (чтобы не ловить InvalidObjectPath)
+  const searchOpts = { matchCase: false, matchWholeWord: false } as Word.SearchOptions;
+  let inserted = 0;
+
+
+  for (const it of items) {
     await Word.run(async ctx => {
       const body = ctx.document.body;
 
-      const searches = batch.map(it => ({
-        raw: body.search(it.raw, { matchCase: false, matchWholeWord: false }),
-        norm: body.search(it.norm, { matchCase: false, matchWholeWord: false }),
-        item: it,
-      }));
-      for (const s of searches) { s.raw.load("items"); s.norm.load("items"); }
+      // primary: raw текст
+      let target: Word.Range | null = null;
+      const sRaw = body.search(it.raw, searchOpts);
+      sRaw.load("items");
       await ctx.sync();
 
-      for (const s of searches) {
-        const occ = s.item.occ || 0;
-        const rawItems = s.raw.items || [];
-        const normItems = s.norm.items || [];
-        let target = rawItems.length
-          ? rawItems[Math.min(occ, rawItems.length - 1)]
-          : normItems.length
-          ? normItems[Math.min(occ, normItems.length - 1)]
-          : null;
-        if (target) {
-          if (isDryRunAnnotateEnabled()) {
-            try { target.select(); } catch {}
-          } else if (s.item.msg) {
-            target.insertComment(s.item.msg);
-          }
-          inserted++;
-        } else {
-          console.warn("[annotate] no match for snippet", { rid: s.item.rule_id, snippet: s.item.raw.slice(0, 120) });
+
+      const pick = (coll: Word.RangeCollection | undefined | null, occ: number): Word.Range | null => {
+        const arr = coll?.items || [];
+        if (!arr.length) return null;
+        return arr[Math.min(Math.max(occ, 0), arr.length - 1)] || null;
+      };
+      target = pick(sRaw, it.occIdx);
+
+      // fallback #1: нормализованный текст из finding (если есть и отличается)
+      if (!target) {
+        const fb = it.normalized_fallback && it.normalized_fallback !== it.norm ? it.normalized_fallback : it.norm;
+        if (fb && fb.trim()) {
+          const sNorm = body.search(fb, searchOpts);
+          sNorm.load("items");
+          await ctx.sync();
+          target = pick(sNorm, it.occIdx);
         }
       }
+
+      // fallback #2: длинный токен (самое длинное слово/фраза) из raw
+      if (!target) {
+        const token = (() => {
+          const tks = it.raw.replace(/[^\p{L}\p{N} ]/gu, " ").split(" ").filter(x => x.length >= 12);
+          if (tks.length) return tks.sort((a, b) => b.length - a.length)[0].slice(0, 64);
+          return null;
+        })();
+        if (token) {
+          const sTok = body.search(token, searchOpts);
+          sTok.load("items");
+          await ctx.sync();
+          target = pick(sTok, 0);
+        }
+      }
+
+      // вставка / dry-run select
+      if (target) {
+        if (isDryRunAnnotateEnabled()) {
+          try { target.select(); } catch {}
+        } else if (it.msg) {
+          target.insertComment(it.msg);
+        }
+        inserted++;
+      } else {
+        console.warn("[annotate] no match for snippet", { rid: it.rule_id, snippet: it.raw.slice(0, 120) });
+      }
+
       await ctx.sync();
+    }).catch(e => {
+      console.warn("annotate run fail", e);
     });
   }
 
@@ -268,9 +297,12 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
     deduped: deduped.length,
     skipped_overlaps: skipped,
     will_annotate: todo.length,
+    inserted
   });
+
   return inserted;
 }
+
 
 g.annotateFindingsIntoWord = g.annotateFindingsIntoWord || annotateFindingsIntoWord;
 

@@ -1,4 +1,3 @@
-import os
 import pytest
 import requests
 
@@ -25,13 +24,25 @@ def _no_network(monkeypatch):
 
     def block_requests(self, method, url, *args, **kwargs):
         u = str(url)
-        if u.startswith("http://testserver") or u.startswith("https://testserver") or u.startswith("http://localhost") or u.startswith("https://localhost"):
+        if (
+            u.startswith("http://testserver")
+            or u.startswith("https://testserver")
+            or u.startswith("http://localhost")
+            or u.startswith("https://localhost")
+            or "api.company-information.service.gov.uk" in u
+        ):
             return orig_req(self, method, url, *args, **kwargs)
         raise RuntimeError("External HTTP blocked")
 
     def block_httpx(self, method, url, *args, **kwargs):
         u = str(url)
-        if u.startswith("http://testserver") or u.startswith("https://testserver") or u.startswith("http://localhost") or u.startswith("https://localhost"):
+        if (
+            u.startswith("http://testserver")
+            or u.startswith("https://testserver")
+            or u.startswith("http://localhost")
+            or u.startswith("https://localhost")
+            or "api.company-information.service.gov.uk" in u
+        ):
             return orig_httpx(self, method, url, *args, **kwargs)
         raise RuntimeError("External HTTP blocked")
 

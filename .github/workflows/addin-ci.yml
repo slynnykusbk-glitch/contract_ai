@@ -25,7 +25,7 @@ jobs:
       - run: npm --prefix word_addin_dev ci
       - run: npm --prefix word_addin_dev run lint
         continue-on-error: true
-      - run: npm --prefix word_addin_dev test
+      - run: npm --prefix word_addin_dev run test
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

@@ -1,0 +1,3 @@
+nda:
+  UK:
+    - tests/e2e/fixtures/uk_nda_pack.yaml

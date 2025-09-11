@@ -1,0 +1,11 @@
+pack_id: uk_nda_pack
+language: en
+jurisdiction: UK
+rules:
+  - id: nda_confidential_info
+    title: Confidential information mentioned
+    severity: low
+    tags: [nda]
+    when:
+      any:
+        - regex: "(?i)confidential information"

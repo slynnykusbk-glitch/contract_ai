@@ -1,7 +1,15 @@
 import { notifyOk, notifyWarn } from '../../assets/notifier';
 import { postJson } from './api-client';
+import { ensureHeadersSet, getHealth, getStoredSchema } from '../../../../contract_review_app/frontend/common/http';
 
 let lastCid = '';
+
+function updateStatusChip() {
+  const chip = document.getElementById('status-chip');
+  if (!chip) return;
+  const schema = getStoredSchema();
+  chip.textContent = `schema: ${schema || '—'} | cid: ${lastCid || '—'}`;
+}
 
 /** Достаём целиком текст документа Word */
 async function getWholeDocText(): Promise<string> {
@@ -33,6 +41,7 @@ async function handleResponse(res: Response, label: string) {
   if (cid) lastCid = cid;
   notifyOk(`${label}: HTTP ${res.status}`);
   console.log(`${label} resp:`, js);
+  updateStatusChip();
 }
 
 // Analyze whole doc
@@ -75,8 +84,20 @@ function bindClick(sel: string, fn: (e: Event) => Promise<void>) {
   b.disabled = false;
 }
 
-Office.onReady().then(() => {
-  bindClick('#btnAnalyze', async e => { e.preventDefault(); await doAnalyzeWholeDoc(); });
+Office.onReady().then(async () => {
+  ensureHeadersSet();
+  updateStatusChip();
+  const analyzeBtn = document.querySelector('#btnAnalyze') as HTMLButtonElement | null;
+  if (analyzeBtn) analyzeBtn.disabled = true;
+  const base = (document.getElementById('backendUrl') as HTMLInputElement)?.value || 'https://localhost:9443';
+  try {
+    await getHealth(base);
+    if (analyzeBtn) analyzeBtn.disabled = false;
+    bindClick('#btnAnalyze', async e => { e.preventDefault(); await doAnalyzeWholeDoc(); });
+    updateStatusChip();
+  } catch {
+    // health failed; leave analyze disabled
+  }
   bindClick('#btnSummary', async e => { e.preventDefault(); await doSummary(); });
   bindClick('#btnSuggest', async e => {
     e.preventDefault();

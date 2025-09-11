@@ -29,6 +29,23 @@ const Q = {
 };
 
 let lastCid: string = "";
+let analyzeBound = false;
+
+function updateStatusChip(schema?: string | null, cid?: string | null) {
+  const el = document.getElementById('status-chip');
+  if (!el) return;
+  const s = schema ?? getStoredSchema() || '—';
+  const c = cid ?? lastCid || '—';
+  el.textContent = `schema: ${s} | cid: ${c}`;
+}
+
+function enableAnalyze() {
+  if (analyzeBound) return;
+  bindClick("#btnAnalyze", doAnalyze);
+  const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
+  if (btn) btn.disabled = false;
+  analyzeBound = true;
+}
 
 function getBackend(): string {
   try { return (localStorage.getItem('backendUrl') || 'https://localhost:9443').replace(/\/+$/, ''); }
@@ -48,6 +65,20 @@ function ensureHeaders(): boolean {
     }
     if (schema) {
       try { setStoredSchema(schema); } catch {}
+    }
+
+    const warn = document.getElementById('hdrWarn') as HTMLElement | null;
+    const host = (globalThis as any)?.location?.hostname ?? '';
+    const isDev = host === 'localhost' || host === '127.0.0.1';
+    if (warn) {
+      if (!apiKey && !schema && !isDev) {
+        warn.style.display = '';
+      } else {
+        warn.style.display = 'none';
+      }
+    }
+    if (!apiKey || !schema) {
+      console.warn('missing headers', { apiKey: !!apiKey, schema: !!schema });
     }
   } catch {
     // swallow errors – missing storage should not stop the flow
@@ -500,6 +531,8 @@ async function doHealth() {
       }
     }
     setConnBadge(true);
+    enableAnalyze();
+    updateStatusChip(schema, null);
     try {
       applyMetaToBadges({
         cid: null,
@@ -548,6 +581,7 @@ async function doAnalyze() {
     const json: any = await resp.json();
     if (json?.schema) setStoredSchema(json.schema);
     lastCid = resp.headers.get('x-cid') || '';
+    updateStatusChip(null, lastCid);
     renderResults(json);
 
     try {
@@ -661,7 +695,6 @@ async function onRejectAll() {
 
 function wireUI() {
   bindClick("#btnUseWholeDoc", onUseWholeDoc);
-  bindClick("#btnAnalyze", doAnalyze);
   bindClick("#btnTest", doHealth);
   bindClick("#btnQARecheck", doQARecheck);
   document.getElementById("btnGetAIDraft")?.addEventListener("click", onGetAIDraft);
@@ -688,7 +721,10 @@ function wireUI() {
   onDraftReady('');
   wireResultsToggle();
   console.log("Panel UI wired");
+  const ab = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
+  if (ab) ab.disabled = true;
   ensureHeaders();
+  updateStatusChip();
 }
 
 g.wireUI = g.wireUI || wireUI;

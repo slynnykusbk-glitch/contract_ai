@@ -13,13 +13,15 @@ button{margin:4px 4px 4px 0;}
 pre{background:#f0f0f0;padding:8px;border-radius:4px;white-space:pre-wrap;}
 .warning{padding:6px;background:#fff3cd;border:1px solid #ffeeba;margin:8px 0;}
 .hidden{display:none;}
+#status-chip{position:fixed;bottom:5px;right:5px;padding:3px 6px;border-radius:4px;font-size:12px;background:#eee;color:#000;}
 </style>
 </head>
 <body>
 <div id="health">?</div>
+<div id="status-chip">schema: — | cid: —</div>
 <textarea id="input" placeholder="Enter text..."></textarea>
 <div>
-<button id="btnAnalyze" data-needs-headers="1">Analyze</button>
+<button id="btnAnalyze" data-needs-headers="1" disabled>Analyze</button>
 <button id="btnSummary" data-needs-headers="1">Summary</button>
 <button id="btnSuggest" data-needs-headers="1">Suggest</button>
 <button id="btnQA" data-needs-headers="1">QA</button>

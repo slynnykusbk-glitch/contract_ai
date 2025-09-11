@@ -13,11 +13,19 @@ export function setStoredSchema(v: string) {
 
 export function ensureHeadersSet() {
   try {
-    if (!localStorage.getItem(LS.API_KEY)) {
-      localStorage.setItem(LS.API_KEY, 'local-test-key-123');
-    }
-    if (!localStorage.getItem(LS.SCHEMA)) {
-      localStorage.setItem(LS.SCHEMA, '1.4');
+    const host = (globalThis as any)?.location?.hostname ?? '';
+    const isDev = host === 'localhost' || host === '127.0.0.1';
+    if (isDev) {
+      if (!localStorage.getItem(LS.API_KEY)) {
+        localStorage.setItem(LS.API_KEY, 'local-test-key-123');
+      }
+      if (!localStorage.getItem(LS.SCHEMA)) {
+        const envSchema =
+          (globalThis as any)?.SCHEMA_VERSION ||
+          (typeof process !== 'undefined' && (process as any).env?.SCHEMA_VERSION) ||
+          '1.4';
+        localStorage.setItem(LS.SCHEMA, String(envSchema));
+      }
     }
   } catch {
     // ignore

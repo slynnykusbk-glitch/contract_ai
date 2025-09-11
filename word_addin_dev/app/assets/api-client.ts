@@ -10,6 +10,8 @@ export type Meta = {
   status?: string | null;
 };
 
+import { getApiKeyFromStore, getSchemaFromStore } from "./store";
+
 export type AnalyzeFinding = {
   rule_id: string;
   clause_type?: string;
@@ -86,53 +88,30 @@ function base(): string {
   catch { return DEFAULT_BASE; }
 }
 
-export async function postJson(path: string, body: any, opts: { apiKey?: string; schemaVersion?: string } = {}) {
+export async function postJSON(path: string, body: any) {
   const url = base() + path;
-  const headers: Record<string, string> = { 'content-type': 'application/json' };
-  const apiKey = opts.apiKey ?? (() => {
-    try {
-      const storeKey = (window as any).CAI?.Store?.get?.()?.apiKey;
-      if (storeKey) return storeKey;
-    } catch {}
-    try { return localStorage.getItem('api_key') || ''; } catch { return ''; }
-  })();
-  if (apiKey) {
-    headers['x-api-key'] = apiKey;
-    try { localStorage.setItem('api_key', apiKey); } catch {}
-    try { (window as any).CAI?.Store?.setApiKey?.(apiKey); } catch {}
-  }
-  const schemaVersion = opts.schemaVersion ?? (() => {
-    try {
-      const storeSchema = (window as any).CAI?.Store?.get?.()?.schemaVersion;
-      if (storeSchema) return storeSchema;
-    } catch {}
-    try { return localStorage.getItem('schema_version') || ''; } catch { return ''; }
-  })();
-  if (schemaVersion) headers['x-schema-version'] = schemaVersion;
-  const http = await fetch(url, {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const schema = getSchemaFromStore() || '1.4';
+  headers['x-schema-version'] = schema;
+  const key = getApiKeyFromStore();
+  if (key) headers['x-api-key'] = key;
+  const resp = await fetch(url, {
     method: 'POST',
     headers,
     body: JSON.stringify(body || {}),
     credentials: 'include',
   });
-  const json = await http.json().catch(() => ({}));
-  const hdr = http.headers;
-  try {
-    (window as any).CAI?.Store?.setMeta?.({ cid: hdr.get('x-cid') || undefined, schema: hdr.get('x-schema-version') || undefined });
-  } catch {}
-  return { http, json, headers: hdr };
+  const json = await resp.json().catch(() => ({}));
+  return { resp, json };
 }
-;(window as any).postJson = postJson;
+export { postJSON as postJson };
+;(window as any).postJson = postJSON;
 
 async function req(path: string, { method='GET', body=null, key=path }: { method?: string; body?: any; key?: string } = {}) {
-  const headers: Record<string, string> = { 'content-type':'application/json' };
-  try {
-    const store = (window as any).CAI?.Store?.get?.() || {};
-    const apiKey = store.apiKey || localStorage.getItem('api_key');
-    if (apiKey) headers['x-api-key'] = apiKey;
-    const schema = store.schemaVersion || localStorage.getItem('schema_version');
-    if (schema) headers['x-schema-version'] = schema;
-  } catch {}
+  const headers: Record<string, string> = { 'Content-Type':'application/json' };
+  const apiKey = getApiKeyFromStore();
+  if (apiKey) headers['x-api-key'] = apiKey;
+  headers['x-schema-version'] = getSchemaFromStore() || '1.4';
 
   const r = await fetch(base()+path, {
     method,
@@ -156,11 +135,17 @@ export async function apiHealth() {
 }
 
 export async function apiAnalyze(text: string) {
-  return req('/api/analyze', { method: 'POST', body: { text }, key: 'analyze' });
+  const { resp, json } = await postJSON('/api/analyze', { text });
+  const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
+  try { applyMetaToBadges(meta); } catch {}
+  return { ok: resp.ok, json, resp, meta };
 }
 
 export async function apiGptDraft(cid: string, clause: string, mode = 'friendly') {
-  return req('/api/gpt-draft', { method: 'POST', body: { cid, clause, mode }, key: 'gpt-draft' });
+  const { resp, json } = await postJSON('/api/gpt-draft', { cid, clause, mode });
+  const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
+  try { applyMetaToBadges(meta); } catch {}
+  return { ok: resp.ok, json, resp, meta };
 }
 
 export async function apiSummary(cid: string) {
@@ -173,10 +158,12 @@ export async function apiSummaryGet() {
 
 export async function apiQaRecheck(text: string, rules: any = {}) {
   const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
-  return req('/api/qa-recheck', { method: 'POST', body: { text, rules: dict }, key: 'qa-recheck' });
+  const { resp, json } = await postJSON('/api/qa-recheck', { text, rules: dict });
+  const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
+  try { applyMetaToBadges(meta); } catch {}
+  return { ok: resp.ok, json, resp, meta };
 }
 
 export async function postRedlines(before_text: string, after_text: string) {
-  const fn: any = (window as any).postJson || postJson;
-  return fn('/api/panel/redlines', { before_text, after_text });
+  return postJSON('/api/panel/redlines', { before_text, after_text });
 }

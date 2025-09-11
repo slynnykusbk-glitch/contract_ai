@@ -17,7 +17,7 @@ def corpus_summary(session) -> dict:
             CorpusDoc.act_code,
             func.count().label("sections"),
         )
-        .filter(CorpusDoc.latest == True)
+        .filter(CorpusDoc.latest)
         .group_by(CorpusDoc.jurisdiction, CorpusDoc.act_code)
         .all()
     )

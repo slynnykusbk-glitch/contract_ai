@@ -1,8 +1,7 @@
-import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines } from "./api-client";
+import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON } from "./api-client";
 import { normalizeText, dedupeFindings, severityRank } from "./dedupe";
 export { normalizeText, dedupeFindings } from "./dedupe";
-import { getApiKeyFromStore, getSchemaFromStore, getAddCommentsFlag, setAddCommentsFlag } from "./store";
-import { postJSON, getStoredKey, getStoredSchema, setStoredSchema, ensureHeadersSet } from "../../../contract_review_app/frontend/common/http";
+import { getApiKeyFromStore, getSchemaFromStore, getAddCommentsFlag, setAddCommentsFlag, setSchemaVersion } from "./store";
 
 // enable rich debug when OfficeExtension is available
 const oe: any = (globalThis as any).OfficeExtension;
@@ -61,7 +60,7 @@ let analyzeBound = false;
 function updateStatusChip(schema?: string | null, cid?: string | null) {
   const el = document.getElementById('status-chip');
   if (!el) return;
-  const s = (schema ?? getStoredSchema()) || '—';
+  const s = (schema ?? getSchemaFromStore()) || '—';
   const c = (cid ?? lastCid) || '—';
   el.textContent = `schema: ${s} | cid: ${c}`;
 }
@@ -99,20 +98,9 @@ function onSaveBackend() {
 }
 
 function ensureHeaders(): boolean {
-  // Try to populate required headers from either CAI.Store or
-  // localStorage but never block user actions if they are missing.
-  ensureHeadersSet();
   try {
-    const store = (globalThis as any).CAI?.Store?.get?.() || {};
-    const apiKey = store.apiKey || getApiKeyFromStore();
-    const schema = store.schemaVersion || getSchemaFromStore();
-    if (apiKey) {
-      try { localStorage.setItem('api_key', apiKey); } catch {}
-    }
-    if (schema) {
-      try { setStoredSchema(schema); } catch {}
-    }
-
+    const apiKey = getApiKeyFromStore();
+    const schema = getSchemaFromStore();
     const warn = document.getElementById('hdrWarn') as HTMLElement | null;
     const host = (globalThis as any)?.location?.hostname ?? '';
     const isDev = host === 'localhost' || host === '127.0.0.1';
@@ -357,12 +345,14 @@ g.annotateFindingsIntoWord = g.annotateFindingsIntoWord || annotateFindingsIntoW
 async function onClearAnnots() {
   try {
     await Word.run(async ctx => {
+      const body = ctx.document.body;
       const cmts = ctx.document.comments;
       cmts.load('items');
       await ctx.sync();
       for (const c of cmts.items) {
         try { c.delete(); } catch {}
       }
+      try { body.font.highlightColor = "NoColor" as any; } catch {}
       await ctx.sync();
     });
     notifyOk('Annotations cleared');
@@ -522,6 +512,15 @@ async function navigateFinding(dir: number) {
   w.__findingIdx = (w.__findingIdx ?? 0) + dir;
   if (w.__findingIdx < 0) w.__findingIdx = arr.length - 1;
   if (w.__findingIdx >= arr.length) w.__findingIdx = 0;
+  const list = document.getElementById("findingsList");
+  if (list) {
+    const items = Array.from(list.querySelectorAll("li"));
+    items.forEach((li, i) => {
+      (li as HTMLElement).classList.toggle("active", i === w.__findingIdx);
+    });
+    const act = items[w.__findingIdx] as HTMLElement | undefined;
+    if (act) act.scrollIntoView({ block: "nearest" });
+  }
   try { await highlightFinding(arr[w.__findingIdx]); } catch {}
 }
 
@@ -539,16 +538,10 @@ export function renderAnalysisSummary(json: any) {
   const findings = Array.isArray(json?.findings) ? json.findings : [];
   const recs = Array.isArray(json?.recommendations) ? json.recommendations : [];
 
-  // фильтрация по порогу, если нужные поля есть
-  // (не ломаемся, если нет)
-  let visible = findings.length;
-  let hidden = 0;
-  if (typeof json?.meta?.visible_count === "number") {
-    visible = json.meta.visible_count;
-  }
-  if (typeof json?.meta?.hidden_count === "number") {
-    hidden = json.meta.hidden_count;
-  }
+  const thr = getRiskThreshold();
+  const visibleFindings = filterByThreshold(findings, thr);
+  const visible = visibleFindings.length;
+  const hidden = findings.length - visible;
 
   const setText = (id: string, val: string) => {
     const el = document.getElementById(id);
@@ -556,6 +549,7 @@ export function renderAnalysisSummary(json: any) {
   };
 
   setText("clauseTypeOut", String(clauseType));
+  setText("resFindingsCount", String(findings.length));
   setText("visibleHiddenOut", `${visible} / ${hidden}`);
 
   // Заполняем findings
@@ -708,11 +702,12 @@ async function onSuggestEdit(ev?: Event) {
     const idx = (window as any).__findingIdx ?? 0;
     const finding = arr[idx];
     if (!finding) { notifyWarn("No active finding"); return; }
-    const json: any = await postJSON(`${getBackend()}/api/suggest_edits`, { text: base, findings: [finding] });
-    const proposed = (json?.proposed_text ?? "").toString();
+    const clause = finding.snippet || '';
+    const { json } = await postJSON('/api/gpt-draft', { cid: lastCid, clause, mode: 'friendly' });
+    const proposed = (json?.proposed_text ?? json?.text ?? "").toString();
     const w: any = window as any;
     w.__last = w.__last || {};
-    w.__last['suggest'] = { json };
+    w.__last['gpt-draft'] = { json };
     if (dst) {
       if (!dst.id) dst.id = "draftText";
       if (!dst.name) dst.name = "proposed";
@@ -734,12 +729,12 @@ async function onSuggestEdit(ev?: Event) {
 
 async function doHealth() {
   try {
-    const prev = getStoredSchema();
+    const prev = getSchemaFromStore();
     const resp = await fetch(`${getBackend()}/health`, { method: 'GET' });
     const json: any = await resp.json().catch(() => ({}));
     const schema = resp.headers.get('x-schema-version') || json?.schema || null;
     if (schema) {
-      setStoredSchema(schema);
+      setSchemaVersion(schema);
       if (schema !== prev) {
         console.log(`schema: ${schema} (synced)`);
       }
@@ -785,25 +780,17 @@ async function doAnalyze() {
     const orig = document.getElementById("originalText") as HTMLTextAreaElement | null;
     if (orig) orig.value = base;
 
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      'x-api-key': getStoredKey(),
-      'x-schema-version': getStoredSchema(),
-    };
-    const resp = await fetch(`${getBackend()}/api/analyze`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ text: base }),
-    });
-    const respSchema = resp.headers.get('x-schema-version');
-    if (respSchema) setStoredSchema(respSchema);
+    const { resp, json } = await postJSON('/api/analyze', { text: base });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const json: any = await resp.json();
-    if (json?.schema) setStoredSchema(json.schema);
+    const respSchema = resp.headers.get('x-schema-version');
+    if (respSchema) setSchemaVersion(respSchema);
+    if (json?.schema) setSchemaVersion(json.schema);
     lastCid = resp.headers.get('x-cid') || '';
     updateStatusChip(null, lastCid);
     renderResults(json);
     renderAnalysisSummary(json);
+
+    try { localStorage.setItem('last_analysis_json', JSON.stringify(json)); } catch {}
 
     try {
       const all = (globalThis as any).parseFindings(json);
@@ -832,7 +819,7 @@ async function doAnalyze() {
 async function doQARecheck() {
   ensureHeaders();
   const text = await getWholeDocText();
-  const json: any = await postJSON(`${getBackend()}/api/qa-recheck`, { text, rules: {} });
+  const { json } = await postJSON('/api/qa-recheck', { text, rules: {} });
   (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
   const ok = !json?.error;
   if (ok) {
@@ -1003,22 +990,18 @@ function onDraftReady(text: string) {
   if (diff) diff.disabled = !show;
 }
 
-async function bootstrap() {
-  if (document.readyState === "loading") {
-    await new Promise<void>(res => document.addEventListener("DOMContentLoaded", () => res(), { once: true }));
-  }
+async function bootstrap(info?: Office.OfficeInfo) {
   wireUI();
   try { await doHealth(); } catch {}
   try {
-    if ((window as any).Office?.onReady) {
-      const info = await (window as any).Office.onReady();
-      setOfficeBadge(`${info?.host || "Word"} ✓`);
-    }
+    setOfficeBadge(`${info?.host || Office.context?.host || "Word"} ✓`);
   } catch {
     setOfficeBadge(null);
   }
 }
 
 if (!(globalThis as any).__CAI_TESTING__) {
-  bootstrap();
+  document.addEventListener("DOMContentLoaded", () => {
+    Office.onReady(info => bootstrap(info));
+  });
 }

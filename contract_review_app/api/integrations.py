@@ -51,6 +51,13 @@ def _ch_gate() -> JSONResponse | None:
     return None
 
 
+@router.get("/companies/health")
+async def companies_health():
+    if not CH_ENABLED:
+        return JSONResponse({"status": "disabled"}, status_code=403)
+    return {"companies_house": "ok"}
+
+
 @router.post("/companies/search")
 async def api_companies_search(payload: _CompanySearchIn, request: Request):
     gate = _ch_gate()

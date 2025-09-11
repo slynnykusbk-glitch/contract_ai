@@ -28,4 +28,4 @@ def test_build_companies_meta_blackrock():
     p = Party(name="BLACK ROCK (UK) LIMITED", company_number="02022650")
     meta = build_companies_meta([p])
     assert meta[0]["matched"]["company_number"] == "02022650"
-    assert meta[0]["verdict"]["level"] == "ok"
+    assert meta[0]["verdict"] == "ok"

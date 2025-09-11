@@ -5,8 +5,8 @@
 import os
 
 
-FEATURE_COMPANIES_HOUSE = os.getenv("FEATURE_COMPANIES_HOUSE", "")
-CH_API_KEY = os.getenv("CH_API_KEY") or os.getenv("COMPANIES_HOUSE_API_KEY", "")
+FEATURE_COMPANIES_HOUSE = (os.getenv("FEATURE_COMPANIES_HOUSE", "").strip())
+CH_API_KEY = (os.getenv("CH_API_KEY") or os.getenv("COMPANIES_HOUSE_API_KEY", "")).strip()
 CH_ENABLED = FEATURE_COMPANIES_HOUSE in {"1", "true", "True"} and CH_API_KEY != ""
 
 

@@ -7,17 +7,28 @@ os.environ["FEATURE_INTEGRATIONS"] = "1"
 os.environ["FEATURE_COMPANIES_HOUSE"] = "1"
 os.environ["CH_API_KEY"] = "x"
 
+import importlib
+import contract_review_app.config as cfg
+import contract_review_app.api.integrations as integrations
 import contract_review_app.api.app as app_module
 from contract_review_app.integrations.companies_house import client as ch_client
+
+importlib.reload(cfg)
+importlib.reload(ch_client)
+importlib.reload(integrations)
+importlib.reload(app_module)
 
 client = TestClient(app_module.app)
 BASE = ch_client.BASE
 ch_client.KEY = "x"
 os.environ["FEATURE_COMPANIES_HOUSE"] = "1"
+integrations.CH_API_KEY = "x"
+integrations.FEATURE_COMPANIES_HOUSE = "1"
 
 
 @respx.mock
-def test_search_endpoint():
+def test_search_endpoint(monkeypatch):
+    monkeypatch.setattr(integrations, "_ch_gate", lambda: None)
     respx.get(f"{BASE}/search/companies").respond(
         json={
             "items": [
@@ -50,7 +61,8 @@ def test_search_endpoint():
 
 
 @respx.mock
-def test_profile_endpoint():
+def test_profile_endpoint(monkeypatch):
+    monkeypatch.setattr(integrations, "_ch_gate", lambda: None)
     profile = {
         "company_number": "42",
         "company_name": "ACME LIMITED",
@@ -126,7 +138,8 @@ def test_disabled(monkeypatch):
     importlib.reload(app_module)
     local_client = TestClient(app_module.app)
     r = local_client.post("/api/companies/search", json={"query": "A"})
-    assert r.status_code == 503
+    assert r.status_code == 403
+    assert r.json() == {"status": "disabled"}
     monkeypatch.setenv("FEATURE_COMPANIES_HOUSE", "1")
     importlib.reload(cfg)
     importlib.reload(ch_client)
@@ -135,7 +148,8 @@ def test_disabled(monkeypatch):
 
 
 @respx.mock
-def test_etag_round_trip():
+def test_etag_round_trip(monkeypatch):
+    monkeypatch.setattr(integrations, "_ch_gate", lambda: None)
     url = f"{BASE}/company/77"
     respx.get(url).mock(
         side_effect=[
@@ -165,7 +179,8 @@ def test_etag_round_trip():
 
 
 @respx.mock
-def test_profile_not_found():
+def test_profile_not_found(monkeypatch):
+    monkeypatch.setattr(integrations, "_ch_gate", lambda: None)
     respx.get(f"{BASE}/company/404").respond(status_code=404)
     r = client.get("/api/companies/404")
     assert r.status_code == 404
@@ -173,7 +188,8 @@ def test_profile_not_found():
 
 
 @respx.mock
-def test_profile_rate_limited():
+def test_profile_rate_limited(monkeypatch):
+    monkeypatch.setattr(integrations, "_ch_gate", lambda: None)
     url = f"{BASE}/company/55"
     respx.get(url).mock(
         side_effect=[
@@ -189,7 +205,8 @@ def test_profile_rate_limited():
 
 
 @respx.mock
-def test_profile_5xx():
+def test_profile_5xx(monkeypatch):
+    monkeypatch.setattr(integrations, "_ch_gate", lambda: None)
     url = f"{BASE}/company/56"
     respx.get(url).mock(
         side_effect=[
@@ -200,4 +217,4 @@ def test_profile_5xx():
     )
     r = client.get("/api/companies/56")
     assert r.status_code == 502
-    assert r.json() == {"error": "ch_error"}
+    assert r.json() == {"error": "upstream_error"}

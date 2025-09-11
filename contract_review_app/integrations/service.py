@@ -144,7 +144,13 @@ def build_companies_meta(parties: List[Party], doc_parties: List[Party] | None =
                     pass
         except Exception:
             data = None
-        verdict = _verdict_for_party(p, data)
+        vobj = _verdict_for_party(p, data)
+        if data is None:
+            verdict = "not_found"
+        elif vobj.get("level") == "ok":
+            verdict = "ok"
+        else:
+            verdict = "mismatch"
         meta.append({"from_document": doc, "matched": data, "verdict": verdict})
     return meta
 

@@ -1,5 +1,6 @@
 const DEFAULT_API_KEY = "";
 export const DEFAULT_SCHEMA = "1.4";
+const ADD_COMMENTS_KEY = "cai-comment-on-analyze";
 
 function ensureDefaults(): void {
   try {
@@ -8,6 +9,9 @@ function ensureDefaults(): void {
     }
     if (localStorage.getItem("schema_version") === null) {
       localStorage.setItem("schema_version", DEFAULT_SCHEMA);
+    }
+    if (localStorage.getItem(ADD_COMMENTS_KEY) === null) {
+      localStorage.setItem(ADD_COMMENTS_KEY, "1");
     }
   } catch {
     // ignore
@@ -43,6 +47,27 @@ export function getSchemaFromStore(): string {
 export function setSchemaVersion(v: string): void {
   try {
     localStorage.setItem("schema_version", v);
+  } catch {
+    // ignore
+  }
+}
+
+export function getAddCommentsFlag(): boolean {
+  try {
+    const v = localStorage.getItem(ADD_COMMENTS_KEY);
+    if (v === null) {
+      localStorage.setItem(ADD_COMMENTS_KEY, "1");
+      return true;
+    }
+    return v !== "0";
+  } catch {
+    return true;
+  }
+}
+
+export function setAddCommentsFlag(v: boolean): void {
+  try {
+    localStorage.setItem(ADD_COMMENTS_KEY, v ? "1" : "0");
   } catch {
     // ignore
   }

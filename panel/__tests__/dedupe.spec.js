@@ -1,23 +1,18 @@
 require('ts-node/register');
-// Node doesn't resolve `.ts` extensions by default, so explicitly include it
-const { dedupeFindings } = require('../../word_addin_dev/app/assets/dedupe.ts');
+const { dedupeFindings } = require('../../word_addin_dev/app/assets/dedupe.js');
 
-describe('dedupeFindings', () => {
-  it('returns single entry for exact duplicates', () => {
-    const sample = { rule_id: 'r', start: 0, end: 5, snippet: 'abcde' };
-    const input = Array.from({ length: 5 }, () => ({ ...sample }));
-    const out = dedupeFindings(input);
-    expect(out.length).toBe(1);
-  });
-
-  it('keeps findings with different ranges', () => {
-    const base = { rule_id: 'r', snippet: 'abcde' };
-    const input = [
-      { ...base, start: 0, end: 5 },
-      { ...base, start: 1, end: 6 },
-      { ...base, start: 2, end: 7 }
+describe('dedupe.removes-duplicates', () => {
+  it('removes duplicates and preserves order', () => {
+    const list = [
+      { rule_id: 'r1', start: 0, end: 5, snippet: 'abcde', severity: 'low' },
+      { rule_id: 'r1', start: 0, end: 5, snippet: 'abcde', severity: 'high' },
+      { rule_id: 'r2', start: 6, end: 8, snippet: 'fg', severity: 'medium' },
+      { rule_id: 'r1', start: 0, end: 5, snippet: 'abcde', severity: 'medium' },
     ];
-    const out = dedupeFindings(input);
-    expect(out.length).toBe(3);
+    const res = dedupeFindings(list);
+    expect(res.length).toBe(2);
+    expect(res[0].rule_id).toBe('r1');
+    expect(res[0].severity).toBe('high');
+    expect(res[1].rule_id).toBe('r2');
   });
 });

@@ -1,4 +1,4 @@
-import os
+import os  # ensure environment variables are available
 import pytest
 from fastapi.testclient import TestClient
 

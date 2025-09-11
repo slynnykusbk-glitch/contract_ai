@@ -27,9 +27,19 @@ def test_enrichment_pipeline():
         json={"items": [{"title": "ACME LTD", "company_number": "321"}]}, headers={"ETag": "s1"}
     )
     respx.get(f"{BASE}/company/321").respond(json={"company_name": "ACME LTD", "company_number": "321"})
-    resp = client.post("/api/analyze", json={"text": "Agreement between Acme Ltd and Foo"})
+    respx.get(f"{BASE}/company/321/officers?items_per_page=1").respond(json={"total_results": 5})
+    respx.get(
+        f"{BASE}/company/321/persons-with-significant-control?items_per_page=1"
+    ).respond(json={"total_results": 1})
+    resp = client.post(
+        "/api/analyze",
+        json={"text": "Agreement between Acme Ltd and Foo"},
+        headers={"x-schema-version": "1.4"},
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["summary"]["parties"][0]["registry"]["name"] == "ACME LTD"
+    assert data["meta"]["companies"][0]["matched"]["company_name"] == "ACME LTD"
+    assert data["meta"]["companies"][0]["verdict"]["level"] == "ok"
     with open("var/audit.log", encoding="utf-8") as fh:
         assert "integration_call" in fh.read()

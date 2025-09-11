@@ -1,8 +1,17 @@
-import { applyMetaToBadges, parseFindings, AnalyzeFinding } from "./api-client";
+import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse } from "./api-client";
 import { normalizeText, dedupeFindings, severityRank } from "./dedupe";
 export { normalizeText, dedupeFindings } from "./dedupe";
 import { getApiKeyFromStore, getSchemaFromStore } from "./store";
 import { postJSON, getStoredKey, getStoredSchema, setStoredSchema, ensureHeadersSet } from "../../../contract_review_app/frontend/common/http";
+
+function parseFindings(resp: AnalyzeResponse): AnalyzeFinding[] {
+  const arr = apiParseFindings(resp) || [];
+  return arr
+    .filter(f => f && f.rule_id && f.snippet)
+    .map(f => ({ ...f, clause_type: f.clause_type || 'Unknown' }))
+    .filter(f => f.clause_type);
+}
+
 const g: any = globalThis as any;
 g.parseFindings = g.parseFindings || parseFindings;
 g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
@@ -84,12 +93,19 @@ function isDryRunAnnotateEnabled(): boolean {
 
 function filterByThreshold(list: AnalyzeFinding[], thr: "low" | "medium" | "high"): AnalyzeFinding[] {
   const min = severityRank(thr);
-  return (list || []).filter(f => severityRank(f.severity) >= min);
+  return (list || [])
+    .filter(f => f && f.rule_id && f.snippet)
+    .map(f => ({ ...f, clause_type: f.clause_type || 'Unknown' }))
+    .filter(f => severityRank(f.severity) >= min);
 }
 
 function buildLegalComment(f: AnalyzeFinding): string {
+  if (!f || !f.rule_id || !f.clause_type || !f.snippet) {
+    console.warn("buildLegalComment: missing required fields", f);
+    return "";
+  }
   const sev = (f.severity || "info").toUpperCase();
-  const rid = f.rule_id || "rule";
+  const rid = f.rule_id;
   const ct = f.clause_type ? ` (${f.clause_type})` : "";
   const advice = f.advice || "—";
   const law = Array.isArray(f.law_refs) && f.law_refs.length ? f.law_refs.join('; ') : "—";
@@ -152,8 +168,12 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
   let skipped = 0;
 
   for (const f of list) {
+    if (!f || !f.rule_id || !f.clause_type || !f.snippet) {
+      console.warn("annotateFindingsIntoWord: skipping invalid finding", f);
+      skipped++;
+      continue;
+    }
     const snippet = f.snippet;
-    if (!snippet) continue;
 
     const end = typeof f.end === "number" ? f.end : (typeof f.start === "number" ? f.start + snippet.length : undefined);
     if (typeof end === "number" && end > lastStart) {
@@ -207,7 +227,7 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
             try { target.select(); } catch {}
           } else {
             const msg = buildLegalComment(f);
-            target.insertComment(msg);
+            if (msg) target.insertComment(msg);
           }
         } else {
           console.warn("[annotate] no match for snippet/anchor", { rid: f.rule_id, snippet: snippet.slice(0, 120) });
@@ -241,7 +261,7 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
     }
   }
 
-  if (skipped) notifyWarn(`Skipped ${skipped} overlaps`);
+  if (skipped) notifyWarn(`Skipped ${skipped} overlaps/invalid`);
   console.log("panel:annotate", {
     total: findings.length,
     deduped: deduped.length,

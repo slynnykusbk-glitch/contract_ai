@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { insertDraftText } from './app/assets/insert'
+import { insertDraftText } from '../assets/insert'
 
 describe('insertDraftText', () => {
   it('skips empty text', async () => {

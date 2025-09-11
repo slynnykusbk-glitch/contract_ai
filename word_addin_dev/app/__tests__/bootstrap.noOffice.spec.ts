@@ -7,7 +7,7 @@ describe('bootstrapHeaders', () => {
       getItem: () => null,
       setItem: vi.fn(),
     } as any;
-    const mod = await import('./app/assets/bootstrap.ts');
+    const mod = await import('../assets/bootstrap.ts');
     await expect(mod.bootstrapHeaders()).resolves.toBeUndefined();
   });
 });

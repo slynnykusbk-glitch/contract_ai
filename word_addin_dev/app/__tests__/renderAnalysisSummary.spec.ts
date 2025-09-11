@@ -16,7 +16,7 @@ describe('renderAnalysisSummary', () => {
     ;(globalThis as any).window = globalThis as any
     ;(globalThis as any).localStorage = { getItem: () => null, setItem: () => {} }
     ;(globalThis as any).__CAI_TESTING__ = true
-    const mod = await import('./app/assets/taskpane')
+    const mod = await import('../assets/taskpane')
     mod.renderAnalysisSummary({ findings: [], recommendations: [] })
     expect(elements.clauseTypeOut.textContent).toBe('—')
     expect(elements.visibleHiddenOut.textContent).toBe('0 / 0')

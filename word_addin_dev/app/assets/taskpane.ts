@@ -10,6 +10,8 @@ import {
   setApiKey,
 } from "./store";
 
+declare const Violins: { initAudio: () => void };
+
 // enable rich debug when OfficeExtension is available
 const oe: any = (globalThis as any).OfficeExtension;
 const gg: any = (globalThis as any);
@@ -1026,6 +1028,7 @@ async function bootstrap(info?: Office.OfficeInfo) {
 
 if (!(globalThis as any).__CAI_TESTING__) {
   document.addEventListener("DOMContentLoaded", () => {
+    Violins.initAudio();
     Office.onReady(info => bootstrap(info));
   });
 }

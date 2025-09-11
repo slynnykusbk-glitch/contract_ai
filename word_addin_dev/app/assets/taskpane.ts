@@ -51,8 +51,8 @@ g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 type Mode = "live" | "friendly" | "doctor";
 
 const Q = {
-  proposed: 'textarea#proposedText, textarea[name="proposed"], textarea[data-role="proposed-text"]',
-  original: 'textarea#originalClause, textarea[name="original"], textarea[data-role="original-clause"]'
+  proposed: 'textarea#proposedText, textarea#draftText, textarea[name="proposed"], textarea[data-role="proposed-text"]',
+  original: 'textarea#originalClause, textarea#originalText, textarea[name="original"], textarea[data-role="original-clause"]'
 };
 
 let lastCid: string = "";
@@ -528,6 +528,66 @@ async function navigateFinding(dir: number) {
 function onPrevIssue() { navigateFinding(-1); }
 function onNextIssue() { navigateFinding(1); }
 
+export function renderAnalysisSummary(json: any) {
+  // аккуратно вытаскиваем ключевые поля
+  const clauseType =
+    json?.summary?.clause_type ||
+    json?.meta?.clause_type ||
+    json?.doc_type ||
+    "—";
+
+  const findings = Array.isArray(json?.findings) ? json.findings : [];
+  const recs = Array.isArray(json?.recommendations) ? json.recommendations : [];
+
+  // фильтрация по порогу, если нужные поля есть
+  // (не ломаемся, если нет)
+  let visible = findings.length;
+  let hidden = 0;
+  if (typeof json?.meta?.visible_count === "number") {
+    visible = json.meta.visible_count;
+  }
+  if (typeof json?.meta?.hidden_count === "number") {
+    hidden = json.meta.hidden_count;
+  }
+
+  const setText = (id: string, val: string) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
+
+  setText("clauseTypeOut", String(clauseType));
+  setText("visibleHiddenOut", `${visible} / ${hidden}`);
+
+  // Заполняем findings
+  const fCont = document.getElementById("findingsList");
+  if (fCont) {
+    fCont.innerHTML = "";
+    for (const f of findings) {
+      const li = document.createElement("li");
+      const title =
+        f?.title || f?.finding?.title || f?.rule_id || "Issue";
+      const snippet = f?.snippet || f?.evidence?.text || "";
+      li.textContent = snippet ? `${title}: ${snippet}` : String(title);
+      fCont.appendChild(li);
+    }
+  }
+
+  // Заполняем рекомендации
+  const rCont = document.getElementById("recsList");
+  if (rCont) {
+    rCont.innerHTML = "";
+    for (const r of recs) {
+      const li = document.createElement("li");
+      li.textContent = r?.text || r?.advice || r?.message || "Recommendation";
+      rCont.appendChild(li);
+    }
+  }
+
+  // Показать блок результатов (если был скрыт стилями)
+  const rb = document.getElementById("resultsBlock") as HTMLElement | null;
+  if (rb) rb.style.removeProperty("display");
+}
+
 function renderResults(res: any) {
   const clause = slot("resClauseType", "clause-type");
   if (clause) clause.textContent = res?.clause_type || "—";
@@ -654,7 +714,7 @@ async function onSuggestEdit(ev?: Event) {
     w.__last = w.__last || {};
     w.__last['suggest'] = { json };
     if (dst) {
-      if (!dst.id) dst.id = "proposedText";
+      if (!dst.id) dst.id = "draftText";
       if (!dst.name) dst.name = "proposed";
       (dst as any).dataset.role = "proposed-text";
       dst.value = proposed;
@@ -710,7 +770,9 @@ async function doHealth() {
 
 async function doAnalyze() {
   const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
+  const busy = document.getElementById("busyBar") as HTMLElement | null;
   if (btn) btn.disabled = true;
+  if (busy) busy.style.display = "";
   try {
     onDraftReady('');
     const cached = (window as any).__lastAnalyzed as string | undefined;
@@ -720,6 +782,8 @@ async function doAnalyze() {
     ensureHeaders();
 
     (window as any).__lastAnalyzed = base;
+    const orig = document.getElementById("originalText") as HTMLTextAreaElement | null;
+    if (orig) orig.value = base;
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -739,6 +803,7 @@ async function doAnalyze() {
     lastCid = resp.headers.get('x-cid') || '';
     updateStatusChip(null, lastCid);
     renderResults(json);
+    renderAnalysisSummary(json);
 
     try {
       const all = (globalThis as any).parseFindings(json);
@@ -760,6 +825,7 @@ async function doAnalyze() {
     console.error(e);
   } finally {
     if (btn) btn.disabled = false;
+    if (busy) busy.style.display = "none";
   }
 }
 
@@ -927,6 +993,10 @@ function onDraftReady(text: string) {
   const accept = document.getElementById('btnAcceptAll') as HTMLButtonElement | null;
   const reject = document.getElementById('btnRejectAll') as HTMLButtonElement | null;
   const diff = document.getElementById('btnPreviewDiff') as HTMLButtonElement | null;
+  const pane = document.getElementById('draftPane') as HTMLElement | null;
+  const dst = document.getElementById('draftText') as HTMLTextAreaElement | null;
+  if (dst) dst.value = text;
+  if (pane) pane.style.display = show ? '' : 'none';
   if (apply) apply.disabled = !show;
   if (accept) accept.disabled = !show;
   if (reject) reject.disabled = !show;

@@ -8,7 +8,7 @@ def _exists(id_sel: str, role: str) -> bool:
 
 
 def test_clause_type_slot_exists():
-    assert _exists('resClauseType', 'clause-type')
+    assert _exists('clauseTypeOut', 'clause-type')
 
 
 def test_findings_list_slot_exists():
@@ -16,7 +16,7 @@ def test_findings_list_slot_exists():
 
 
 def test_recommendations_list_slot_exists():
-    assert _exists('recoList', 'recommendations')
+    assert _exists('recsList', 'recommendations')
 
 
 def test_raw_json_toggle_slot_exists():

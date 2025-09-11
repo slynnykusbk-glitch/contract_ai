@@ -274,7 +274,7 @@ from contract_review_app.core.schemas import (
     SuggestEdit,
     SuggestResponse,
 )
-from contract_review_app.intake.normalization import normalize_text
+from contract_review_app.intake.normalization import normalize_text, normalize_for_intake
 
 # --- LLM provider & limits (final resolution) ---
 from contract_review_app.llm.provider import get_provider
@@ -550,6 +550,10 @@ def _analyze_document(text: str, risk: str = "medium") -> Dict[str, Any] | JSONR
         )
 
     findings = engine.analyze(text or "", loader._RULES)
+    for f in findings:
+      snip = f.get("snippet")
+      if isinstance(snip, str):
+        f["normalized_snippet"] = normalize_for_intake(snip)
 
     order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
     thr = order.get((risk or "medium").lower(), 1)

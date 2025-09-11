@@ -1,23 +1,25 @@
 require('ts-node/register');
-const { isAddCommentsOnAnalyzeEnabled, setAddCommentsOnAnalyze } = require('../../word_addin_dev/app/assets/taskpane');
 
 describe('Add comments flag', () => {
+  let mod;
   beforeEach(() => {
-    const g = global;
-    g.localStorage = {
+    global.window = {};
+    global.document = { getElementById: () => ({ style: {}, addEventListener: () => {} }), querySelector: () => null, addEventListener: () => {}, body: { dispatchEvent() {} } };
+    global.localStorage = {
       store: {},
       getItem(k) { return this.store[k] ?? null; },
       setItem(k, v) { this.store[k] = v; },
       removeItem(k) { delete this.store[k]; }
     };
+    mod = require('../../word_addin_dev/app/assets/taskpane.js');
   });
 
   it('defaults to true when missing', () => {
-    expect(isAddCommentsOnAnalyzeEnabled()).toBe(true);
+    expect(mod.isAddCommentsOnAnalyzeEnabled()).toBe(true);
   });
 
   it('persists value', () => {
-    setAddCommentsOnAnalyze(false);
-    expect(isAddCommentsOnAnalyzeEnabled()).toBe(false);
+    mod.setAddCommentsOnAnalyze(false);
+    expect(mod.isAddCommentsOnAnalyzeEnabled()).toBe(false);
   });
 });

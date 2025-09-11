@@ -1,7 +1,7 @@
 import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse } from "./api-client";
 import { normalizeText, dedupeFindings, severityRank } from "./dedupe";
 export { normalizeText, dedupeFindings } from "./dedupe";
-import { getApiKeyFromStore, getSchemaFromStore } from "./store";
+import { getApiKeyFromStore, getSchemaFromStore, getAddCommentsFlag, setAddCommentsFlag } from "./store";
 import { postJSON, getStoredKey, getStoredSchema, setStoredSchema, ensureHeadersSet } from "../../../contract_review_app/frontend/common/http";
 
 function parseFindings(resp: AnalyzeResponse): AnalyzeFinding[] {
@@ -69,21 +69,20 @@ function getRiskThreshold(): "low" | "medium" | "high" {
 }
 
 export function isAddCommentsOnAnalyzeEnabled(): boolean {
+  const val = getAddCommentsFlag();
   try {
-    const key = "cai-comment-on-analyze";
-    const stored = localStorage.getItem(key);
-    const def = stored === null ? (localStorage.setItem(key, "1"), true) : stored !== "0";
-    const cb = (document.getElementById("cai-comment-on-analyze") as HTMLInputElement | null)
-      || (document.getElementById("chkAddCommentsOnAnalyze") as HTMLInputElement | null);
-    if (cb) cb.checked = def;
-    return cb ? !!cb.checked : def;
+    const doc: any = (globalThis as any).document;
+    const cb = (doc?.getElementById("cai-comment-on-analyze") as HTMLInputElement | null)
+      || (doc?.getElementById("chkAddCommentsOnAnalyze") as HTMLInputElement | null);
+    if (cb) cb.checked = val;
+    return cb ? !!cb.checked : val;
   } catch {
-    return true;
+    return val;
   }
 }
 
 export function setAddCommentsOnAnalyze(val: boolean): void {
-  try { localStorage.setItem("cai-comment-on-analyze", val ? "1" : "0"); } catch {}
+  setAddCommentsFlag(val);
 }
 
 function isDryRunAnnotateEnabled(): boolean {
@@ -158,29 +157,37 @@ export async function mapFindingToRange(
   }
 }
 
-export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
+export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Promise<number> {
   const base = normalizeText((window as any).__lastAnalyzed || "");
 
   const deduped = dedupeFindings(findings || []);
-  const list = deduped.slice().sort((a, b) => (b.end ?? 0) - (a.end ?? 0));
+  const sorted = deduped.slice().sort((a, b) => (b.end ?? 0) - (a.end ?? 0));
 
+  const todo: AnalyzeFinding[] = [];
   let lastStart = Number.POSITIVE_INFINITY;
   let skipped = 0;
-
-  for (const f of list) {
+  for (const f of sorted) {
     if (!f || !f.rule_id || !f.clause_type || !f.snippet) {
       console.warn("annotateFindingsIntoWord: skipping invalid finding", f);
       skipped++;
       continue;
     }
     const snippet = f.snippet;
-
     const end = typeof f.end === "number" ? f.end : (typeof f.start === "number" ? f.start + snippet.length : undefined);
     if (typeof end === "number" && end > lastStart) {
       skipped++;
       continue;
     }
+    todo.push(f);
+    if (typeof f.start === "number") lastStart = f.start;
+  }
 
+  if (skipped) notifyWarn(`Skipped ${skipped} overlaps/invalid`);
+  notifyOk(`Will insert: ${todo.length}`);
+
+  let inserted = 0;
+  for (const f of todo) {
+    const snippet = f.snippet;
     const occIdx = (() => {
       if (typeof f.start !== "number" || !snippet) return 0;
       let idx = -1, n = 0;
@@ -238,15 +245,18 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
 
     try {
       await tryInsert("normal");
+      inserted++;
     } catch (e) {
       if (String(e).includes("0xA7210002")) {
         console.warn("panel:annotate", { rid: f.rule_id, fallback: "anchor" });
         try {
           await tryInsert("anchor");
+          inserted++;
         } catch (e2) {
           console.warn("panel:annotate", { rid: f.rule_id, fallback: "selection" });
           try {
             await tryInsert("selection");
+            inserted++;
           } catch (e3) {
             console.warn("annotate retry failed", e3);
           }
@@ -255,19 +265,15 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]) {
         console.warn("annotate error", e);
       }
     }
-
-    if (typeof f.start === "number") {
-      lastStart = f.start;
-    }
   }
 
-  if (skipped) notifyWarn(`Skipped ${skipped} overlaps/invalid`);
   console.log("panel:annotate", {
     total: findings.length,
     deduped: deduped.length,
     skipped_overlaps: skipped,
-    will_annotate: list.length - skipped,
+    will_annotate: todo.length,
   });
+  return inserted;
 }
 
 g.annotateFindingsIntoWord = g.annotateFindingsIntoWord || annotateFindingsIntoWord;
@@ -665,6 +671,14 @@ function wireUI() {
   bindClick("#btnRejectAll", onRejectAll);
   bindClick("#btnPrevIssue", onPrevIssue);
   bindClick("#btnNextIssue", onNextIssue);
+  const cb = (document.getElementById("cai-comment-on-analyze") as HTMLInputElement | null)
+    || (document.getElementById("chkAddCommentsOnAnalyze") as HTMLInputElement | null);
+  if (cb) {
+    cb.checked = isAddCommentsOnAnalyzeEnabled();
+    cb.addEventListener("change", () => setAddCommentsOnAnalyze(!!cb.checked));
+  } else {
+    isAddCommentsOnAnalyzeEnabled();
+  }
   bindClick("#btnAnnotate", () => {
     const data = (window as any).__last?.analyze?.json || {};
     const findings = (globalThis as any).parseFindings(data);

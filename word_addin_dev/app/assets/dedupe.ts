@@ -5,6 +5,7 @@ export function normalizeText(s: string | undefined | null): string {
   return s
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
+    .replace(/\u00A0/g, " ")
     .replace(/[ \t]+/g, " ")
     .trim();
 }

@@ -130,7 +130,7 @@ function filterByThreshold(list: AnalyzeFinding[], thr: "low" | "medium" | "high
 }
 
 function buildLegalComment(f: AnalyzeFinding): string {
-  if (!f || !f.rule_id || !f.clause_type || !f.snippet) {
+  if (!f || !f.rule_id || !f.snippet) {
     console.warn("buildLegalComment: missing required fields", f);
     return "";
   }
@@ -198,7 +198,7 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
   let lastStart = Number.POSITIVE_INFINITY;
   let skipped = 0;
   for (const f of sorted) {
-    if (!f || !f.rule_id || !f.clause_type || !f.snippet) {
+    if (!f || !f.rule_id || !f.snippet) {
       console.warn("annotateFindingsIntoWord: skipping invalid finding", f);
       skipped++;
       continue;

@@ -54,6 +54,13 @@ UI panel surfaces this status so missing coverage is visible during checks.
 
 Фронтенд-тесты запускаются Vitest; Jest не используется.
 
+On Windows build and test with:
+
+```bash
+cd word_addin_dev && npm ci && npm test && npm run build
+cd .. && npm run build:panel
+```
+
 After running an analysis the task pane displays the current CID. You can open
 `/api/trace/{cid}` via the **View Trace** button or export the analysis using
 **Export HTML/PDF**. The **Replay last** button re-sends the previous input to

@@ -1,14 +1,15 @@
 # Word Add-in Dev
 
-## Tests
+## Test and build
 
-To run unit tests for the add-in helper:
+On Windows use:
 
 ```bash
-cd word_addin_dev
-npm ci
-npm test --silent
+cd word_addin_dev && npm ci && npm test && npm run build
+cd .. && npm run build:panel
 ```
+
+These steps run the Vitest suite and build the add-in bundle without relying on Unix `cp`.
 
 ## Manual check
 

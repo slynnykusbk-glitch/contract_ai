@@ -715,17 +715,21 @@ function wireUI() {
     isAddCommentsOnAnalyzeEnabled();
   }
   const annotateBtn = document.getElementById("btnAnnotate") as HTMLButtonElement | null;
-  annotateBtn?.addEventListener("click", async () => {
-    if (annotateBtn.disabled) return;
-    annotateBtn.disabled = true;
-    try {
-      const data = (window as any).__last?.analyze?.json || {};
-      const findings = (globalThis as any).parseFindings(data);
-      await (globalThis as any).annotateFindingsIntoWord(findings);
-    } finally {
-      annotateBtn.disabled = false;
-    }
-  });
+  if (annotateBtn) {
+    annotateBtn.addEventListener("click", async () => {
+      if (annotateBtn.disabled) return;
+      annotateBtn.disabled = true;
+      try {
+        const data = (window as any).__last?.analyze?.json || {};
+        const findings = (globalThis as any).parseFindings(data);
+        await (globalThis as any).annotateFindingsIntoWord(findings);
+      } finally {
+        annotateBtn.disabled = false;
+      }
+    });
+    annotateBtn.classList.remove("js-disable-while-busy");
+    annotateBtn.removeAttribute("disabled");
+  }
 
   onDraftReady('');
   wireResultsToggle();

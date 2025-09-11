@@ -141,7 +141,8 @@ function buildLegalComment(f: AnalyzeFinding): string {
   const law = Array.isArray(f.law_refs) && f.law_refs.length ? f.law_refs.join('; ') : "—";
   const conflict = Array.isArray(f.conflict_with) && f.conflict_with.length ? f.conflict_with.join('; ') : "—";
   const fix = f.suggestion?.text || '—';
-  return `[${sev}] ${rid}${ct}\nReason: ${advice}\nLaw: ${law}\nConflict: ${conflict}\nSuggested fix: ${fix}`;
+  const citations = Array.isArray(f.citations) && f.citations.length ? `\nCitations: ${f.citations.join('; ')}` : '';
+  return `[${sev}] ${rid}${ct}\nReason: ${advice}\nLaw: ${law}\nConflict: ${conflict}${citations}\nSuggested fix: ${fix}`;
 }
 
 function nthOccurrenceIndex(hay: string, needle: string, startPos?: number): number {

@@ -223,6 +223,7 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
     norm: normalizeText(f.snippet || ""),
     msg: buildLegalComment(f),
     rule_id: f.rule_id,
+    occ: nthOccurrenceIndex(base, normalizeText(f.snippet || ""), f.start),
   }));
 
   for (let i = 0; i < items.length; i += batchSize) {
@@ -239,7 +240,14 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
       await ctx.sync();
 
       for (const s of searches) {
-        let target = (s.raw.items || [])[0] || (s.norm.items || [])[0];
+        const occ = s.item.occ || 0;
+        const rawItems = s.raw.items || [];
+        const normItems = s.norm.items || [];
+        let target = rawItems.length
+          ? rawItems[Math.min(occ, rawItems.length - 1)]
+          : normItems.length
+          ? normItems[Math.min(occ, normItems.length - 1)]
+          : null;
         if (target) {
           if (isDryRunAnnotateEnabled()) {
             try { target.select(); } catch {}

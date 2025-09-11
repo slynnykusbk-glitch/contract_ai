@@ -17,6 +17,7 @@ export type AnalyzeFinding = {
   start?: number;
   end?: number;
   snippet?: string;
+  normalized_snippet?: string;
   advice?: string;
   law_refs?: string[];
   law_reference?: string; // legacy

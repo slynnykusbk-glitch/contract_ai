@@ -14,5 +14,12 @@ def test_build_token_injected(tmp_path):
     manifest = Path("word_addin_dev/manifest.xml").read_text(encoding="utf-8")
     assert f"b={token}" in manifest
 
-    token_file = Path("contract_review_app/contract_review_app/static/panel/.build-token")
+    html = Path(
+        "contract_review_app/contract_review_app/static/panel/taskpane.html"
+    ).read_text(encoding="utf-8")
+    assert f"taskpane.bundle.js?b={token}" in html
+
+    token_file = Path(
+        "contract_review_app/contract_review_app/static/panel/.build-token"
+    )
     assert token_file.read_text(encoding="utf-8").strip() == token

@@ -26,11 +26,10 @@ def test_std_headers_present_and_valid(path):
         r1 = client.post(path, json=payload1)
         r2 = client.post(path, json=payload1)
         r3 = client.post(path, json=payload2)
-    assert r1.headers["x-cid"] == r2.headers["x-cid"]
-    assert r1.headers["x-cid"] != r3.headers["x-cid"]
+    assert r1.headers["x-cid"] == r2.headers["x-cid"] == r3.headers["x-cid"]
     assert r1.headers["x-schema-version"] == SCHEMA_VERSION
     assert int(r1.headers["x-latency-ms"]) >= 0
-    assert re.fullmatch(r"[0-9a-f]{64}", r1.headers["x-cid"])
+    assert re.fullmatch(r"[0-9a-f-]{36}", r1.headers["x-cid"])
 
 
 def test_error_handlers_also_emit_headers():
@@ -57,3 +56,14 @@ def test_trace_uses_same_cid_and_latency(monkeypatch):
     event_ms = last["ms"]
     header_ms = int(resp.headers["x-latency-ms"])
     assert event_ms == header_ms or abs(event_ms - header_ms) <= 5
+
+
+def test_dev_injects_default_headers(monkeypatch):
+    monkeypatch.setenv("DEV_MODE", "1")
+    resp = client.post("/api/analyze", json={"text": "hi"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "debug" in data.get("meta", {})
+    assert resp.headers["x-schema-version"] == "1.4"
+    assert re.fullmatch(r"[0-9a-f-]{36}", resp.headers["x-cid"])
+    assert resp.headers["x-rule-count"].isdigit()

@@ -1,4 +1,7 @@
+import os
 import pytest
+
+os.environ.setdefault("SCHEMA_VERSION", "1.4")
 
 
 @pytest.fixture(autouse=True)

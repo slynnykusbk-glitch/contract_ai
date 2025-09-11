@@ -107,3 +107,11 @@ rg -n --pcre2 "[\p{Cyrillic}]" contract_review_app core word_addin_dev | tee i18
 ```
 
 The generated `i18n_inventory.txt` should be empty in a clean repository.
+
+## Live test watch (improved)
+
+Установка: pip install -r requirements-dev.txt
+
+Запуск: .\ContractAI-Watch-Tests.local.ps1 (откроется окно ptw; редактируешь код — тесты идут автоматически)
+
+Быстрый режим (по желанию): .\tools\watch_backend_tests.ps1 -Fast (pytest -f loop-on-fail)

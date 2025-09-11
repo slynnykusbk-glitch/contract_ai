@@ -7,6 +7,7 @@ $tools = Join-Path $repo "tools\watch_backend_tests.ps1"
 if (-not (Test-Path $tools)) { throw "Missing $tools" }
 
 # Полный режим (ptw). Существующая кнопка не трогаем.
-Start-Process powershell -ArgumentList "-NoExit","-Command","`"$tools -All`""
+# Use -File so the script runs even when the repo path contains spaces.
+Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$tools`"", "-All"
 
 Write-Host "Launched improved backend test watcher (ptw). Close window to stop."

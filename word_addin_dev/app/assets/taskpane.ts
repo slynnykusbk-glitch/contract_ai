@@ -430,6 +430,7 @@ export async function applyOpsTracked(
       }
 
       if (target) {
+
         target.insertText(op.replacement, 'Replace');
         const comment = op.rationale || op.source || 'AI edit';
         try { target.insertComment(comment); } catch {}
@@ -813,7 +814,7 @@ async function onAcceptAll() {
     await Word.run(async ctx => {
       const range = ctx.document.getSelection();
       (ctx.document as any).trackRevisions = true;
-      range.insertText(proposed, "Replace");
+      range.insertText(proposed, Word.InsertLocation.replace);
       try { range.insertComment(link); } catch {}
       await ctx.sync();
     });

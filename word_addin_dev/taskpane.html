@@ -257,11 +257,17 @@
     </div>
   </div>
 
+  <!-- hidden field with original text -->
+  <textarea id="originalText" style="display:none"></textarea>
+
+  <!-- loading indicator -->
+  <div id="busyBar" style="display:none"></div>
+
   <div class="row card">
     <div class="muted" style="margin-bottom:6px">Original clause:</div>
     <textarea id="originalClause" placeholder="Paste text or load from selection/document…"></textarea>
     <div class="row flex" style="margin-top:8px">
-      <button id="btnSuggestEdit" class="btn btn-primary btn-sm">Suggest edit</button>
+      <button id="btnSuggestEdit" class="btn btn-primary btn-sm">Get draft</button>
     </div>
     <div class="row">
       <span class="badge" id="scoreBadge">score: —</span>
@@ -304,29 +310,32 @@
     </div>
   </section>
 
-  <div class="row card" id="resultsCard">
+  <section class="row card" id="resultsBlock">
     <div class="muted" style="margin-bottom:6px">Results</div>
     <div class="grid">
-      <div class="kv"><strong>Clause type:</strong><span id="resClauseType" data-role="clause-type">—</span></div>
+      <div class="kv"><strong>Clause type:</strong><span id="clauseTypeOut" data-role="clause-type">—</span></div>
       <div class="kv"><strong>Findings:</strong><span id="resFindingsCount" data-role="findings-count">—</span></div>
-      <div class="kv"><strong>Visible / Hidden by filters:</strong><span id="resFindingsVH" data-role="findings-visible-hidden">—</span></div>
+      <div class="kv"><strong>Visible / Hidden by filters:</strong><span id="visibleHiddenOut" data-role="findings-visible-hidden">—</span></div>
     </div>
 
-    <div class="row">
+    <!-- сам контейнер результатов для событий -->
+    <div id="results"></div>
+
+    <div class="row" id="findingsBlock">
       <strong>Findings</strong>
-      <ul class="list" id="findingsList" data-role="findings"></ul>
+      <ol class="list" id="findingsList" data-role="findings"></ol>
     </div>
 
-    <div class="row">
+    <div class="row" id="recommendationsBlock">
       <strong>Recommendations</strong>
-      <ul class="list" id="recoList" data-role="recommendations"></ul>
+      <ol class="list" id="recsList" data-role="recommendations"></ol>
     </div>
 
     <div class="row">
       <span class="toggle" id="toggleRaw" data-role="toggle-raw-json">Show raw JSON</span>
       <pre id="rawJson" data-role="raw-json" style="display:none"></pre>
     </div>
-  </div>
+  </section>
 
   <div id="cai-suggest" class="card mt-2">
     <div class="card-header">Suggested edits</div>
@@ -372,14 +381,15 @@
     </div>
   </div>
 
-  <div class="row card">
+  <section class="row card" id="draftPane">
     <div class="muted" style="margin-bottom:6px">Proposed draft (from analysis or edited manually):</div>
     <textarea
-  id="proposedText"
+  id="draftText"
   name="proposed"
   data-role="proposed-text"
   placeholder="Proposed draft…"
   rows="8"
+  spellcheck="false"
 ></textarea>
     <div class="row flex" style="margin-top:8px">
       <button id="btnPreviewDiff" class="btn-grey" disabled>Preview diff</button>
@@ -392,7 +402,7 @@
       <div id="diffOutput" style="background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:8px;white-space:pre-wrap"></div>
     </div>
     <div id="diffView" class="pre"></div>
-  </div>
+  </section>
 
   <div class="row">
     <div class="muted" style="margin-bottom:4px">Console</div>

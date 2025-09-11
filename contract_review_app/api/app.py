@@ -238,7 +238,6 @@ from pydantic import (
 from fastapi.openapi.utils import get_openapi
 from .error_handlers import register_error_handlers
 from .headers import apply_std_headers
-from .auth import require_api_key_and_schema as _require_api_key
 from .mw_utils import capture_response, normalize_status_if_json
 from .models import (
     CitationInput,
@@ -283,49 +282,7 @@ from contract_review_app.intake.normalization import (
 from contract_review_app.llm.provider import get_provider
 from contract_review_app.api.limits import API_TIMEOUT_S, API_RATE_LIMIT_PER_MIN
 
-# --------------------------------------------------------------------
-# Middleware for header validation
-# --------------------------------------------------------------------
-
-
-class RequireHeadersMiddleware(BaseHTTPMiddleware):
-    """Ensure required headers are present for relevant POST requests.
-
-    Some integration endpoints (e.g. Companies House search) historically did not
-    mandate schema headers. To avoid breaking those clients, skip enforcement for
-    such paths and only require headers on the core API routes that depend on
-    them.
-    """
-
-    _SKIP_PATHS = ("/api/companies",)
-
-    async def dispatch(self, request: Request, call_next):
-        headers = request.headers
-        schema = headers.get("x-schema-version") or os.getenv(
-            "SCHEMA_VERSION", SCHEMA_VERSION
-        )
-        cid = headers.get("x-cid") or _PROCESS_CID
-        request.state.schema_version = schema
-        request.state.cid = cid
-
-        if request.method.upper() == "POST" and not any(
-            request.url.path.startswith(p) for p in self._SKIP_PATHS
-        ):
-            try:
-                _require_api_key(request)
-            except HTTPException as exc:
-                problem = ProblemDetail(
-                    title=exc.detail, detail=exc.detail, status=exc.status_code
-                )
-                resp = JSONResponse(problem.model_dump(), status_code=exc.status_code)
-                apply_std_headers(
-                    resp,
-                    request,
-                    getattr(request.state, "started_at", time.perf_counter()),
-                )
-                return resp
-        response = await call_next(request)
-        return response
+from .middlewares import RequireHeadersMiddleware
 
 
 # --------------------------------------------------------------------
@@ -1238,7 +1195,7 @@ def _as_dict(model_or_obj: Any) -> Dict[str, Any]:
 
 
 def _set_schema_headers(response: Response) -> None:
-    pass
+    response.headers["X-Schema-Version"] = SCHEMA_VERSION
 
 
 def _set_std_headers(

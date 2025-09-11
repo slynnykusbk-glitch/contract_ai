@@ -34,7 +34,7 @@ def test_enrichment_pipeline():
     resp = client.post(
         "/api/analyze",
         json={"text": "Agreement between Acme Ltd and Foo"},
-        headers={"x-schema-version": "1.4"},
+        headers={"x-api-key": "k", "x-schema-version": "1.4"},
     )
     assert resp.status_code == 200
     data = resp.json()

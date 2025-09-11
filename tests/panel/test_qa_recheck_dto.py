@@ -20,10 +20,10 @@ def client(monkeypatch):
 
 
 def test_recheck_minimal_ok(client):
-    headers = {"x-schema-version": SCHEMA_VERSION}
-    flag = os.getenv("FEATURE_REQUIRE_API_KEY", "").strip().lower()
-    if flag in {"1", "true", "yes", "on", "enabled"}:
-        headers["x-api-key"] = os.getenv("API_KEY", "")
+    headers = {
+        "x-schema-version": SCHEMA_VERSION,
+        "x-api-key": os.getenv("API_KEY", "local-test-key-123"),
+    }
     r = client.post(
         "/api/qa-recheck",
         json={"text": "clause text", "rules": {}, "language": "en-GB"},
@@ -36,10 +36,10 @@ def test_recheck_minimal_ok(client):
 
 
 def test_recheck_empty_text_422(client):
-    headers = {"x-schema-version": SCHEMA_VERSION}
-    flag = os.getenv("FEATURE_REQUIRE_API_KEY", "").strip().lower()
-    if flag in {"1", "true", "yes", "on", "enabled"}:
-        headers["x-api-key"] = os.getenv("API_KEY", "")
+    headers = {
+        "x-schema-version": SCHEMA_VERSION,
+        "x-api-key": os.getenv("API_KEY", "local-test-key-123"),
+    }
     r = client.post(
         "/api/qa-recheck",
         json={"text": "", "rules": {}, "language": "en-GB"},

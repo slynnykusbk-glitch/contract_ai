@@ -3,21 +3,21 @@ from fastapi.testclient import TestClient
 from contract_review_app.api.models import SCHEMA_VERSION
 
 
-def _get_client(monkeypatch):
-    monkeypatch.setenv("FEATURE_REQUIRE_API_KEY", "1")
-    monkeypatch.setenv("API_KEY", "secret")
-    import contract_review_app.api.app as app_module
-    importlib.reload(app_module)
-    return TestClient(app_module.app)
+def _get_client():
+    from contract_review_app.api.app import app
+
+    return TestClient(app)
 
 
-def test_api_key_auth(monkeypatch):
-    client = _get_client(monkeypatch)
+def test_api_key_auth():
+    client = _get_client()
     payload = {"text": "Hello"}
 
     r = client.post("/api/analyze", json=payload)
     assert r.status_code == 401
-    r = client.post("/api/gpt-draft", json={"cid": "x", "clause": "Ping", "mode": "friendly"})
+    r = client.post(
+        "/api/gpt-draft", json={"cid": "x", "clause": "Ping", "mode": "friendly"}
+    )
     assert r.status_code == 401
     r = client.post("/api/suggest_edits", json=payload)
     assert r.status_code == 401
@@ -25,7 +25,7 @@ def test_api_key_auth(monkeypatch):
     headers = {"x-api-key": "secret", "x-schema-version": SCHEMA_VERSION}
     r_an = client.post("/api/analyze", json=payload, headers=headers)
     assert r_an.status_code == 200
-    cid = r_an.headers.get("x-cid")
+    cid = r_an.headers.get("X-Cid")
     assert (
         client.post(
             "/api/gpt-draft",

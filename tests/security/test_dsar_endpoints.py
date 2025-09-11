@@ -11,8 +11,6 @@ from contract_review_app.api.models import SCHEMA_VERSION
 def _get_client(tmp_path, monkeypatch):
     key = Fernet.generate_key().decode()
     monkeypatch.setenv("CR_ATREST_KEY", key)
-    monkeypatch.setenv("API_KEY", "secret")
-    monkeypatch.setenv("FEATURE_REQUIRE_API_KEY", "1")
     monkeypatch.setenv("CONTRACTAI_RATE_PER_MIN", "1")
     import contract_review_app.api.limits as limits_mod
     reload(limits_mod)

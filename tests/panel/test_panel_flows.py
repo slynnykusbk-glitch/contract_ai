@@ -9,11 +9,10 @@ client = TestClient(app)
 
 
 def _headers():
-    headers = {"x-schema-version": SCHEMA_VERSION}
-    flag = os.getenv("FEATURE_REQUIRE_API_KEY", "").strip().lower()
-    if flag in {"1", "true", "yes", "on", "enabled"}:
-        headers["x-api-key"] = os.getenv("API_KEY", "")
-    return headers
+    return {
+        "x-schema-version": SCHEMA_VERSION,
+        "x-api-key": os.getenv("API_KEY", "local-test-key-123"),
+    }
 
 
 def _apply_ops(text: str, ops):

@@ -84,6 +84,8 @@ export interface AnnotationPlan {
   normalized_fallback: string;
 }
 
+export const MAX_ANNOTATE_OPS = 200;
+
 /**
  * Prepare annotate operations from analysis findings without touching Word objects.
  */
@@ -111,9 +113,11 @@ export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
       normalized_fallback: normalizeText((f as any).normalized_snippet || "")
     });
     if (typeof f.start === "number") lastStart = f.start;
+    if (ops.length >= MAX_ANNOTATE_OPS) break;
   }
   const g: any = globalThis as any;
   if (skipped) g.notifyWarn?.(`Skipped ${skipped} overlaps/invalid`);
+  if (deduped.length > MAX_ANNOTATE_OPS) g.notifyWarn?.(`Truncated to first ${MAX_ANNOTATE_OPS} findings`);
   g.notifyOk?.(`Will insert: ${ops.length}`);
   return ops;
 }

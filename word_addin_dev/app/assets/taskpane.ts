@@ -6,9 +6,13 @@ import { postJSON, getStoredKey, getStoredSchema, setStoredSchema, ensureHeaders
 
 // enable rich debug when OfficeExtension is available
 const oe: any = (globalThis as any).OfficeExtension;
+const gg: any = (globalThis as any);
 if (oe && oe.config) {
-  // @ts-ignore
-  oe.config.extendedErrorLogging = true;
+  const isProd = typeof process !== "undefined" && process.env?.NODE_ENV === "production";
+  if (!isProd || gg.__ENABLE_EXTENDED_LOGS__) {
+    // @ts-ignore
+    oe.config.extendedErrorLogging = true;
+  }
 }
 
 export function logRichError(e: any, tag = "Word") {

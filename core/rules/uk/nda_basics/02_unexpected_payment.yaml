@@ -1,0 +1,7 @@
+rule:
+  id: uk_ndabasic_unexpected_payment
+  description: NDA requires unexpected payment
+  severity: high
+  patterns:
+    - '(?i)£\s*(1\.5\s*m(?:illion)?|1,500,000)'
+  advice: 'Remove payment obligation unrelated to confidentiality.'

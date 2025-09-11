@@ -1,0 +1,7 @@
+rule:
+  id: uk_regulatory_prohibited_notice
+  description: Agreement both prohibits and requires regulator notification
+  severity: high
+  patterns:
+    - '(?is)shall\s+not\s+notify[\s\S]{0,100}notify\s+the\s+FCA'
+  advice: 'Clarify regulatory notification obligations.'

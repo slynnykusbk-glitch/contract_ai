@@ -1,0 +1,7 @@
+rule:
+  id: uk_company_address_conflict
+  description: Different addresses for same company
+  severity: medium
+  patterns:
+    - '(?is)\b\d+\s+[A-Za-z]+\s+Street[\s\S]{0,200}\b\d+\s+[A-Za-z]+\s+Street'
+  advice: 'Verify registered address is consistent.'

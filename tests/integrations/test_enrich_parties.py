@@ -70,3 +70,26 @@ def test_build_companies_meta():
     meta = build_companies_meta([p])
     assert meta[0]["matched"]["company_number"] == "123"
     assert meta[0]["verdict"]["level"] == "ok"
+
+
+@respx.mock
+def test_build_companies_meta_preserves_doc_data():
+    respx.get(f"{BASE}/search/companies").respond(
+        json={"items": [{"title": "ACME LTD", "company_number": "555"}]}, headers={"ETag": "s1"}
+    )
+    respx.get(f"{BASE}/company/555").respond(
+        json={
+            "company_name": "ACME LTD",
+            "company_number": "555",
+            "company_status": "active",
+        }
+    )
+    respx.get(f"{BASE}/company/555/officers?items_per_page=1").respond(json={"total_results": 3})
+    respx.get(
+        f"{BASE}/company/555/persons-with-significant-control?items_per_page=1"
+    ).respond(json={"total_results": 2})
+    doc_party = Party(name="Acme Ltd")
+    enriched = enrich_parties_with_companies_house([Party(**doc_party.model_dump())])
+    meta = build_companies_meta(enriched, doc_parties=[doc_party])
+    assert meta[0]["from_document"]["number"] is None
+    assert meta[0]["matched"]["company_number"] == "555"

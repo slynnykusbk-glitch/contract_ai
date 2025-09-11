@@ -6,7 +6,7 @@ JS = textwrap.dedent('''
 const vm = require('vm');
 const fs = require('fs');
 let code = fs.readFileSync('word_addin_dev/taskpane.bundle.js', 'utf-8');
-code = code.replace(/bootstrap\(\);\s*$/, '');
+code = code.replace(/bootstrap\(\);/, '');
 const inserts = [];
 const sandbox = {
   window: { __lastAnalyzed: 'abc abc' },

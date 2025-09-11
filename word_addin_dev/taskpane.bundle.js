@@ -391,12 +391,19 @@ Suggested fix: ${fix}`;
   }
   g.annotateFindingsIntoWord = g.annotateFindingsIntoWord || annotateFindingsIntoWord;
   async function applyOpsTracked(ops) {
-    if (!ops || !ops.length) return;
+    let cleaned = (ops || []).filter((o) => typeof o.start === "number" && typeof o.end === "number" && o.end > o.start).sort((a, b) => a.start - b.start);
+    let lastEnd = -1;
+    cleaned = cleaned.filter((o) => {
+      if (o.start < lastEnd) return false;
+      lastEnd = o.end;
+      return true;
+    });
+    if (!cleaned.length) return;
     const last = window.__lastAnalyzed || "";
     await Word.run(async (ctx) => {
       const body = ctx.document.body;
       ctx.document.trackRevisions = true;
-      for (const op of ops) {
+      for (const op of cleaned) {
         const snippet = last.slice(op.start, op.end);
         const occIdx = (() => {
           let idx = -1, n = 0;
@@ -409,7 +416,7 @@ Suggested fix: ${fix}`;
         const items = found.items || [];
         const target = items[Math.min(occIdx, Math.max(0, items.length - 1))];
         if (target) {
-          target.insertText(op.replacement, "Replace");
+          target.insertText(op.replacement, Word.InsertLocation.replace);
           try {
             target.insertComment("AI edit");
           } catch {
@@ -421,6 +428,7 @@ Suggested fix: ${fix}`;
       }
     });
   }
+  g.applyOpsTracked = g.applyOpsTracked || applyOpsTracked;
   async function navComments(dir) {
     try {
       await Word.run(async (ctx) => {
@@ -700,7 +708,7 @@ Suggested fix: ${fix}`;
       await Word.run(async (ctx) => {
         const range = ctx.document.getSelection();
         ctx.document.trackRevisions = true;
-        range.insertText(proposed, "Replace");
+        range.insertText(proposed, Word.InsertLocation.replace);
         try {
           range.insertComment(link);
         } catch {

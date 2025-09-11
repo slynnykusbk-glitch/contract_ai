@@ -1,4 +1,4 @@
-import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse } from "./api-client";
+import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines } from "./api-client";
 import { normalizeText, dedupeFindings, severityRank } from "./dedupe";
 export { normalizeText, dedupeFindings } from "./dedupe";
 import { getApiKeyFromStore, getSchemaFromStore, getAddCommentsFlag, setAddCommentsFlag } from "./store";
@@ -6,9 +6,13 @@ import { postJSON, getStoredKey, getStoredSchema, setStoredSchema, ensureHeaders
 
 // enable rich debug when OfficeExtension is available
 const oe: any = (globalThis as any).OfficeExtension;
+const gg: any = (globalThis as any);
 if (oe && oe.config) {
-  // @ts-ignore
-  oe.config.extendedErrorLogging = true;
+  const isProd = typeof process !== "undefined" && process.env?.NODE_ENV === "production";
+  if (!isProd || gg.__ENABLE_EXTENDED_LOGS__) {
+    // @ts-ignore
+    oe.config.extendedErrorLogging = true;
+  }
 }
 
 export function logRichError(e: any, tag = "Word") {
@@ -41,7 +45,6 @@ g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
 g.logRichError = g.logRichError || logRichError;
 import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText } from "./office"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
-import { insertDraftText } from "./insert";
 g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 
 type Mode = "live" | "friendly" | "doctor";
@@ -71,8 +74,27 @@ function enableAnalyze() {
 }
 
 function getBackend(): string {
-  try { return (localStorage.getItem('backendUrl') || 'https://localhost:9443').replace(/\/+$/, ''); }
-  catch { return 'https://localhost:9443'; }
+  try {
+    return (
+      localStorage.getItem('backend.url') ||
+      localStorage.getItem('backendUrl') ||
+      'https://localhost:9443'
+    ).replace(/\/+$/, '');
+  } catch {
+    return 'https://localhost:9443';
+  }
+}
+
+function onSaveBackend() {
+  const inp = document.getElementById('backendUrl') as HTMLInputElement | null;
+  const val = inp?.value?.trim();
+  if (val) {
+    try {
+      localStorage.setItem('backend.url', val);
+      localStorage.setItem('backendUrl', val);
+    } catch {}
+  }
+  location.reload();
 }
 
 function ensureHeaders(): boolean {
@@ -331,74 +353,187 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
 
 g.annotateFindingsIntoWord = g.annotateFindingsIntoWord || annotateFindingsIntoWord;
 
+async function onClearAnnots() {
+  try {
+    await Word.run(async ctx => {
+      const cmts = ctx.document.comments;
+      cmts.load('items');
+      await ctx.sync();
+      for (const c of cmts.items) {
+        try { c.delete(); } catch {}
+      }
+      await ctx.sync();
+    });
+    notifyOk('Annotations cleared');
+  } catch (e) {
+    logRichError(e, 'annotate');
+    notifyWarn('Failed to clear annotations');
+  }
+}
+
 export async function applyOpsTracked(
-  ops: { start: number; end: number; replacement: string }[]
+  ops: { start: number; end: number; replacement: string; context_before?: string; context_after?: string; rationale?: string; source?: string }[]
 ) {
-  if (!ops || !ops.length) return;
+  let cleaned = (ops || [])
+    .filter(o => typeof o.start === "number" && typeof o.end === "number" && o.end > o.start)
+    .sort((a, b) => a.start - b.start);
+
+  // prune overlaps keeping earlier ops
+  let lastEnd = -1;
+  cleaned = cleaned.filter(o => {
+    if (o.start < lastEnd) return false;
+    lastEnd = o.end;
+    return true;
+    });
+
+  if (!cleaned.length) return;
   const last: string = (window as any).__lastAnalyzed || "";
 
   await Word.run(async ctx => {
     const body = ctx.document.body;
     (ctx.document as any).trackRevisions = true;
+    const searchOpts = { matchCase: false, matchWholeWord: false } as Word.SearchOptions;
 
-    for (const op of ops) {
+    const pick = (coll: Word.RangeCollection | undefined | null, occ: number): Word.Range | null => {
+      const arr = coll?.items || [];
+      if (!arr.length) return null;
+      return arr[Math.min(Math.max(occ, 0), arr.length - 1)] || null;
+    };
+
+    for (const op of cleaned) {
       const snippet = last.slice(op.start, op.end);
-
       const occIdx = (() => {
         let idx = -1, n = 0;
         while ((idx = last.indexOf(snippet, idx + 1)) !== -1 && idx < op.start) n++;
         return n;
       })();
 
-      const found = body.search(snippet, { matchCase: false, matchWholeWord: false });
-      found.load("items");
-      await ctx.sync();
+      let target: Word.Range | null = null;
 
-      const items = found.items || [];
-      const target = items[Math.min(occIdx, Math.max(0, items.length - 1))];
+      if (op.context_before || op.context_after) {
+        const searchText = `${op.context_before || ''}${snippet}${op.context_after || ''}`;
+        const sFull = body.search(searchText, searchOpts);
+        sFull.load('items');
+        await ctx.sync();
+        const fullRange = pick(sFull, 0);
+        if (fullRange) {
+          const inner = fullRange.search(snippet, searchOpts);
+          inner.load('items');
+          await ctx.sync();
+          target = pick(inner, 0);
+        }
+      }
+
+      if (!target) {
+        const found = body.search(snippet, searchOpts);
+        found.load('items');
+        await ctx.sync();
+        target = pick(found, occIdx);
+      }
+
+      if (!target) {
+        const token = (() => {
+          const tks = snippet.replace(/[^\p{L}\p{N} ]/gu, ' ').split(' ').filter(x => x.length >= 12);
+          if (tks.length) return tks.sort((a, b) => b.length - a.length)[0].slice(0, 64);
+          return null;
+        })();
+        if (token) {
+          const sTok = body.search(token, searchOpts);
+          sTok.load('items');
+          await ctx.sync();
+          target = pick(sTok, 0);
+        }
+      }
 
       if (target) {
-        target.insertText(op.replacement, "Replace");
-        try { target.insertComment("AI edit"); } catch {}
+
+        target.insertText(op.replacement, 'Replace');
+        const comment = op.rationale || op.source || 'AI edit';
+        try { target.insertComment(comment); } catch {}
       } else {
-        console.warn("[applyOpsTracked] match not found", { snippet, occIdx });
+        console.warn('[applyOpsTracked] match not found', { snippet, occIdx });
       }
       await ctx.sync();
     }
   });
 }
 
+g.applyOpsTracked = g.applyOpsTracked || applyOpsTracked;
 
 
-async function navComments(dir: number) {
-  try {
-    await Word.run(async ctx => {
-      const comments = ctx.document.body.getComments();
-      comments.load("items");
-      await ctx.sync();
-      const list = comments.items;
-      if (!list.length) return;
-      const w: any = window as any;
-      w.__caiNavIdx = (w.__caiNavIdx ?? -1) + dir;
-      if (w.__caiNavIdx < 0) w.__caiNavIdx = list.length - 1;
-      if (w.__caiNavIdx >= list.length) w.__caiNavIdx = 0;
-      list[w.__caiNavIdx].getRange().select();
-      await ctx.sync();
-    });
-  } catch (e) {
-    logRichError(e, "annotate");
-    console.warn("nav comment fail", e);
-  }
+
+async function highlightFinding(f: AnalyzeFinding) {
+  const base = normalizeText((window as any).__lastAnalyzed || "");
+  const raw = f?.snippet || "";
+  const norm = normalizeText(raw);
+  const occIdx = nthOccurrenceIndex(base, norm, f.start);
+  const searchOpts = { matchCase: false, matchWholeWord: false } as Word.SearchOptions;
+
+  await Word.run(async ctx => {
+    const body = ctx.document.body;
+    let target: Word.Range | null = null;
+    const pick = (coll: Word.RangeCollection | undefined | null, occ: number): Word.Range | null => {
+      const arr = coll?.items || [];
+      if (!arr.length) return null;
+      return arr[Math.min(Math.max(occ, 0), arr.length - 1)] || null;
+    };
+
+    const sRaw = body.search(raw, searchOpts);
+    sRaw.load("items");
+    await ctx.sync();
+    target = pick(sRaw, occIdx);
+
+    if (!target) {
+      const fb = (f as any).normalized_snippet && (f as any).normalized_snippet !== norm ? (f as any).normalized_snippet : norm;
+      if (fb && fb.trim()) {
+        const sNorm = body.search(fb, searchOpts);
+        sNorm.load("items");
+        await ctx.sync();
+        target = pick(sNorm, occIdx);
+      }
+    }
+
+    if (!target) {
+      const token = (() => {
+        const tks = raw.replace(/[^\p{L}\p{N} ]/gu, " ").split(" ").filter(x => x.length >= 12);
+        if (tks.length) return tks.sort((a, b) => b.length - a.length)[0].slice(0, 64);
+        return null;
+      })();
+      if (token) {
+        const sTok = body.search(token, searchOpts);
+        sTok.load("items");
+        await ctx.sync();
+        target = pick(sTok, 0);
+      }
+    }
+
+    if (target) {
+      try { target.select(); } catch {}
+    }
+    await ctx.sync();
+  });
 }
 
-function onPrevIssue() { navComments(-1); }
-function onNextIssue() { navComments(1); }
+async function navigateFinding(dir: number) {
+  const arr: AnalyzeFinding[] = (window as any).__findings || [];
+  if (!arr.length) return;
+  const w: any = window as any;
+  w.__findingIdx = (w.__findingIdx ?? 0) + dir;
+  if (w.__findingIdx < 0) w.__findingIdx = arr.length - 1;
+  if (w.__findingIdx >= arr.length) w.__findingIdx = 0;
+  try { await highlightFinding(arr[w.__findingIdx]); } catch {}
+}
+
+function onPrevIssue() { navigateFinding(-1); }
+function onNextIssue() { navigateFinding(1); }
 
 function renderResults(res: any) {
   const clause = slot("resClauseType", "clause-type");
   if (clause) clause.textContent = res?.clause_type || "—";
 
   const findingsArr: AnalyzeFinding[] = parseFindings(res);
+  (window as any).__findings = findingsArr;
+  (window as any).__findingIdx = 0;
   const findingsList = slot("findingsList", "findings") as HTMLElement | null;
   if (findingsList) {
     findingsList.innerHTML = "";
@@ -503,26 +638,20 @@ async function onUseWholeDoc() {
   (window as any).toast?.("Whole doc loaded");
 }
 
-async function onGetAIDraft(ev?: Event) {
+async function onSuggestEdit(ev?: Event) {
   try {
-    const src = $(Q.original);
     const dst = $(Q.proposed);
-
-    let text = (src?.value ?? "").trim();
-    if (!text) {
-      try {
-        text = await getSelectionAsync();
-        if (src) src.value = text;
-      } catch {}
-    }
-    if (!text) { notifyWarn("No source text"); return; }
-
-    const modeSel = document.getElementById("cai-mode") as HTMLSelectElement | null;
-    const mode = modeSel?.value || "friendly";
-    if (!lastCid) { notifyWarn("Analyze first"); return; }
-    const json: any = await postJSON(`${getBackend()}/api/gpt-draft`, { cid: lastCid, clause: text, mode });
-    const proposed = (json?.proposed_text ?? json?.draft_text ?? "").toString();
-
+    const base = (window as any).__lastAnalyzed || normalizeText(await getWholeDocText());
+    if (!base) { notifyWarn("No document text"); return; }
+    const arr: AnalyzeFinding[] = (window as any).__findings || [];
+    const idx = (window as any).__findingIdx ?? 0;
+    const finding = arr[idx];
+    if (!finding) { notifyWarn("No active finding"); return; }
+    const json: any = await postJSON(`${getBackend()}/api/suggest_edits`, { text: base, findings: [finding] });
+    const proposed = (json?.proposed_text ?? "").toString();
+    const w: any = window as any;
+    w.__last = w.__last || {};
+    w.__last['suggest'] = { json };
     if (dst) {
       if (!dst.id) dst.id = "proposedText";
       if (!dst.name) dst.name = "proposed";
@@ -655,6 +784,25 @@ function bindClick(sel: string, fn: () => void) {
   el.removeAttribute("disabled");
 }
 
+async function onPreviewDiff() {
+  try {
+    const before = (window as any).__lastAnalyzed || '';
+    const after = ($(Q.proposed)?.value || '').trim();
+    if (!after) { notifyWarn('No draft to diff'); return; }
+    const diff: any = await postRedlines(before, after);
+    const html = diff?.json?.html || diff?.json?.diff_html || diff?.json?.redlines || '';
+    const out = document.getElementById('diffOutput') as HTMLElement | null;
+    const cont = document.getElementById('diffContainer') as HTMLElement | null;
+    if (out && cont) {
+      out.innerHTML = html || '';
+      cont.style.display = html ? 'block' : 'none';
+    }
+  } catch (e) {
+    notifyWarn('Diff failed');
+    console.error(e);
+  }
+}
+
 async function onApplyTracked() {
   try {
     const last = (window as any).__last || {};
@@ -684,7 +832,7 @@ async function onAcceptAll() {
     await Word.run(async ctx => {
       const range = ctx.document.getSelection();
       (ctx.document as any).trackRevisions = true;
-      range.insertText(proposed, "Replace");
+      range.insertText(proposed, Word.InsertLocation.replace);
       try { range.insertComment(link); } catch {}
       await ctx.sync();
     });
@@ -727,13 +875,15 @@ function wireUI() {
   bindClick("#btnUseWholeDoc", onUseWholeDoc);
   bindClick("#btnTest", doHealth);
   bindClick("#btnQARecheck", doQARecheck);
-  document.getElementById("btnGetAIDraft")?.addEventListener("click", onGetAIDraft);
-  bindClick("#btnInsertIntoWord", onInsertIntoWord);
+  document.getElementById("btnSuggestEdit")?.addEventListener("click", onSuggestEdit);
   bindClick("#btnApplyTracked", onApplyTracked);
   bindClick("#btnAcceptAll", onAcceptAll);
   bindClick("#btnRejectAll", onRejectAll);
   bindClick("#btnPrevIssue", onPrevIssue);
   bindClick("#btnNextIssue", onNextIssue);
+  bindClick("#btnPreviewDiff", onPreviewDiff);
+  bindClick("#btnClearAnnots", onClearAnnots);
+  bindClick("#btnSave", onSaveBackend);
   const cb = (document.getElementById("cai-comment-on-analyze") as HTMLInputElement | null)
     || (document.getElementById("chkAddCommentsOnAnalyze") as HTMLInputElement | null);
   if (cb) {
@@ -771,29 +921,15 @@ function wireUI() {
 g.wireUI = g.wireUI || wireUI;
 
 function onDraftReady(text: string) {
-  const btn = document.getElementById('btnInsertIntoWord') as HTMLButtonElement;
   const show = !!text.trim();
-  btn.style.display = show ? 'inline-block' : 'none';
-  btn.disabled = !show;
-}
-
-async function onInsertIntoWord() {
-  const dst = $(Q.proposed);
-  const txt = (dst?.value || "").trim();
-  if (!txt) { notifyWarn("No draft to insert"); return; }
-  const btn = document.getElementById('btnInsertIntoWord') as HTMLButtonElement | null;
-  if (btn) btn.disabled = true;
-  try {
-    await insertDraftText(txt);
-    notifyOk("Inserted into Word");
-  } catch (e) {
-    logRichError(e, "insertDraft");
-    console.error(e);
-    await navigator.clipboard?.writeText(txt).catch(() => {});
-    notifyWarn("Insert failed; draft copied to clipboard");
-  } finally {
-    if (btn) btn.disabled = false;
-  }
+  const apply = document.getElementById('btnApplyTracked') as HTMLButtonElement | null;
+  const accept = document.getElementById('btnAcceptAll') as HTMLButtonElement | null;
+  const reject = document.getElementById('btnRejectAll') as HTMLButtonElement | null;
+  const diff = document.getElementById('btnPreviewDiff') as HTMLButtonElement | null;
+  if (apply) apply.disabled = !show;
+  if (accept) accept.disabled = !show;
+  if (reject) reject.disabled = !show;
+  if (diff) diff.disabled = !show;
 }
 
 async function bootstrap() {

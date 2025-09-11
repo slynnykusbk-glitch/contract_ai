@@ -75,7 +75,7 @@ function buildLegalComment(f: AnalyzeFinding): string {
   return parts.join("\n");
 }
 
-export interface AnnotateOp {
+export interface AnnotationPlan {
   raw: string;
   norm: string;
   occIdx: number;
@@ -84,18 +84,22 @@ export interface AnnotateOp {
   normalized_fallback: string;
 }
 
+export const MAX_ANNOTATE_OPS = 200;
+
 /**
  * Prepare annotate operations from analysis findings without touching Word objects.
  */
-export function annotate(findings: AnalyzeFinding[]): AnnotateOp[] {
+export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
   const base = normalizeText((globalThis as any).__lastAnalyzed || "");
   const deduped = dedupeFindings(findings || []);
   const sorted = deduped
     .slice()
     .sort((a, b) => (a.start ?? Number.POSITIVE_INFINITY) - (b.start ?? Number.POSITIVE_INFINITY));
 
-  const ops: AnnotateOp[] = [];
-  let lastEnd = -1;
+
+  const ops: AnnotationPlan[] = [];
+  let lastStart = Number.POSITIVE_INFINITY;
+
   let skipped = 0;
   for (const f of sorted) {
     if (!f || !f.rule_id || !f.snippet || typeof f.start !== "number") {
@@ -119,10 +123,13 @@ export function annotate(findings: AnalyzeFinding[]): AnnotateOp[] {
       rule_id: f.rule_id,
       normalized_fallback: normalizeText((f as any).normalized_snippet || "")
     });
-    lastEnd = end;
+
+    if (typeof f.start === "number") lastStart = f.start;
+    if (ops.length >= MAX_ANNOTATE_OPS) break;
   }
   const g: any = globalThis as any;
   if (skipped) g.notifyWarn?.(`Skipped ${skipped} overlaps/invalid`);
+  if (deduped.length > MAX_ANNOTATE_OPS) g.notifyWarn?.(`Truncated to first ${MAX_ANNOTATE_OPS} findings`);
   g.notifyOk?.(`Will insert: ${ops.length}`);
   return ops;
 }
@@ -131,7 +138,7 @@ export function annotate(findings: AnalyzeFinding[]): AnnotateOp[] {
  * Convert findings directly into Word comments using a two-phase plan.
  */
 export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number> {
-  const ops = annotate(findings);
+  const ops = planAnnotations(findings);
   if (!ops.length) return 0;
   const g: any = globalThis as any;
   return await g.Word?.run?.(async (ctx: any) => {

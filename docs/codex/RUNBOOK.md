@@ -9,6 +9,13 @@ pip install -r requirements.txt
 python -c "import yaml"
 ```
 
+## Build add-in (Windows)
+
+```bash
+cd word_addin_dev && npm ci && npm test && npm run build
+cd .. && npm run build:panel
+```
+
 ## Panel (HTTPS 3000)
 python .\word_addin_dev\serve_https_panel.py 
   --root "C:\Users\Ludmila\contract_ai\word_addin_dev" 

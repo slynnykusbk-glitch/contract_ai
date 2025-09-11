@@ -6,7 +6,6 @@ const $ = <T extends HTMLElement = HTMLElement>(sel: string) =>
   document.querySelector(sel) as T | null;
 
 const show = (el: HTMLElement | null) => { if (el) el.hidden = false; };
-const hide = (el: HTMLElement | null) => { if (el) el.hidden = true; };
 
 let lastCid = '';
 
@@ -83,7 +82,7 @@ function bindClick(sel: string, fn: (e: Event) => Promise<void>) {
   b.addEventListener('click', async e => {
     try {
       await fn(e);
-    } catch (err: any) {
+    } catch {
       notifyWarn('Request failed');
     }
   });
@@ -142,7 +141,7 @@ export async function startPanel() {
   notifyOk('Panel init OK');
 }
 
-if (!(globalThis as any).__CAI_TESTING__) {
+if (!(globalThis as { __CAI_TESTING__?: boolean }).__CAI_TESTING__) {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => { void startPanel(); });
   } else {

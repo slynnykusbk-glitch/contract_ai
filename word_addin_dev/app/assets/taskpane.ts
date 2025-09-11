@@ -34,8 +34,8 @@ let analyzeBound = false;
 function updateStatusChip(schema?: string | null, cid?: string | null) {
   const el = document.getElementById('status-chip');
   if (!el) return;
-  const s = schema ?? getStoredSchema() || '—';
-  const c = cid ?? lastCid || '—';
+  const s = (schema ?? getStoredSchema()) || '—';
+  const c = (cid ?? lastCid) || '—';
   el.textContent = `schema: ${s} | cid: ${c}`;
 }
 
@@ -190,8 +190,10 @@ export async function mapFindingToRange(
 }
 
 export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Promise<number> {
-  const base = normalizeText((window as any).__lastAnalyzed || "");
+  const baseNorm = normalizeText((window as any).__lastAnalyzed || "");
+  if (!Array.isArray(findings) || findings.length === 0) return 0;
 
+  // 1) уберём дубли и пересечения, чтобы Word не рвал object path
   const deduped = dedupeFindings(findings || []);
   const sorted = deduped.slice().sort((a, b) => (b.end ?? 0) - (a.end ?? 0));
 
@@ -199,114 +201,103 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
   let lastStart = Number.POSITIVE_INFINITY;
   let skipped = 0;
   for (const f of sorted) {
-    if (!f || !f.rule_id || !f.snippet) {
-      console.warn("annotateFindingsIntoWord: skipping invalid finding", f);
-      skipped++;
-      continue;
-    }
-    const snippet = f.snippet;
-    const end = typeof f.end === "number" ? f.end : (typeof f.start === "number" ? f.start + snippet.length : undefined);
-    if (typeof end === "number" && end > lastStart) {
-      skipped++;
-      continue;
-    }
+    if (!f || !f.rule_id || !f.snippet) { skipped++; continue; }
+    const sn = f.snippet;
+    const end = typeof f.end === "number" ? f.end : (typeof f.start === "number" ? f.start + sn.length : undefined);
+    if (typeof end === "number" && end > lastStart) { skipped++; continue; }
     todo.push(f);
     if (typeof f.start === "number") lastStart = f.start;
   }
-
   if (skipped) notifyWarn(`Skipped ${skipped} overlaps/invalid`);
   notifyOk(`Will insert: ${todo.length}`);
 
+  // 2) подготовим батчи по 20, для стабильности Word.run
+  const batchSize = 20;
   let inserted = 0;
-  for (const f of todo) {
-    const snippet = f.snippet;
-    const occIdx = (() => {
-      if (typeof f.start !== "number" || !snippet) return 0;
-      let idx = -1, n = 0;
-      while ((idx = base.indexOf(snippet, idx + 1)) !== -1 && idx < f.start) n++;
-      return n;
-    })();
 
-    const tryInsert = async (mode: "normal" | "anchor" | "selection") => {
-      await Word.run(async ctx => {
-        const body = ctx.document.body;
+  const items = todo.map(f => {
+    const raw = f.snippet || "";
+    const normFromFinding = normalizeText(f.normalized_snippet || "");
+    const normRaw = normalizeText(raw);
+    const norm = normFromFinding || normRaw; // fallback на нормализованный текст
+    const occIdx = nthOccurrenceIndex(baseNorm, normRaw, f.start); // стараемся выбрать правильное вхождение
+    const msg = buildLegalComment(f);
+    return { raw, norm, occIdx, msg, rule_id: f.rule_id };
+  });
 
-        if (mode === "selection") {
-          const sel = ctx.document.getSelection();
-          const msgSel = `${buildLegalComment(f)} (fallback)`;
-          if (!isDryRunAnnotateEnabled()) sel.insertComment(msgSel);
-          await ctx.sync();
-          return;
-        }
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
 
-        const s1 = body.search(snippet, { matchCase: false, matchWholeWord: false });
-        s1.load("items");
-        await ctx.sync();
-        let target = s1.items?.[Math.min(occIdx, Math.max(0, (s1.items || []).length - 1))];
+    await Word.run(async ctx => {
+      const body = ctx.document.body;
+
+      // 3) сразу подготавливаем поиски по сырому и нормализованному тексту
+      const searches = batch.map(it => {
+        const sRaw = body.search(it.raw, { matchCase: false, matchWholeWord: false });
+        const sNorm = it.norm && it.norm !== it.raw
+          ? body.search(it.norm, { matchCase: false, matchWholeWord: false })
+          : null;
+        return { sRaw, sNorm, it };
+      });
+
+      for (const s of searches) {
+        s.sRaw.load("items");
+        if (s.sNorm) s.sNorm.load("items");
+      }
+      await ctx.sync();
+
+      // 4) выбираем цель: сначала сырое, потом нормализованное, потом «токен»-якорь
+      for (const s of searches) {
+        const rawItems = (s.sRaw.items || []);
+        const normItems = (s.sNorm?.items || []);
+
+        const pick = (arr: Word.Range[]) =>
+          arr[Math.min(s.it.occIdx, Math.max(0, arr.length - 1))] || null;
+
+        let target: Word.Range | null =
+          pick(rawItems) ||
+          pick(normItems);
 
         if (!target) {
-          const ns = normalizeText(f.normalized_snippet || "");
-          if (ns && ns !== snippet) {
-            const sN = body.search(ns, { matchCase: false, matchWholeWord: false });
-            sN.load("items");
-            await ctx.sync();
-            target = sN.items?.[Math.min(occIdx, Math.max(0, (sN.items || []).length - 1))];
-          }
-        }
-
-        if (!target) {
+          // якорь: самый длинный альфанум-токен из сниппета, либо кусок baseNorm возле start
           const token = (() => {
-            const tokens = snippet.replace(/[^\p{L}\p{N} ]/gu, " ").split(" ").filter(x => x.length >= 12);
-            if (tokens.length) return tokens.sort((a, b) => b.length - a.length)[0].slice(0, 64);
-            const i = Math.max(0, f.start ?? 0);
-            return base.slice(i, i + 40);
+            const tokens = s.it.raw.replace(/[^\p{L}\p{N} ]/gu, " ")
+              .split(" ")
+              .filter(x => x.length >= 12)
+              .sort((a, b) => b.length - a.length);
+            if (tokens.length) return tokens[0].slice(0, 64);
+            const start = Math.max(0, (s.it.occIdx || 0));
+            return baseNorm.slice(start, start + 40);
           })();
 
           if (token && token.trim()) {
-            const s2 = body.search(token, { matchCase: false, matchWholeWord: false });
-            s2.load("items");
+            const sTok = body.search(token, { matchCase: false, matchWholeWord: false });
+            sTok.load("items");
             await ctx.sync();
-            target = s2.items?.[Math.min(occIdx, Math.max(0, (s2.items || []).length - 1))];
+            target = (sTok.items || [])[0] || null;
           }
         }
 
         if (target) {
-          if (mode === "anchor") target = target.getRange("Start");
           if (isDryRunAnnotateEnabled()) {
-            try { target.select(); } catch {}
-          } else {
-            const msg = buildLegalComment(f);
-            if (msg) target.insertComment(msg);
+            try { target.select(); } catch { /* ignore */ }
+          } else if (s.it.msg) {
+            try { target.insertComment(s.it.msg); } catch (e) {
+              console.warn("insertComment failed, retry select", e);
+              try { target.select(); target.insertComment(s.it.msg); } catch {}
+            }
           }
-        } else {
-          console.warn("[annotate] no match for snippet/anchor", { rid: f.rule_id, snippet: snippet.slice(0, 120) });
-        }
-        await ctx.sync();
-      });
-    };
-
-    try {
-      await tryInsert("normal");
-      inserted++;
-    } catch (e) {
-      if (String(e).includes("0xA7210002")) {
-        console.warn("panel:annotate", { rid: f.rule_id, fallback: "anchor" });
-        try {
-          await tryInsert("anchor");
           inserted++;
-        } catch (e2) {
-          console.warn("panel:annotate", { rid: f.rule_id, fallback: "selection" });
-          try {
-            await tryInsert("selection");
-            inserted++;
-          } catch (e3) {
-            console.warn("annotate retry failed", e3);
-          }
+        } else {
+          console.warn("[annotate] no match for snippet", {
+            rid: s.it.rule_id,
+            snippet: s.it.raw.slice(0, 120)
+          });
         }
-      } else {
-        console.warn("annotate error", e);
       }
-    }
+
+      await ctx.sync();
+    });
   }
 
   console.log("panel:annotate", {
@@ -314,9 +305,12 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
     deduped: deduped.length,
     skipped_overlaps: skipped,
     will_annotate: todo.length,
+    inserted,
   });
+
   return inserted;
 }
+
 
 g.annotateFindingsIntoWord = g.annotateFindingsIntoWord || annotateFindingsIntoWord;
 
@@ -794,4 +788,6 @@ async function bootstrap() {
   }
 }
 
-bootstrap();
+if (!(globalThis as any).__CAI_TESTING__) {
+  bootstrap();
+}

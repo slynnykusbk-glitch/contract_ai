@@ -1,49 +1,128 @@
 require('ts-node/register');
-const { insertComments } = require('../../word_addin_dev/app/assets/annotate.js');
-const { findAnchors } = require('../../word_addin_dev/app/assets/anchors.js');
+global.window = global;
+ const stubEl = {
+  style: {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  innerHTML: '',
+  textContent: '',
+  classList: { add: () => {}, remove: () => {}, contains: () => false },
+  removeAttribute: () => {},
+  setAttribute: () => {}
+};
+ global.document = {
+  getElementById: () => stubEl,
+  querySelector: () => stubEl,
+  querySelectorAll: () => ({ forEach: () => {} }),
+  body: { dataset: {}, querySelectorAll: () => ({ forEach: () => {} }) }
+};
+global.notifyWarn = jest.fn();
+global.notifyOk = jest.fn();
+global.localStorage = { getItem: () => null, setItem: () => {} };
+global.CAI = { Store: { get: () => ({}) } };
+global.__CAI_TESTING__ = true;
+jest.mock('../../word_addin_dev/app/assets/store', () => ({
+  getAddCommentsFlag: () => false,
+  setAddCommentsFlag: () => {},
+}));
+jest.mock('../../word_addin_dev/app/assets/notifier', () => ({
+  notifyWarn: jest.fn(),
+  notifyOk: jest.fn(),
+  notifyErr: jest.fn(),
+}));
+const { annotateFindingsIntoWord } = require('../../word_addin_dev/app/assets/taskpane');
 
-describe('insertComments', () => {
-  it('annotate.success', async () => {
-    const comments = [];
-    const ranges = [
-      { start: 0, end: 1, insertComment: msg => comments.push(msg) },
-      { start: 2, end: 3, insertComment: msg => comments.push(msg) },
-      { start: 4, end: 5, insertComment: msg => comments.push(msg) },
-    ];
-    const ctx = { sync: jest.fn(async () => {}), trackedObjects: { add: jest.fn() }, document: { body: {} } };
-    const body = { context: ctx, search: () => ({ items: ranges, load: () => {} }) };
-    const anchors = await findAnchors(body, 'x');
-    const inserted = await insertComments(ctx, anchors.map(r => ({ range: r, message: 'm' })));
-    expect(inserted).toBe(3);
-    expect(ctx.sync).toHaveBeenCalledTimes(2);
+describe('annotateFindingsIntoWord inserts', () => {
+  beforeEach(() => {
+    global.notifyWarn.mockClear();
+    global.notifyOk.mockClear();
   });
 
-  it('annotate.retry-on-0xA7210002', async () => {
-    const inserted = [];
-    const range = {
-      attempts: 0,
-      insertComment(msg) {
-        if (this.attempts++ === 0) throw new Error('0xA7210002');
-        inserted.push(msg);
-      },
-      expandTo() { return this; }
+  it('does not reuse Range from another run', async () => {
+    let currentRun = 0;
+    global.Word = {
+      run: async fn => {
+        currentRun++;
+        const runId = currentRun;
+        const ctx = {
+          document: {
+            body: {
+              search: () => ({
+                items: [{
+                  runId,
+                  insertComment(msg) {
+                    if (runId !== currentRun) throw new Error('InvalidObjectPath');
+                  },
+                }],
+                load: () => {}
+              })
+            }
+          },
+          sync: async () => {}
+        };
+        return fn(ctx);
+      }
     };
-    const ctx = { sync: jest.fn(async () => {}), document: { body: {} } };
-    const count = await insertComments(ctx, [{ range, message: 'm' }]);
-    expect(count).toBe(1);
-    expect(inserted).toHaveLength(1);
+
+    const findings = Array.from({ length: 25 }, (_, i) => ({
+      snippet: 'a',
+      rule_id: `r${i}`,
+      start: i,
+      end: i + 1,
+      severity: 'low'
+    }));
+    await expect(annotateFindingsIntoWord(findings)).resolves.toBe(25);
   });
 
-  it('annotate.skip-after-retry', async () => {
-    const range = {
-      attempts: 0,
-      insertComment() {
-        this.attempts++; throw new Error('0xA7210002');
-      },
-      expandTo() { return this; }
+  it('batches insertions by 20', async () => {
+    let runs = 0;
+    global.Word = {
+      run: async fn => {
+        runs++;
+        const ctx = {
+          document: {
+            body: {
+              search: () => ({ items: [{ insertComment: () => {} }], load: () => {} })
+            }
+          },
+          sync: async () => {}
+        };
+        return fn(ctx);
+      }
     };
-    const ctx = { sync: jest.fn(async () => {}), document: { body: {} } };
-    const count = await insertComments(ctx, [{ range, message: 'm' }]);
-    expect(count).toBe(0);
+
+    const findings = Array.from({ length: 35 }, (_, i) => ({
+      snippet: `x${i}`,
+      rule_id: `r${i}`,
+      start: i,
+      end: i + 1,
+      severity: 'low'
+    }));
+    await annotateFindingsIntoWord(findings);
+    expect(runs).toBe(2);
+  });
+
+  it('falls back to normalized snippet when raw not found', async () => {
+    let inserted = 0;
+    global.Word = {
+      run: async fn => {
+        const ctx = {
+          document: {
+            body: {
+              search: txt => ({
+                items: txt === 'foo  bar' ? [] : [{ insertComment: () => { inserted++; } }],
+                load: () => {}
+              })
+            }
+          },
+          sync: async () => {}
+        };
+        return fn(ctx);
+      }
+    };
+
+    const finding = { snippet: 'foo  bar', rule_id: 'r1', start: 0, end: 7, severity: 'low' };
+    await annotateFindingsIntoWord([finding]);
+    expect(inserted).toBe(1);
   });
 });

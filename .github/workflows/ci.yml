@@ -39,6 +39,14 @@ jobs:
       - name: Run tests
         run: |
           pytest -q contract_review_app/tests/api/test_api_health_schema.py contract_review_app/tests/api/test_api_headers.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: JS add-in tests
+        run: |
+          cd word_addin_dev
+          npm ci
+          npm test --silent
   smoke-start:
     runs-on: windows-latest
     steps:

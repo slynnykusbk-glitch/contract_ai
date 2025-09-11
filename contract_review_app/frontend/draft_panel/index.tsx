@@ -50,7 +50,7 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
   const [clauseType, setClauseType] = useState('');
   const [clauseText, setClauseText] = useState('');
   const [analysis, setAnalysis] = useState<any>(initialAnalysis);
-   const [analysisMeta, setAnalysisMeta] = useState<any>(initialAnalysisMeta);
+  const [analysisMeta, setAnalysisMeta] = useState<any>(initialAnalysisMeta);
   const [draft, setDraft] = useState<DraftEnvelope | null>(null);
   const [status, setStatus] = useState<Status>(initialAnalysis ? 'ready' : 'idle');
   const [error, setError] = useState('');
@@ -58,6 +58,73 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
   const [meta, setMeta] = useState<any>(initialMeta);
   const PAGE_SIZE = 100;
   const [findingsLimit, setFindingsLimit] = useState(PAGE_SIZE);
+  const [toast, setToast] = useState('');
+  const [companies, setCompanies] = useState<Record<string, any>>({});
+  const [companyStatus, setCompanyStatus] = useState<Record<string, Status>>({});
+
+  const CH_CACHE_TTL_MS = 15 * 60 * 1000;
+
+  function getCached(num: string): any | null {
+    try {
+      const raw = sessionStorage.getItem(`ch_${num}`);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (Date.now() - obj.ts < CH_CACHE_TTL_MS) {
+        return obj.data;
+      }
+    } catch {}
+    return null;
+  }
+
+  function setCached(num: string, data: any) {
+    try {
+      sessionStorage.setItem(`ch_${num}`, JSON.stringify({ ts: Date.now(), data }));
+    } catch {}
+  }
+
+  const fetchCompany = async (num: string) => {
+    setCompanyStatus(s => ({ ...s, [num]: 'loading' }));
+    const cached = getCached(num);
+    if (cached) {
+      setCompanies(d => ({ ...d, [num]: cached }));
+      setCompanyStatus(s => ({ ...s, [num]: 'ready' }));
+      return;
+    }
+    try {
+      const base = getBackend().replace(/\/+$/, '');
+      const resp = await fetch(`${base}/api/companies/${num}`);
+      if (resp.status === 429) {
+        setToast('Companies House rate-limited — retry shortly');
+        setCompanyStatus(s => ({ ...s, [num]: 'error' }));
+        return;
+      }
+      if (!resp.ok) throw new Error('profile failed');
+      const data = await resp.json();
+      setCached(num, data);
+      setCompanies(d => ({ ...d, [num]: data }));
+      setCompanyStatus(s => ({ ...s, [num]: 'ready' }));
+    } catch (e) {
+      console.error(e);
+      setCompanyStatus(s => ({ ...s, [num]: 'error' }));
+    }
+  };
+
+  useEffect(() => {
+    if (!analysisMeta?.companies) return;
+    const list = Array.isArray(analysisMeta.companies) ? analysisMeta.companies : [];
+    list.forEach((c: any) => {
+      const num = c?.matched?.company_number || c?.from_document?.number;
+      if (num && !companies[num]) {
+        fetchCompany(num);
+      }
+    });
+  }, [analysisMeta]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(''), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   useEffect(() => {
     ensureHeadersSet();
@@ -140,6 +207,11 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
 
   return (
     <div style={{ padding: '1rem', fontFamily: 'Segoe UI, Arial, sans-serif', color: '#111' }}>
+      {toast && (
+        <div style={{ position: 'fixed', top: 8, right: 8, background: '#333', color: '#fff', padding: '6px 10px', borderRadius: 4 }}>
+          {toast}
+        </div>
+      )}
       <h2>Draft Assistant (React)</h2>
       <div style={{ marginBottom: 8, fontSize: 12, color: '#444' }}>
         Backend: <code>{getBackend()}</code>
@@ -240,25 +312,30 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
             <div style={{ marginTop: 20 }}>
               <h3>Company Check</h3>
               {analysisMeta.companies.map((c: any, i: number) => {
-                const status = (c.matched?.company_status || '').toUpperCase();
-                const badge = (c.matched?.accounts?.overdue || c.matched?.confirmation_statement?.overdue)
+                const num = c?.matched?.company_number || c?.from_document?.number;
+                const data = (num && companies[num]) || c.matched || {};
+                const st = (num && companyStatus[num]) || 'idle';
+                const status = (data?.company_status || '').toUpperCase();
+                const badge = (data?.accounts?.overdue || data?.confirmation_statement?.overdue)
                   ? 'OVERDUE'
                   : status;
                 return (
                   <div key={i} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 4, marginBottom: 8 }}>
-                    <div><b>{c.matched?.company_name || c.from_document?.name}</b> {c.matched?.company_number && `(${c.matched.company_number})`} — {badge}</div>
-                    <div style={{ fontSize: 12 }}>Name doc vs registry: {c.from_document?.name} / {c.matched?.company_name || '—'}</div>
-                    {c.matched?.registered_office_address && (
-                      <div style={{ fontSize: 12 }}>Address: {c.matched.registered_office_address.postal_code || ''}</div>
+                    <div><b>{data?.company_name || c.from_document?.name}</b> {data?.company_number && `(${data.company_number})`} — {badge || (st === 'loading' ? '...' : '')}</div>
+                    <div style={{ fontSize: 12 }}>Name doc vs registry: {c.from_document?.name} / {data?.company_name || '—'}</div>
+                    {st === 'loading' && <div style={{ fontSize: 12, color: '#888' }}>Loading...</div>}
+                    {st === 'error' && <div style={{ fontSize: 12, color: 'red' }}>Failed to load</div>}
+                    {data?.registered_office && (
+                      <div style={{ fontSize: 12 }}>Address: {data.registered_office.postcode || ''}</div>
                     )}
-                    {Array.isArray(c.matched?.sic_codes) && c.matched.sic_codes.length > 0 && (
-                      <div style={{ fontSize: 12 }}>SIC: {c.matched.sic_codes.join(', ')}</div>
+                    {Array.isArray(data?.sic_codes) && data.sic_codes.length > 0 && (
+                      <div style={{ fontSize: 12 }}>SIC: {data.sic_codes.join(', ')}</div>
                     )}
-                    {c.matched?.date_of_creation && (
-                      <div style={{ fontSize: 12 }}>Incorporated: {c.matched.date_of_creation}</div>
+                    {data?.incorporated_on && (
+                      <div style={{ fontSize: 12 }}>Incorporated: {data.incorporated_on}</div>
                     )}
-                    {c.matched?.company_number && (
-                      <a href={`https://find-and-update.company-information.service.gov.uk/company/${c.matched.company_number}`} target="_blank" rel="noopener noreferrer">Open in Companies House</a>
+                    {data?.company_number && (
+                      <a href={`https://find-and-update.company-information.service.gov.uk/company/${data.company_number}`} target="_blank" rel="noopener noreferrer">Open in Companies House</a>
                     )}
                   </div>
                 );

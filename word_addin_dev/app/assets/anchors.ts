@@ -1,4 +1,4 @@
-import { normalizeText } from "./dedupe";
+import { normalizeText } from "./dedupe.ts";
 
 interface RangeLike {
   start?: number;

@@ -1,0 +1,40 @@
+name: addin-ci
+
+on:
+  push:
+    paths:
+      - 'word_addin_dev/**'
+      - 'tools/**'
+      - 'tests/**'
+      - '.github/workflows/addin-ci.yml'
+  pull_request:
+    paths:
+      - 'word_addin_dev/**'
+      - 'tools/**'
+      - 'tests/**'
+      - '.github/workflows/addin-ci.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+        working-directory: word_addin_dev
+      - run: npm run lint
+        working-directory: word_addin_dev
+      - run: npm test -- --runInBand
+        working-directory: word_addin_dev
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - run: pytest -q tests/panel tests/tools
+      - run: npm run build:panel
+      - uses: actions/upload-artifact@v4
+        with:
+          name: panel
+          path: contract_review_app/contract_review_app/static/panel

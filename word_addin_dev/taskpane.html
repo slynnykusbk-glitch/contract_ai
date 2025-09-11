@@ -142,6 +142,7 @@
 </head>
 <body>
 <div class="wrap">
+  <div id="hdrWarn" style="display:none;color:#f66;margin-bottom:8px;">Missing headers</div>
   <div class="topline">
     <h3 style="margin:6px 0;">Contract AI - Draft Assistant</h3>
     <span class="pill">Build: <span id="buildInfo"></span></span>
@@ -222,7 +223,7 @@
       <div class="kv"><strong>Annotate & QA</strong></div>
       <div class="kv">
         <span class="muted">Risk threshold:</span>
-        <select id="riskThreshold">
+        <select id="selectRiskThreshold">
           <option value="medium" selected>medium</option>
           <option value="high">high</option>
           <option value="critical">critical</option>
@@ -244,6 +245,7 @@
         <input id="cai-comment-on-analyze" type="checkbox" checked>
         <span>Add comments on Analyze</span>
       </label>
+      <input id="chkAddCommentsOnAnalyze" type="checkbox" style="display:none" checked>
     </div>
     <div class="row">
       <label class="toggle">

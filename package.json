@@ -2,11 +2,6 @@
   "scripts": {
     "build:panel": "python tools/build_panel.py"
   },
-  "dependencies": {
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "vite": "^7.1.1"
-  },
   "devDependencies": {
     "ts-node": "^10.9.2"
   }

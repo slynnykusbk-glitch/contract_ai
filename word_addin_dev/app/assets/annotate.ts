@@ -1,5 +1,5 @@
-import { AnalyzeFinding } from "./api-client";
-import { dedupeFindings, normalizeText } from "./dedupe";
+import { AnalyzeFinding } from "./api-client.ts";
+import { dedupeFindings, normalizeText } from "./dedupe.ts";
 
 /** Utilities for inserting comments into Word with batching and retries. */
 export interface CommentItem {

@@ -12,3 +12,10 @@ repos:
     hooks:
       - id: end-of-file-fixer
       - id: trailing-whitespace
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: npm --prefix word_addin_dev run lint
+        language: system
+        pass_filenames: false

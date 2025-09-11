@@ -1,4 +1,4 @@
-import { AnalyzeFinding } from "./api-client";
+import { AnalyzeFinding } from "./api-client.ts";
 
 export function normalizeText(s: string | undefined | null): string {
   if (!s) return "";

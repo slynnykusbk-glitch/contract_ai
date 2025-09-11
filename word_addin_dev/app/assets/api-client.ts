@@ -11,6 +11,7 @@ export type Meta = {
 };
 
 import { getApiKeyFromStore, getSchemaFromStore } from "./store.ts";
+import { registerFetch, deregisterFetch, registerTimer, deregisterTimer } from './pending.ts';
 
 export type AnalyzeFinding = {
   rule_id: string;
@@ -88,37 +89,60 @@ function base(): string {
   catch { return DEFAULT_BASE; }
 }
 
-export async function postJSON(path: string, body: any) {
+export async function postJSON(path: string, body: any, timeoutMs = 9000) {
   const url = base() + path;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const schema = getSchemaFromStore() || '1.4';
   headers['x-schema-version'] = schema;
   const key = getApiKeyFromStore();
   if (key) headers['x-api-key'] = key;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body || {}),
-    credentials: 'include',
-  });
-  const json = await resp.json().catch(() => ({}));
-  return { resp, json };
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  registerFetch(ctrl);
+  registerTimer(t);
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body || {}),
+      credentials: 'include',
+      signal: ctrl.signal,
+    });
+    const json = await resp.json().catch(() => ({}));
+    return { resp, json };
+  } finally {
+    clearTimeout(t);
+    deregisterTimer(t);
+    deregisterFetch(ctrl);
+  }
 }
 export { postJSON as postJson };
 ;(window as any).postJson = postJSON;
 
-async function req(path: string, { method='GET', body=null, key=path }: { method?: string; body?: any; key?: string } = {}) {
+async function req(path: string, { method='GET', body=null, key=path, timeoutMs=9000 }: { method?: string; body?: any; key?: string; timeoutMs?: number } = {}) {
   const headers: Record<string, string> = { 'Content-Type':'application/json' };
   const apiKey = getApiKeyFromStore();
   if (apiKey) headers['x-api-key'] = apiKey;
   headers['x-schema-version'] = getSchemaFromStore() || '1.4';
 
-  const r = await fetch(base()+path, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: 'include'
-  });
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  registerFetch(ctrl);
+  registerTimer(t);
+  let r: Response;
+  try {
+    r = await fetch(base()+path, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      credentials: 'include',
+      signal: ctrl.signal,
+    });
+  } finally {
+    clearTimeout(t);
+    deregisterTimer(t);
+    deregisterFetch(ctrl);
+  }
   const json = await r.json().catch(() => ({}));
   const meta = metaFromResponse({ headers: r.headers, json, status: r.status });
   try { applyMetaToBadges(meta); } catch {}

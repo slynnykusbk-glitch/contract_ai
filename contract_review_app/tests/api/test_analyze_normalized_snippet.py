@@ -19,7 +19,9 @@ def test_analyze_returns_normalized_snippet():
         patch("contract_review_app.legal_rules.engine.analyze", return_value=[fake]),
     ):
         resp = client.post(
-            "/api/analyze", json={"text": text}, headers={"x-schema-version": "1.4"}
+            "/api/analyze",
+            json={"text": text},
+            headers={"x-schema-version": "1.4", "x-api-key": "k"},
         )
     assert resp.status_code == 200
     data = resp.json()

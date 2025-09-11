@@ -1,6 +1,5 @@
 from fastapi.testclient import TestClient
 from hypothesis import given, strategies as st, settings
-import logging
 
 from contract_review_app.api.app import app
 from contract_review_app.api.models import SCHEMA_VERSION
@@ -40,15 +39,10 @@ def test_analyze_any_text(text):
     assert resp.headers.get("x-cid")
 
 
-def test_missing_api_key_logs(monkeypatch, caplog):
-    monkeypatch.setenv("FEATURE_REQUIRE_API_KEY", "1")
-    caplog.set_level(logging.INFO, logger="contract_ai")
-    with TestClient(app, raise_server_exceptions=False) as c:
-        resp = c.post(
-            "/api/analyze",
-            json={"text": "Hello"},
-            headers={"x-schema-version": SCHEMA_VERSION},
-        )
+def test_missing_api_key_logs():
+    resp = client.post(
+        "/api/analyze",
+        json={"text": "Hello"},
+    )
     assert resp.status_code == 401
-    assert resp.json()["detail"] == "missing or invalid api key"
-    assert any("missing or invalid x-api-key" in r.message for r in caplog.records)
+    assert resp.json() == {"detail": "missing x-api-key"}

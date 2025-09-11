@@ -15,9 +15,7 @@ REQ = {
 }
 
 
-def test_api_key_required(monkeypatch):
-    monkeypatch.setenv("FEATURE_REQUIRE_API_KEY", "1")
-    monkeypatch.setenv("API_KEY", "secret")
+def test_api_key_required():
     resp = client.post("/api/explain", json=REQ)
     assert resp.status_code == 401
     resp2 = client.post(

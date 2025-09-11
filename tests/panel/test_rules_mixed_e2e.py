@@ -12,7 +12,13 @@ def test_rules_mixed_e2e(tmp_path, monkeypatch):
     monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-key-123456789012345678901234")
     monkeypatch.setenv("LLM_PROVIDER", "mock")
 
-    client = TestClient(app, headers={"x-schema-version": SCHEMA_VERSION})
+    client = TestClient(
+        app,
+        headers={
+            "x-schema-version": SCHEMA_VERSION,
+            "x-api-key": "local-test-key-123",
+        },
+    )
 
     text = Path("fixtures/contracts/mixed_sample.txt").read_text(encoding="utf-8")
     resp = client.post("/api/analyze?debug=coverage", json={"text": text})

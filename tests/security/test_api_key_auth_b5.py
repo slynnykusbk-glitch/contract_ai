@@ -5,10 +5,7 @@ from contract_review_app.api.models import SCHEMA_VERSION
 client = TestClient(app_module.app)
 
 
-def test_api_key_required(monkeypatch):
-    monkeypatch.setenv("FEATURE_REQUIRE_API_KEY", "1")
-    monkeypatch.setenv("API_KEY", "secret")
-
+def test_api_key_required():
     r = client.post("/api/analyze", json={"text": "hi"})
     assert r.status_code == 401
 

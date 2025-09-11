@@ -214,7 +214,6 @@
     <div class="flex">
       <button id="btnUseWholeDoc">Use whole doc →</button>
       <button id="btnAnalyze" disabled>Analyze</button>
-      <button id="btnInsertIntoWord" class="btn">Insert result into Word</button>
     </div>
   </div>
 
@@ -262,21 +261,13 @@
     <div class="muted" style="margin-bottom:6px">Original clause:</div>
     <textarea id="originalClause" placeholder="Paste text or load from selection/document…"></textarea>
     <div class="row flex" style="margin-top:8px">
-      <button id="analyzeBtn" class="btn-grey js-disable-while-busy">Analyze</button>
-      <button id="btnReplay" class="btn-grey js-disable-while-busy">Replay last</button>
-      <button id="btnGetAIDraft" class="btn btn-primary btn-sm">Get AI Draft</button>
-      <button id="copyResultBtn" class="btn-grey js-disable-while-busy">Copy result</button>
+      <button id="btnSuggestEdit" class="btn btn-primary btn-sm">Suggest edit</button>
     </div>
     <div class="row">
       <span class="badge" id="scoreBadge">score: —</span>
       <span class="badge" id="riskBadge">risk: —</span>
       <span class="badge" id="statusBadge">status: —</span>
       <span class="badge" id="severityBadge">severity: —</span>
-    </div>
-    <div class="row flex" style="margin-top:8px">
-      <button id="btnViewTrace" class="btn-grey js-disable-while-busy" disabled>View Trace</button>
-      <button id="btnExportHtml" class="btn-grey js-disable-while-busy" disabled>Export HTML</button>
-      <button id="btnExportPdf" class="btn-grey js-disable-while-busy" disabled>Export PDF</button>
     </div>
   </div>
 
@@ -306,7 +297,7 @@
         <tbody></tbody>
       </table>
     </div>
-    <div class="actions">
+    <div class="actions" style="display:none">
       <button id="rs-copy">Copy summary</button>
       <button id="rs-export-md">Export .md</button>
       <button id="rs-export-json">Export .json</button>

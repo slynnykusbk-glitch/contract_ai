@@ -985,7 +985,6 @@ app.add_middleware(
     TimeoutMiddleware,
     timeout=float(os.getenv("REQUEST_TIMEOUT_S", "60")),
 )
-app.add_middleware(ServerErrorMiddleware, debug=_env_truthy("DEV_MODE"))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
@@ -1971,6 +1970,9 @@ def api_analyze(
     snap.rules_count = _discover_rules_count()
     summary = snap.model_dump()
     _ensure_legacy_doc_type(summary)
+    # expose first detected clause type if any
+    clause_type_val = next(iter(clause_types_set)) if clause_types_set else None
+    summary.setdefault("clause_type", clause_type_val)
     companies_meta: List[Dict[str, Any]] = []
     try:
         parties = [
@@ -2031,6 +2033,10 @@ def api_analyze(
         "schema_version": SCHEMA_VERSION,
         "meta": meta,
         "summary": summary,
+        # SSOT unified block
+        "cid": request.state.cid,
+        "findings": analysis_out.get("findings", []),
+        "recommendations": [],
     }
     envelope["rules_coverage"] = {
         "doc_type": {"value": snap.type, "source": snap.type_source},
@@ -2262,7 +2268,15 @@ async def api_qa_recheck(
             schema=SCHEMA_VERSION,
             latency_ms=_now_ms() - t0,
         )
-        return {"status": "ok", "qa": [], "meta": meta}
+        payload = {"status": "ok", "qa": [], "meta": meta}
+        payload.update({
+            "schema_version": SCHEMA_VERSION,
+            "cid": cid,
+            "summary": {"clause_type": None},
+            "findings": [],
+            "recommendations": [],
+        })
+        return payload
     try:
         result = LLM_SERVICE.qa(text, rules, LLM_CONFIG.timeout_s, profile=profile)
     except ValueError:
@@ -2367,7 +2381,16 @@ async def api_qa_recheck(
         schema=SCHEMA_VERSION,
         latency_ms=_now_ms() - t0,
     )
-    return {"status": "ok", "qa": result.items, "meta": meta}
+    items = getattr(result, "items", [])
+    payload = {"status": "ok", "qa": items, "meta": meta}
+    payload.update({
+        "schema_version": SCHEMA_VERSION,
+        "cid": cid,
+        "summary": {"clause_type": None},
+        "findings": items,
+        "recommendations": [],
+    })
+    return payload
 
 
 @router.post(
@@ -2520,11 +2543,19 @@ async def gpt_draft(request: Request):
         tmp = Response()
         _set_llm_headers(tmp, PROVIDER_META)
         headers = dict(tmp.headers)
-        return _finalize_json(
-            "/api/gpt-draft",
-            {"draft_text": text, "alternatives": [], "rationale": "mock"},
-            headers,
-        )
+        cid = getattr(request.state, "cid", compute_cid(request))
+        headers["x-cid"] = cid
+        payload = {
+            "draft_text": text,
+            "alternatives": [],
+            "rationale": "mock",
+            "schema_version": SCHEMA_VERSION,
+            "cid": cid,
+            "summary": {"clause_type": None},
+            "findings": [],
+            "recommendations": [],
+        }
+        return _finalize_json("/api/gpt-draft", payload, headers)
 
     try:
         inp = GptDraftIn.model_validate(raw)
@@ -2622,6 +2653,15 @@ async def gpt_draft(request: Request):
         "context_before": ctx_before,
         "context_after": ctx_after,
     }
+    out.update(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "cid": req_cid,
+            "summary": {"clause_type": getattr(inp, "clause_type", None)},
+            "findings": [],
+            "recommendations": [],
+        }
+    )
     duration = time.perf_counter() - started
     headers = {
         "ETag": etag,

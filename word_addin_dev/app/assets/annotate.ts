@@ -75,7 +75,7 @@ function buildLegalComment(f: AnalyzeFinding): string {
   return parts.join("\n");
 }
 
-export interface AnnotateOp {
+export interface AnnotationPlan {
   raw: string;
   norm: string;
   occIdx: number;
@@ -89,12 +89,12 @@ export const MAX_ANNOTATE_OPS = 200;
 /**
  * Prepare annotate operations from analysis findings without touching Word objects.
  */
-export function annotate(findings: AnalyzeFinding[]): AnnotateOp[] {
+export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
   const base = normalizeText((globalThis as any).__lastAnalyzed || "");
   const deduped = dedupeFindings(findings || []);
   const sorted = deduped.slice().sort((a, b) => (b.end ?? 0) - (a.end ?? 0));
 
-  const ops: AnnotateOp[] = [];
+  const ops: AnnotationPlan[] = [];
   let lastStart = Number.POSITIVE_INFINITY;
   let skipped = 0;
   for (const f of sorted) {
@@ -126,7 +126,7 @@ export function annotate(findings: AnalyzeFinding[]): AnnotateOp[] {
  * Convert findings directly into Word comments using a two-phase plan.
  */
 export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number> {
-  const ops = annotate(findings);
+  const ops = planAnnotations(findings);
   if (!ops.length) return 0;
   const g: any = globalThis as any;
   return await g.Word?.run?.(async (ctx: any) => {

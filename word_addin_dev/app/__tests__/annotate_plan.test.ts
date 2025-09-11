@@ -3,6 +3,7 @@ import type { AnalyzeFinding } from '../assets/api-client';
 import { annotate, MAX_ANNOTATE_OPS } from '../assets/annotate';
 import { findAnchors } from '../assets/anchors';
 
+
 describe('annotate scheduler', () => {
   beforeEach(() => {
     // base text used to compute occurrence indexes
@@ -17,7 +18,7 @@ describe('annotate scheduler', () => {
       { start: 2, end: 9, snippet: 'c def a', rule_id: 'r3' },
     ];
 
-    const ops = annotate(findings);
+    const ops = planAnnotations(findings);
     expect(ops.length).toBe(2);
     const map = Object.fromEntries(ops.map(o => [o.rule_id, o.occIdx]));
     expect(map['r1']).toBe(0);
@@ -28,7 +29,7 @@ describe('annotate scheduler', () => {
     const findings: AnalyzeFinding[] = [
       { start: undefined, end: undefined, snippet: '', rule_id: 'r1' },
     ];
-    const ops = annotate(findings);
+    const ops = planAnnotations(findings);
     expect(ops.length).toBe(0);
   });
 

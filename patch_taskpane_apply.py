@@ -20,7 +20,7 @@ function applyDraftTracked(){
     return ctx.sync().then(function(){
       // 1) Якщо є виділення — вставляємо туди
       if (sel && typeof sel.text === "string" && sel.text.length > 0) {
-        sel.insertText(t, "Replace");
+        sel.insertText(t, Word.InsertLocation.replace);
         try { sel.insertComment("Contract Assistant — applied draft"); } catch(_){}
         return ctx.sync();
       }
@@ -29,7 +29,7 @@ function applyDraftTracked(){
       var dd = document.getElementById("cai-clause-select");
       var clauseId = dd && dd.value ? dd.value : null;
       if (!clauseId) {
-        sel.insertText(t, "Replace");
+        sel.insertText(t, Word.InsertLocation.replace);
         try { sel.insertComment("Contract Assistant — applied draft"); } catch(_){}
         return ctx.sync();
       }
@@ -43,7 +43,7 @@ function applyDraftTracked(){
         ccs.load("items");
         return ctx.sync().then(function(){
           var rng = (ccs.items && ccs.items.length) ? ccs.items[0].getRange() : sel;
-          rng.insertText(t, "Replace");
+          rng.insertText(t, Word.InsertLocation.replace);
           try { rng.insertComment("Contract Assistant — applied draft"); } catch(_){}
           return ctx.sync();
         });
@@ -56,14 +56,14 @@ function applyDraftTracked(){
         found.load("items");
         return ctx.sync().then(function(){
           var rng = (found.items && found.items.length) ? found.items[0] : sel;
-          rng.insertText(t, "Replace");
+          rng.insertText(t, Word.InsertLocation.replace);
           try { rng.insertComment("Contract Assistant — applied draft"); } catch(_){}
           return ctx.sync();
         });
       }
 
       // 5) Фінальний fallback — у поточне місце курсора
-      sel.insertText(t, "Replace");
+      sel.insertText(t, Word.InsertLocation.replace);
       try { sel.insertComment("Contract Assistant — applied draft"); } catch(_){}
       return ctx.sync();
     });

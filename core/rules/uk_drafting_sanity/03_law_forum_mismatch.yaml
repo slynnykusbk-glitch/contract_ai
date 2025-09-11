@@ -1,0 +1,7 @@
+rule:
+  id: uk_drafting_law_forum_mismatch
+  description: Governing law and jurisdiction are inconsistent
+  severity: high
+  patterns:
+    - '(?is)laws?\s+of\s+England[\s\S]{0,100}courts?\s+of\s+New\s+York'
+  advice: 'Align governing law with jurisdiction clause.'

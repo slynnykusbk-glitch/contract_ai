@@ -1,0 +1,7 @@
+rule:
+  id: uk_drafting_outdated_companies_act
+  description: References outdated Companies Act 1985
+  severity: medium
+  patterns:
+    - '(?i)companies\s+act\s+1985'
+  advice: 'Update to Companies Act 2006.'

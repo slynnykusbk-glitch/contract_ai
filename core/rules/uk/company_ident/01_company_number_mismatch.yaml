@@ -1,0 +1,7 @@
+rule:
+  id: uk_company_name_number_mismatch
+  description: Different company numbers mentioned
+  severity: high
+  patterns:
+    - '(?is)company\s+number\s*(\d{3,})[\s\S]{0,200}company\s+number\s*(?!\1)\d{3,}'
+  advice: 'Ensure company number is consistent across the agreement.'

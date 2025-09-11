@@ -1,0 +1,7 @@
+rule:
+  id: uk_drafting_no_fraud_exception
+  description: Liability exclusion applies even in case of fraud
+  severity: high
+  patterns:
+    - '(?i)even\s+in\s+case\s+of\s+fraud'
+  advice: 'Do not exclude liability for fraud or fraudulent misrepresentation.'

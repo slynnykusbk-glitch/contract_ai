@@ -1,0 +1,7 @@
+rule:
+  id: uk_ndabasic_broad_purpose
+  description: Purpose clause allows any purpose
+  severity: medium
+  patterns:
+    - '(?i)for\s+any\s+purpose'
+  advice: 'Limit purpose to the specific project or transaction.'

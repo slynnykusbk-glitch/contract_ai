@@ -1,0 +1,7 @@
+rule:
+  id: uk_privacy_public_domain_exception
+  description: Public domain exception present
+  severity: medium
+  patterns:
+    - '(?i)public\s+domain'
+  advice: 'Ensure public domain exception is appropriately limited.'

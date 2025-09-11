@@ -1,0 +1,7 @@
+rule:
+  id: uk_privacy_illegal_possession_exception
+  description: Exception for information illegally in possession
+  severity: high
+  patterns:
+    - '(?i)illegally\s+in\s+the\s+possession'
+  advice: 'Remove exception for illegally obtained information.'

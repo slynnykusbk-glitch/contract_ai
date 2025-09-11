@@ -4,6 +4,24 @@ export { normalizeText, dedupeFindings } from "./dedupe";
 import { getApiKeyFromStore, getSchemaFromStore, getAddCommentsFlag, setAddCommentsFlag } from "./store";
 import { postJSON, getStoredKey, getStoredSchema, setStoredSchema, ensureHeadersSet } from "../../../contract_review_app/frontend/common/http";
 
+// enable rich debug
+// @ts-ignore
+OfficeExtension.config.extendedErrorLogging = true;
+
+export function logRichError(e: any, tag = "Word") {
+  try {
+    const di = (e && e.debugInfo) || {};
+    console.error(`[${tag}] RichApi error`, {
+      code: e.code,
+      message: e.message,
+      errorLocation: di.errorLocation,
+      statements: di.statements,
+      traceMessages: di.traceMessages,
+      inner: di.innerError,
+    });
+  } catch {}
+}
+
 function parseFindings(resp: AnalyzeResponse): AnalyzeFinding[] {
   const arr = apiParseFindings(resp) || [];
   return arr
@@ -17,6 +35,7 @@ g.parseFindings = g.parseFindings || parseFindings;
 g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
 g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
 g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
+g.logRichError = g.logRichError || logRichError;
 import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText } from "./office"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
 import { insertDraftText } from "./insert";
@@ -185,6 +204,7 @@ export async function mapFindingToRange(
       return items[Math.min(occIdx, Math.max(0, items.length - 1))] || null;
     });
   } catch (e) {
+    logRichError(e, "findings");
     console.warn("mapFindingToRange fail", e);
     return null;
   }
@@ -289,6 +309,7 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
 
       await ctx.sync();
     }).catch(e => {
+      logRichError(e, "annotate");
       console.warn("annotate run fail", e?.code, e?.message, e?.debugInfo);
     });
   }
@@ -362,6 +383,7 @@ async function navComments(dir: number) {
       await ctx.sync();
     });
   } catch (e) {
+    logRichError(e, "annotate");
     console.warn("nav comment fail", e);
   }
 }
@@ -459,6 +481,7 @@ async function getSelectionContext(chars = 200): Promise<{ before: string; after
       };
     });
   } catch (e) {
+    logRichError(e, "findings");
     console.warn("context fail", e);
     return { before: "", after: "" };
   }
@@ -667,6 +690,7 @@ async function onAcceptAll() {
     console.log("[OK] Accepted into Word");
   } catch (e) {
     (window as any).toast?.("Accept failed");
+    logRichError(e, "insertDraft");
     console.error(e);
   }
 }
@@ -691,6 +715,7 @@ async function onRejectAll() {
     console.log("[OK] Rejected");
   } catch (e) {
     (window as any).toast?.("Reject failed");
+    logRichError(e, "insertDraft");
     console.error(e);
   }
 }
@@ -759,6 +784,7 @@ async function onInsertIntoWord() {
     await insertDraftText(txt);
     notifyOk("Inserted into Word");
   } catch (e) {
+    logRichError(e, "insertDraft");
     console.error(e);
     await navigator.clipboard?.writeText(txt).catch(() => {});
     notifyWarn("Insert failed; draft copied to clipboard");

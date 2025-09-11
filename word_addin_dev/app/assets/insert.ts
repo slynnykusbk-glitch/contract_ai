@@ -19,6 +19,8 @@ export async function insertDraftText(text: string): Promise<void> {
     target.insertText(text, w.Word.InsertLocation.replace);
     await context.sync();
   }).catch((e: any) => {
+    const g: any = globalThis as any;
+    g.logRichError?.(e, "insertDraft");
     console.warn('insertDraftText error', e?.code, e?.message, e?.debugInfo);
     throw e;
   });

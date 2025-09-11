@@ -1,0 +1,12 @@
+extend-exclude = ["tests/_legacy_disabled/**", "tools/**", "tests/**", "scripts/**", "contract_review_app/tests/**"]
+
+[lint]
+ignore = ["E402"]
+
+[lint.per-file-ignores]
+"contract_review_app/api/app.py" = ["E402"]
+"contract_review_app/rules_v2/loader.py" = ["E402"]
+"tests/api/test_endpoints.py" = ["E402"]
+"contract_review_app/tests/_legacy_disabled/intake/test_langseg.py" = ["E402"]
+"bump_build.py" = ["E402"]
+"tools/*.py" = ["E402"]

@@ -12,6 +12,7 @@ textarea{width:100%;height:120px;}
 button{margin:4px 4px 4px 0;}
 pre{background:#f0f0f0;padding:8px;border-radius:4px;white-space:pre-wrap;}
 .warning{padding:6px;background:#fff3cd;border:1px solid #ffeeba;margin:8px 0;}
+#findingsList li.active{background:#ffe8a6;}
 .hidden{display:none;}
 #status-chip{position:fixed;bottom:5px;right:5px;padding:3px 6px;border-radius:4px;font-size:12px;background:#eee;color:#000;}
 </style>
@@ -46,8 +47,41 @@ pre{background:#f0f0f0;padding:8px;border-radius:4px;white-space:pre-wrap;}
     </div>
   </div>
 </template>
+<textarea id="originalText" class="hidden"></textarea>
+<div id="busyBar" class="hidden"></div>
+
+<section id="resultsBlock" class="hidden">
+  <div>
+    <div>Clause type: <span id="clauseTypeOut">—</span></div>
+    <div>Findings: <span id="resFindingsCount">—</span></div>
+    <div>Visible / Hidden by filters: <span id="visibleHiddenOut">—</span></div>
+  </div>
+  <div id="findingsBlock">
+    <ol id="findingsList"></ol>
+  </div>
+  <div id="recommendationsBlock">
+    <ol id="recsList"></ol>
+  </div>
+</section>
+
+<section id="draftPane" class="hidden">
+  <textarea id="draftText"></textarea>
+  <div>
+    <button id="btnPreviewDiff" disabled>Preview diff</button>
+    <button id="btnApplyTracked" disabled>Apply (tracked + comment)</button>
+    <button id="btnAcceptAll" disabled>Accept all</button>
+    <button id="btnRejectAll" disabled>Reject all</button>
+    <button id="btnClearAnnots">Clear Annotations</button>
+    <button id="btnPrevIssue">Prev issue</button>
+    <button id="btnNextIssue">Next issue</button>
+    <button id="btnSuggestEdit">Get draft</button>
+  </div>
+  <div id="diffContainer" class="hidden">
+    <div id="diffOutput"></div>
+  </div>
+  </section>
   <script type="module" src="taskpane.bundle.js?b=__BUILD_TS__"></script>
-<script nomodule>
+  <script nomodule>
   document.body.innerHTML =
     '<div style="padding:12px;color:#f66">Your runtime is too old for ES modules. Please update your browser.</div>';
 </script>

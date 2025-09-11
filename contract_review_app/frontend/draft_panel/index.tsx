@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { asArray } from '../common/safe';
 import { postJSON, getHealth, ensureHeadersSet } from '../common/http';
 
 const DEFAULT_BACKEND = 'http://127.0.0.1:9000';
@@ -41,15 +40,20 @@ interface DraftEnvelope {
   [k: string]: any;
 }
 
-const DraftAssistantPanel: React.FC = () => {
+interface PanelProps {
+  initialAnalysis?: any;
+  initialMeta?: any;
+}
+
+const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, initialMeta = {} }) => {
   const [clauseType, setClauseType] = useState('');
   const [clauseText, setClauseText] = useState('');
-  const [analysis, setAnalysis] = useState<any>(null);
+  const [analysis, setAnalysis] = useState<any>(initialAnalysis);
   const [draft, setDraft] = useState<DraftEnvelope | null>(null);
-  const [status, setStatus] = useState<Status>('idle');
+  const [status, setStatus] = useState<Status>(initialAnalysis ? 'ready' : 'idle');
   const [error, setError] = useState('');
   const [backendOk, setBackendOk] = useState(false);
-  const [meta, setMeta] = useState<any>({});
+  const [meta, setMeta] = useState<any>(initialMeta);
   const PAGE_SIZE = 100;
   const [findingsLimit, setFindingsLimit] = useState(PAGE_SIZE);
 
@@ -123,8 +127,8 @@ const DraftAssistantPanel: React.FC = () => {
     }
   }
 
-  const findings = asArray(analysis?.findings);
-  const suggestions = asArray((analysis as any)?.suggestions);
+  const findings = Array.isArray(analysis?.findings) ? analysis.findings : [];
+  const suggestions = Array.isArray((analysis as any)?.suggestions) ? (analysis as any).suggestions : [];
 
   const canAnalyze = backendOk && clauseText.trim().length > 0 && status !== 'loading';
   const canDraft = status === 'ready';
@@ -195,24 +199,28 @@ const DraftAssistantPanel: React.FC = () => {
         <>
           <div style={{ marginTop: 16 }}>
             <h3>Findings</h3>
-            {findings.length === 0 && <div>—</div>}
-            {findings.slice(0, findingsLimit).map((f: any, i: number) => (
-              <div key={i} style={{ background: '#f8f9fa', padding: 8, borderRadius: 4, marginBottom: 6 }}>
-                <div><b>{f.code || 'FINDING'}</b> {f.severity ? `(${f.severity})` : ''}</div>
-                <div>{f.message || ''}</div>
-              </div>
-            ))}
+            {findings.length === 0 && (
+              <div>No findings (rules_evaluated: {meta.rules_evaluated}, triggered: {meta.rules_triggered})</div>
+            )}
+            {Array.isArray(findings) &&
+              findings.slice(0, findingsLimit).map((f: any, i: number) => (
+                <div key={f?.rule_id || i} style={{ background: '#f8f9fa', padding: 8, borderRadius: 4, marginBottom: 6 }}>
+                  <div><b>{f?.code || 'FINDING'}</b> {f?.severity ? `(${f.severity})` : ''}</div>
+                  <div>{f?.message || ''}</div>
+                </div>
+              ))}
             {findingsLimit < findings.length && (
               <button onClick={() => setFindingsLimit(findingsLimit + PAGE_SIZE)}>Load more</button>
             )}
           </div>
 
-          {suggestions.length > 0 && (
+          {Array.isArray(suggestions) && suggestions.length > 0 && (
             <div style={{ marginTop: 16 }}>
               <h3>Suggestions</h3>
-              {suggestions.map((s: any, i: number) => (
-                <div key={i}>{typeof s === 'string' ? s : JSON.stringify(s)}</div>
-              ))}
+              {Array.isArray(suggestions) &&
+                suggestions.map((s: any, i: number) => (
+                  <div key={s?.rule_id || i}>{typeof s === 'string' ? s : JSON.stringify(s)}</div>
+                ))}
             </div>
           )}
 
@@ -229,6 +237,8 @@ const DraftAssistantPanel: React.FC = () => {
     </div>
   );
 };
+
+export { DraftAssistantPanel };
 
 const mount = document.getElementById('root');
 if (mount) {

@@ -26,10 +26,25 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 # ---------------------------------------------------------------------------
 
 RULE_ROOTS = [
-    "contract_review_app/legal_rules/policy_packs",
     "core/rules",
 ]
 ALLOWED_RULE_EXTS = {".yml", ".yaml"}
+
+# Global meta information used by tests/diagnostics
+meta: Dict[str, Any] = {"debug": {}}
+
+# Priority mapping for packs defined in core/rules/registry.yml
+REGISTRY_FILE = ROOT_DIR / "core/rules" / "registry.yml"
+PACK_PRIORITIES: Dict[str, int] = {}
+if REGISTRY_FILE.exists():
+    try:
+        _reg_data = yaml.safe_load(REGISTRY_FILE.read_text(encoding="utf-8")) or {}
+        for _doc, juris in _reg_data.items():
+            for _juris, packs in (juris or {}).items():
+                for idx, p in enumerate(packs or []):
+                    PACK_PRIORITIES.setdefault(str(p), idx)
+    except Exception:  # pragma: no cover
+        PACK_PRIORITIES = {}
 
 _ENV_DIRS = os.getenv("RULE_PACKS_DIRS")
 if _ENV_DIRS:
@@ -52,9 +67,11 @@ class RuleMeta:
     path: str
     sha256: str
     title: Optional[str] = None
+    pack: Optional[str] = None
+    priority: int = 0
 
 
-PICKED: Dict[str, RuleMeta] = {}
+PICKED: Dict[str, Tuple[int, RuleMeta, int]] = {}
 SHADOWED: Dict[str, List[RuleMeta]] = {}
 
 # ---------------------------------------------------------------------------
@@ -103,7 +120,9 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
     _PACKS.clear()
     PICKED.clear()
     SHADOWED.clear()
-    warned_py = False
+    meta.setdefault("debug", {})
+    meta["debug"].setdefault("duplicates", {})
+    meta["debug"]["duplicates"] = {}
     base_dirs = [_resolve_root(p) for p in (roots or RULE_ROOTS)]
 
     for base in base_dirs:
@@ -114,11 +133,9 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
         for path in paths:
             if "_legacy_disabled" in path.parts:
                 continue
-            suffix = path.suffix.lower()
-            if suffix not in ALLOWED_RULE_EXTS:
-                if suffix == ".py" and not warned_py:
-                    log.warning("Skipped legacy Python rules (*.py).")
-                    warned_py = True
+            if path.suffix.lower() not in ALLOWED_RULE_EXTS:
+                continue
+            if path.resolve() == REGISTRY_FILE.resolve():
                 continue
             try:
                 docs = list(yaml.safe_load_all(path.read_text(encoding="utf-8")))
@@ -127,6 +144,17 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
                 continue
 
             file_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+
+            # Pack identifier and priority
+            try:
+                pack_rel_core = path.relative_to(ROOT_DIR / "core/rules")
+                pack_id = pack_rel_core.parent.as_posix()
+            except ValueError:
+                try:
+                    pack_id = path.parent.relative_to(ROOT_DIR).as_posix()
+                except ValueError:  # pragma: no cover
+                    pack_id = path.parent.as_posix()
+            priority = PACK_PRIORITIES.get(pack_id, 10_000)
 
             rule_count = 0
             for data in docs:
@@ -291,11 +319,24 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
                         pass
 
                     rid = spec.get("id")
-                    meta = RuleMeta(path=str(path), sha256=file_sha, title=title_val)
-                    if rid in PICKED:
-                        SHADOWED.setdefault(rid, []).append(meta)
+                    meta_obj = RuleMeta(
+                        path=str(path),
+                        sha256=file_sha,
+                        title=title_val,
+                        pack=pack_id,
+                        priority=priority,
+                    )
+                    prev = PICKED.get(rid)
+                    if prev is not None:
+                        prev_pri, prev_meta, idx = prev
+                        if priority < prev_pri:
+                            SHADOWED.setdefault(rid, []).append(prev_meta)
+                            PICKED[rid] = (priority, meta_obj, idx)
+                            _RULES[idx] = spec
+                        else:
+                            SHADOWED.setdefault(rid, []).append(meta_obj)
                         continue
-                    PICKED[rid] = meta
+                    PICKED[rid] = (priority, meta_obj, len(_RULES))
                     _RULES.append(spec)
                     rule_count += 1
 
@@ -311,6 +352,9 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
             len(ids),
             ", ".join(ids[:20]),
         )
+    meta["debug"]["duplicates"] = {
+        rid: [m.path for m in metas] for rid, metas in SHADOWED.items()
+    }
 
     # Remove deprecated and duplicate rules by id
     uniq: List[Dict[str, Any]] = []

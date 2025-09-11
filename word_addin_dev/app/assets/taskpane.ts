@@ -334,14 +334,26 @@ g.annotateFindingsIntoWord = g.annotateFindingsIntoWord || annotateFindingsIntoW
 export async function applyOpsTracked(
   ops: { start: number; end: number; replacement: string }[]
 ) {
-  if (!ops || !ops.length) return;
+  let cleaned = (ops || [])
+    .filter(o => typeof o.start === "number" && typeof o.end === "number" && o.end > o.start)
+    .sort((a, b) => a.start - b.start);
+
+  // prune overlaps keeping earlier ops
+  let lastEnd = -1;
+  cleaned = cleaned.filter(o => {
+    if (o.start < lastEnd) return false;
+    lastEnd = o.end;
+    return true;
+    });
+
+  if (!cleaned.length) return;
   const last: string = (window as any).__lastAnalyzed || "";
 
   await Word.run(async ctx => {
     const body = ctx.document.body;
     (ctx.document as any).trackRevisions = true;
 
-    for (const op of ops) {
+    for (const op of cleaned) {
       const snippet = last.slice(op.start, op.end);
 
       const occIdx = (() => {
@@ -367,6 +379,8 @@ export async function applyOpsTracked(
     }
   });
 }
+
+g.applyOpsTracked = g.applyOpsTracked || applyOpsTracked;
 
 
 

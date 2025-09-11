@@ -22,12 +22,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
-        working-directory: word_addin_dev
-      - run: npm run lint
-        working-directory: word_addin_dev
-      - run: npm test -- --runInBand
-        working-directory: word_addin_dev
+      - run: npm --prefix word_addin_dev ci
+      - run: npm --prefix word_addin_dev run lint
+      - run: npm --prefix word_addin_dev run test -- --runInBand
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

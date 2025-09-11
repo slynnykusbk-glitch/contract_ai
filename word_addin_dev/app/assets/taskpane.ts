@@ -19,6 +19,7 @@ g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
 g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
 import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText } from "./office"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
+import { insertDraftText } from "./insert";
 g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 
 type Mode = "live" | "friendly" | "doctor";
@@ -288,7 +289,7 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
 
       await ctx.sync();
     }).catch(e => {
-      console.warn("annotate run fail", e);
+      console.warn("annotate run fail", e?.code, e?.message, e?.debugInfo);
     });
   }
 
@@ -552,6 +553,8 @@ async function doHealth() {
 }
 
 async function doAnalyze() {
+  const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
+  if (btn) btn.disabled = true;
   try {
     onDraftReady('');
     const cached = (window as any).__lastAnalyzed as string | undefined;
@@ -599,6 +602,8 @@ async function doAnalyze() {
   } catch (e) {
     notifyWarn("Analyze failed");
     console.error(e);
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -709,10 +714,17 @@ function wireUI() {
   } else {
     isAddCommentsOnAnalyzeEnabled();
   }
-  bindClick("#btnAnnotate", () => {
-    const data = (window as any).__last?.analyze?.json || {};
-    const findings = (globalThis as any).parseFindings(data);
-    (globalThis as any).annotateFindingsIntoWord(findings);
+  const annotateBtn = document.getElementById("btnAnnotate") as HTMLButtonElement | null;
+  annotateBtn?.addEventListener("click", async () => {
+    if (annotateBtn.disabled) return;
+    annotateBtn.disabled = true;
+    try {
+      const data = (window as any).__last?.analyze?.json || {};
+      const findings = (globalThis as any).parseFindings(data);
+      await (globalThis as any).annotateFindingsIntoWord(findings);
+    } finally {
+      annotateBtn.disabled = false;
+    }
   });
 
   onDraftReady('');
@@ -737,30 +749,17 @@ async function onInsertIntoWord() {
   const dst = $(Q.proposed);
   const txt = (dst?.value || "").trim();
   if (!txt) { notifyWarn("No draft to insert"); return; }
+  const btn = document.getElementById('btnInsertIntoWord') as HTMLButtonElement | null;
+  if (btn) btn.disabled = true;
   try {
-    await insertIntoWord(txt);
+    await insertDraftText(txt);
     notifyOk("Inserted into Word");
   } catch (e) {
     console.error(e);
     await navigator.clipboard?.writeText(txt).catch(() => {});
     notifyWarn("Insert failed; draft copied to clipboard");
-  }
-}
-
-async function insertIntoWord(text: string) {
-  const w: any = window as any;
-  if (w?.Office?.context?.document?.setSelectedDataAsync) {
-    await new Promise<void>((resolve, reject) =>
-      w.Office.context.document.setSelectedDataAsync(
-        text,
-        { coercionType: w.Office.CoercionType.Text },
-        (res: any) =>
-          res?.status === w.Office.AsyncResultStatus.Succeeded ? resolve() : reject(res?.error),
-      ),
-    );
-  } else {
-    await navigator.clipboard?.writeText(text).catch(() => {});
-    alert('Draft copied to clipboard (Office not ready). Paste it into the document.');
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 

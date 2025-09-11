@@ -34,8 +34,8 @@ let analyzeBound = false;
 function updateStatusChip(schema?: string | null, cid?: string | null) {
   const el = document.getElementById('status-chip');
   if (!el) return;
-  const s = schema ?? getStoredSchema() || '—';
-  const c = cid ?? lastCid || '—';
+  const s = (schema ?? getStoredSchema()) || '—';
+  const c = (cid ?? lastCid) || '—';
   el.textContent = `schema: ${s} | cid: ${c}`;
 }
 
@@ -216,87 +216,43 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
 
   if (skipped) notifyWarn(`Skipped ${skipped} overlaps/invalid`);
   notifyOk(`Will insert: ${todo.length}`);
-
+  const batchSize = 20;
   let inserted = 0;
-  for (const f of todo) {
-    const snippet = f.snippet;
-    const occIdx = (() => {
-      if (typeof f.start !== "number" || !snippet) return 0;
-      let idx = -1, n = 0;
-      while ((idx = base.indexOf(snippet, idx + 1)) !== -1 && idx < f.start) n++;
-      return n;
-    })();
+  const items = todo.map(f => ({
+    raw: f.snippet,
+    norm: normalizeText(f.snippet || ""),
+    msg: buildLegalComment(f),
+    rule_id: f.rule_id,
+  }));
 
-    const tryInsert = async (mode: "normal" | "anchor" | "selection") => {
-      await Word.run(async ctx => {
-        const body = ctx.document.body;
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    await Word.run(async ctx => {
+      const body = ctx.document.body;
 
-        if (mode === "selection") {
-          const sel = ctx.document.getSelection();
-          const msgSel = `${buildLegalComment(f)} (fallback)`;
-          if (!isDryRunAnnotateEnabled()) sel.insertComment(msgSel);
-          await ctx.sync();
-          return;
-        }
+      const searches = batch.map(it => ({
+        raw: body.search(it.raw, { matchCase: false, matchWholeWord: false }),
+        norm: body.search(it.norm, { matchCase: false, matchWholeWord: false }),
+        item: it,
+      }));
+      for (const s of searches) { s.raw.load("items"); s.norm.load("items"); }
+      await ctx.sync();
 
-        const s1 = body.search(snippet, { matchCase: false, matchWholeWord: false });
-        s1.load("items");
-        await ctx.sync();
-        let target = s1.items?.[Math.min(occIdx, Math.max(0, (s1.items || []).length - 1))];
-
-        if (!target) {
-          const token = (() => {
-            const tokens = snippet.replace(/[^\p{L}\p{N} ]/gu, " ").split(" ").filter(x => x.length >= 12);
-            if (tokens.length) return tokens.sort((a, b) => b.length - a.length)[0].slice(0, 64);
-            const i = Math.max(0, f.start ?? 0);
-            return base.slice(i, i + 40);
-          })();
-
-          if (token && token.trim()) {
-            const s2 = body.search(token, { matchCase: false, matchWholeWord: false });
-            s2.load("items");
-            await ctx.sync();
-            target = s2.items?.[Math.min(occIdx, Math.max(0, (s2.items || []).length - 1))];
-          }
-        }
-
+      for (const s of searches) {
+        let target = (s.raw.items || [])[0] || (s.norm.items || [])[0];
         if (target) {
-          if (mode === "anchor") target = target.getRange("Start");
           if (isDryRunAnnotateEnabled()) {
             try { target.select(); } catch {}
-          } else {
-            const msg = buildLegalComment(f);
-            if (msg) target.insertComment(msg);
+          } else if (s.item.msg) {
+            target.insertComment(s.item.msg);
           }
-        } else {
-          console.warn("[annotate] no match for snippet/anchor", { rid: f.rule_id, snippet: snippet.slice(0, 120) });
-        }
-        await ctx.sync();
-      });
-    };
-
-    try {
-      await tryInsert("normal");
-      inserted++;
-    } catch (e) {
-      if (String(e).includes("0xA7210002")) {
-        console.warn("panel:annotate", { rid: f.rule_id, fallback: "anchor" });
-        try {
-          await tryInsert("anchor");
           inserted++;
-        } catch (e2) {
-          console.warn("panel:annotate", { rid: f.rule_id, fallback: "selection" });
-          try {
-            await tryInsert("selection");
-            inserted++;
-          } catch (e3) {
-            console.warn("annotate retry failed", e3);
-          }
+        } else {
+          console.warn("[annotate] no match for snippet", { rid: s.item.rule_id, snippet: s.item.raw.slice(0, 120) });
         }
-      } else {
-        console.warn("annotate error", e);
       }
-    }
+      await ctx.sync();
+    });
   }
 
   console.log("panel:annotate", {
@@ -784,4 +740,6 @@ async function bootstrap() {
   }
 }
 
-bootstrap();
+if (!(globalThis as any).__CAI_TESTING__) {
+  bootstrap();
+}

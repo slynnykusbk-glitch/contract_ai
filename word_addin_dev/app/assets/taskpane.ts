@@ -374,7 +374,19 @@ async function onClearAnnots() {
 export async function applyOpsTracked(
   ops: { start: number; end: number; replacement: string; context_before?: string; context_after?: string; rationale?: string; source?: string }[]
 ) {
-  if (!ops || !ops.length) return;
+  let cleaned = (ops || [])
+    .filter(o => typeof o.start === "number" && typeof o.end === "number" && o.end > o.start)
+    .sort((a, b) => a.start - b.start);
+
+  // prune overlaps keeping earlier ops
+  let lastEnd = -1;
+  cleaned = cleaned.filter(o => {
+    if (o.start < lastEnd) return false;
+    lastEnd = o.end;
+    return true;
+    });
+
+  if (!cleaned.length) return;
   const last: string = (window as any).__lastAnalyzed || "";
 
   await Word.run(async ctx => {
@@ -388,7 +400,7 @@ export async function applyOpsTracked(
       return arr[Math.min(Math.max(occ, 0), arr.length - 1)] || null;
     };
 
-    for (const op of ops) {
+    for (const op of cleaned) {
       const snippet = last.slice(op.start, op.end);
       const occIdx = (() => {
         let idx = -1, n = 0;
@@ -445,6 +457,8 @@ export async function applyOpsTracked(
     }
   });
 }
+
+g.applyOpsTracked = g.applyOpsTracked || applyOpsTracked;
 
 
 

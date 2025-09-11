@@ -1028,7 +1028,9 @@ async function bootstrap(info?: Office.OfficeInfo) {
 
 if (!(globalThis as any).__CAI_TESTING__) {
   document.addEventListener("DOMContentLoaded", () => {
-    Violins.initAudio();
+    if (typeof Violins !== "undefined" && typeof Violins.initAudio === "function") {
+      Violins.initAudio();
+    }
     Office.onReady(info => bootstrap(info));
   });
 }

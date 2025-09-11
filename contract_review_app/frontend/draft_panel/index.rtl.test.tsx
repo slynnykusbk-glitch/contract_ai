@@ -27,7 +27,7 @@ test('renders placeholder when findings is null', async () => {
 test('renders company check block', async () => {
   const analysis = { findings: [] };
   const analysisMeta = {
-    companies: [
+    companies_meta: [
       {
         from_document: { name: 'Acme Ltd', number: '123' },
         matched: {
@@ -36,7 +36,21 @@ test('renders company check block', async () => {
           company_status: 'active',
           registered_office_address: { postal_code: 'EC1A1AA' },
         },
-        verdict: { level: 'ok', reasons: [] },
+        verdict: 'ok',
+      },
+      {
+        from_document: { name: 'Acme Corp', number: '456' },
+        matched: {
+          company_name: 'ACME LTD',
+          company_number: '456',
+          company_status: 'active',
+        },
+        verdict: 'mismatch',
+      },
+      {
+        from_document: { name: 'Unknown', number: '789' },
+        matched: null,
+        verdict: 'not_found',
       },
     ],
   };
@@ -49,4 +63,7 @@ test('renders company check block', async () => {
   );
   await screen.findByText('Company Check');
   expect(screen.getByText(/ACME LTD/)).toBeInTheDocument();
+  expect(screen.getByText('OK')).toBeInTheDocument();
+  expect(screen.getByText('MISMATCH')).toBeInTheDocument();
+  expect(screen.getByText('NOT FOUND')).toBeInTheDocument();
 });

@@ -110,8 +110,8 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
   };
 
   useEffect(() => {
-    if (!analysisMeta?.companies) return;
-    const list = Array.isArray(analysisMeta.companies) ? analysisMeta.companies : [];
+    if (!analysisMeta?.companies_meta) return;
+    const list = Array.isArray(analysisMeta.companies_meta) ? analysisMeta.companies_meta : [];
     list.forEach((c: any) => {
       const num = c?.matched?.company_number || c?.from_document?.number;
       if (num && !companies[num]) {
@@ -308,20 +308,21 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
             </div>
           )}
 
-          {Array.isArray(analysisMeta?.companies) && analysisMeta.companies.length > 0 && (
+          {Array.isArray(analysisMeta?.companies_meta) && analysisMeta.companies_meta.length > 0 && (
             <div style={{ marginTop: 20 }}>
               <h3>Company Check</h3>
-              {analysisMeta.companies.map((c: any, i: number) => {
+              {analysisMeta.companies_meta.map((c: any, i: number) => {
                 const num = c?.matched?.company_number || c?.from_document?.number;
                 const data = (num && companies[num]) || c.matched || {};
                 const st = (num && companyStatus[num]) || 'idle';
-                const status = (data?.company_status || '').toUpperCase();
-                const badge = (data?.accounts?.overdue || data?.confirmation_statement?.overdue)
-                  ? 'OVERDUE'
-                  : status;
+                const verdict = (c?.verdict || '').toLowerCase();
+                let badge = 'NOT FOUND';
+                let color = '#6c757d';
+                if (verdict === 'ok') { badge = 'OK'; color = '#28a745'; }
+                else if (verdict === 'mismatch') { badge = 'MISMATCH'; color = '#ffc107'; }
                 return (
                   <div key={i} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 4, marginBottom: 8 }}>
-                    <div><b>{data?.company_name || c.from_document?.name}</b> {data?.company_number && `(${data.company_number})`} — {badge || (st === 'loading' ? '...' : '')}</div>
+                    <div><b>{data?.company_name || c.from_document?.name}</b> {data?.company_number && `(${data.company_number})`} {badge && (<span style={{background: color, color: '#fff', padding: '2px 4px', borderRadius: 4}}>{badge}</span>)} {st === 'loading' ? '...' : ''}</div>
                     <div style={{ fontSize: 12 }}>Name doc vs registry: {c.from_document?.name} / {data?.company_name || '—'}</div>
                     {st === 'loading' && <div style={{ fontSize: 12, color: '#888' }}>Loading...</div>}
                     {st === 'error' && <div style={{ fontSize: 12, color: 'red' }}>Failed to load</div>}

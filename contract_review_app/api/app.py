@@ -2061,7 +2061,7 @@ def api_analyze(
         "debug": debug_meta,
     }
     if companies_meta:
-        meta["companies"] = companies_meta
+        meta["companies_meta"] = companies_meta
 
     log.info("analysis meta", extra={"meta": meta})
 

@@ -4,6 +4,7 @@ describe('extended error logging', () => {
   beforeEach(() => {
     vi.resetModules();
     delete (globalThis as any).__ENABLE_EXTENDED_LOGS__;
+    delete (globalThis as any).__ENV__;
     (globalThis as any).window = globalThis;
     (globalThis as any).localStorage = {
       getItem: () => null,
@@ -41,6 +42,16 @@ describe('extended error logging', () => {
     process.env.NODE_ENV = 'production';
     await import('../assets/taskpane');
     expect(config.extendedErrorLogging).toBeUndefined();
+  });
+
+  it('defaults to production when env is undefined', async () => {
+    const config: any = {};
+    (globalThis as any).OfficeExtension = { config };
+    const origProcess = (globalThis as any).process;
+    (globalThis as any).process = undefined;
+    await import('../assets/taskpane');
+    expect(config.extendedErrorLogging).toBeUndefined();
+    (globalThis as any).process = origProcess;
   });
 
   it('can be enabled in production via flag', async () => {

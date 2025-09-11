@@ -98,7 +98,7 @@ export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
 
 
   const ops: AnnotationPlan[] = [];
-  let lastStart = Number.POSITIVE_INFINITY;
+  let lastEnd = -1;
 
   let skipped = 0;
   for (const f of sorted) {
@@ -124,7 +124,7 @@ export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
       normalized_fallback: normalizeText((f as any).normalized_snippet || "")
     });
 
-    if (typeof f.start === "number") lastStart = f.start;
+    lastEnd = end;
     if (ops.length >= MAX_ANNOTATE_OPS) break;
   }
   const g: any = globalThis as any;

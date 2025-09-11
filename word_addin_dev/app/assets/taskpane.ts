@@ -4,9 +4,12 @@ export { normalizeText, dedupeFindings } from "./dedupe";
 import { getApiKeyFromStore, getSchemaFromStore, getAddCommentsFlag, setAddCommentsFlag } from "./store";
 import { postJSON, getStoredKey, getStoredSchema, setStoredSchema, ensureHeadersSet } from "../../../contract_review_app/frontend/common/http";
 
-// enable rich debug
-// @ts-ignore
-OfficeExtension.config.extendedErrorLogging = true;
+// enable rich debug when OfficeExtension is available
+const oe: any = (globalThis as any).OfficeExtension;
+if (oe && oe.config) {
+  // @ts-ignore
+  oe.config.extendedErrorLogging = true;
+}
 
 export function logRichError(e: any, tag = "Word") {
   try {

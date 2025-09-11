@@ -8,7 +8,8 @@ import { postJSON, getStoredKey, getStoredSchema, setStoredSchema, ensureHeaders
 const oe: any = (globalThis as any).OfficeExtension;
 const gg: any = (globalThis as any);
 if (oe && oe.config) {
-  const isProd = typeof process !== "undefined" && process.env?.NODE_ENV === "production";
+  const env = gg.__ENV__ ?? (typeof process !== "undefined" ? process.env?.NODE_ENV : "production");
+  const isProd = env === "production";
   if (!isProd || gg.__ENABLE_EXTENDED_LOGS__) {
     // @ts-ignore
     oe.config.extendedErrorLogging = true;

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { AnalyzeFinding } from '../assets/api-client';
-import { annotate, MAX_ANNOTATE_OPS } from '../assets/annotate';
+import { planAnnotations, MAX_ANNOTATE_OPS } from '../assets/annotate';
 import { findAnchors } from '../assets/anchors';
 
 
@@ -58,7 +58,7 @@ describe('annotate scheduler', () => {
       search: () => ({ items: [], load: () => {} })
     } as any;
     const finding: AnalyzeFinding = { start: 0, end: 3, snippet: 'abc', rule_id: 'r1' };
-    const ops = annotate([finding]);
+    const ops = planAnnotations([finding]);
     const anchors = await findAnchors(body, ops[0].raw);
     const skipped = anchors.length === 0 ? [ops[0]] : [];
     expect(skipped.length).toBe(1);
@@ -71,7 +71,7 @@ describe('annotate scheduler', () => {
       snippet: 'x',
       rule_id: `r${i}`
     }));
-    const ops = annotate(findings);
+    const ops = planAnnotations(findings);
     expect(ops.length).toBe(MAX_ANNOTATE_OPS);
   });
 });

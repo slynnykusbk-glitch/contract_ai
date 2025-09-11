@@ -1,4 +1,4 @@
-import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON } from "./api-client.ts";
+import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON, apiHealth } from "./api-client.ts";
 import { normalizeText, dedupeFindings, severityRank } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import {
@@ -9,19 +9,23 @@ import {
   setSchemaVersion,
   setApiKey,
 } from "./store.ts";
+import { supports, logSupportMatrix } from './supports.ts';
+import { registerUnloadHandlers, wasUnloaded, resetUnloadFlag } from './pending.ts';
 
 declare const Violins: { initAudio: () => void };
 
 // enable rich debug when OfficeExtension is available
-const oe: any = (globalThis as any).OfficeExtension;
 const gg: any = (globalThis as any);
-if (oe && oe.config) {
-  const env = gg.__ENV__ ?? (typeof process !== "undefined" ? process.env?.NODE_ENV : "production");
-  const isProd = env === "production";
-  if (!isProd || gg.__ENABLE_EXTENDED_LOGS__) {
-    // @ts-ignore
-    oe.config.extendedErrorLogging = true;
-  }
+const oe: any = gg.OfficeExtension;
+const ENV_MODE = (() => {
+  const env = gg.ENV_MODE || (typeof process !== 'undefined' ? (process as any).env?.ENV_MODE : undefined);
+  if (env) return env === 'dev' ? 'dev' : 'prod';
+  const nodeEnv = typeof process !== 'undefined' ? (process as any).env?.NODE_ENV : undefined;
+  return nodeEnv === 'development' ? 'dev' : 'prod';
+})();
+if (oe && oe.config && (ENV_MODE === 'dev' || gg.__ENABLE_EXTENDED_LOGS__)) {
+  // @ts-ignore
+  oe.config.extendedErrorLogging = true;
 }
 
 export function logRichError(e: any, tag = "Word") {
@@ -152,9 +156,8 @@ function slot(id: string, role: string): HTMLElement | null {
   ) || document.getElementById(id);
 }
 
-function getRiskThreshold(): "low" | "medium" | "high" {
-  const sel = (document.getElementById("selectRiskThreshold") as HTMLSelectElement | null)
-    || (document.getElementById("riskThreshold") as HTMLSelectElement | null);
+export function getRiskThreshold(): "low" | "medium" | "high" {
+  const sel = document.getElementById("selectRiskThreshold") as HTMLSelectElement | null;
   const v = sel?.value?.toLowerCase();
   return (v === "low" || v === "medium" || v === "high") ? v : "medium";
 }
@@ -951,9 +954,19 @@ async function onRejectAll() {
   }
 }
 
-function wireUI() {
+export function wireUI() {
+  const s = logSupportMatrix();
+  const disable = (id: string) => {
+    const el = document.getElementById(id) as HTMLButtonElement | null;
+    if (el) { el.disabled = true; el.title = 'Not supported'; }
+  };
+
   bindClick("#btnUseWholeDoc", onUseWholeDoc);
-  bindClick("#btnTest", doHealth);
+  if (ENV_MODE === 'dev') bindClick("#btnTest", doHealth);
+  else {
+    const bt = document.getElementById('btnTest');
+    if (bt) (bt as HTMLElement).style.display = 'none';
+  }
   bindClick("#btnQARecheck", doQARecheck);
   document.getElementById("btnSuggestEdit")?.addEventListener("click", onSuggestEdit);
   bindClick("#btnApplyTracked", onApplyTracked);
@@ -996,9 +1009,37 @@ function wireUI() {
   if (ab) ab.disabled = true;
   ensureHeaders();
   updateStatusChip();
+
+  if (!s.revisions) { disable('btnApplyTracked'); disable('btnAcceptAll'); disable('btnRejectAll'); }
+  if (!s.comments) { disable('btnAcceptAll'); }
+  if (!s.search) { disable('btnPrevIssue'); disable('btnNextIssue'); disable('btnQARecheck'); }
+  if (!s.contentControls) { disable('btnAnnotate'); }
+  if (!s.revisions || !s.comments || !s.search || !s.contentControls) {
+    try { setOfficeBadge('Word ⚠'); } catch {}
+  }
 }
 
 g.wireUI = g.wireUI || wireUI;
+
+export async function runStartupSelftest() {
+  const missing: string[] = [];
+  ['btnAnalyze', 'selectRiskThreshold'].forEach(id => { if (!document.getElementById(id)) missing.push(id); });
+  if (!Office?.context?.requirements?.isSetSupported?.('WordApi','1.4')) missing.push('req1.4');
+  const feats = logSupportMatrix();
+  const healthOk = await apiHealth().then(r => r.ok).catch(() => false);
+  if (!healthOk) missing.push('health');
+  const build = '__BUILD_TS__';
+  const ok = missing.length === 0;
+  const msg = ok ? `Startup OK | build=${build} | req=1.4 | features=${JSON.stringify(feats)}`
+                 : `Startup FAIL: ${missing.join(', ')}`;
+  console.log(msg);
+  const badge = document.getElementById('startupBadge');
+  if (badge) {
+    badge.textContent = ok ? 'OK' : 'FAIL';
+    badge.setAttribute('data-status', ok ? 'ok' : 'fail');
+  }
+  return { ok, missing, features: feats };
+}
 
 function onDraftReady(text: string) {
   const show = !!text.trim();
@@ -1017,7 +1058,13 @@ function onDraftReady(text: string) {
 }
 
 async function bootstrap(info?: Office.OfficeInfo) {
+  if (wasUnloaded()) {
+    console.log('reopen clean OK');
+    resetUnloadFlag();
+  }
   wireUI();
+  registerUnloadHandlers();
+  try { await runStartupSelftest(); } catch {}
   try { await doHealth(); } catch {}
   try {
     setOfficeBadge(`${info?.host || Office.context?.host || "Word"} ✓`);
@@ -1026,12 +1073,27 @@ async function bootstrap(info?: Office.OfficeInfo) {
   }
 }
 
+let bootstrapCalls = 0;
+export function invokeBootstrap(info?: Office.OfficeInfo) {
+  if (wasUnloaded()) {
+    bootstrapCalls = 0;
+  }
+  if (bootstrapCalls > 0) {
+    console.log(`bootstrap invoked x${bootstrapCalls+1}`);
+    return;
+  }
+  bootstrapCalls++;
+  console.log('bootstrap invoked x1');
+  void bootstrap(info);
+}
+export function getBootstrapCount() { return bootstrapCalls; }
+
 if (!(globalThis as any).__CAI_TESTING__) {
-  document.addEventListener("DOMContentLoaded", () => {
-    if (typeof Violins !== "undefined" && typeof Violins.initAudio === "function") {
-      Violins.initAudio();
-    }
-    Office.onReady(info => bootstrap(info));
-    console.log('ContractAI build', '__BUILD_TS__');
-  });
+  const launch = () => Office.onReady(info => invokeBootstrap(info));
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', launch);
+  } else {
+    launch();
+  }
+  console.log('ContractAI build', '__BUILD_TS__');
 }

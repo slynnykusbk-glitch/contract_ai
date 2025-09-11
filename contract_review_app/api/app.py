@@ -934,6 +934,9 @@ def _custom_openapi():
     schemas["AnalyzeResponse"] = AnalyzeResponse.model_json_schema(
         ref_template="#/components/schemas/{model}"
     )
+    schemas["GptDraftIn"] = GptDraftIn.model_json_schema(
+        ref_template="#/components/schemas/{model}"
+    )
     for _m in [Finding, Span, Segment, SearchHit, CitationInput]:
         schemas[_m.__name__] = _m.model_json_schema(
             ref_template="#/components/schemas/{model}"

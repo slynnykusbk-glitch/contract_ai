@@ -1,7 +1,6 @@
 import importlib
 from fastapi.testclient import TestClient
 import respx
-import httpx
 
 
 def make_client(monkeypatch, flag="1", key="k"):
@@ -18,6 +17,7 @@ def make_client(monkeypatch, flag="1", key="k"):
     import contract_review_app.integrations.companies_house.client as ch_client
     import contract_review_app.api.integrations as integrations
     import contract_review_app.api.app as app_module
+
     importlib.reload(cfg)
     importlib.reload(ch_client)
     importlib.reload(integrations)
@@ -58,7 +58,9 @@ def test_gate_disabled_no_key(monkeypatch):
 def test_search_ok(monkeypatch):
     client, ch_client = make_client(monkeypatch, flag="1", key="x")
     BASE = ch_client.BASE
-    respx.get(f"{BASE}/search/companies").respond(json={"items": []}, headers={"ETag": "s1"})
+    respx.get(f"{BASE}/search/companies").respond(
+        json={"items": []}, headers={"ETag": "s1"}
+    )
     r = client.post("/api/companies/search", json={"query": "ACME"})
     assert r.status_code == 200
-    assert r.json()["items"] == []
+    assert r.json() == []

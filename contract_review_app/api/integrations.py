@@ -13,7 +13,7 @@ class _CompanySearchIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     query: str = Field(..., min_length=1)
-    items: int = 10
+    limit: int = 10
 
 
 def _cache_headers(etag: str, cache: str) -> dict:
@@ -59,9 +59,9 @@ def _normalize_profile(data: dict, officers: int, psc: int) -> dict:
     }
 
 
-def _companies_search(query: str, items: int, request: Request):
+def _companies_search(query: str, limit: int, request: Request):
     try:
-        data = ch_client.search_companies(query, items)
+        data = ch_client.search_companies(query, limit)
     except ch_client.CHTimeout:
         raise HTTPException(status_code=503, detail={"error": "ch_timeout"})
     except ch_client.CHError:
@@ -73,7 +73,17 @@ def _companies_search(query: str, items: int, request: Request):
     headers = _cache_headers(etag, cache)
     if inm and inm == etag and cache == "hit":
         return Response(status_code=304, headers=headers)
-    return JSONResponse(data, headers=headers)
+    items = data.get("items") or []
+    norm = [
+        {
+            "company_number": item.get("company_number"),
+            "company_name": item.get("title"),
+            "address_snippet": item.get("address_snippet"),
+            "status": item.get("company_status"),
+        }
+        for item in items
+    ]
+    return JSONResponse(norm, headers=headers)
 
 
 def _ch_gate() -> JSONResponse | None:
@@ -105,15 +115,15 @@ async def api_companies_search(payload: _CompanySearchIn, request: Request):
     gate = _ch_gate()
     if gate:
         return gate
-    return _companies_search(payload.query, payload.items, request)
+    return _companies_search(payload.query, payload.limit, request)
 
 
 @router.get("/companies/search")
-async def api_companies_search_get(q: str, request: Request, items: int = 10):
+async def api_companies_search_get(q: str, request: Request, limit: int = 10):
     gate = _ch_gate()
     if gate:
         return gate
-    return _companies_search(q, items, request)
+    return _companies_search(q, limit, request)
 
 
 @router.get("/companies/{number}")

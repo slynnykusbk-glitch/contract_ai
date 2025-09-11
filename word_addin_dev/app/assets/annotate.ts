@@ -91,7 +91,8 @@ export const MAX_ANNOTATE_OPS = 200;
  */
 export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
   const base = normalizeText((globalThis as any).__lastAnalyzed || "");
-  const deduped = dedupeFindings(findings || []);
+  const list = Array.isArray(findings) ? findings : [];
+  const deduped = dedupeFindings(list);
   const sorted = deduped
     .slice()
     .sort((a, b) => (a.start ?? Number.POSITIVE_INFINITY) - (b.start ?? Number.POSITIVE_INFINITY));

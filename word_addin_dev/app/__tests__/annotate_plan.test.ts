@@ -33,6 +33,12 @@ describe('annotate scheduler', () => {
     expect(ops.length).toBe(0);
   });
 
+  it('returns empty array for non-array input', () => {
+    // @ts-expect-error deliberately passing invalid type
+    const ops = planAnnotations('nope');
+    expect(ops.length).toBe(0);
+  });
+
   it('merges overlapping anchors', async () => {
     const body = {
       context: { sync: async () => {}, trackedObjects: { add: () => {} } },

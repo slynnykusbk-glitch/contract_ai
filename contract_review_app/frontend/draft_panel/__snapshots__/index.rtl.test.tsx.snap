@@ -1,0 +1,13 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`renders placeholder when findings is null 1`] = `
+{
+  "analysis": {
+    "findings": null,
+  },
+  "meta": {
+    "rules_evaluated": 1,
+    "rules_triggered": 0,
+  },
+}
+`;

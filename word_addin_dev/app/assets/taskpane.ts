@@ -229,6 +229,7 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
   const searchOpts = { matchCase: false, matchWholeWord: false } as Word.SearchOptions;
   let inserted = 0;
 
+
   for (const it of items) {
     await Word.run(async ctx => {
       const body = ctx.document.body;
@@ -238,6 +239,7 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
       const sRaw = body.search(it.raw, searchOpts);
       sRaw.load("items");
       await ctx.sync();
+
 
       const pick = (coll: Word.RangeCollection | undefined | null, occ: number): Word.Range | null => {
         const arr = coll?.items || [];

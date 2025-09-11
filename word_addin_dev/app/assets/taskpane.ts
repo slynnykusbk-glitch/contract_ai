@@ -416,7 +416,7 @@ export async function applyOpsTracked(
         const sFull = body.search(searchText, searchOpts);
         sFull.load('items');
         await ctx.sync();
-        const fullRange = pick(sFull, 0);
+        const fullRange = pick(sFull, occIdx);
         if (fullRange) {
           const inner = fullRange.search(snippet, searchOpts);
           inner.load('items');

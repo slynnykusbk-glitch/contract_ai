@@ -3,7 +3,10 @@ import respx
 import httpx
 
 from contract_review_app.core.schemas import Party
-from contract_review_app.integrations.service import enrich_parties_with_companies_house
+from contract_review_app.integrations.service import (
+    enrich_parties_with_companies_house,
+    build_companies_meta,
+)
 from contract_review_app.integrations.companies_house import client
 
 BASE = client.BASE
@@ -47,3 +50,23 @@ def test_audit_has_no_pii():
         data = fh.read()
     assert "integration_call" in data
     assert "Secret" not in data
+
+
+@respx.mock
+def test_build_companies_meta():
+    respx.get(f"{BASE}/company/123").respond(
+        json={
+            "company_name": "ACME LTD",
+            "company_number": "123",
+            "company_status": "active",
+            "registered_office_address": {"postal_code": "EC1A1AA"},
+        }
+    )
+    respx.get(f"{BASE}/company/123/officers?items_per_page=1").respond(json={"total_results": 5})
+    respx.get(
+        f"{BASE}/company/123/persons-with-significant-control?items_per_page=1"
+    ).respond(json={"total_results": 1})
+    p = Party(name="Acme Ltd", company_number="123", address="Some St, EC1A 1AA")
+    meta = build_companies_meta([p])
+    assert meta[0]["matched"]["company_number"] == "123"
+    assert meta[0]["verdict"]["level"] == "ok"

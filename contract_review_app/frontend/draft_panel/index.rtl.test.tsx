@@ -23,3 +23,30 @@ test('renders placeholder when findings is null', async () => {
   expect(screen.queryByText(/^Error:/)).toBeNull();
   expect({ analysis, meta }).toMatchSnapshot();
 });
+
+test('renders company check block', async () => {
+  const analysis = { findings: [] };
+  const analysisMeta = {
+    companies: [
+      {
+        from_document: { name: 'Acme Ltd', number: '123' },
+        matched: {
+          company_name: 'ACME LTD',
+          company_number: '123',
+          company_status: 'active',
+          registered_office_address: { postal_code: 'EC1A1AA' },
+        },
+        verdict: { level: 'ok', reasons: [] },
+      },
+    ],
+  };
+  render(
+    <DraftAssistantPanel
+      initialAnalysis={analysis}
+      initialMeta={meta}
+      initialAnalysisMeta={analysisMeta}
+    />
+  );
+  await screen.findByText('Company Check');
+  expect(screen.getByText(/ACME LTD/)).toBeInTheDocument();
+});

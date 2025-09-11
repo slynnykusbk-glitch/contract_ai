@@ -43,12 +43,14 @@ interface DraftEnvelope {
 interface PanelProps {
   initialAnalysis?: any;
   initialMeta?: any;
+  initialAnalysisMeta?: any;
 }
 
-const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, initialMeta = {} }) => {
+const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, initialMeta = {}, initialAnalysisMeta = null }) => {
   const [clauseType, setClauseType] = useState('');
   const [clauseText, setClauseText] = useState('');
   const [analysis, setAnalysis] = useState<any>(initialAnalysis);
+   const [analysisMeta, setAnalysisMeta] = useState<any>(initialAnalysisMeta);
   const [draft, setDraft] = useState<DraftEnvelope | null>(null);
   const [status, setStatus] = useState<Status>(initialAnalysis ? 'ready' : 'idle');
   const [error, setError] = useState('');
@@ -81,6 +83,7 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
       a.clause_type = a.clause_type || clauseType || undefined;
       a.text = a.text || clauseText || undefined;
       setAnalysis(a);
+      setAnalysisMeta((env as any)?.meta || null);
       setStatus('ready');
     } catch (e: any) {
       console.error(e);
@@ -230,6 +233,36 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
               <pre style={{ background: '#f5f5f5', padding: '1rem', borderRadius: 4, whiteSpace: 'pre-wrap' }}>
                 {draft.draft_text}
               </pre>
+            </div>
+          )}
+
+          {Array.isArray(analysisMeta?.companies) && analysisMeta.companies.length > 0 && (
+            <div style={{ marginTop: 20 }}>
+              <h3>Company Check</h3>
+              {analysisMeta.companies.map((c: any, i: number) => {
+                const status = (c.matched?.company_status || '').toUpperCase();
+                const badge = (c.matched?.accounts?.overdue || c.matched?.confirmation_statement?.overdue)
+                  ? 'OVERDUE'
+                  : status;
+                return (
+                  <div key={i} style={{ border: '1px solid #ddd', padding: 8, borderRadius: 4, marginBottom: 8 }}>
+                    <div><b>{c.matched?.company_name || c.from_document?.name}</b> {c.matched?.company_number && `(${c.matched.company_number})`} — {badge}</div>
+                    <div style={{ fontSize: 12 }}>Name doc vs registry: {c.from_document?.name} / {c.matched?.company_name || '—'}</div>
+                    {c.matched?.registered_office_address && (
+                      <div style={{ fontSize: 12 }}>Address: {c.matched.registered_office_address.postal_code || ''}</div>
+                    )}
+                    {Array.isArray(c.matched?.sic_codes) && c.matched.sic_codes.length > 0 && (
+                      <div style={{ fontSize: 12 }}>SIC: {c.matched.sic_codes.join(', ')}</div>
+                    )}
+                    {c.matched?.date_of_creation && (
+                      <div style={{ fontSize: 12 }}>Incorporated: {c.matched.date_of_creation}</div>
+                    )}
+                    {c.matched?.company_number && (
+                      <a href={`https://find-and-update.company-information.service.gov.uk/company/${c.matched.company_number}`} target="_blank" rel="noopener noreferrer">Open in Companies House</a>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </>

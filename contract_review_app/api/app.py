@@ -400,7 +400,10 @@ def _make_basic_findings(text: str) -> list[Finding]:
 # Snapshot extraction heuristics
 # Snapshot extraction heuristics
 from contract_review_app.analysis.extract_summary import extract_document_snapshot
-from contract_review_app.integrations.service import enrich_parties_with_companies_house
+from contract_review_app.integrations.service import (
+    enrich_parties_with_companies_house,
+    build_companies_meta,
+)
 from contract_review_app.core.schemas import Party
 from contract_review_app.api.calloff_validator import validate_calloff
 from contract_review_app.analysis import (
@@ -2011,6 +2014,7 @@ def api_analyze(
     snap.rules_count = _discover_rules_count()
     summary = snap.model_dump()
     _ensure_legacy_doc_type(summary)
+    companies_meta: List[Dict[str, Any]] = []
     try:
         parties = [
             Party(
@@ -2022,6 +2026,7 @@ def api_analyze(
         ]
         parties = enrich_parties_with_companies_house(parties)
         summary["parties"] = [p.model_dump() for p in parties]
+        companies_meta = build_companies_meta(parties)
     except Exception:
         pass
 
@@ -2054,6 +2059,8 @@ def api_analyze(
         "timings_ms": timings,
         "debug": debug_meta,
     }
+    if companies_meta:
+        meta["companies"] = companies_meta
 
     log.info("analysis meta", extra={"meta": meta})
 

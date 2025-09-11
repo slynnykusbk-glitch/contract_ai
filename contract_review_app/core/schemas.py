@@ -51,6 +51,7 @@ __all__ = [
     "AnalysisOutput",
     "DocIndex",
     "DocumentAnalysis",
+    "SSOTResponse",
     # responses (panel-compat legacy + combined)
     "Analysis",
     "AnalyzeResponse",
@@ -973,6 +974,19 @@ class DocumentAnalysis(BaseDoc):
                 max_ord = max(max_ord, risk_to_ordinal(getattr(a, "risk", "medium")))
             return ordinal_to_risk(max_ord)
         return v
+
+
+# ----------------------------------------------------------------------------
+# Unified API response block
+# ----------------------------------------------------------------------------
+class SSOTResponse(AppBaseModel):
+    """Minimal Single Source Of Truth envelope used by public endpoints."""
+
+    schema_version: str = Field(default=SCHEMA_VERSION)
+    cid: str
+    summary: Dict[str, Any] = Field(default_factory=dict)
+    findings: List[Dict[str, Any]] = Field(default_factory=list)
+    recommendations: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 # ----------------------------------------------------------------------------

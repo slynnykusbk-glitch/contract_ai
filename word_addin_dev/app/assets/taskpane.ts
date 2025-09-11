@@ -1,7 +1,14 @@
 import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON } from "./api-client";
 import { normalizeText, dedupeFindings, severityRank } from "./dedupe";
 export { normalizeText, dedupeFindings } from "./dedupe";
-import { getApiKeyFromStore, getSchemaFromStore, getAddCommentsFlag, setAddCommentsFlag, setSchemaVersion } from "./store";
+import {
+  getApiKeyFromStore,
+  getSchemaFromStore,
+  getAddCommentsFlag,
+  setAddCommentsFlag,
+  setSchemaVersion,
+  setApiKey,
+} from "./store";
 
 // enable rich debug when OfficeExtension is available
 const oe: any = (globalThis as any).OfficeExtension;
@@ -99,11 +106,27 @@ function onSaveBackend() {
 
 function ensureHeaders(): boolean {
   try {
-    const apiKey = getApiKeyFromStore();
-    const schema = getSchemaFromStore();
+    let apiKey = getApiKeyFromStore();
+    let schema = getSchemaFromStore();
     const warn = document.getElementById('hdrWarn') as HTMLElement | null;
     const host = (globalThis as any)?.location?.hostname ?? '';
     const isDev = host === 'localhost' || host === '127.0.0.1';
+
+    if (isDev) {
+      if (!apiKey) {
+        apiKey = 'local-test-key-123';
+        setApiKey(apiKey);
+      }
+      if (!schema) {
+        const envSchema =
+          (globalThis as any)?.SCHEMA_VERSION ||
+          (typeof process !== 'undefined' && (process as any).env?.SCHEMA_VERSION) ||
+          '1.4';
+        schema = String(envSchema);
+        setSchemaVersion(schema);
+      }
+    }
+
     if (warn) {
       if (!apiKey && !schema && !isDev) {
         warn.style.display = '';
@@ -111,6 +134,7 @@ function ensureHeaders(): boolean {
         warn.style.display = 'none';
       }
     }
+
     if (!apiKey || !schema) {
       console.warn('missing headers', { apiKey: !!apiKey, schema: !!schema });
     }

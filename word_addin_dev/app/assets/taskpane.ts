@@ -245,6 +245,16 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
         let target = s1.items?.[Math.min(occIdx, Math.max(0, (s1.items || []).length - 1))];
 
         if (!target) {
+          const ns = normalizeText(f.normalized_snippet || "");
+          if (ns && ns !== snippet) {
+            const sN = body.search(ns, { matchCase: false, matchWholeWord: false });
+            sN.load("items");
+            await ctx.sync();
+            target = sN.items?.[Math.min(occIdx, Math.max(0, (sN.items || []).length - 1))];
+          }
+        }
+
+        if (!target) {
           const token = (() => {
             const tokens = snippet.replace(/[^\p{L}\p{N} ]/gu, " ").split(" ").filter(x => x.length >= 12);
             if (tokens.length) return tokens.sort((a, b) => b.length - a.length)[0].slice(0, 64);

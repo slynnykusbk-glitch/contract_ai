@@ -409,7 +409,7 @@ Suggested fix: ${fix}`;
         const items = found.items || [];
         const target = items[Math.min(occIdx, Math.max(0, items.length - 1))];
         if (target) {
-          target.insertText(op.replacement, "Replace");
+          target.insertText(op.replacement, Word.InsertLocation.replace);
           try {
             target.insertComment("AI edit");
           } catch {
@@ -700,7 +700,7 @@ Suggested fix: ${fix}`;
       await Word.run(async (ctx) => {
         const range = ctx.document.getSelection();
         ctx.document.trackRevisions = true;
-        range.insertText(proposed, "Replace");
+        range.insertText(proposed, Word.InsertLocation.replace);
         try {
           range.insertComment(link);
         } catch {

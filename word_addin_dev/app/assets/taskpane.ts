@@ -358,7 +358,7 @@ export async function applyOpsTracked(
       const target = items[Math.min(occIdx, Math.max(0, items.length - 1))];
 
       if (target) {
-        target.insertText(op.replacement, "Replace");
+        target.insertText(op.replacement, Word.InsertLocation.replace);
         try { target.insertComment("AI edit"); } catch {}
       } else {
         console.warn("[applyOpsTracked] match not found", { snippet, occIdx });
@@ -684,7 +684,7 @@ async function onAcceptAll() {
     await Word.run(async ctx => {
       const range = ctx.document.getSelection();
       (ctx.document as any).trackRevisions = true;
-      range.insertText(proposed, "Replace");
+      range.insertText(proposed, Word.InsertLocation.replace);
       try { range.insertComment(link); } catch {}
       await ctx.sync();
     });

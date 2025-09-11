@@ -146,6 +146,7 @@
     <h3 style="margin:6px 0;">Contract AI - Draft Assistant</h3>
     <span class="pill">Build: <span id="buildInfo"></span></span>
     <span class="pill">Provider: <span id="providerMeta">—</span></span>
+    <span class="pill" id="status-chip">schema: — | cid: —</span>
   </div>
 
   <div class="row muted">Endpoints: <code>/health</code> · <code>/api/analyze</code> · <code>/api/gpt-draft</code> · <code>/api/qa-recheck</code></div>
@@ -212,7 +213,7 @@
     <div class="muted" style="margin-bottom:6px">Office tools</div>
     <div class="flex">
       <button id="btnUseWholeDoc">Use whole doc →</button>
-      <button id="btnAnalyze">Analyze</button>
+      <button id="btnAnalyze" disabled>Analyze</button>
       <button id="btnInsertIntoWord" class="btn">Insert result into Word</button>
     </div>
   </div>

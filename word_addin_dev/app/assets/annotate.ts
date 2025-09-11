@@ -92,18 +92,29 @@ export const MAX_ANNOTATE_OPS = 200;
 export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
   const base = normalizeText((globalThis as any).__lastAnalyzed || "");
   const deduped = dedupeFindings(findings || []);
-  const sorted = deduped.slice().sort((a, b) => (b.end ?? 0) - (a.end ?? 0));
+  const sorted = deduped
+    .slice()
+    .sort((a, b) => (a.start ?? Number.POSITIVE_INFINITY) - (b.start ?? Number.POSITIVE_INFINITY));
+
 
   const ops: AnnotationPlan[] = [];
   let lastStart = Number.POSITIVE_INFINITY;
+
   let skipped = 0;
   for (const f of sorted) {
-    if (!f || !f.rule_id || !f.snippet) { skipped++; continue; }
+    if (!f || !f.rule_id || !f.snippet || typeof f.start !== "number") {
+      skipped++;
+      continue;
+    }
     const snippet = f.snippet;
-    const end = typeof f.end === "number" ? f.end : (typeof f.start === "number" ? f.start + snippet.length : undefined);
-    if (typeof end === "number" && end > lastStart) { skipped++; continue; }
+    const start = f.start;
+    const end = typeof f.end === "number" ? f.end : start + snippet.length;
+    if (start < lastEnd) {
+      skipped++;
+      continue;
+    }
     const norm = normalizeText(snippet);
-    const occIdx = nthOccurrenceIndex(base, norm, f.start);
+    const occIdx = nthOccurrenceIndex(base, norm, start);
     ops.push({
       raw: snippet,
       norm,
@@ -112,6 +123,7 @@ export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
       rule_id: f.rule_id,
       normalized_fallback: normalizeText((f as any).normalized_snippet || "")
     });
+
     if (typeof f.start === "number") lastStart = f.start;
     if (ops.length >= MAX_ANNOTATE_OPS) break;
   }
@@ -179,7 +191,8 @@ export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number
         const start = target.start ?? 0;
         const end = target.end ?? start;
         if (used.some(r => Math.max(r.start, start) < Math.min(r.end, end))) {
-          continue; // conflict
+          console.warn("[annotate] overlapping range", { rid: op.rule_id, start, end });
+          continue;
         }
         if (isDryRunAnnotateEnabled()) {
           try { target.select(); } catch {}

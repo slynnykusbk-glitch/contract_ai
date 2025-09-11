@@ -1,6 +1,6 @@
-import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON } from "./api-client";
-import { normalizeText, dedupeFindings, severityRank } from "./dedupe";
-export { normalizeText, dedupeFindings } from "./dedupe";
+import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON } from "./api-client.ts";
+import { normalizeText, dedupeFindings, severityRank } from "./dedupe.ts";
+export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import {
   getApiKeyFromStore,
   getSchemaFromStore,
@@ -8,7 +8,7 @@ import {
   setAddCommentsFlag,
   setSchemaVersion,
   setApiKey,
-} from "./store";
+} from "./store.ts";
 
 declare const Violins: { initAudio: () => void };
 
@@ -52,8 +52,8 @@ g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
 g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
 g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
 g.logRichError = g.logRichError || logRichError;
-import { notifyOk, notifyErr, notifyWarn } from "./notifier";
-import { getWholeDocText } from "./office"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
+import { notifyOk, notifyErr, notifyWarn } from "./notifier.ts";
+import { getWholeDocText } from "./office.ts"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
 g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 
 type Mode = "live" | "friendly" | "doctor";
@@ -1032,5 +1032,6 @@ if (!(globalThis as any).__CAI_TESTING__) {
       Violins.initAudio();
     }
     Office.onReady(info => bootstrap(info));
+    console.log('ContractAI build', '__BUILD_TS__');
   });
 }

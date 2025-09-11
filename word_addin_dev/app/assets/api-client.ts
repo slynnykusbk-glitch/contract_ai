@@ -10,7 +10,7 @@ export type Meta = {
   status?: string | null;
 };
 
-import { getApiKeyFromStore, getSchemaFromStore } from "./store";
+import { getApiKeyFromStore, getSchemaFromStore } from "./store.ts";
 
 export type AnalyzeFinding = {
   rule_id: string;

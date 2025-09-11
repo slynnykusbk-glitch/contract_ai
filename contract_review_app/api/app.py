@@ -2024,9 +2024,10 @@ def api_analyze(
             )
             for p in summary.get("parties", [])
         ]
+        doc_parties = [Party(**p.model_dump()) for p in parties]
         parties = enrich_parties_with_companies_house(parties)
         summary["parties"] = [p.model_dump() for p in parties]
-        companies_meta = build_companies_meta(parties)
+        companies_meta = build_companies_meta(parties, doc_parties=doc_parties)
     except Exception:
         pass
 

@@ -111,12 +111,13 @@ def _verdict_for_party(p: Party, data: Dict[str, Any] | None) -> Dict[str, Any]:
     return verdict
 
 
-def build_companies_meta(parties: List[Party]) -> List[Dict[str, Any]]:
+def build_companies_meta(parties: List[Party], doc_parties: List[Party] | None = None) -> List[Dict[str, Any]]:
     if os.getenv("FEATURE_COMPANIES_HOUSE", "0") != "1" or not ch_client.KEY:
         return []
     meta: List[Dict[str, Any]] = []
-    for p in parties:
-        doc = {"name": p.name, "number": p.company_number}
+    for idx, p in enumerate(parties):
+        src = doc_parties[idx] if doc_parties and idx < len(doc_parties) else p
+        doc = {"name": src.name, "number": src.company_number}
         data: Dict[str, Any] | None = None
         try:
             if p.company_number:

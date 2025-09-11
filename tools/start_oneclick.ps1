@@ -1,5 +1,5 @@
 param(
-  [string]$Branch = "codex/implement-anchor-search-with-tests"
+  [string]$Branch
 )
 
 $ErrorActionPreference = "Stop"
@@ -8,6 +8,9 @@ Set-Location (Join-Path $root "..")  # в корень репо
 
 # 1) Git sync
 git fetch origin
+if ([string]::IsNullOrWhiteSpace($Branch)) {
+  $Branch = (git rev-parse --abbrev-ref HEAD).Trim()
+}
 git switch $Branch
 git pull
 

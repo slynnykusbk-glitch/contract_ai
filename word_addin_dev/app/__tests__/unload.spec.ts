@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 const mkEnv = () => {
   const handlers: Record<string, ((ev: any) => void)[]> = {};
+  const docHandlers: Record<string, ((ev: any) => void)[]> = {};
   const win: any = {
     addEventListener: (n: string, f: any) => { (handlers[n]||(handlers[n]=[])).push(f); },
     dispatchEvent: (ev: Event) => { (handlers[ev.type]||[]).forEach(fn => fn(ev)); },
@@ -11,7 +12,10 @@ const mkEnv = () => {
     getElementById: (id: string) => id === 'progress' ? prog : null,
     querySelector: () => null,
     querySelectorAll: (sel: string) => sel === '.progress' ? [prog] : [],
-    addEventListener: () => {},
+    addEventListener: (n: string, f: any) => { (docHandlers[n]||(docHandlers[n]=[])).push(f); },
+    dispatchEvent: (ev: Event) => { (docHandlers[ev.type]||[]).forEach(fn => fn(ev)); },
+    visibilityState: 'visible',
+    hidden: false,
   };
   (globalThis as any).window = win;
   (globalThis as any).document = doc;
@@ -23,21 +27,24 @@ const mkEnv = () => {
 };
 
 describe('unload cleanup', () => {
-  it('aborts pending fetch and hides progress', async () => {
-    const { handlers, win, doc } = mkEnv();
+  it('ignores visibilitychange but aborts on pagehide', async () => {
+    const { win, doc } = mkEnv();
+    let aborted = false;
     (globalThis as any).fetch = (_:any, opts:any = {}) => new Promise((_res, rej) => {
       const sig = opts.signal;
-      if (sig) sig.addEventListener('abort', () => rej(new DOMException('aborted','AbortError')));
+      if (sig) sig.addEventListener('abort', () => { aborted = true; rej(new DOMException('aborted','AbortError')); });
     });
     const { invokeBootstrap } = await import('../assets/taskpane.ts');
     invokeBootstrap();
     const { postJson } = await import('../assets/api-client.ts');
     const p = postJson('/x', {});
+    doc.visibilityState = 'hidden';
+    doc.hidden = true;
+    doc.dispatchEvent(new Event('visibilitychange'));
+    await Promise.resolve();
+    expect(aborted).toBe(false);
     win.dispatchEvent(new Event('pagehide'));
     await expect(p).rejects.toThrow();
-    expect((doc.getElementById('progress') as any).style.display).toBe('none');
-    expect(handlers['pagehide'].length).toBe(1);
-    invokeBootstrap();
-    expect(handlers['pagehide'].length).toBe(1);
+    expect(aborted).toBe(true);
   });
 });

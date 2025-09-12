@@ -22,6 +22,13 @@ const gg: any = (globalThis as any);
 const oe: any = gg.OfficeExtension;
 const BUILD_ID = 'build-20250912-091616';
 console.log('ContractAI build', BUILD_ID);
+let __cfg_timeout: string | null = null;
+let __cfg_abort_vis = '0';
+try {
+  __cfg_timeout = localStorage.getItem('cai_timeout_ms:analyze');
+  __cfg_abort_vis = localStorage.getItem('cai_abort_on_visibility') || '0';
+} catch {}
+console.log('[CFG]', { timeout_analyze: __cfg_timeout, abort_on_visibility: __cfg_abort_vis });
 if (!BUILD_ID.includes('build-') && typeof document !== 'undefined' && document.addEventListener) {
   document.addEventListener('DOMContentLoaded', () => {
     try {
@@ -879,8 +886,18 @@ async function doAnalyze() {
         .dispatchEvent(new CustomEvent("ca.results", { detail: json }));
 
       notifyOk("Analyze OK");
-    } catch (e) {
-      notifyWarn("Analyze failed");
+    } catch (e: any) {
+      let reason = 'unknown';
+      if (e?.name === 'AbortError') {
+        reason = 'timeout';
+      } else if (typeof e?.message === 'string') {
+        if (e.message.includes('HTTP 413')) reason = 'payload too large (413)';
+        else if (e.message.includes('HTTP 504')) reason = 'upstream timeout (504)';
+        else if (e.message.includes('HTTP 401')) reason = 'unauthorized (401)';
+        else if (e.message.includes('HTTP 403')) reason = 'forbidden (403)';
+        else if (e.message.includes('HTTP 422')) reason = 'schema mismatch (422)';
+      }
+      notifyWarn(`Analyze failed: ${reason}`);
       console.error(e);
     } finally {
       if (btn) btn.disabled = false;

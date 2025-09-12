@@ -6,7 +6,7 @@ export async function checkHealth(opts: { backend?: string; timeoutMs?: number }
     const url = backend ? `${backend}/health` : '/health';
     const ctrl = new AbortController();
     const timeout = opts.timeoutMs ?? 9000;
-    const t = setTimeout(() => ctrl.abort(), timeout);
+    const t = setTimeout(() => ctrl.abort('timeout'), timeout);
     cached = fetch(url, { signal: ctrl.signal }).then(async resp => {
       clearTimeout(t);
       const json = await resp.json().catch(() => ({}));

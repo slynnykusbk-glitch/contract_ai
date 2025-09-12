@@ -90,7 +90,7 @@ function base(): string {
   catch { return DEFAULT_BASE; }
 }
 
-export async function postJSON(path: string, body: any, timeoutMs = 9000) {
+export async function postJSON(path: string, body: any, timeoutMs?: number, retry = 0) {
   return withBusy(async () => {
     const url = base() + path;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -98,8 +98,27 @@ export async function postJSON(path: string, body: any, timeoutMs = 9000) {
     headers['x-schema-version'] = schema;
     const key = getApiKeyFromStore();
     if (key) headers['x-api-key'] = key;
+
+    const route = path.split('/').pop() || '';
+    let eff = timeoutMs;
+    if (eff == null) {
+      try {
+        const ov = localStorage.getItem(`cai_timeout_ms:${route}`);
+        if (ov) eff = parseInt(ov, 10);
+      } catch {}
+    }
+    const sizeBytes =
+      typeof body?.text === 'string' ? new TextEncoder().encode(body.text).length : 0;
+    if (eff == null) {
+      eff = 30000;
+      if (sizeBytes > 300000) eff = 90000;
+      else if (sizeBytes > 100000) eff = 60000;
+    }
+    eff = Math.min(eff, 120000);
+
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    const started = Date.now();
+    const t = setTimeout(() => ctrl.abort('timeout'), eff);
     registerFetch(ctrl);
     registerTimer(t);
     try {
@@ -111,7 +130,29 @@ export async function postJSON(path: string, body: any, timeoutMs = 9000) {
         signal: ctrl.signal,
       });
       const json = await resp.json().catch(() => ({}));
+      if (path === '/api/analyze') {
+        const cid = resp.headers.get('x-cid');
+        const schemaResp = resp.headers.get('x-schema-version');
+        const t_ms = Date.now() - started;
+        console.log('analyze', {
+          cid,
+          schema: schemaResp,
+          t_ms,
+          size_bytes: sizeBytes,
+          retry,
+        });
+      }
       return { resp, json };
+    } catch (e: any) {
+      if (
+        path === '/api/analyze' &&
+        e?.name === 'AbortError' &&
+        ctrl.signal.reason === 'timeout' &&
+        retry < 1
+      ) {
+        return postJSON(path, body, eff + 30000, retry + 1);
+      }
+      throw e;
     } finally {
       clearTimeout(t);
       deregisterTimer(t);
@@ -130,7 +171,7 @@ async function req(path: string, { method='GET', body=null, key=path, timeoutMs=
     headers['x-schema-version'] = getSchemaFromStore() || '1.4';
 
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    const t = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
     registerFetch(ctrl);
     registerTimer(t);
     let r: Response;

@@ -1,94 +1,16 @@
 <!doctype html>
 <html>
 <head>
-<meta charset="utf-8"/>
-<title>Contract AI Panel</title>
-<style>
-body{font-family:Segoe UI,Arial,sans-serif;margin:10px;}
-#health{position:fixed;top:5px;right:5px;padding:3px 6px;border-radius:4px;font-size:12px;color:#fff;background:#888;}
-#health.ok{background:#3c873a;}
-#health.fail{background:#b30000;}
-textarea{width:100%;height:120px;}
-button{margin:4px 4px 4px 0;}
-pre{background:#f0f0f0;padding:8px;border-radius:4px;white-space:pre-wrap;}
-.warning{padding:6px;background:#fff3cd;border:1px solid #ffeeba;margin:8px 0;}
-#findingsList li.active{background:#ffe8a6;}
-.hidden{display:none;}
-#status-chip{position:fixed;bottom:5px;right:5px;padding:3px 6px;border-radius:4px;font-size:12px;background:#eee;color:#000;}
-</style>
+  <meta charset="utf-8"/>
+  <title>Contract AI Panel</title>
 </head>
 <body>
-<div id="health">?</div>
-<div id="status-chip">schema: — | cid: —</div>
-<textarea id="input" placeholder="Enter text..."></textarea>
-<div>
-<button id="btnAnalyze" data-needs-headers="1" disabled>Analyze</button>
-<button id="btnSummary" data-needs-headers="1">Summary</button>
-<button id="btnSuggest" data-needs-headers="1">Suggest</button>
-<button id="btnQA" data-needs-headers="1">QA</button>
-</div>
-<pre id="output"></pre>
-<div id="suggestions"></div>
-<template id="sugg-item">
-  <div class="sugg-item" data-id="">
-    <div class="sugg-head">
-      <span class="rule"></span>
-      <span class="sev"></span>
-      <span class="badge status"></span>
-    </div>
-    <div class="sugg-body">
-      <div class="before"></div>
-      <div class="after"></div>
-    </div>
-    <div class="sugg-actions">
-      <button class="btn-apply">Apply (tracked)</button>
-      <button class="btn-accept">Accept</button>
-      <button class="btn-reject">Reject</button>
-    </div>
-  </div>
-</template>
-<textarea id="originalText" class="hidden"></textarea>
-<div id="busyBar" class="hidden"></div>
-<div id="loading-book" role="status" aria-live="polite" aria-atomic="true" class="cai-book hidden" data-test-id="loading-book">
-  <div class="cai-book__icon" aria-hidden="true"></div>
-  <span class="sr-only">Processing…</span>
-</div>
-
-<section id="resultsBlock" class="hidden">
-  <div>
-    <div>Clause type: <span id="clauseTypeOut">—</span></div>
-    <div>Findings: <span id="resFindingsCount">—</span></div>
-    <div>Visible / Hidden by filters: <span id="visibleHiddenOut">—</span></div>
-  </div>
-  <div id="findingsBlock">
-    <ol id="findingsList"></ol>
-  </div>
-  <div id="recommendationsBlock">
-    <ol id="recsList"></ol>
-  </div>
-</section>
-
-<section id="draftPane" class="hidden">
   <button id="btnInsertIntoWord" class="btn" hidden>Insert result into Word</button>
   <textarea id="txtDraft"></textarea>
-  <div>
-    <button id="btnPreviewDiff" disabled>Preview diff</button>
-    <button id="btnApplyTracked" disabled>Apply (tracked + comment)</button>
-    <button id="btnAcceptAll" disabled>Accept all</button>
-    <button id="btnRejectAll" disabled>Reject all</button>
-    <button id="btnClearAnnots">Clear Annotations</button>
-    <button id="btnPrevIssue">Prev issue</button>
-    <button id="btnNextIssue">Next issue</button>
-    <button id="btnSuggestEdit">Get draft</button>
-  </div>
-  <div id="diffContainer" class="hidden">
-    <div id="diffOutput"></div>
-  </div>
-  </section>
   <script type="module" src="taskpane.bundle.js?b=__BUILD_TS__"></script>
   <script nomodule>
-  document.body.innerHTML =
-    '<div style="padding:12px;color:#f66">Your runtime is too old for ES modules. Please update your browser.</div>';
-</script>
+    document.body.innerHTML = '<div style="padding:12px;color:#f66">Your runtime is too old for ES modules. Please update your browser.</div>';
+  </script>
 </body>
 </html>
+

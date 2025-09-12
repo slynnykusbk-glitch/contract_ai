@@ -54,7 +54,7 @@ describe('dev bootstrap', () => {
     await mod.startPanel()
 
     expect(store['api_key']).toBe('local-test-key-123')
-    expect(store['schema_version']).toBe('1.5')
+    expect(store['schema_version']).toBe('1.4')
     expect(analyzeBtn.disabled).toBe(false)
   })
 })

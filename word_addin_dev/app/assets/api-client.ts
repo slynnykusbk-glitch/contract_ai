@@ -12,6 +12,7 @@ export type Meta = {
 
 import { getApiKeyFromStore, getSchemaFromStore } from "./store.ts";
 import { registerFetch, deregisterFetch, registerTimer, deregisterTimer } from './pending.ts';
+import { checkHealth } from './health.ts';
 
 export type AnalyzeFinding = {
   rule_id: string;
@@ -154,8 +155,8 @@ async function req(path: string, { method='GET', body=null, key=path, timeoutMs=
   return { ok: r.ok, json, resp: r, meta };
 }
 
-export async function apiHealth() {
-  return req('/health', { key: 'health' });
+export async function apiHealth(backend?: string) {
+  return checkHealth({ backend });
 }
 
 export async function apiAnalyze(text: string) {

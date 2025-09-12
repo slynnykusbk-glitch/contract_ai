@@ -1,5 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-describe('apiHealth negatives', () => {
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+describe('checkHealth negatives', () => {
+  beforeEach(() => { vi.resetModules(); });
+
   it('handles non-ok response', async () => {
     (globalThis as any).window = globalThis;
     (globalThis as any).localStorage = { getItem: () => null, setItem: () => {} } as any;
@@ -9,8 +12,8 @@ describe('apiHealth negatives', () => {
       headers: new Headers(),
       status: 500,
     });
-    const mod = await import('../assets/api-client.ts');
-    const res = await mod.apiHealth();
+    const { checkHealth } = await import('../assets/health.ts');
+    const res = await checkHealth();
     expect(res.ok).toBe(false);
     expect(res.json).toEqual({ foo: 1 });
   });
@@ -19,7 +22,7 @@ describe('apiHealth negatives', () => {
     (globalThis as any).window = globalThis;
     (globalThis as any).localStorage = { getItem: () => null, setItem: () => {} } as any;
     (globalThis as any).fetch = vi.fn().mockRejectedValue(new Error('boom'));
-    const mod = await import('../assets/api-client.ts');
-    await expect(mod.apiHealth()).rejects.toThrow('boom');
+    const { checkHealth } = await import('../assets/health.ts');
+    await expect(checkHealth()).rejects.toThrow('boom');
   });
 });

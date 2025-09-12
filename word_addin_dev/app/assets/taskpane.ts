@@ -1,4 +1,4 @@
-import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON, apiHealth } from "./api-client.ts";
+import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON } from "./api-client.ts";
 import { normalizeText, dedupeFindings, severityRank } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import {
@@ -11,6 +11,8 @@ import {
 } from "./store.ts";
 import { supports, logSupportMatrix } from './supports.ts';
 import { registerUnloadHandlers, wasUnloaded, resetUnloadFlag } from './pending.ts';
+import { checkHealth } from './health.ts';
+import { runStartupSelftest } from './startup.selftest.ts';
 
 declare const Violins: { initAudio: () => void };
 
@@ -759,8 +761,7 @@ async function onSuggestEdit(ev?: Event) {
 async function doHealth() {
   try {
     const prev = getSchemaFromStore();
-    const resp = await fetch(`${getBackend()}/health`, { method: 'GET' });
-    const json: any = await resp.json().catch(() => ({}));
+    const { resp, json } = await checkHealth({ backend: getBackend() });
     const schema = resp.headers.get('x-schema-version') || json?.schema || null;
     if (schema) {
       setSchemaVersion(schema);
@@ -1021,25 +1022,7 @@ export function wireUI() {
 
 g.wireUI = g.wireUI || wireUI;
 
-export async function runStartupSelftest() {
-  const missing: string[] = [];
-  ['btnAnalyze', 'selectRiskThreshold'].forEach(id => { if (!document.getElementById(id)) missing.push(id); });
-  if (!Office?.context?.requirements?.isSetSupported?.('WordApi','1.4')) missing.push('req1.4');
-  const feats = logSupportMatrix();
-  const healthOk = await apiHealth().then(r => r.ok).catch(() => false);
-  if (!healthOk) missing.push('health');
-  const build = '__BUILD_TS__';
-  const ok = missing.length === 0;
-  const msg = ok ? `Startup OK | build=${build} | req=1.4 | features=${JSON.stringify(feats)}`
-                 : `Startup FAIL: ${missing.join(', ')}`;
-  console.log(msg);
-  const badge = document.getElementById('startupBadge');
-  if (badge) {
-    badge.textContent = ok ? 'OK' : 'FAIL';
-    badge.setAttribute('data-status', ok ? 'ok' : 'fail');
-  }
-  return { ok, missing, features: feats };
-}
+// self-test moved to startup.selftest.ts
 
 function onDraftReady(text: string) {
   const show = !!text.trim();
@@ -1064,7 +1047,7 @@ async function bootstrap(info?: Office.OfficeInfo) {
   }
   wireUI();
   registerUnloadHandlers();
-  try { await runStartupSelftest(); } catch {}
+  try { await runStartupSelftest(getBackend()); } catch {}
   try { await doHealth(); } catch {}
   try {
     setOfficeBadge(`${info?.host || Office.context?.host || "Word"} ✓`);
@@ -1095,5 +1078,5 @@ if (!(globalThis as any).__CAI_TESTING__) {
   } else {
     launch();
   }
-  console.log('ContractAI build', '__BUILD_TS__');
+  console.log('ContractAI build', 'build-20250911-204948');
 }

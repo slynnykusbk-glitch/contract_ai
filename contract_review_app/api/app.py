@@ -236,7 +236,7 @@ from fastapi import (
     Response,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from pydantic import (
@@ -684,6 +684,17 @@ async def _panel_no_cache(request: Request, call_next):
 @panel_app.get("/version.json")
 async def panel_version() -> dict:
     return {"version": app.version, "schema_version": SCHEMA_VERSION}
+
+
+@panel_app.head("/{path:path}")
+async def panel_head(path: str = ""):
+    base = PANEL_DIR.resolve()
+    full = (base / path).resolve()
+    if full.is_dir():
+        full = full / "index.html"
+    if not str(full).startswith(str(base)) or not full.is_file():
+        raise HTTPException(status_code=404)
+    return FileResponse(full)
 
 
 panel_app.mount(

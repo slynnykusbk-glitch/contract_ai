@@ -20,7 +20,7 @@ declare const Violins: { initAudio: () => void };
 // enable rich debug when OfficeExtension is available
 const gg: any = (globalThis as any);
 const oe: any = gg.OfficeExtension;
-const BUILD_ID = 'build-20250912-091616';
+const BUILD_ID = 'build-20250912-195756';
 console.log('ContractAI build', BUILD_ID);
 let __cfg_timeout: string | null = null;
 let __cfg_abort_vis = '0';
@@ -887,17 +887,25 @@ async function doAnalyze() {
 
       notifyOk("Analyze OK");
     } catch (e: any) {
-      let reason = 'unknown';
+      let tail = '';
       if (e?.name === 'AbortError') {
-        reason = 'timeout';
+        const msg = e?.message || '';
+        if (msg.startsWith('timeout')) {
+          const ms = parseInt(msg.replace(/[^0-9]/g, ''), 10) || 0;
+          tail = `(timeout ${Math.round(ms / 1000)} s)`;
+        } else if (msg === 'pagehide/unload') {
+          tail = '(aborted by pagehide)';
+        } else {
+          tail = '(aborted)';
+        }
       } else if (typeof e?.message === 'string') {
-        if (e.message.includes('HTTP 413')) reason = 'payload too large (413)';
-        else if (e.message.includes('HTTP 504')) reason = 'upstream timeout (504)';
-        else if (e.message.includes('HTTP 401')) reason = 'unauthorized (401)';
-        else if (e.message.includes('HTTP 403')) reason = 'forbidden (403)';
-        else if (e.message.includes('HTTP 422')) reason = 'schema mismatch (422)';
+        if (e.message.includes('HTTP 504')) tail = '(HTTP 504)';
+        else if (e.message.includes('HTTP 413')) tail = '(payload too large 413)';
+        else if (e.message.includes('HTTP 401')) tail = '(unauthorized 401)';
+        else if (e.message.includes('HTTP 403')) tail = '(forbidden 403)';
+        else if (e.message.includes('HTTP 422')) tail = '(schema mismatch 422)';
       }
-      notifyWarn(`Analyze failed: ${reason}`);
+      notifyWarn(`Analyze failed ${tail}`.trim());
       console.error(e);
     } finally {
       if (btn) btn.disabled = false;

@@ -90,7 +90,13 @@ function base(): string {
   catch { return DEFAULT_BASE; }
 }
 
-export async function postJSON(path: string, body: any, timeoutMs?: number, retry = 0) {
+const ANALYZE_BASE_MS = 9000;
+const ANALYZE_PER_KB_MS = 60;
+const ANALYZE_MAX_MS = 90000;
+const ANALYZE_RETRY_COUNT = 1;
+const ANALYZE_RETRY_BACKOFF_MS = 3000;
+
+export async function postJSON(path: string, body: any, timeoutOverride?: number) {
   return withBusy(async () => {
     const url = base() + path;
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -99,65 +105,80 @@ export async function postJSON(path: string, body: any, timeoutMs?: number, retr
     const key = getApiKeyFromStore();
     if (key) headers['x-api-key'] = key;
 
-    const route = path.split('/').pop() || '';
-    let eff = timeoutMs;
-    if (eff == null) {
+    const bodyStr = JSON.stringify(body || {});
+    const sizeBytes = new TextEncoder().encode(bodyStr).length;
+
+    let timeoutMs = timeoutOverride;
+    let retryCount = ANALYZE_RETRY_COUNT;
+    let backoffMs = ANALYZE_RETRY_BACKOFF_MS;
+
+    if (path === '/api/analyze') {
+      if (timeoutMs == null) {
+        const dyn = ANALYZE_BASE_MS + ANALYZE_PER_KB_MS * (sizeBytes / 1024);
+        timeoutMs = Math.max(ANALYZE_BASE_MS, Math.min(ANALYZE_MAX_MS, Math.floor(dyn)));
+      }
       try {
-        const ov = localStorage.getItem(`cai_timeout_ms:${route}`);
-        if (ov) eff = parseInt(ov, 10);
+        const v = localStorage.getItem('cai.timeout.analyze.ms');
+        if (v) timeoutMs = parseInt(v, 10);
+      } catch {}
+      try {
+        const v = localStorage.getItem('cai.retry.analyze.count');
+        if (v) retryCount = parseInt(v, 10);
+      } catch {}
+      try {
+        const v = localStorage.getItem('cai.retry.analyze.backoff.ms');
+        if (v) backoffMs = parseInt(v, 10);
+      } catch {}
+      try {
+        const params = new URLSearchParams(location.search);
+        const ta = params.get('ta');
+        if (ta) timeoutMs = parseInt(ta, 10);
+        const rac = params.get('rac');
+        if (rac) retryCount = parseInt(rac, 10);
+        const rb = params.get('rb');
+        if (rb) backoffMs = parseInt(rb, 10);
       } catch {}
     }
-    const sizeBytes =
-      typeof body?.text === 'string' ? new TextEncoder().encode(body.text).length : 0;
-    if (eff == null) {
-      eff = 30000;
-      if (sizeBytes > 300000) eff = 90000;
-      else if (sizeBytes > 100000) eff = 60000;
-    }
-    eff = Math.min(eff, 120000);
+    timeoutMs = timeoutMs ?? ANALYZE_BASE_MS;
 
-    const ctrl = new AbortController();
-    const started = Date.now();
-    const t = setTimeout(() => ctrl.abort('timeout'), eff);
-    registerFetch(ctrl);
-    registerTimer(t);
-    try {
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body || {}),
-        credentials: 'include',
-        signal: ctrl.signal,
-      });
-      const json = await resp.json().catch(() => ({}));
-      if (path === '/api/analyze') {
-        const cid = resp.headers.get('x-cid');
-        const schemaResp = resp.headers.get('x-schema-version');
-        const t_ms = Date.now() - started;
-        console.log('analyze', {
-          cid,
-          schema: schemaResp,
-          t_ms,
-          size_bytes: sizeBytes,
-          retry,
+    async function attempt(n: number): Promise<any> {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(`timeout ${timeoutMs}ms`), timeoutMs!);
+      registerFetch(ctrl);
+      registerTimer(t);
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: bodyStr,
+          credentials: 'include',
+          signal: ctrl.signal,
         });
+        const json = await resp.json().catch(() => ({}));
+        if (path === '/api/analyze' && (resp.status === 504 || resp.status >= 500) && n < retryCount) {
+          await new Promise(res => setTimeout(res, backoffMs));
+          return attempt(n + 1);
+        }
+        return { resp, json };
+      } catch (e: any) {
+        if (path === '/api/analyze' && e?.name === 'AbortError') {
+          const reason = ctrl.signal.reason || 'aborted';
+          console.log(`[NET] analyze aborted: ${reason}`);
+          if (n < retryCount && String(reason).startsWith('timeout')) {
+            await new Promise(res => setTimeout(res, backoffMs));
+            return attempt(n + 1);
+          }
+          throw new DOMException(reason, 'AbortError');
+        }
+        throw e;
+      } finally {
+        clearTimeout(t);
+        deregisterTimer(t);
+        deregisterFetch(ctrl);
       }
-      return { resp, json };
-    } catch (e: any) {
-      if (
-        path === '/api/analyze' &&
-        e?.name === 'AbortError' &&
-        ctrl.signal.reason === 'timeout' &&
-        retry < 1
-      ) {
-        return postJSON(path, body, eff + 30000, retry + 1);
-      }
-      throw e;
-    } finally {
-      clearTimeout(t);
-      deregisterTimer(t);
-      deregisterFetch(ctrl);
     }
+
+    return attempt(0);
   });
 }
 export { postJSON as postJson };

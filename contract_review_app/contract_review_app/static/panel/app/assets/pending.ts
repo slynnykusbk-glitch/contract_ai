@@ -1,5 +1,8 @@
-export const pendingFetches = new Set<AbortController>();
-export const pendingTimers = new Set<any>();
+const win = window as any;
+win.__cai_pending_fetches = win.__cai_pending_fetches || new Set<AbortController>();
+win.__cai_pending_timers = win.__cai_pending_timers || new Set<any>();
+export const pendingFetches: Set<AbortController> = win.__cai_pending_fetches;
+export const pendingTimers: Set<any> = win.__cai_pending_timers;
 
 type BusyState = { count: number };
 const busyState: BusyState = { count: 0 };
@@ -39,21 +42,21 @@ export function clearPending(reason?: string) {
 }
 
 export function registerUnloadHandlers() {
-  if ((globalThis as any).__pendingUnloadReg) return;
-  (globalThis as any).__pendingUnloadReg = true;
-  const handler = (reason: string) => { clearPending(reason); (globalThis as any).__wasUnloaded = true; };
-  window.addEventListener('pagehide', () => handler('pagehide'));
-  window.addEventListener('unload', () => handler('unload'));
+  if (win.__pendingUnloadReg) return;
+  win.__pendingUnloadReg = true;
+  const handler = () => { clearPending('pagehide/unload'); win.__wasUnloaded = true; };
+  window.addEventListener('pagehide', handler);
+  window.addEventListener('unload', handler);
   const vis = (() => {
-    try { return localStorage.getItem('cai_abort_on_visibility') === '1'; }
+    try { return localStorage.getItem('cai.abort.on.visibilitychange') === '1'; }
     catch { return false; }
   })();
   if (vis) {
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') handler('dev-visibility');
+      if (document.visibilityState === 'hidden') handler();
     });
   }
 }
 
-export function wasUnloaded(): boolean { return !!(globalThis as any).__wasUnloaded; }
-export function resetUnloadFlag() { (globalThis as any).__wasUnloaded = false; }
+export function wasUnloaded(): boolean { return !!win.__wasUnloaded; }
+export function resetUnloadFlag() { win.__wasUnloaded = false; }

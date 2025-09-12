@@ -28,8 +28,8 @@ export function deregisterFetch(ctrl: AbortController) { pendingFetches.delete(c
 export function registerTimer(id: any) { pendingTimers.add(id); }
 export function deregisterTimer(id: any) { pendingTimers.delete(id); }
 
-export function clearPending() {
-  pendingFetches.forEach(c => { try { c.abort(); } catch {} });
+export function clearPending(reason?: string) {
+  pendingFetches.forEach(c => { try { c.abort(reason); } catch {} });
   pendingFetches.clear();
   pendingTimers.forEach(t => { try { clearTimeout(t); clearInterval(t); } catch {} });
   pendingTimers.clear();
@@ -41,10 +41,18 @@ export function clearPending() {
 export function registerUnloadHandlers() {
   if ((globalThis as any).__pendingUnloadReg) return;
   (globalThis as any).__pendingUnloadReg = true;
-  const handler = () => { clearPending(); (globalThis as any).__wasUnloaded = true; };
-  window.addEventListener('pagehide', handler);
-  window.addEventListener('unload', handler);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') handler(); });
+  const handler = (reason: string) => { clearPending(reason); (globalThis as any).__wasUnloaded = true; };
+  window.addEventListener('pagehide', () => handler('pagehide'));
+  window.addEventListener('unload', () => handler('unload'));
+  const vis = (() => {
+    try { return localStorage.getItem('cai_abort_on_visibility') === '1'; }
+    catch { return false; }
+  })();
+  if (vis) {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') handler('dev-visibility');
+    });
+  }
 }
 
 export function wasUnloaded(): boolean { return !!(globalThis as any).__wasUnloaded; }

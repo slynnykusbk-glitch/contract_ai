@@ -80,6 +80,9 @@ _PROCESS_CID = str(uuid.uuid4())
 
 class NormalizeAndTraceMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
+        if request.method == "HEAD" and request.url.path.startswith("/panel/"):
+            return await call_next(request)
+
         response = await call_next(request)
 
         body, headers, media_type = await capture_response(response)

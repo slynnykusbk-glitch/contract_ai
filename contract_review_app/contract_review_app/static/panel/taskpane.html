@@ -131,7 +131,7 @@
     await bootstrapHeaders();
     await import('./app/assets/store.js?v=DEV');
     await import('./app/assets/api-client.js?v=DEV');
-    await import('./taskpane.bundle.js?b=__BUILD_TS__');
+      await import('./taskpane.bundle.js?b=build-20250912-055925');
   </script>
 
   <script nomodule>
@@ -140,11 +140,12 @@
       'Please update Office to a recent build.</div>';
   </script>
 </head>
-<body>
+<body data-build="build-20250912-055925">
 <div class="wrap">
+  <div id="hdrWarn" style="display:none;color:#f66;margin-bottom:8px;">Missing headers</div>
   <div class="topline">
     <h3 style="margin:6px 0;">Contract AI - Draft Assistant</h3>
-    <span class="pill">Build: <span id="buildInfo"></span></span>
+    <span class="pill">Build: <span id="buildInfo">build-20250912-055925</span></span>
     <span class="pill">Provider: <span id="providerMeta">—</span></span>
     <span class="pill" id="status-chip">schema: — | cid: —</span>
   </div>
@@ -214,7 +215,6 @@
     <div class="flex">
       <button id="btnUseWholeDoc">Use whole doc →</button>
       <button id="btnAnalyze" disabled>Analyze</button>
-      <button id="btnInsertIntoWord" class="btn">Insert result into Word</button>
     </div>
   </div>
 
@@ -223,7 +223,7 @@
       <div class="kv"><strong>Annotate & QA</strong></div>
       <div class="kv">
         <span class="muted">Risk threshold:</span>
-        <select id="riskThreshold">
+        <select id="selectRiskThreshold">
           <option value="medium" selected>medium</option>
           <option value="high">high</option>
           <option value="critical">critical</option>
@@ -245,6 +245,13 @@
         <input id="cai-comment-on-analyze" type="checkbox" checked>
         <span>Add comments on Analyze</span>
       </label>
+      <input id="chkAddCommentsOnAnalyze" type="checkbox" style="display:none" checked>
+    </div>
+    <div class="row">
+      <label class="toggle">
+        <input id="cai-dry-run-annotate" type="checkbox">
+        <span>Dry-run annotate (no comments)</span>
+      </label>
     </div>
     <div id="qaResiduals" class="row" style="display:none">
       <strong>Residual risks</strong>
@@ -258,27 +265,17 @@
   <!-- loading indicator -->
   <div id="busyBar" style="display:none"></div>
 
-  <section id="results" class="card"></section>
-
   <div class="row card">
     <div class="muted" style="margin-bottom:6px">Original clause:</div>
     <textarea id="originalClause" placeholder="Paste text or load from selection/document…"></textarea>
     <div class="row flex" style="margin-top:8px">
-      <button id="analyzeBtn" class="btn-grey js-disable-while-busy">Analyze</button>
-      <button id="btnReplay" class="btn-grey js-disable-while-busy">Replay last</button>
-      <button id="btnGetAIDraft" class="btn btn-primary btn-sm">Get AI Draft</button>
-      <button id="copyResultBtn" class="btn-grey js-disable-while-busy">Copy result</button>
+      <button id="btnSuggestEdit" class="btn btn-primary btn-sm">Get draft</button>
     </div>
     <div class="row">
       <span class="badge" id="scoreBadge">score: —</span>
       <span class="badge" id="riskBadge">risk: —</span>
       <span class="badge" id="statusBadge">status: —</span>
       <span class="badge" id="severityBadge">severity: —</span>
-    </div>
-    <div class="row flex" style="margin-top:8px">
-      <button id="btnViewTrace" class="btn-grey js-disable-while-busy" disabled>View Trace</button>
-      <button id="btnExportHtml" class="btn-grey js-disable-while-busy" disabled>Export HTML</button>
-      <button id="btnExportPdf" class="btn-grey js-disable-while-busy" disabled>Export PDF</button>
     </div>
   </div>
 
@@ -308,36 +305,39 @@
         <tbody></tbody>
       </table>
     </div>
-    <div class="actions">
+    <div class="actions" style="display:none">
       <button id="rs-copy">Copy summary</button>
       <button id="rs-export-md">Export .md</button>
       <button id="rs-export-json">Export .json</button>
     </div>
   </section>
 
-  <div class="row card" id="resultsCard">
+  <section class="row card" id="resultsBlock">
     <div class="muted" style="margin-bottom:6px">Results</div>
     <div class="grid">
-      <div class="kv"><strong>Clause type:</strong><span id="resClauseType" data-role="clause-type">—</span></div>
+      <div class="kv"><strong>Clause type:</strong><span id="clauseTypeOut" data-role="clause-type">—</span></div>
       <div class="kv"><strong>Findings:</strong><span id="resFindingsCount" data-role="findings-count">—</span></div>
-      <div class="kv"><strong>Visible / Hidden by filters:</strong><span id="resFindingsVH" data-role="findings-visible-hidden">—</span></div>
+      <div class="kv"><strong>Visible / Hidden by filters:</strong><span id="visibleHiddenOut" data-role="findings-visible-hidden">—</span></div>
     </div>
 
-    <div class="row">
+    <!-- сам контейнер результатов для событий -->
+    <section id="results" class="card"></section>
+
+    <div class="row" id="findingsBlock">
       <strong>Findings</strong>
-      <ul class="list" id="findingsList" data-role="findings"></ul>
+      <ol class="list" id="findingsList" data-role="findings"></ol>
     </div>
 
-    <div class="row">
+    <div class="row" id="recommendationsBlock">
       <strong>Recommendations</strong>
-      <ul class="list" id="recoList" data-role="recommendations"></ul>
+      <ol class="list" id="recsList" data-role="recommendations"></ol>
     </div>
 
     <div class="row">
       <span class="toggle" id="toggleRaw" data-role="toggle-raw-json">Show raw JSON</span>
       <pre id="rawJson" data-role="raw-json" style="display:none"></pre>
     </div>
-  </div>
+  </section>
 
   <div id="cai-suggest" class="card mt-2">
     <div class="card-header">Suggested edits</div>
@@ -383,14 +383,15 @@
     </div>
   </div>
 
-  <div class="row card">
+  <section class="row card" id="draftPane">
     <div class="muted" style="margin-bottom:6px">Proposed draft (from analysis or edited manually):</div>
     <textarea
-  id="proposedText"
+  id="draftText"
   name="proposed"
   data-role="proposed-text"
   placeholder="Proposed draft…"
   rows="8"
+  spellcheck="false"
 ></textarea>
     <div class="row flex" style="margin-top:8px">
       <button id="btnPreviewDiff" class="btn-grey" disabled>Preview diff</button>
@@ -403,7 +404,7 @@
       <div id="diffOutput" style="background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:8px;white-space:pre-wrap"></div>
     </div>
     <div id="diffView" class="pre"></div>
-  </div>
+  </section>
 
   <div class="row">
     <div class="muted" style="margin-bottom:4px">Console</div>

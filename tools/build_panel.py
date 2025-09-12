@@ -26,7 +26,6 @@ DEST = ROOT / "contract_review_app" / "contract_review_app" / "static" / "panel"
 FILES = [
     "taskpane.html",
     "taskpane.bundle.js",
-    "panel_selftest.html",
 ]
 
 
@@ -58,14 +57,19 @@ def main(*, run_tests: bool = False) -> None:
             cwd=ROOT,
         )
 
-    bump_build(ROOT)
+    token = bump_build(ROOT)
 
     DEST.mkdir(parents=True, exist_ok=True)
     for name in FILES:
-        shutil.copy2(SRC / name, DEST / name)
+        dst = DEST / name
+        shutil.copy2(SRC / name, dst)
+        try:
+            text = dst.read_text(encoding="utf-8")
+            dst.write_text(text.replace("__BUILD_TS__", token), encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            pass
 
-    # Copy assets directory
-    shutil.copytree(SRC / "app" / "assets", DEST / "app" / "assets", dirs_exist_ok=True)
+    (DEST / ".build-token").write_text(token, encoding="utf-8")
 
 
 if __name__ == "__main__":

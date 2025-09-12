@@ -9,6 +9,7 @@ panel artefacts from ``word_addin_dev`` into
 from __future__ import annotations
 
 from pathlib import Path
+import argparse
 import shutil
 import sys
 import subprocess
@@ -29,31 +30,33 @@ FILES = [
 ]
 
 
-def main() -> None:
-    # run vitest suite to ensure DOM contract before copying assets
-    subprocess.run(
-        [
-            "npm",
-            "--prefix",
-            "word_addin_dev",
-            "ci",
-        ],
-        check=True,
-        cwd=ROOT,
-    )
-    subprocess.run(
-        [
-            "npm",
-            "--prefix",
-            "word_addin_dev",
-            "run",
-            "test",
-            "--",
-            "--runInBand",
-        ],
-        check=True,
-        cwd=ROOT,
-    )
+def main(*, run_tests: bool = False) -> None:
+    """Build panel assets and optionally run vitest."""
+    if run_tests:
+        # run vitest suite to ensure DOM contract before copying assets
+        subprocess.run(
+            [
+                "npm",
+                "--prefix",
+                "word_addin_dev",
+                "ci",
+            ],
+            check=True,
+            cwd=ROOT,
+        )
+        subprocess.run(
+            [
+                "npm",
+                "--prefix",
+                "word_addin_dev",
+                "run",
+                "test",
+                "--",
+                "--runInBand",
+            ],
+            check=True,
+            cwd=ROOT,
+        )
 
     bump_build(ROOT)
 
@@ -66,4 +69,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--run-tests",
+        action="store_true",
+        help="run npm install and vitest before copying assets",
+    )
+    main(run_tests=parser.parse_args().run_tests)

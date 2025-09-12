@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build:panel": "python tools/build_panel.py"
+    "build:panel": "python tools/build_panel.py --run-tests"
   },
   "devDependencies": {
     "ts-node": "^10.9.2"

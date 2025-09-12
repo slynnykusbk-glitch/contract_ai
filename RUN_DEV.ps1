@@ -25,6 +25,10 @@ if (-not $env:LEGAL_CORPUS_DSN) { $env:LEGAL_CORPUS_DSN = 'sqlite:///var/corpus.
 $env:CONTRACTAI_LLM_API = 'mock'
 $env:CONTRACTAI_DEV_PANEL = '1'
 
+# Build panel assets with tests
+$py = Join-Path $repo ".venv\Scripts\python.exe"
+& $py tools/build_panel.py --run-tests
+
 # 2) Виправити маніфест на прямий taskpane і єдиний хост 127.0.0.1
 $mf = Join-Path $repo "word_addin_dev\manifest.xml"
 $xml = Get-Content $mf -Raw -Encoding UTF8
@@ -44,7 +48,6 @@ $certPem = Join-Path $repo "word_addin_dev\certs\localhost.pem"
 Import-Certificate -FilePath $certPem -CertStoreLocation Cert:\CurrentUser\Root | Out-Null
 
 # 5) Підняти бекенд (HTTPS localhost:9443) і панель (HTTPS localhost:3000)
-$py = Join-Path $repo ".venv\Scripts\python.exe"
 
 Start-Process $py -ArgumentList @(
   "-m","uvicorn","contract_review_app.api.app:app",

@@ -20,6 +20,23 @@ declare const Violins: { initAudio: () => void };
 // enable rich debug when OfficeExtension is available
 const gg: any = (globalThis as any);
 const oe: any = gg.OfficeExtension;
+const BUILD_ID = '__BUILD_TS__';
+console.log('ContractAI build', BUILD_ID);
+if (BUILD_ID.includes('__BUILD_TS__') && typeof document !== 'undefined' && document.addEventListener) {
+  document.addEventListener('DOMContentLoaded', () => {
+    try {
+      const banner = document.createElement('div');
+      banner.textContent = 'FATAL: stale bundle';
+      banner.style.padding = '12px';
+      banner.style.color = '#f66';
+      document.body.innerHTML = '';
+      document.body.appendChild(banner);
+      document.querySelectorAll('button').forEach(btn => {
+        (btn as HTMLButtonElement).disabled = true;
+      });
+    } catch {}
+  });
+}
 const ENV_MODE = (() => {
   const env = gg.ENV_MODE || (typeof process !== 'undefined' ? (process as any).env?.ENV_MODE : undefined);
   if (env) return env === 'dev' ? 'dev' : 'prod';
@@ -88,6 +105,7 @@ function enableAnalyze() {
   const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
   if (btn) btn.disabled = false;
   analyzeBound = true;
+  console.log('[PANEL] analyze enabled');
 }
 
 function getBackend(): string {
@@ -768,7 +786,7 @@ async function onSuggestEdit(ev?: Event) {
 async function doHealth() {
   try {
     const prev = getSchemaFromStore();
-    const { resp, json } = await checkHealth({ backend: getBackend() });
+    const { resp, json, ok } = await checkHealth({ backend: getBackend() });
     const schema = resp.headers.get('x-schema-version') || json?.schema || null;
     if (schema) {
       setSchemaVersion(schema);
@@ -776,23 +794,27 @@ async function doHealth() {
         console.log(`schema: ${schema} (synced)`);
       }
     }
-    setConnBadge(true);
-    enableAnalyze();
-    updateStatusChip(schema, null);
-    try {
-      applyMetaToBadges({
-        cid: null,
-        xcache: null,
-        latencyMs: null,
-        schema: schema || null,
-        provider: json?.provider || null,
-        model: json?.model || null,
-        llm_mode: null,
-        usage: null,
-        status: json?.status || null,
-      });
-    } catch {}
-    notifyOk(`Health: ${json?.status || 'ok'}${schema ? ` (schema ${schema})` : ''}`);
+    setConnBadge(ok);
+    if (ok) {
+      enableAnalyze();
+      updateStatusChip(schema, null);
+      try {
+        applyMetaToBadges({
+          cid: null,
+          xcache: null,
+          latencyMs: null,
+          schema: schema || null,
+          provider: json?.provider || null,
+          model: json?.model || null,
+          llm_mode: null,
+          usage: null,
+          status: json?.status || null,
+        });
+      } catch {}
+      notifyOk(`Health: ${json?.status || 'ok'}${schema ? ` (schema ${schema})` : ''}`);
+    } else {
+      notifyWarn('Health failed');
+    }
   } catch (e) {
     setConnBadge(false);
     notifyWarn('Health failed');
@@ -963,9 +985,11 @@ async function onRejectAll() {
 }
 
 export function wireUI() {
+  console.log('[PANEL] wireUI start');
   if (!(globalThis as any).__CAI_TESTING__) {
     const missing = REQUIRED_IDS.filter(id => !document.getElementById(id));
     if (missing.length) {
+      console.error('[PANEL] wireUI missing IDs', missing);
       const msg = `FATAL: panel template mismatch (missing: ${missing.join(', ')}). Check build pipeline.`;
       try {
         const banner = document.createElement ? document.createElement('div') : null;
@@ -989,6 +1013,8 @@ export function wireUI() {
   };
 
   bindClick("#btnUseWholeDoc", onUseWholeDoc);
+  const wholeBtn = document.getElementById('btnUseWholeDoc') as HTMLButtonElement | null;
+  if (wholeBtn) wholeBtn.disabled = false;
   if (ENV_MODE === 'dev') bindClick("#btnTest", doHealth);
   else {
     const bt = document.getElementById('btnTest');
@@ -1067,6 +1093,7 @@ function onDraftReady(text: string) {
 }
 
 async function bootstrap(info?: Office.OfficeInfo) {
+  console.log('[PANEL] bootstrap');
   if (wasUnloaded()) {
     console.log('reopen clean OK');
     resetUnloadFlag();
@@ -1104,5 +1131,4 @@ if (!(globalThis as any).__CAI_TESTING__) {
   } else {
     launch();
   }
-  console.log('ContractAI build', 'build-20250911-204948');
 }

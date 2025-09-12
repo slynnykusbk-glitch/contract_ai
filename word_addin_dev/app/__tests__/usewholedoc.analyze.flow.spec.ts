@@ -38,6 +38,7 @@ describe('use whole doc + analyze flow', () => {
   });
 
   it('loads doc and posts analyze', async () => {
+    vi.useFakeTimers();
     const { invokeBootstrap } = await import('../assets/taskpane.ts');
     invokeBootstrap();
     await Promise.resolve();
@@ -45,15 +46,24 @@ describe('use whole doc + analyze flow', () => {
 
     const btnWhole = document.getElementById('btnUseWholeDoc') as HTMLButtonElement;
     btnWhole.click();
-    await new Promise(r => setTimeout(r, 0));
+    await vi.advanceTimersByTimeAsync(0);
     const orig = document.getElementById('originalText') as HTMLTextAreaElement;
     expect(orig.value).toBe('TEST BODY');
 
     const btnAnalyze = document.getElementById('btnAnalyze') as HTMLButtonElement;
     btnAnalyze.disabled = false;
+    fetchMock.mockImplementationOnce(() =>
+      new Promise(res => setTimeout(() => res({ ok: true, json: async () => ({}), headers: new Headers(), status:200 }), 50))
+    );
     btnAnalyze.click();
-
+    const book = document.getElementById('loading-book') as HTMLElement;
+    await Promise.resolve();
+    expect(book.classList.contains('hidden')).toBe(false);
+    await vi.advanceTimersByTimeAsync(60);
+    await Promise.resolve();
+    expect(book.classList.contains('hidden')).toBe(true);
     const analyzeCalls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/analyze'));
     expect(analyzeCalls.length).toBe(1);
-  });
+    vi.useRealTimers();
+  }, 10000);
 });

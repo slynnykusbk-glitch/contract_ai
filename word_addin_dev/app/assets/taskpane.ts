@@ -11,7 +11,7 @@ import {
   setApiKey,
 } from "./store.ts";
 import { supports, logSupportMatrix } from './supports.ts';
-import { registerUnloadHandlers, wasUnloaded, resetUnloadFlag } from './pending.ts';
+import { registerUnloadHandlers, wasUnloaded, resetUnloadFlag, withBusy } from './pending.ts';
 import { checkHealth } from './health.ts';
 import { runStartupSelftest } from './startup.selftest.ts';
 
@@ -276,6 +276,12 @@ export async function mapFindingToRange(
 }
 
 export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Promise<number> {
+  return withBusy(async () => {
+  const cb = document.getElementById("cai-dry-run-annotate") as HTMLInputElement | null;
+  function isDryRunAnnotateEnabled() {
+    if (cb) return !!cb.checked;
+    return !!(document.getElementById("cai-dry-run-annotate") as HTMLInputElement | null)?.checked;
+  }
   const base = normalizeText((window as any).__lastAnalyzed || "");
 
   // 1) валидируем, чистим и сортируем с защитой от overlaps
@@ -387,7 +393,8 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
     inserted
   });
 
-  return inserted;
+    return inserted;
+  });
 }
 
 
@@ -416,6 +423,7 @@ async function onClearAnnots() {
 export async function applyOpsTracked(
   ops: { start: number; end: number; replacement: string; context_before?: string; context_after?: string; rationale?: string; source?: string }[]
 ) {
+  return withBusy(async () => {
   let cleaned = (ops || [])
     .filter(o => typeof o.start === "number" && typeof o.end === "number" && o.end > o.start)
     .sort((a, b) => a.start - b.start);
@@ -497,6 +505,7 @@ export async function applyOpsTracked(
       }
       await ctx.sync();
     }
+  });
   });
 }
 
@@ -750,37 +759,39 @@ async function onUseWholeDoc() {
 }
 
 async function onSuggestEdit(ev?: Event) {
-  try {
-    const dst = $(Q.proposed);
-    const base = (window as any).__lastAnalyzed || normalizeText(await getWholeDocText());
-    if (!base) { notifyWarn("No document text"); return; }
-    const arr: AnalyzeFinding[] = (window as any).__findings || [];
-    const idx = (window as any).__findingIdx ?? 0;
-    const finding = arr[idx];
-    if (!finding) { notifyWarn("No active finding"); return; }
-    const clause = finding.snippet || '';
-    const { json } = await postJSON('/api/gpt-draft', { cid: lastCid, clause, mode: 'friendly' });
-    const proposed = (json?.proposed_text ?? json?.text ?? "").toString();
-    const w: any = window as any;
-    w.__last = w.__last || {};
-    w.__last['gpt-draft'] = { json };
-    if (dst) {
-      if (!dst.id) dst.id = "draftText";
-      if (!dst.name) dst.name = "proposed";
-      (dst as any).dataset.role = "proposed-text";
-      dst.value = proposed;
-      dst.dispatchEvent(new Event("input", { bubbles: true }));
-      notifyOk("Draft ready");
-      onDraftReady(proposed);
-    } else {
-      notifyWarn("Proposed textarea not found");
+  return withBusy(async () => {
+    try {
+      const dst = $(Q.proposed);
+      const base = (window as any).__lastAnalyzed || normalizeText(await getWholeDocText());
+      if (!base) { notifyWarn("No document text"); return; }
+      const arr: AnalyzeFinding[] = (window as any).__findings || [];
+      const idx = (window as any).__findingIdx ?? 0;
+      const finding = arr[idx];
+      if (!finding) { notifyWarn("No active finding"); return; }
+      const clause = finding.snippet || '';
+      const { json } = await postJSON('/api/gpt-draft', { cid: lastCid, clause, mode: 'friendly' });
+      const proposed = (json?.proposed_text ?? json?.text ?? "").toString();
+      const w: any = window as any;
+      w.__last = w.__last || {};
+      w.__last['gpt-draft'] = { json };
+      if (dst) {
+        if (!dst.id) dst.id = "draftText";
+        if (!dst.name) dst.name = "proposed";
+        (dst as any).dataset.role = "proposed-text";
+        dst.value = proposed;
+        dst.dispatchEvent(new Event("input", { bubbles: true }));
+        notifyOk("Draft ready");
+        onDraftReady(proposed);
+      } else {
+        notifyWarn("Proposed textarea not found");
+        onDraftReady('');
+      }
+    } catch (e) {
+      notifyWarn("Draft error");
+      console.error(e);
       onDraftReady('');
     }
-  } catch (e) {
-    notifyWarn("Draft error");
-    console.error(e);
-    onDraftReady('');
-  }
+  });
 }
 
 async function doHealth() {
@@ -824,70 +835,74 @@ async function doHealth() {
 }
 
 async function doAnalyze() {
-  const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
-  const busy = document.getElementById("busyBar") as HTMLElement | null;
-  if (btn) btn.disabled = true;
-  if (busy) busy.style.display = "";
-  try {
-    onDraftReady('');
-    const cached = (window as any).__lastAnalyzed as string | undefined;
-    const base = cached && cached.trim() ? cached : normalizeText(await (globalThis as any).getWholeDocText());
-    if (!base) { notifyErr("В документе нет текста"); return; }
-
-    ensureHeaders();
-
-    (window as any).__lastAnalyzed = base;
-    const orig = document.getElementById("originalText") as HTMLTextAreaElement | null;
-    if (orig) orig.value = base;
-
-    const { resp, json } = await postJSON('/api/analyze', { text: base });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const respSchema = resp.headers.get('x-schema-version');
-    if (respSchema) setSchemaVersion(respSchema);
-    if (json?.schema) setSchemaVersion(json.schema);
-    lastCid = resp.headers.get('x-cid') || '';
-    updateStatusChip(null, lastCid);
-    renderResults(json);
-    renderAnalysisSummary(json);
-
-    try { localStorage.setItem('last_analysis_json', JSON.stringify(json)); } catch {}
-
+  return withBusy(async () => {
+    const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
+    const busy = document.getElementById("busyBar") as HTMLElement | null;
+    if (btn) btn.disabled = true;
+    if (busy) busy.style.display = "";
     try {
-      const all = (globalThis as any).parseFindings(json);
-      const thr = getRiskThreshold();
-      const filtered = filterByThreshold(all, thr);
-      if (isAddCommentsOnAnalyzeEnabled() && filtered.length) {
-        await (globalThis as any).annotateFindingsIntoWord(filtered);
+      onDraftReady('');
+      const cached = (window as any).__lastAnalyzed as string | undefined;
+      const base = cached && cached.trim() ? cached : normalizeText(await (globalThis as any).getWholeDocText());
+      if (!base) { notifyErr("В документе нет текста"); return; }
+
+      ensureHeaders();
+
+      (window as any).__lastAnalyzed = base;
+      const orig = document.getElementById("originalText") as HTMLTextAreaElement | null;
+      if (orig) orig.value = base;
+
+      const { resp, json } = await postJSON('/api/analyze', { text: base });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const respSchema = resp.headers.get('x-schema-version');
+      if (respSchema) setSchemaVersion(respSchema);
+      if (json?.schema) setSchemaVersion(json.schema);
+      lastCid = resp.headers.get('x-cid') || '';
+      updateStatusChip(null, lastCid);
+      renderResults(json);
+      renderAnalysisSummary(json);
+
+      try { localStorage.setItem('last_analysis_json', JSON.stringify(json)); } catch {}
+
+      try {
+        const all = (globalThis as any).parseFindings(json);
+        const thr = getRiskThreshold();
+        const filtered = filterByThreshold(all, thr);
+        if (isAddCommentsOnAnalyzeEnabled() && filtered.length) {
+          await (globalThis as any).annotateFindingsIntoWord(filtered);
+        }
+      } catch (e) {
+        console.warn("auto-annotate after analyze failed", e);
       }
+
+      (document.getElementById("results") || document.body)
+        .dispatchEvent(new CustomEvent("ca.results", { detail: json }));
+
+      notifyOk("Analyze OK");
     } catch (e) {
-      console.warn("auto-annotate after analyze failed", e);
+      notifyWarn("Analyze failed");
+      console.error(e);
+    } finally {
+      if (btn) btn.disabled = false;
+      if (busy) busy.style.display = "none";
     }
-
-    (document.getElementById("results") || document.body)
-      .dispatchEvent(new CustomEvent("ca.results", { detail: json }));
-
-    notifyOk("Analyze OK");
-  } catch (e) {
-    notifyWarn("Analyze failed");
-    console.error(e);
-  } finally {
-    if (btn) btn.disabled = false;
-    if (busy) busy.style.display = "none";
-  }
+  });
 }
 
 async function doQARecheck() {
-  ensureHeaders();
-  const text = await getWholeDocText();
-  const { json } = await postJSON('/api/qa-recheck', { text, rules: {} });
-  (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
-  const ok = !json?.error;
-  if (ok) {
-    notifyOk("QA recheck OK");
-  } else {
-    const msg = json?.error || json?.message || 'unknown';
-    notifyErr(`QA recheck failed: ${msg}`);
-  }
+  return withBusy(async () => {
+    ensureHeaders();
+    const text = await getWholeDocText();
+    const { json } = await postJSON('/api/qa-recheck', { text, rules: {} });
+    (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
+    const ok = !json?.error;
+    if (ok) {
+      notifyOk("QA recheck OK");
+    } else {
+      const msg = json?.error || json?.message || 'unknown';
+      notifyErr(`QA recheck failed: ${msg}`);
+    }
+  });
 }
 
 function bindClick(sel: string, fn: () => void) {
@@ -1006,6 +1021,14 @@ export function wireUI() {
       return;
     }
   }
+
+  const bookEl = document.getElementById('loading-book');
+  window.addEventListener('cai:busy', (e: any) => {
+    if (!bookEl) return;
+    const busy = !!(e?.detail?.busy);
+    if (busy) bookEl.classList.remove('hidden');
+    else bookEl.classList.add('hidden');
+  });
 
   const s = logSupportMatrix();
   const disable = (id: string) => {

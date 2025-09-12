@@ -1,4 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+
+const html = readFileSync(new URL('../../taskpane.html', import.meta.url), 'utf-8');
+if (!html.includes('id="btnTest"')) throw new Error('btnTest missing from canonical HTML');
 
 const mkDoc = () => {
   const el: any = { disabled: false, style: { display: '' }, addEventListener: () => {}, classList: { remove: () => {} }, removeAttribute: () => {} };

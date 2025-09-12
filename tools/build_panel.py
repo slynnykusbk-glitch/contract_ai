@@ -10,10 +10,13 @@ from __future__ import annotations
 
 from pathlib import Path
 import shutil
+import sys
+
+# Ensure project root on sys.path so direct invocation works
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(ROOT.as_posix())
 
 from bump_build import bump_build
-
-ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "word_addin_dev"
 DEST = ROOT / "contract_review_app" / "contract_review_app" / "static" / "panel"
 

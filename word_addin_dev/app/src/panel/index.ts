@@ -1,6 +1,8 @@
 import { notifyOk, notifyWarn } from '../../assets/notifier';
 import { postJson } from './api-client';
-import { ensureHeadersSet, getHealth, getStoredSchema } from '../../../../contract_review_app/frontend/common/http';
+import { ensureHeadersSet, getStoredSchema } from '../../../../contract_review_app/frontend/common/http';
+import { checkHealth } from '../../assets/health';
+import { runStartupSelftest } from '../../assets/startup.selftest';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) =>
   document.querySelector(sel) as T | null;
@@ -118,7 +120,13 @@ export async function startPanel() {
   if (analyzeBtn) analyzeBtn.disabled = true;
   const base = ($<HTMLInputElement>('#backendUrl')?.value || (document.getElementById('backendUrl') as HTMLInputElement | null)?.value || 'https://localhost:9443');
   try {
-    await getHealth(base);
+    await runStartupSelftest(base);
+    const h = await checkHealth({ backend: base });
+    const schema = h.resp.headers.get('x-schema-version') || h.json?.schema;
+    if (schema) {
+      const store = (globalThis as { localStorage: { setItem: (k: string, v: string) => void } }).localStorage;
+      store.setItem('schema_version', String(schema));
+    }
     if (analyzeBtn) analyzeBtn.disabled = false;
     bindClick('#btnAnalyze', async e => { e.preventDefault(); await doAnalyzeWholeDoc(); });
     updateStatusChip();

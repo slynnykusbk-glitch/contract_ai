@@ -26,7 +26,6 @@ from typing import Any, Dict, List, Optional, Tuple
 from collections import OrderedDict
 import secrets
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.errors import ServerErrorMiddleware
 
 try:  # Starlette <0.37 compatibility
     from starlette.middleware.timeout import TimeoutMiddleware
@@ -52,8 +51,18 @@ log = logging.getLogger("contract_ai")
 
 # корень репо: .../contract_ai
 REPO_DIR = Path(__file__).resolve().parents[2]
-PANEL_DIR = REPO_DIR / "word_addin_dev"
+PANEL_DIR = (
+    REPO_DIR / "contract_review_app" / "contract_review_app" / "static" / "panel"
+)
 PANEL_ASSETS_DIR = PANEL_DIR / "app" / "assets"
+
+log.info("[PANEL] mount /panel -> %s", PANEL_DIR.resolve())
+token_path = PANEL_DIR / ".build-token"
+try:
+    PANEL_BUILD_TOKEN = token_path.read_text(encoding="utf-8").strip()
+except OSError:
+    PANEL_BUILD_TOKEN = "absent"
+log.info("[PANEL] build token: %s", PANEL_BUILD_TOKEN)
 
 
 TRACE_MAX = int(os.getenv("TRACE_MAX", "200"))
@@ -2269,13 +2278,15 @@ async def api_qa_recheck(
             latency_ms=_now_ms() - t0,
         )
         payload = {"status": "ok", "qa": [], "meta": meta}
-        payload.update({
-            "schema_version": SCHEMA_VERSION,
-            "cid": cid,
-            "summary": {"clause_type": None},
-            "findings": [],
-            "recommendations": [],
-        })
+        payload.update(
+            {
+                "schema_version": SCHEMA_VERSION,
+                "cid": cid,
+                "summary": {"clause_type": None},
+                "findings": [],
+                "recommendations": [],
+            }
+        )
         return payload
     try:
         result = LLM_SERVICE.qa(text, rules, LLM_CONFIG.timeout_s, profile=profile)
@@ -2383,13 +2394,15 @@ async def api_qa_recheck(
     )
     items = getattr(result, "items", [])
     payload = {"status": "ok", "qa": items, "meta": meta}
-    payload.update({
-        "schema_version": SCHEMA_VERSION,
-        "cid": cid,
-        "summary": {"clause_type": None},
-        "findings": items,
-        "recommendations": [],
-    })
+    payload.update(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "cid": cid,
+            "summary": {"clause_type": None},
+            "findings": items,
+            "recommendations": [],
+        }
+    )
     return payload
 
 

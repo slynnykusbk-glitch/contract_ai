@@ -20,9 +20,9 @@ declare const Violins: { initAudio: () => void };
 // enable rich debug when OfficeExtension is available
 const gg: any = (globalThis as any);
 const oe: any = gg.OfficeExtension;
-const BUILD_ID = '__BUILD_TS__';
+const BUILD_ID = 'build-20250912-070625';
 console.log('ContractAI build', BUILD_ID);
-if (BUILD_ID.includes('__BUILD_TS__') && typeof document !== 'undefined' && document.addEventListener) {
+if (BUILD_ID.includes('build-20250912-070625') && typeof document !== 'undefined' && document.addEventListener) {
   document.addEventListener('DOMContentLoaded', () => {
     try {
       const banner = document.createElement('div');
@@ -796,6 +796,7 @@ async function doHealth() {
     }
     setConnBadge(ok);
     if (ok) {
+      console.log('[PANEL] health ok');
       enableAnalyze();
       updateStatusChip(schema, null);
       try {
@@ -989,7 +990,7 @@ export function wireUI() {
   if (!(globalThis as any).__CAI_TESTING__) {
     const missing = REQUIRED_IDS.filter(id => !document.getElementById(id));
     if (missing.length) {
-      console.error('[PANEL] wireUI missing IDs', missing);
+      console.error('[PANEL] wireUI missing IDs:', missing);
       const msg = `FATAL: panel template mismatch (missing: ${missing.join(', ')}). Check build pipeline.`;
       try {
         const banner = document.createElement ? document.createElement('div') : null;
@@ -1093,7 +1094,7 @@ function onDraftReady(text: string) {
 }
 
 async function bootstrap(info?: Office.OfficeInfo) {
-  console.log('[PANEL] bootstrap');
+  console.log('[PANEL] bootstrap start');
   if (wasUnloaded()) {
     console.log('reopen clean OK');
     resetUnloadFlag();

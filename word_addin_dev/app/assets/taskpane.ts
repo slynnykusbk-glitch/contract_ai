@@ -796,6 +796,7 @@ async function doHealth() {
     }
     setConnBadge(ok);
     if (ok) {
+      console.log('[PANEL] health ok');
       enableAnalyze();
       updateStatusChip(schema, null);
       try {
@@ -989,7 +990,7 @@ export function wireUI() {
   if (!(globalThis as any).__CAI_TESTING__) {
     const missing = REQUIRED_IDS.filter(id => !document.getElementById(id));
     if (missing.length) {
-      console.error('[PANEL] wireUI missing IDs', missing);
+      console.error('[PANEL] wireUI missing IDs:', missing);
       const msg = `FATAL: panel template mismatch (missing: ${missing.join(', ')}). Check build pipeline.`;
       try {
         const banner = document.createElement ? document.createElement('div') : null;
@@ -1093,7 +1094,7 @@ function onDraftReady(text: string) {
 }
 
 async function bootstrap(info?: Office.OfficeInfo) {
-  console.log('[PANEL] bootstrap');
+  console.log('[PANEL] bootstrap start');
   if (wasUnloaded()) {
     console.log('reopen clean OK');
     resetUnloadFlag();

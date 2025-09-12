@@ -20,9 +20,9 @@ declare const Violins: { initAudio: () => void };
 // enable rich debug when OfficeExtension is available
 const gg: any = (globalThis as any);
 const oe: any = gg.OfficeExtension;
-const BUILD_ID = '__BUILD_TS__';
+const BUILD_ID = 'build-20250912-091616';
 console.log('ContractAI build', BUILD_ID);
-if (BUILD_ID.includes('__BUILD_TS__') && typeof document !== 'undefined' && document.addEventListener) {
+if (!BUILD_ID.includes('build-') && typeof document !== 'undefined' && document.addEventListener) {
   document.addEventListener('DOMContentLoaded', () => {
     try {
       const banner = document.createElement('div');

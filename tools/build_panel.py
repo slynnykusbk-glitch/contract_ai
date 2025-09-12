@@ -51,8 +51,6 @@ def main(*, run_tests: bool = False) -> None:
                 "word_addin_dev",
                 "run",
                 "test",
-                "--",
-                "--runInBand",
             ],
             check=True,
             cwd=ROOT,

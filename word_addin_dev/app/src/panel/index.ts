@@ -4,7 +4,6 @@ import { ensureHeadersSet as ensureHeadersAuto } from '../../../../contract_revi
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) =>
   document.querySelector(sel) as T | null;
 const show = (el: HTMLElement | null) => { if (el) el.hidden = false; };
-const hide = (el: HTMLElement | null) => { if (el) el.hidden = true; };
 
 export function wireDom() {
   $<HTMLButtonElement>('#btnInsertIntoWord')?.addEventListener('click', onInsertIntoWord);
@@ -44,4 +43,3 @@ if (!(globalThis as { __CAI_TESTING__?: boolean }).__CAI_TESTING__) {
     void startPanel();
   }
 }
-

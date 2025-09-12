@@ -692,7 +692,11 @@ async def panel_head(path: str = ""):
     full = (base / path).resolve()
     if full.is_dir():
         full = full / "index.html"
-    if not str(full).startswith(str(base)) or not full.is_file():
+    try:
+        full.relative_to(base)
+    except ValueError:
+        raise HTTPException(status_code=404)
+    if not full.is_file():
         raise HTTPException(status_code=404)
     return FileResponse(full)
 

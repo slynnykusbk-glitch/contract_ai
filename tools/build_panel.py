@@ -22,6 +22,7 @@ from bump_build import bump_build
 
 SRC = ROOT / "word_addin_dev"
 DEST = ROOT / "contract_review_app" / "contract_review_app" / "static" / "panel"
+ASSETS_SRC = SRC / "app" / "assets"
 
 FILES = [
     "taskpane.html",
@@ -68,6 +69,16 @@ def main(*, run_tests: bool = False) -> None:
             dst.write_text(text.replace("__BUILD_TS__", token), encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             pass
+
+    # copy auxiliary assets referenced from taskpane.html
+    assets_dest = DEST / "app" / "assets"
+    shutil.copytree(ASSETS_SRC, assets_dest, dirs_exist_ok=True)
+    for path in assets_dest.rglob("*"):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        path.write_text(text.replace("__BUILD_TS__", token), encoding="utf-8")
 
     (DEST / ".build-token").write_text(token, encoding="utf-8")
 

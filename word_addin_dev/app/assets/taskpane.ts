@@ -1,4 +1,5 @@
 import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON } from "./api-client.ts";
+import domSchema from "../panel_dom.schema.json";
 import { normalizeText, dedupeFindings, severityRank } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import {
@@ -71,6 +72,7 @@ const Q = {
 
 let lastCid: string = "";
 let analyzeBound = false;
+const REQUIRED_IDS: string[] = (domSchema as any).required_ids || [];
 
 function updateStatusChip(schema?: string | null, cid?: string | null) {
   const el = document.getElementById('status-chip');
@@ -718,7 +720,12 @@ async function onUseWholeDoc() {
   const text = normalizeText(raw || "");
   if (src) {
     src.value = text;
-    src.dispatchEvent(new Event("input", { bubbles: true }));
+    try { src.dispatchEvent(new Event("input", { bubbles: true })); } catch {}
+  }
+  const hid = document.getElementById("originalText") as HTMLTextAreaElement | null;
+  if (hid && hid !== src) {
+    hid.value = text;
+    try { hid.dispatchEvent(new Event("input", { bubbles: true })); } catch {}
   }
   (window as any).__lastAnalyzed = text;
   (window as any).toast?.("Whole doc loaded");
@@ -956,6 +963,25 @@ async function onRejectAll() {
 }
 
 export function wireUI() {
+  if (!(globalThis as any).__CAI_TESTING__) {
+    const missing = REQUIRED_IDS.filter(id => !document.getElementById(id));
+    if (missing.length) {
+      const msg = `FATAL: panel template mismatch (missing: ${missing.join(', ')}). Check build pipeline.`;
+      try {
+        const banner = document.createElement ? document.createElement('div') : null;
+        if (banner) {
+          banner.textContent = msg;
+          banner.style.padding = '12px';
+          banner.style.color = '#f66';
+          document.body.innerHTML = '';
+          document.body.appendChild(banner);
+        }
+      } catch {}
+      console.error(msg);
+      return;
+    }
+  }
+
   const s = logSupportMatrix();
   const disable = (id: string) => {
     const el = document.getElementById(id) as HTMLButtonElement | null;

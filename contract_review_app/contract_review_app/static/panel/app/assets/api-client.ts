@@ -137,8 +137,22 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
         const rb = params.get('rb');
         if (rb) backoffMs = parseInt(rb, 10);
       } catch {}
+      timeoutMs = timeoutMs ?? ANALYZE_BASE_MS;
+    } else {
+      if (timeoutMs == null) {
+        try {
+          const route = path.split('/').pop() || '';
+          const ov = localStorage.getItem(`cai_timeout_ms:${route}`);
+          if (ov) timeoutMs = parseInt(ov, 10);
+        } catch {}
+      }
+      if (timeoutMs == null) {
+        timeoutMs = 30000;
+        if (sizeBytes > 300000) timeoutMs = 90000;
+        else if (sizeBytes > 100000) timeoutMs = 60000;
+      }
+      timeoutMs = Math.min(timeoutMs, 120000);
     }
-    timeoutMs = timeoutMs ?? ANALYZE_BASE_MS;
 
     async function attempt(n: number): Promise<any> {
       const ctrl = new AbortController();

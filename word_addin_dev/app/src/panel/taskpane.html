@@ -49,6 +49,10 @@ pre{background:#f0f0f0;padding:8px;border-radius:4px;white-space:pre-wrap;}
 </template>
 <textarea id="originalText" class="hidden"></textarea>
 <div id="busyBar" class="hidden"></div>
+<div id="loading-book" role="status" aria-live="polite" aria-atomic="true" class="cai-book hidden" data-test-id="loading-book">
+  <div class="cai-book__icon" aria-hidden="true"></div>
+  <span class="sr-only">Processing…</span>
+</div>
 
 <section id="resultsBlock" class="hidden">
   <div>

@@ -9,6 +9,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Contract AI - Draft Assistant</title>
   <link rel="stylesheet" href="./app/assets/notifier.css" />
+  <link rel="stylesheet" href="./app/assets/taskpane.css" />
   <!-- hdrWarn block removed -->
   <style>
     :root{
@@ -264,6 +265,10 @@
 
   <!-- loading indicator -->
   <div id="busyBar" style="display:none"></div>
+  <div id="loading-book" role="status" aria-live="polite" aria-atomic="true" class="cai-book hidden" data-test-id="loading-book">
+    <div class="cai-book__icon" aria-hidden="true"></div>
+    <span class="sr-only">Processing…</span>
+  </div>
 
   <div class="row card">
     <div class="muted" style="margin-bottom:6px">Original clause:</div>

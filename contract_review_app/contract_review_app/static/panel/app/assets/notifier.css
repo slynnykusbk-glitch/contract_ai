@@ -1,0 +1,4 @@
+#console[data-level="ok"]    { opacity: 1; }
+#console[data-level="info"]  { opacity: 1; }
+#console[data-level="warn"]  { opacity: 1; }
+#console[data-level="error"] { opacity: 1; }

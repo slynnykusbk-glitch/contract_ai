@@ -11,12 +11,14 @@ from __future__ import annotations
 from pathlib import Path
 import shutil
 import sys
+import subprocess
 
 # Ensure project root on sys.path so direct invocation works
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(ROOT.as_posix())
 
 from bump_build import bump_build
+
 SRC = ROOT / "word_addin_dev"
 DEST = ROOT / "contract_review_app" / "contract_review_app" / "static" / "panel"
 
@@ -28,6 +30,31 @@ FILES = [
 
 
 def main() -> None:
+    # run vitest suite to ensure DOM contract before copying assets
+    subprocess.run(
+        [
+            "npm",
+            "--prefix",
+            "word_addin_dev",
+            "ci",
+        ],
+        check=True,
+        cwd=ROOT,
+    )
+    subprocess.run(
+        [
+            "npm",
+            "--prefix",
+            "word_addin_dev",
+            "run",
+            "test",
+            "--",
+            "--runInBand",
+        ],
+        check=True,
+        cwd=ROOT,
+    )
+
     bump_build(ROOT)
 
     DEST.mkdir(parents=True, exist_ok=True)

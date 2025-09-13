@@ -1432,20 +1432,31 @@ def _extract_context(
     after_norm, _ = normalize_text(after_raw)
     return before_norm, after_norm
 
+RULE_DISCOVERY_TIMEOUT_S = float(os.getenv("RULE_DISCOVERY_TIMEOUT_S", "1.5"))
 
-def _discover_rules_count() -> int:
+
+async def _discover_rules_count() -> int:
+    async def _inner() -> int:
+        try:
+            if rules_loader and hasattr(rules_loader, "rules_count"):
+                return int(await _maybe_await(rules_loader.rules_count))
+        except Exception:
+            pass
+        try:
+            if rules_registry and hasattr(rules_registry, "discover_rules"):
+                rules = await _maybe_await(rules_registry.discover_rules)
+                return len(rules or [])
+        except Exception:
+            pass
+        return 0
+
     try:
-        if rules_loader and hasattr(rules_loader, "rules_count"):
-            return int(rules_loader.rules_count())
-    except Exception:
-        pass
-    try:
-        if rules_registry and hasattr(rules_registry, "discover_rules"):
-            rules = rules_registry.discover_rules()
-            return len(rules or [])
-    except Exception:
-        pass
-    return 0
+        return await asyncio.wait_for(_inner(), timeout=RULE_DISCOVERY_TIMEOUT_S)
+    except asyncio.TimeoutError:
+        global _RULE_ENGINE_OK, _RULE_ENGINE_ERR
+        _RULE_ENGINE_OK = False
+        _RULE_ENGINE_ERR = "timeout"
+        return 0
 
 
 async def _maybe_await(func, *args, **kwargs):
@@ -1547,10 +1558,12 @@ def _top3_residuals(after: Dict[str, Any]) -> List[Dict[str, Any]]:
 @router.get("/health")
 async def health() -> JSONResponse:
     """Health endpoint with schema version and rule count."""
+    global _RULE_ENGINE_OK, _RULE_ENGINE_ERR
+    rules_count = await _discover_rules_count()
     payload = {
         "status": "ok",
         "schema": SCHEMA_VERSION,
-        "rules_count": _discover_rules_count(),
+        "rules_count": rules_count,
         "llm": {
             "provider": LLM_CONFIG.provider,
             "models": {
@@ -1572,15 +1585,27 @@ async def health() -> JSONResponse:
             _RULE_ENGINE_ERR or "unavailable"
         )
         status_code = 500
-    try:
-        if rules_loader and hasattr(rules_loader, "loaded_packs"):
-            packs = rules_loader.loaded_packs()
-            for pack in packs:
-                p = pack.get("path")
-                if p:
-                    pack["path"] = PurePosixPath(Path(p)).as_posix()
-            payload.setdefault("meta", {})["rules"] = packs
-    except Exception:
+    if _RULE_ENGINE_OK:
+        try:
+            if rules_loader and hasattr(rules_loader, "loaded_packs"):
+                packs = await asyncio.wait_for(
+                    _maybe_await(rules_loader.loaded_packs),
+                    timeout=RULE_DISCOVERY_TIMEOUT_S,
+                )
+                for pack in packs:
+                    p = pack.get("path")
+                    if p:
+                        pack["path"] = PurePosixPath(Path(p)).as_posix()
+                payload.setdefault("meta", {})["rules"] = packs
+        except asyncio.TimeoutError:
+            _RULE_ENGINE_OK = False
+            _RULE_ENGINE_ERR = "timeout"
+            payload.setdefault("meta", {})["rules"] = []
+            payload.setdefault("meta", {})["rule_engine"] = "timeout"
+            status_code = 500
+        except Exception:
+            payload.setdefault("meta", {})["rules"] = []
+    else:
         payload.setdefault("meta", {})["rules"] = []
     headers = {"x-schema-version": SCHEMA_VERSION}
     return _finalize_json("/health", payload, headers, status_code=status_code)
@@ -1994,7 +2019,7 @@ def api_analyze(
     if os.getenv("FEATURE_LLM_ANALYZE", "0") == "1":
         pass
 
-    snap.rules_count = _discover_rules_count()
+    snap.rules_count = asyncio.run(_discover_rules_count())
     summary = snap.model_dump()
     _ensure_legacy_doc_type(summary)
     # expose first detected clause type if any
@@ -2136,7 +2161,7 @@ def analyze_replay(
 async def api_summary_get(response: Response, mode: Optional[str] = None):
     _set_schema_headers(response)
     snap = extract_document_snapshot("")
-    snap.rules_count = _discover_rules_count()
+    snap.rules_count = await _discover_rules_count()
     resp = {"status": "ok", "summary": snap.model_dump(), "meta": PROVIDER_META}
     _set_std_headers(response, cid="summary:get", xcache="miss", schema=SCHEMA_VERSION)
     _set_llm_headers(response, PROVIDER_META)

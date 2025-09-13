@@ -238,11 +238,36 @@ export async function apiHealth(backend?: string) {
   return withBusy(() => checkHealth({ backend }));
 }
 
+export async function analyze(payload: any = {}) {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Api-Key': (globalThis as any).CONTRACT_AI_API_KEY || 'local-test-key-123',
+    'X-Schema-Version': '1.4',
+  };
+
+  const body: any = {
+    schema: '1.4',
+    mode: payload?.mode || 'live',
+  };
+
+  if (payload?.text) body.text = payload.text;
+  else if (payload?.content) body.text = payload.content;
+
+  const res = await fetch('/api/analyze', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    throw new Error(`analyze ${res.status}: ${t}`);
+  }
+  return res.json();
+}
+
 export async function apiAnalyze(text: string) {
-  const { resp, json } = await postJSON('/api/analyze', { text });
-  const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
-  try { applyMetaToBadges(meta); } catch {}
-  return { ok: resp.ok, json, resp, meta };
+  return analyze({ text });
 }
 
 export async function apiGptDraft(cid: string, clause: string, mode = 'friendly') {

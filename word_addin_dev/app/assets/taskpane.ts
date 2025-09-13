@@ -25,7 +25,7 @@ console.log('ContractAI build', BUILD_ID);
 let __cfg_timeout: string | null = null;
 let __cfg_abort_vis = '0';
 try {
-  __cfg_timeout = localStorage.getItem('cai_timeout_ms:analyze');
+  __cfg_timeout = localStorage.getItem('cai.timeout.analyze.ms');
   __cfg_abort_vis = localStorage.getItem('cai_abort_on_visibility') || '0';
 } catch {}
 console.log('[CFG]', { timeout_analyze: __cfg_timeout, abort_on_visibility: __cfg_abort_vis });

@@ -61,6 +61,10 @@ cd word_addin_dev && npm ci && npm test && npm run build
 cd .. && npm run build:panel
 ```
 
+The backend serves the built panel from `/panel`. Make sure to run `npm run build`
+before starting the backend so these assets exist; otherwise requests to the
+add-in will fail with `404`.
+
 After running an analysis the task pane displays the current CID. You can open
 `/api/trace/{cid}` via the **View Trace** button or export the analysis using
 **Export HTML/PDF**. The **Replay last** button re-sends the previous input to

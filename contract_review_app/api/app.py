@@ -58,6 +58,17 @@ PANEL_ASSETS_DIR = PANEL_DIR / "app" / "assets"
 
 log.info("[PANEL] mount /panel -> %s", PANEL_DIR.resolve())
 token_path = PANEL_DIR / ".build-token"
+taskpane_bundle = PANEL_DIR / "taskpane.bundle.js"
+office_js = PANEL_ASSETS_DIR / "office.js"
+
+token_exists = token_path.is_file()
+files_exist = taskpane_bundle.is_file() and office_js.is_file()
+PANEL_READY = token_exists or files_exist
+if not PANEL_READY:
+    log.warning(
+        "[PANEL] missing build artifacts – run `npm run build` before starting the backend"
+    )
+
 try:
     PANEL_BUILD_TOKEN = token_path.read_text(encoding="utf-8").strip()
 except OSError:
@@ -669,44 +680,44 @@ app = FastAPI(
 register_error_handlers(app)
 
 # ---------------------------- Panel sub-app ----------------------------
-panel_app = FastAPI()
+if PANEL_READY:
+    panel_app = FastAPI()
 
+    @panel_app.middleware("http")
+    async def _panel_no_cache(request: Request, call_next):
+        resp = await call_next(request)
+        resp.headers["Cache-Control"] = "no-store, must-revalidate"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
 
-@panel_app.middleware("http")
-async def _panel_no_cache(request: Request, call_next):
-    resp = await call_next(request)
-    resp.headers["Cache-Control"] = "no-store, must-revalidate"
-    resp.headers["Pragma"] = "no-cache"
-    resp.headers["Expires"] = "0"
-    return resp
+    @panel_app.get("/version.json")
+    async def panel_version() -> dict:
+        return {"version": app.version, "schema_version": SCHEMA_VERSION}
 
+    @panel_app.head("/{path:path}")
+    async def panel_head(path: str = ""):
+        base = PANEL_DIR.resolve()
+        full = (base / path).resolve()
+        if full.is_dir():
+            full = full / "index.html"
+        try:
+            full.relative_to(base)
+        except ValueError:
+            raise HTTPException(status_code=404)
+        if not full.is_file():
+            raise HTTPException(status_code=404)
+        return FileResponse(full)
 
-@panel_app.get("/version.json")
-async def panel_version() -> dict:
-    return {"version": app.version, "schema_version": SCHEMA_VERSION}
-
-
-@panel_app.head("/{path:path}")
-async def panel_head(path: str = ""):
-    base = PANEL_DIR.resolve()
-    full = (base / path).resolve()
-    if full.is_dir():
-        full = full / "index.html"
-    try:
-        full.relative_to(base)
-    except ValueError:
-        raise HTTPException(status_code=404)
-    if not full.is_file():
-        raise HTTPException(status_code=404)
-    return FileResponse(full)
-
-
-panel_app.mount(
-    "/app/assets",
-    StaticFiles(directory=str(PANEL_ASSETS_DIR), html=False),
-    name="assets",
-)
-panel_app.mount("/", StaticFiles(directory=str(PANEL_DIR), html=True), name="root")
+    panel_app.mount(
+        "/app/assets",
+        StaticFiles(directory=str(PANEL_ASSETS_DIR), html=False),
+        name="assets",
+    )
+    panel_app.mount("/", StaticFiles(directory=str(PANEL_DIR), html=True), name="root")
+else:
+    async def panel_app(scope, receive, send):  # type: ignore[override]
+        await Response(status_code=404)(scope, receive, send)
 
 app.mount("/panel", panel_app, name="panel")
 

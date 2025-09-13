@@ -130,8 +130,28 @@ async function req(path, { method = "GET", body = null, key = path } = {}) {
 async function apiHealth() {
   return req("/health", { key: "health" });
 }
+async function analyze(payload = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    "X-Api-Key": window.CONTRACT_AI_API_KEY || "local-test-key-123",
+    "X-Schema-Version": "1.4"
+  };
+  const body = { schema: "1.4", mode: payload.mode || "live" };
+  if (payload.text) body.text = payload.text;
+  else if (payload.content) body.text = payload.content;
+  const res = await fetch("/api/analyze", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`analyze ${res.status}: ${t}`);
+  }
+  return res.json();
+}
 async function apiAnalyze(text) {
-  return req("/api/analyze", { method: "POST", body: { text }, key: "analyze" });
+  return analyze({ text });
 }
 async function apiGptDraft(cid, clause, mode = "friendly") {
   return req("/api/gpt-draft", { method: "POST", body: { cid, clause, mode }, key: "gpt-draft" });
@@ -151,6 +171,7 @@ async function postRedlines(before_text, after_text) {
   return fn("/api/panel/redlines", { before_text, after_text });
 }
 export {
+  analyze,
   apiAnalyze,
   apiGptDraft,
   apiHealth,

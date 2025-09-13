@@ -1069,7 +1069,17 @@ def _trace_push(cid: str, event: Dict[str, Any]) -> None:
 
 @app.middleware("http")
 async def add_response_headers(request: Request, call_next):
-    body = await request.body()
+    try:
+        body = await _read_body_guarded(request)
+    except HTTPException:
+        cid = getattr(request.state, "cid", request.headers.get("x-cid") or _PROCESS_CID)
+        return _problem_response(
+            413,
+            "Payload too large",
+            error_code="payload_too_large",
+            detail="Request body exceeds limits",
+            cid=cid,
+        )
     started_at = time.perf_counter()
 
     async def receive():
@@ -1331,10 +1341,14 @@ async def _read_body_guarded(request: Request) -> bytes:
     clen = request.headers.get("content-length")
     if clen and clen.isdigit() and int(clen) > MAX_BODY_BYTES:
         raise HTTPException(status_code=413, detail="Payload too large")
-    body = await request.body()
-    if len(body) > MAX_BODY_BYTES:
-        raise HTTPException(status_code=413, detail="Payload too large")
-    return body
+
+    body = bytearray()
+    async for chunk in request.stream():
+        if len(body) + len(chunk) > MAX_BODY_BYTES:
+            raise HTTPException(status_code=413, detail="Payload too large")
+        body.extend(chunk)
+
+    return bytes(body)
 
 
 def _count_placeholders(text: str) -> int:

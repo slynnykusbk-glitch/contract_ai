@@ -1,23 +1,28 @@
-import { describe, it, expect, vi } from 'vitest'
-import { postJson } from './api-client'
+import { describe, it, expect, vi } from 'vitest';
 
 describe('analyze flow', () => {
   it('sends only text payload', async () => {
-    let captured: any = null
-    ;(globalThis as any).document = { getElementById: () => ({ value: 'https://base' }) }
-    ;(globalThis as any).localStorage = {
-      getItem: (k: string) => (k === 'api_key' ? 'KEY' : k === 'schema_version' ? '1.2' : '')
-    }
-    ;(globalThis as any).fetch = async (url: string, opts: any) => {
-      captured = opts
-      return { status: 200 }
-    }
-    await postJson('/api/analyze', { text: 'hello' })
-    const body = JSON.parse(captured.body)
-    expect(body).toEqual({ text: 'hello' })
-    expect(body).not.toHaveProperty('mode')
-  })
-})
+    (globalThis as any).window = {
+      dispatchEvent: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    } as any;
+    let captured: any = null;
+    (globalThis as any).document = { getElementById: () => ({ value: 'https://base' }) };
+    (globalThis as any).localStorage = {
+      getItem: (k: string) => (k === 'api_key' ? 'KEY' : k === 'schema_version' ? '1.2' : ''),
+    };
+    (globalThis as any).fetch = async (_url: string, opts: any) => {
+      captured = opts;
+      return { status: 200, json: async () => ({}) } as any;
+    };
+    const { postJson } = await import('../../assets/api-client.ts');
+    await postJson('/api/analyze', { text: 'hello' });
+    const body = JSON.parse(captured.body);
+    expect(body).toEqual({ text: 'hello' });
+    expect(body).not.toHaveProperty('mode');
+  });
+});
 
 describe('dev bootstrap', () => {
   it('auto sets headers and enables analyze', async () => {

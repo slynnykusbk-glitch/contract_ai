@@ -118,8 +118,17 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
         timeoutMs = Math.max(ANALYZE_BASE_MS, Math.min(ANALYZE_MAX_MS, Math.floor(dyn)));
       }
       try {
-        const v = localStorage.getItem('cai.timeout.analyze.ms');
-        if (v) timeoutMs = parseInt(v, 10);
+        for (const k of [
+          'cai.timeout.analyze.ms',
+          'cai_timeout_ms:/api/analyze',
+          'cai_timeout_ms:analyze',
+        ]) {
+          const v = localStorage.getItem(k);
+          if (v) {
+            timeoutMs = parseInt(v, 10);
+            break;
+          }
+        }
       } catch {}
       try {
         const v = localStorage.getItem('cai.retry.analyze.count');

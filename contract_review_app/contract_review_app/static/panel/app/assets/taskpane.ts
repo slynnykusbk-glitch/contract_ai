@@ -29,6 +29,7 @@ try {
   __cfg_timeout = localStorage.getItem('cai_timeout_ms:analyze');
   __cfg_abort_hidden = localStorage.getItem('cai_abort_on_hidden') || '1';
   __cfg_abort_nav = localStorage.getItem('cai_abort_on_navigation') || '1';
+
 } catch {}
 console.log('[CFG]', { timeout_analyze: __cfg_timeout, abort_on_hidden: __cfg_abort_hidden, abort_on_navigation: __cfg_abort_nav });
 if (!BUILD_ID.includes('build-') && typeof document !== 'undefined' && document.addEventListener) {

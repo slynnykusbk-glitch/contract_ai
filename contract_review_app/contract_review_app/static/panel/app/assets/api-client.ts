@@ -142,7 +142,7 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
       if (timeoutMs == null) {
         try {
           const route = path.split('/').pop() || '';
-          const ov = localStorage.getItem(`cai_timeout_ms:${route}`);
+          const ov = localStorage.getItem(`cai.timeout.${route}.ms`);
           if (ov) timeoutMs = parseInt(ov, 10);
         } catch {}
       }

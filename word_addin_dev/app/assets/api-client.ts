@@ -125,8 +125,11 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
         ]) {
           const v = localStorage.getItem(k);
           if (v) {
-            timeoutMs = parseInt(v, 10);
-            break;
+            const parsed = parseInt(v, 10);
+            if (Number.isFinite(parsed)) {
+              timeoutMs = parsed;
+              break;
+            }
           }
         }
       } catch {}

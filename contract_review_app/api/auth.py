@@ -18,23 +18,32 @@ def _env_truthy(name: str) -> bool:
 def require_api_key_and_schema(request: Request) -> None:
     """Validate required request headers.
 
-    In DEV mode (``DEV_MODE`` truthy) missing headers are filled from environment
-    defaults and no errors are raised. In production, ``x-api-key`` must match
+    In DEV mode (``DEV_MODE`` truthy) missing headers may be filled from
+    environment defaults when ``ALLOW_DEV_KEY_INJECTION`` is also truthy. When
+    this auto-injection occurs a warning is logged. Otherwise missing
+    ``x-api-key`` results in ``401``. In production, ``x-api-key`` must match
     ``API_KEY`` when ``FEATURE_REQUIRE_API_KEY`` is truthy and
     ``x-schema-version`` must equal the current ``SCHEMA_VERSION`` (``1.4``)."""
 
     dev_mode = _env_truthy("DEV_MODE")
-    if dev_mode:
+    allow_injection = _env_truthy("ALLOW_DEV_KEY_INJECTION")
+
+    if dev_mode and allow_injection:
         headers = request.headers
-        api_key = headers.get("x-api-key") or os.getenv(
-            "DEFAULT_API_KEY", "local-test-key-123"
-        )
-        schema = headers.get("x-schema-version") or os.getenv(
-            "SCHEMA_VERSION", SCHEMA_VERSION
-        )
+        api_key = headers.get("x-api-key")
+        schema = headers.get("x-schema-version")
+        if not api_key:
+            api_key = os.getenv("DEFAULT_API_KEY", "local-test-key-123")
+            log.warning("auto-filling missing x-api-key header in dev mode")
+        if not schema:
+            schema = os.getenv("SCHEMA_VERSION", SCHEMA_VERSION)
+            log.warning("auto-filling missing x-schema-version header in dev mode")
         request.state.api_key = api_key
         request.state.schema_version = schema
         return
+    elif dev_mode and not request.headers.get("x-api-key"):
+        log.info("reject: missing x-api-key and dev injection disabled")
+        raise HTTPException(status_code=401, detail="missing or invalid api key")
 
     if _env_truthy("FEATURE_REQUIRE_API_KEY"):
         api_key = os.getenv("API_KEY", "")

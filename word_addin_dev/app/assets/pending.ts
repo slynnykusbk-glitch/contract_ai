@@ -44,16 +44,24 @@ export function clearPending(reason?: string) {
 export function registerUnloadHandlers() {
   if (win.__pendingUnloadReg) return;
   win.__pendingUnloadReg = true;
-  const handler = () => { clearPending('pagehide/unload'); win.__wasUnloaded = true; };
-  window.addEventListener('pagehide', handler);
-  window.addEventListener('unload', handler);
-  const vis = (() => {
-    try { return localStorage.getItem('cai.abort.on.visibilitychange') === '1'; }
-    catch { return false; }
+  const abortNav = (() => {
+    try { return localStorage.getItem('cai_abort_on_navigation') !== '0'; }
+    catch { return true; }
   })();
-  if (vis) {
+  const navHandler = () => {
+    if (abortNav) clearPending('pagehide/unload');
+    win.__wasUnloaded = true;
+  };
+  window.addEventListener('pagehide', navHandler);
+  window.addEventListener('unload', navHandler);
+  window.addEventListener('beforeunload', navHandler);
+  const abortHidden = (() => {
+    try { return localStorage.getItem('cai_abort_on_hidden') !== '0'; }
+    catch { return true; }
+  })();
+  if (abortHidden) {
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') handler();
+      if (document.visibilityState === 'hidden') clearPending('visibilitychange');
     });
   }
 }

@@ -23,12 +23,15 @@ const oe: any = gg.OfficeExtension;
 const BUILD_ID = 'build-20250912-195756';
 console.log('ContractAI build', BUILD_ID);
 let __cfg_timeout: string | null = null;
-let __cfg_abort_vis = '0';
+let __cfg_abort_hidden = '1';
+let __cfg_abort_nav = '1';
 try {
-  __cfg_timeout = localStorage.getItem('cai.timeout.analyze.ms');
-  __cfg_abort_vis = localStorage.getItem('cai_abort_on_visibility') || '0';
+  __cfg_timeout = localStorage.getItem('cai_timeout_ms:analyze');
+  __cfg_abort_hidden = localStorage.getItem('cai_abort_on_hidden') || '1';
+  __cfg_abort_nav = localStorage.getItem('cai_abort_on_navigation') || '1';
+
 } catch {}
-console.log('[CFG]', { timeout_analyze: __cfg_timeout, abort_on_visibility: __cfg_abort_vis });
+console.log('[CFG]', { timeout_analyze: __cfg_timeout, abort_on_hidden: __cfg_abort_hidden, abort_on_navigation: __cfg_abort_nav });
 if (!BUILD_ID.includes('build-') && typeof document !== 'undefined' && document.addEventListener) {
   document.addEventListener('DOMContentLoaded', () => {
     try {

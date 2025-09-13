@@ -3002,14 +3002,17 @@ async def api_calloff_validate(
 @router.post("/api/learning/log", status_code=204)
 async def api_learning_log(body: Any = Body(...)) -> Response:
     t0 = _now_ms()
+    ok = True
     try:
         LEARNING_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
         secure_write(
             LEARNING_LOG_PATH, json.dumps(body, ensure_ascii=False), append=True
         )
-    except Exception:
-        pass
+    except Exception as exc:  # pragma: no cover - best effort logging
+        log.warning("failed to write learning log: %s", exc, exc_info=True)
+        ok = False
     resp = Response(status_code=204)
+    resp.headers["x-learning-log-status"] = "ok" if ok else "error"
     _set_schema_headers(resp)
     _set_std_headers(
         resp,

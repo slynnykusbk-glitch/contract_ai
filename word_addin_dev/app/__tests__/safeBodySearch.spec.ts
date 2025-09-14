@@ -13,11 +13,13 @@ describe('safeBodySearch', () => {
   });
 
   it('returns result when search succeeds after truncation', async () => {
+    const inner = { text: 'a'.repeat(500), search: vi.fn().mockReturnValue({ items: [1], load: vi.fn() }) };
+    const scope = { paragraphs: { getFirst: vi.fn().mockReturnValue(inner) } };
     const body: any = {
       context: { sync: vi.fn() },
       search: vi.fn().mockImplementation((txt: string) => {
         if (txt.length > 200) { const err: any = new Error('fail'); err.code = 'SearchStringInvalidOrTooLong'; throw err; }
-        return { items: [1], load: vi.fn() };
+        return { items: [scope], load: vi.fn() };
       })
     };
     const res = await safeBodySearch(body, 'a'.repeat(500), {});

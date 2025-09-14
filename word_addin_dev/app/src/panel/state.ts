@@ -88,6 +88,16 @@ export async function getDraft(state: PanelState, id: string): Promise<Draft> {
 }
 
 export async function applyDraft(state: PanelState, id: string, draft: Draft, doc: Word.Document) {
+  const docObj = doc.context.document;
+  let prevTracking = false;
+  try {
+    docObj.load?.('trackRevisions');
+    await doc.context.sync?.();
+    prevTracking = !!docObj.trackRevisions;
+    docObj.trackRevisions = true;
+    await doc.context.sync?.();
+  } catch { /* ignore */ }
+
   for (const op of draft.ops) {
     const res = await safeBodySearch(doc.body, op.anchor, { matchCase: false, matchWholeWord: false });
     const range = res?.items?.[0];
@@ -100,6 +110,11 @@ export async function applyDraft(state: PanelState, id: string, draft: Draft, do
       range.insertText(op.replace.after, 'Replace');
     }
   }
+
+  try {
+    docObj.trackRevisions = prevTracking;
+    await doc.context.sync?.();
+  } catch { /* ignore */ }
 
   try {
     const raw = localStorage.getItem('cai_history') || '[]';

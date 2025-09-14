@@ -4,12 +4,10 @@ import { normalizeText, severityRank } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
-<<<<<<< HEAD
-import { safeBodySearch } from "./safe-search.ts";
-import { insertDraftText } from "./insert.ts";
-=======
-import { safeBodySearch } from "./safeBodySearch.ts";
->>>>>>> origin/main
+import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX } from "./annotate.ts";
+import { findAnchors } from "./anchors.ts";
+import { safeBodySearch } from "./safeBodySearch.ts";  // ← это оставить
+import { insertDraftText } from "./insert.ts";         // ← это оставить
 import {
   getApiKeyFromStore,
   getSchemaFromStore,

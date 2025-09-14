@@ -2,6 +2,26 @@ import { getApiKeyFromStore, getSchemaFromStore } from "./store.ts";
 import { registerFetch, deregisterFetch, registerTimer, deregisterTimer, withBusy } from './pending.ts';
 import { checkHealth } from './health.ts';
 import { notifyWarn } from './notifier.ts';
+const DEV_MODE = (() => {
+    try {
+        const ls = localStorage.getItem('cai_dev');
+        if (ls === '1')
+            return true;
+        const params = new URLSearchParams(globalThis.location?.search || '');
+        return params.get('debug') === '1';
+    }
+    catch {
+        return false;
+    }
+})();
+function logError(msg, err, extra) {
+    if (DEV_MODE) {
+        console.error(msg, err, extra);
+    }
+    else {
+        console.error(msg, err);
+    }
+}
 export function parseFindings(resp) {
     const arr = resp?.analysis?.findings ?? resp?.findings ?? resp?.issues ?? [];
     return Array.isArray(arr) ? arr.filter(Boolean) : [];
@@ -165,7 +185,7 @@ export async function postJSON(path, body, timeoutOverride) {
                 return { resp, json };
             }
             catch (e) {
-                if (path === '/api/analyze' && e?.name === 'AbortError') {
+                if (path === '/api/analyze' && (e == null ? void 0 : e.name) === 'AbortError') {
                     const reason = ctrl.signal.reason || 'aborted';
                     console.log(`[NET] analyze aborted: ${reason}`);
                     if (n < retryCount && String(reason).startsWith('timeout')) {
@@ -174,6 +194,12 @@ export async function postJSON(path, body, timeoutOverride) {
                     }
                     throw new DOMException(reason, 'AbortError');
                 }
+                logError(`[NET] ${path} failed`, e, { body: bodyWithSchema });
+                try {
+                    const msg = DEV_MODE ? String(e) : 'Analysis failed, please try again';
+                    notifyWarn(msg);
+                }
+                catch { }
                 throw e;
             }
             finally {

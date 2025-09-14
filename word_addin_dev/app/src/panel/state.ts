@@ -1,3 +1,4 @@
+
 import { safeBodySearch } from '../assets/safeBodySearch.ts';
 import { postJSON } from '../assets/api-client.ts';
 import { safeInsertComment } from '../assets/annotate.ts';
@@ -33,6 +34,7 @@ export type PanelState = {
  */
 export async function addCommentAtRange(range: Word.Range, text: string) {
   try {
+
     await safeInsertComment(range, text);
   } catch { /* ignore */
     try {
@@ -50,6 +52,7 @@ async function focusRange(body: Word.Body, anchor: string) {
   const searchOpts = { matchCase: false, matchWholeWord: false };
   const res = await safeBodySearch(body, anchor, searchOpts);
   const range = res?.items?.[0];
+
     if (range) {
       try {
         range.select();
@@ -97,6 +100,7 @@ export async function applyDraft(state: PanelState, id: string, draft: Draft, do
       range.insertText(op.replace.after, 'Replace');
     }
   }
+
   try {
     const raw = localStorage.getItem('cai_history') || '[]';
     const hist = JSON.parse(raw);

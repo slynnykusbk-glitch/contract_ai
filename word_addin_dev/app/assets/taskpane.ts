@@ -268,6 +268,9 @@ export async function clearAnnotations() {
     await Word.run(async ctx => {
       const body = ctx.document.body;
       const cmts: any = (ctx.document as any).comments;
+      const found = typeof (body as any).search === 'function'
+        ? body.search(COMMENT_PREFIX, { matchCase: false })
+        : null;
       if (cmts && typeof cmts.load === 'function') cmts.load('items');
       await ctx.sync();
       for (const c of cmts.items) {
@@ -275,6 +278,17 @@ export async function clearAnnotations() {
           const txt = (c as any).text || "";
           if (txt.startsWith(COMMENT_PREFIX)) c.delete();
         } catch {}
+      }
+      if (found) {
+        found.load('items');
+        await ctx.sync();
+        if (found.items && found.items.length) {
+          for (const r of found.items) {
+            try {
+              r.insertText('', Word.InsertLocation.replace);
+            } catch {}
+          }
+        }
       }
       try { body.font.highlightColor = "NoColor" as any; } catch {}
       await ctx.sync();

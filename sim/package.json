@@ -1,0 +1,7 @@
+{
+  "name": "panel-sim",
+  "private": true,
+  "scripts": {
+    "start": "../node_modules/.bin/ts-node panel-sim.ts"
+  }
+}

@@ -263,7 +263,7 @@ export async function apiHealth(backend?: string) {
 export async function analyze(args: { text?: string; mode?: string; schema?: string } = {}) {
   const body: any = {
     mode: args.mode ?? 'live',
-    schema: args.schema ?? '1.4',
+    schema: args.schema ?? getSchemaFromStore(),
   };
   if (args.text != null) body.text = args.text;
 

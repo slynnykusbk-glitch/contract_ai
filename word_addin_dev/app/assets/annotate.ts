@@ -91,6 +91,12 @@ function buildLegalComment(f: AnalyzeFinding): string {
   const parts = [f.rule_id];
   if (f.advice) parts.push(f.advice);
   if (f.law_refs?.length) parts.push(f.law_refs.join("; "));
+  if (f.norm_quote) parts.push(`"${f.norm_quote}"`);
+  if (f.clause_url || f.clause_id) {
+    const linkText = f.clause_id ? `Clause ${f.clause_id}` : "Clause";
+    if (f.clause_url) parts.push(`${linkText}: ${f.clause_url}`);
+    else parts.push(linkText);
+  }
   return `${COMMENT_PREFIX} ${parts.join("\n")}`;
 }
 

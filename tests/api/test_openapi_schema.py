@@ -14,5 +14,5 @@ def test_openapi_contains_paths_and_models():
     assert '/api/gpt-draft' in paths
     assert '/api/companies/search' in paths
     schemas = spec['components']['schemas']
-    for name in ('SummaryIn', 'GptDraftIn', '_CompanySearchIn'):
+    for name in ('SummaryIn', 'DraftRequest', '_CompanySearchIn'):
         assert name in schemas

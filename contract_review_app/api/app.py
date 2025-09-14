@@ -280,7 +280,7 @@ from .models import (
     Span,
     Segment,
     SearchHit,
-    GptDraftIn,
+    DraftRequest,
     SCHEMA_VERSION,
 )
 from contract_review_app.core.cache import TTLCache
@@ -939,7 +939,7 @@ def _custom_openapi():
     schemas["AnalyzeResponse"] = AnalyzeResponse.model_json_schema(
         ref_template="#/components/schemas/{model}"
     )
-    schemas["GptDraftIn"] = GptDraftIn.model_json_schema(
+    schemas["DraftRequest"] = DraftRequest.model_json_schema(
         ref_template="#/components/schemas/{model}"
     )
     for _m in [Finding, Span, Segment, SearchHit, CitationInput]:
@@ -2609,58 +2609,21 @@ class RedlinesOut(BaseModel):
 
 @router.post(
     "/api/gpt-draft",
-    response_model=DraftOut,
-    responses={422: {"model": ProblemDetail}, 404: {"model": ProblemDetail}},
+    responses={422: {"model": ProblemDetail}},
 )
-async def gpt_draft(request: Request):
+async def gpt_draft(request: Request, body: dict = Body(...)):
     """LLM draft endpoint with mock-friendly minimal payload support."""
 
     try:
-        raw = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Request body is not valid JSON")
-
-    if (
-        LLM_CONFIG.provider == "mock"
-        and isinstance(raw, dict)
-        and "cid" not in raw
-        and "clause" not in raw
-    ):
-        text = str(raw.get("text") or "").strip()
-        if not text:
-            raise HTTPException(status_code=422, detail="text required")
-        tmp = Response()
-        _set_llm_headers(tmp, PROVIDER_META)
-        headers = dict(tmp.headers)
-        cid = getattr(request.state, "cid", compute_cid(request))
-        headers["x-cid"] = cid
-        payload = {
-            "draft_text": text,
-            "alternatives": [],
-            "rationale": "mock",
-            "schema_version": SCHEMA_VERSION,
-            "cid": cid,
-            "summary": {"clause_type": None},
-            "findings": [],
-            "recommendations": [],
-        }
-        return _finalize_json("/api/gpt-draft", payload, headers)
-
-    try:
-        inp = GptDraftIn.model_validate(raw)
+        inp = DraftRequest.model_validate(body.get("payload", body))
     except ValidationError as exc:
         raise RequestValidationError(exc.errors()) from exc
-    if not TRACE.get(inp.cid):
-        problem = ProblemDetail(
-            title="cid not found", status=404, detail="cid not found"
-        )
-        return JSONResponse(problem.model_dump(), status_code=404)
     if LLM_CONFIG.provider == "azure" and not PROVIDER_META.get("valid_config"):
         problem = _llm_key_problem()
         return JSONResponse(problem.model_dump(), status_code=400)
 
     started = time.perf_counter()
-    req_cid = getattr(request.state, "cid", compute_cid(request))
+    req_cid = inp.cid or compute_cid(request)
     raw_json = _json_dumps_safe(inp.model_dump(exclude_none=True))
     etag = _sha256_hex(raw_json)
     inm = request.headers.get("if-none-match")
@@ -2678,271 +2641,6 @@ async def gpt_draft(request: Request):
             )
             _set_llm_headers(resp, cached["meta"])
             return resp
-
-    cached = gpt_cache.get(etag)
-    if cached:
-        headers = {
-            "ETag": etag,
-            "x-cache": "hit",
-            "x-cid": cached["cid"],
-            "x-schema-version": SCHEMA_VERSION,
-        }
-        tmp = Response()
-        _set_llm_headers(tmp, cached["meta"])
-        headers.update(tmp.headers)
-        return JSONResponse(cached["resp"], headers=headers)
-
-    text = inp.clause.strip()
-    if not text:
-        raise HTTPException(status_code=422, detail="clause is required")
-
-    redacted_text, pii_map = redact_pii(text)
-
-    try:
-        result = LLM_PROVIDER.draft(text=redacted_text, mode=inp.mode)
-        proposed_text = scrub_llm_output(result.proposed_text, pii_map)
-        rationale = scrub_llm_output(result.rationale, pii_map)
-        evidence = [scrub_llm_output(e, pii_map) for e in result.evidence]
-        before_text = text
-        after_text = scrub_llm_output(result.after_text, pii_map)
-        diff_unified = scrub_llm_output(result.diff_unified, pii_map)
-        provider = result.provider
-        model = result.model
-        mode_used = result.mode
-        usage = result.usage
-    except TypeError:
-        legacy = LLM_PROVIDER.draft(redacted_text)
-        proposed_text = scrub_llm_output(
-            legacy.get("text") or legacy.get("proposed_text", ""), pii_map
-        )
-        rationale = scrub_llm_output(legacy.get("rationale", ""), pii_map)
-        evidence = [scrub_llm_output(e, pii_map) for e in legacy.get("evidence", [])]
-        before_text = text
-        after_text = proposed_text
-        diff_unified = scrub_llm_output(legacy.get("diff", ""), pii_map)
-        provider = getattr(LLM_PROVIDER, "name", "")
-        model = getattr(LLM_PROVIDER, "model", "")
-        mode_used = inp.mode
-        usage = legacy.get("usage", {})
-
-    ctx_before, _ = normalize_text("")
-    ctx_after, _ = normalize_text("")
-    out = {
-        "status": "ok",
-        "proposed_text": proposed_text,
-        "rationale": rationale,
-        "evidence": evidence,
-        "before_text": before_text,
-        "after_text": after_text,
-        "diff_unified": diff_unified,
-        "provider": provider,
-        "model": model,
-        "mode": mode_used,
-        "usage": usage,
-        "context_before": ctx_before,
-        "context_after": ctx_after,
-    }
-    out.update(
-        {
-            "schema_version": SCHEMA_VERSION,
-            "cid": req_cid,
-            "summary": {"clause_type": getattr(inp, "clause_type", None)},
-            "findings": [],
-            "recommendations": [],
-        }
-    )
-    duration = time.perf_counter() - started
-    headers = {
-        "ETag": etag,
-        "x-cid": req_cid,
-        "x-schema-version": SCHEMA_VERSION,
-        "x-latency-ms": str(int(duration * 1000)),
-    }
-    tmp = Response()
-    _set_llm_headers(tmp, PROVIDER_META)
-    headers.update(tmp.headers)
-    gpt_cache.set(etag, {"resp": out, "cid": req_cid, "meta": PROVIDER_META})
-    resp = JSONResponse(out, headers=headers)
-    audit(
-        "gpt_draft",
-        request.headers.get("x-user"),
-        None,
-        {
-            "before_text_len": len(before_text or ""),
-            "after_text_len": len(after_text or ""),
-        },
-    )
-    return resp
-
-    cached = gpt_cache.get(etag)
-    if cached:
-        headers = {
-            "ETag": etag,
-            "x-cache": "hit",
-            "x-cid": cached["cid"],
-            "x-schema-version": SCHEMA_VERSION,
-        }
-        tmp = Response()
-        _set_llm_headers(tmp, cached["meta"])
-        headers.update(tmp.headers)
-        return JSONResponse(cached["resp"], headers=headers)
-
-    text = inp.clause.strip()
-    if not text:
-        raise HTTPException(status_code=422, detail="clause is required")
-
-    redacted_text, pii_map = redact_pii(text)
-
-    try:
-        result = LLM_PROVIDER.draft(text=redacted_text, mode=inp.mode)
-        proposed_text = scrub_llm_output(result.proposed_text, pii_map)
-        rationale = scrub_llm_output(result.rationale, pii_map)
-        evidence = [scrub_llm_output(e, pii_map) for e in result.evidence]
-        before_text = text
-        after_text = scrub_llm_output(result.after_text, pii_map)
-        diff_unified = scrub_llm_output(result.diff_unified, pii_map)
-        provider = result.provider
-        model = result.model
-        mode_used = result.mode
-        usage = result.usage
-    except TypeError:
-        legacy = LLM_PROVIDER.draft(redacted_text)
-        proposed_text = scrub_llm_output(
-            legacy.get("text") or legacy.get("proposed_text", ""), pii_map
-        )
-        rationale = scrub_llm_output(legacy.get("rationale", ""), pii_map)
-        evidence = [scrub_llm_output(e, pii_map) for e in legacy.get("evidence", [])]
-        before_text = text
-        after_text = proposed_text
-        diff_unified = scrub_llm_output(legacy.get("diff", ""), pii_map)
-        provider = getattr(LLM_PROVIDER, "name", "")
-        model = getattr(LLM_PROVIDER, "model", "")
-        mode_used = inp.mode
-        usage = legacy.get("usage", {})
-
-    ctx_before, _ = normalize_text("")
-    ctx_after, _ = normalize_text("")
-    out = {
-        "status": "ok",
-        "before": ctx_before,
-        "after": ctx_after,
-        "draft": proposed_text,
-        "rationale": rationale,
-        "evidence": evidence,
-        "provider": provider,
-        "model": model,
-        "mode": mode_used,
-        "usage": usage,
-        "diff_unified": diff_unified,
-    }
-    duration = time.perf_counter() - started
-    headers = {
-        "ETag": etag,
-        "x-cid": req_cid,
-        "x-schema-version": SCHEMA_VERSION,
-        "x-latency-ms": str(int((time.perf_counter() - started) * 1000)),
-    }
-    tmp = Response()
-    _set_llm_headers(tmp, PROVIDER_META)
-    headers.update(tmp.headers)
-    gpt_cache.set(etag, {"resp": out, "cid": req_cid, "meta": PROVIDER_META})
-    resp = JSONResponse(out, headers=headers)
-    audit(
-        "gpt_draft",
-        request.headers.get("x-user"),
-        None,
-        {
-            "before_text_len": len(before_text or ""),
-            "after_text_len": len(after_text or ""),
-        },
-    )
-    return resp
-
-    cached = gpt_cache.get(etag)
-    if cached:
-        headers = {
-            "ETag": etag,
-            "x-cache": "hit",
-            "x-cid": cached["cid"],
-            "x-schema-version": SCHEMA_VERSION,
-        }
-        tmp = Response()
-        _set_llm_headers(tmp, cached["meta"])
-        headers.update(tmp.headers)
-        return JSONResponse(cached["resp"], headers=headers)
-
-    text = inp.clause.strip()
-    if not text:
-        raise HTTPException(status_code=422, detail="clause is required")
-
-    redacted_text, pii_map = redact_pii(text)
-
-    try:
-        result = LLM_PROVIDER.draft(text=redacted_text, mode=inp.mode)
-        proposed_text = scrub_llm_output(result.proposed_text, pii_map)
-        rationale = scrub_llm_output(result.rationale, pii_map)
-        evidence = [scrub_llm_output(e, pii_map) for e in result.evidence]
-        before_text = text
-        after_text = scrub_llm_output(result.after_text, pii_map)
-        diff_unified = scrub_llm_output(result.diff_unified, pii_map)
-        provider = result.provider
-        model = result.model
-        mode_used = result.mode
-        usage = result.usage
-    except TypeError:
-        legacy = LLM_PROVIDER.draft(redacted_text)
-        proposed_text = scrub_llm_output(
-            legacy.get("text") or legacy.get("proposed_text", ""), pii_map
-        )
-        rationale = scrub_llm_output(legacy.get("rationale", ""), pii_map)
-        evidence = [scrub_llm_output(e, pii_map) for e in legacy.get("evidence", [])]
-        before_text = text
-        after_text = proposed_text
-        diff_unified = scrub_llm_output(legacy.get("diff", ""), pii_map)
-        provider = getattr(LLM_PROVIDER, "name", "")
-        model = getattr(LLM_PROVIDER, "model", "")
-        mode_used = inp.mode
-        usage = legacy.get("usage", {})
-    ctx_before, _ = normalize_text("")
-    ctx_after, _ = normalize_text("")
-    out = {
-        "status": "ok",
-        "mode": inp.mode,
-        "proposed_text": proposed_text,
-        "rationale": rationale,
-        "evidence": evidence,
-        "before_text": before_text,
-        "after_text": after_text,
-        "diff": {"type": "unified", "value": diff_unified},
-        "x_schema_version": SCHEMA_VERSION,
-        "context_before": ctx_before,
-        "context_after": ctx_after,
-    }
-    meta = {"provider": provider, "model": model, "mode": mode_used, "usage": usage}
-    gpt_cache.set(etag, {"resp": out, "cid": req_cid, "meta": meta})
-    headers = {
-        "ETag": etag,
-        "x-cache": "miss",
-        "x-cid": req_cid,
-        "x-schema-version": SCHEMA_VERSION,
-        "x-latency-ms": str(int((time.perf_counter() - started) * 1000)),
-    }
-    tmp = Response()
-    _set_llm_headers(tmp, meta)
-    headers.update(tmp.headers)
-    resp = JSONResponse(out, headers=headers)
-    audit(
-        "gpt_draft",
-        request.headers.get("x-user"),
-        None,
-        {
-            "before_text_len": len(before_text or ""),
-            "after_text_len": len(after_text or ""),
-        },
-    )
-    return resp
-
-
 @router.post(
     "/api/panel/redlines",
     response_model=RedlinesOut,

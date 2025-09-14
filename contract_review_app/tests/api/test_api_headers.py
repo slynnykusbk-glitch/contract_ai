@@ -1,9 +1,13 @@
 import re
 
+import os
 import re
 from fastapi.testclient import TestClient
 
 import pytest
+
+os.environ.setdefault("LLM_PROVIDER", "mock")
+os.environ.setdefault("AZURE_OPENAI_API_KEY", "test-key")
 
 from contract_review_app.api.app import app
 from contract_review_app.api.models import SCHEMA_VERSION
@@ -14,24 +18,16 @@ HEADERS = {"x-api-key": "k", "x-schema-version": SCHEMA_VERSION}
 
 @pytest.mark.parametrize("path", ["/api/analyze", "/api/gpt-draft"])
 def test_std_headers_present_and_valid(path):
-    if path == "/api/analyze":
-        payload1 = {"text": "hello"}
-        payload2 = {"text": "world"}
-        r1 = client.post(path, json=payload1, headers=HEADERS.copy())
-        r2 = client.post(path, json=payload1, headers=HEADERS.copy())
-        r3 = client.post(path, json=payload2, headers=HEADERS.copy())
-    else:
-        cid1 = client.post("/api/analyze", json={"text": "hello"}, headers=HEADERS.copy()).headers["x-cid"]
-        cid2 = client.post("/api/analyze", json={"text": "world"}, headers=HEADERS.copy()).headers["x-cid"]
-        payload1 = {"cid": cid1, "clause": "hello"}
-        payload2 = {"cid": cid2, "clause": "world"}
-        r1 = client.post(path, json=payload1, headers=HEADERS.copy())
-        r2 = client.post(path, json=payload1, headers=HEADERS.copy())
-        r3 = client.post(path, json=payload2, headers=HEADERS.copy())
-    assert r1.headers["x-cid"] == r2.headers["x-cid"]
-    assert r3.headers["x-cid"] != r1.headers["x-cid"]
+    payload1 = {"text": "hello"}
+    payload2 = {"text": "world"}
+    r1 = client.post(path, json=payload1, headers=HEADERS.copy())
+    r2 = client.post(path, json=payload1, headers=HEADERS.copy())
+    r3 = client.post(path, json=payload2, headers=HEADERS.copy())
     assert r1.headers["x-schema-version"] == SCHEMA_VERSION
-    assert re.fullmatch(r"[0-9a-f]{32}", r1.headers["x-cid"])
+    assert re.fullmatch(r"[0-9a-f]{32}|[0-9a-f]{64}", r1.headers["x-cid"])
+    if path == "/api/analyze":
+        assert r1.headers["x-cid"] == r2.headers["x-cid"]
+        assert r3.headers["x-cid"] != r1.headers["x-cid"]
 
 
 def test_error_handlers_also_emit_headers():

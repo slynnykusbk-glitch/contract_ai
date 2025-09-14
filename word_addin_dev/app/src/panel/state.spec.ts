@@ -8,6 +8,12 @@ vi.mock('../assets/safeBodySearch.ts', () => ({
 vi.mock('../assets/api-client.ts', () => ({
   postJSON: vi.fn(async () => ({ plainText: '', ops: [] }))
 }));
+const safeInsertMock = vi.fn()
+  .mockRejectedValueOnce(new Error('fail'))
+  .mockResolvedValue(undefined);
+vi.mock('../assets/annotate.ts', () => ({
+  safeInsertComment: (...args: any[]) => safeInsertMock(...args)
+}));
 
 describe('navigation', () => {
   it('moves selection with next/prev', async () => {
@@ -31,13 +37,13 @@ describe('navigation', () => {
 });
 
 describe('addCommentAtRange', () => {
-  it('falls back to paragraph comment on error', () => {
-    const pIns = vi.fn();
+  it('falls back to paragraph comment on error', async () => {
+    const p: any = {};
     const range: any = {
-      insertComment: () => { throw new Error('fail'); },
-      paragraphs: { getFirst: () => ({ insertComment: pIns }) }
+      paragraphs: { getFirst: () => p }
     };
-    addCommentAtRange(range, 'hi');
-    expect(pIns).toHaveBeenCalledWith('hi');
+    await addCommentAtRange(range, 'hi');
+    expect(safeInsertMock).toHaveBeenNthCalledWith(1, range, 'hi');
+    expect(safeInsertMock).toHaveBeenNthCalledWith(2, p, 'hi');
   });
 });

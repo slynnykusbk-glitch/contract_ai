@@ -286,8 +286,8 @@ export async function apiAnalyze(text: string) {
   return analyze({ text });
 }
 
-export async function apiGptDraft(cid: string, clause: string, mode = 'friendly') {
-  const { resp, json } = await postJSON('/api/gpt-draft', { cid, clause, mode });
+export async function apiGptDraft(clause_id: string, text: string, mode = 'friendly') {
+  const { resp, json } = await postJSON('/api/gpt-draft', { clause_id, text, mode });
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
   try { applyMetaToBadges(meta); } catch {}
   return { ok: resp.ok, json, resp, meta };

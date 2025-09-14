@@ -27,7 +27,7 @@ def test_api_key_auth(monkeypatch):
     r = client.post("/api/analyze", json=payload)
     assert r.status_code == 401
     r = client.post(
-        "/api/gpt-draft", json={"cid": "x", "clause": "Ping", "mode": "friendly"}
+        "/api/gpt-draft", json={"clause_id": "x", "text": "Ping", "mode": "friendly"}
     )
     assert r.status_code == 401
     r = client.post("/api/suggest_edits", json=payload)
@@ -40,7 +40,7 @@ def test_api_key_auth(monkeypatch):
     assert (
         client.post(
             "/api/gpt-draft",
-            json={"cid": cid, "clause": "Ping", "mode": "friendly"},
+            json={"clause_id": cid, "text": "Ping", "mode": "friendly"},
             headers=headers,
         ).status_code
         == 200

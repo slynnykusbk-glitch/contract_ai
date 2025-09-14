@@ -45,7 +45,7 @@ describe('get draft', () => {
     expect(calls.length).toBe(0);
   });
 
-  it('selection enables and sends request with clause', async () => {
+  it('selection enables and sends request with text', async () => {
     (globalThis as any).getSelectionText = vi.fn().mockResolvedValue('This is a sample clause with sufficient length.');
     const { wireUI, getClauseText, onSuggestEdit } = await import('../assets/taskpane.ts');
     wireUI();
@@ -56,7 +56,7 @@ describe('get draft', () => {
     const calls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/gpt/draft'));
     expect(calls.length).toBe(1);
     const body = JSON.parse(calls[0][1].body);
-    expect(body).toMatchObject({ clause: 'This is a sample clause with sufficient length.' });
+    expect(body).toMatchObject({ text: 'This is a sample clause with sufficient length.' });
   });
 
   it('Word API failure warns and skips request', async () => {

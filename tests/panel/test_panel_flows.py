@@ -51,11 +51,11 @@ def test_panel_end_to_end_flow():
 
     # Step 2: draft
     cid = r.headers.get("x-cid")
-    payload = {"cid": cid, "clause": "Ping", "mode": "friendly"}
+    payload = {"clause_id": cid, "text": "Ping", "mode": "friendly"}
     r = client.post("/api/gpt-draft", json=payload, headers=_headers())
     assert r.status_code == 200
     data = r.json()
-    assert data.get("proposed_text", "").strip() != ""
+    assert data.get("draft_text", "").strip() != ""
 
     # Step 3: suggest edits
     original = "bad clause"

@@ -819,7 +819,8 @@ async function requestDraft(mode: 'friendly' | 'strict') {
 
   const payload = {
     mode,
-    clause,
+    clause_id: lastCid || undefined,
+    text: clause,
     context: {
       law: 'UK',
       language: 'en-GB',
@@ -853,7 +854,7 @@ async function requestDraft(mode: 'friendly' | 'strict') {
   }
 
   const json = await res.json();
-  const proposed = (json?.proposed_text ?? json?.text ?? '').toString();
+  const proposed = (json?.draft_text || '').toString();
   const dst = $(Q.proposed);
   const w: any = window as any;
   w.__last = w.__last || {};

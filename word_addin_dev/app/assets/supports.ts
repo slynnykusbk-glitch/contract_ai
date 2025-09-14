@@ -3,20 +3,35 @@ export type FeatureSupport = {
   comments: boolean;
   search: boolean;
   contentControls: boolean;
+  commentsReason: string;
 };
 
 export function detectSupports(): FeatureSupport {
-  const req = !!(globalThis as any).Office?.context?.requirements?.isSetSupported?.('WordApi','1.4');
+  const req = !!(globalThis as any).Office?.context?.requirements?.isSetSupported?.('WordApi', '1.4');
   const w: any = (globalThis as any).Word || {};
   const rev = req && !!w?.Revision;
-  const com = req && !!w?.Comment;
   const srch = req && !!w?.SearchOptions;
   const cc = req && !!w?.ContentControl;
-  const base = { revisions: rev, comments: com, search: srch, contentControls: cc };
-  if (!req && w?.Comment && localStorage.getItem('cai.force.comments') === '1') {
-    return { ...base, comments: true };
+
+  const ls = (globalThis as any).localStorage;
+  const override = ls?.getItem?.('cai.force.comments') === '1';
+  let comments = false;
+  let reason = 'unsupported';
+  if (override) {
+    comments = true;
+    reason = 'dev override';
+  } else if (w?.Comment) {
+    comments = true;
+    reason = 'Word.Comment available';
+  } else if (req) {
+    comments = true;
+    reason = 'WordApi 1.4';
+  } else {
+    comments = false;
+    reason = 'Word.Comment missing';
   }
-  return base;
+
+  return { revisions: rev, comments, search: srch, contentControls: cc, commentsReason: reason };
 }
 
 export const supports = {
@@ -28,6 +43,6 @@ export const supports = {
 
 export function logSupportMatrix() {
   const s = detectSupports();
-  try { console.log('support matrix', s); } catch {}
+  try { console.log('support matrix', { comments: s.comments, reason: s.commentsReason }); } catch {}
   return s;
 }

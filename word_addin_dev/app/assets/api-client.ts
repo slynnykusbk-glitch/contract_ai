@@ -261,40 +261,16 @@ export async function apiHealth(backend?: string) {
 }
 
 export async function analyze(payload: any = {}) {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'X-Schema-Version': '1.4',
+  const body = {
+    text:  payload?.text ?? payload?.content,
+    mode:  payload?.mode ?? 'live',
+    schema: payload?.schema ?? '1.4',
   };
-  const key = getApiKeyFromStore();
-  if (key) headers['X-Api-Key'] = key;
-
-  let body: any;
-  if (payload && typeof payload === 'object' && 'schema' in payload) {
-    body = { payload };
-  } else {
-    const normalized: any = { schema: '1.4', mode: payload?.mode ?? 'live' };
-    const text = payload?.text ?? payload?.content;
-    if (text) normalized.text = text;
-    body = { payload: normalized };
-  }
-
-  const resp = await fetch('/api/analyze', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
-
-  const json = await resp.json().catch(() => ({}));
-  if (resp.status === 422) {
-    console.warn('[analyze] 422', json.detail);
-    const msg = Array.isArray(json?.detail) ? json.detail.map((d: any) => d.msg).join('; ') : json?.detail;
-    try { notifyWarn(`Validation error: ${msg}`); } catch {}
-  }
+  const { resp, json } = await postJSON('/api/analyze', body);
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
   try { applyMetaToBadges(meta); } catch {}
   try {
-    const w = window as any;
-    if (!w.__last) w.__last = {};
+    const w = window as any; if (!w.__last) w.__last = {};
     w.__last.analyze = { status: resp.status, req: { path: '/api/analyze', method: 'POST', body }, json };
   } catch {}
   return { ok: resp.ok, json, resp, meta };

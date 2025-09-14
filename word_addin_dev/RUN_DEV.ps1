@@ -54,7 +54,7 @@ $okPanel = Wait-Ok 'https://127.0.0.1:3000/panel_selftest.html'
 if (-not $okApi)   { Write-Host '[ERR] Backend not ready' -ForegroundColor Red }
 if (-not $okPanel) { Write-Host '[ERR] Panel not ready'   -ForegroundColor Red }
 
-Start-Process -FilePath 'https://127.0.0.1:3000/panel_selftest.html?v=dev' -ArgumentList @('')
+Start-Process -FilePath 'https://127.0.0.1:3000/panel_selftest.html?v=dev'
 Write-Host '[OK] READY. Panel self-test opened.'
 Read-Host 'Press Enter to stop services'
 

@@ -111,7 +111,7 @@ $md = "$OutPrefixFinal.md"
 $json = "$OutPrefixFinal.json"
 if (Test-Path $md) {
   Write-Ok "Звіт: $md"
-  try { Start-Process -FilePath $md -ArgumentList @('') } catch { Write-Warn "Не вдалося відкрити ${md}: $($_.Exception.Message)" }
+  try { Start-Process -FilePath $md } catch { Write-Warn "Не вдалося відкрити ${md}: $($_.Exception.Message)" }
 } else {
   Write-Warn "Markdown-звіт не знайдено."
 }

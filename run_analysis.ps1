@@ -14,7 +14,7 @@ if (Test-Path "$ROOT/.venv/Scripts/python.exe") {
 $code = $LASTEXITCODE
 if ($code -eq 0 -or $code -eq 2) {
     if (Test-Path "$OUT/analysis.html") {
-        Start-Process -FilePath "$OUT/analysis.html" -ArgumentList @('')
+        Start-Process -FilePath "$OUT/analysis.html"
     }
 }
 exit $code

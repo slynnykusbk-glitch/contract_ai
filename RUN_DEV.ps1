@@ -68,7 +68,7 @@ if (-not $panelArgs) { $panelArgs = @('') }
 Start-Process -FilePath $py -ArgumentList $panelArgs
 
 # 6) Відкрити self-test у браузері (для контролю зв’язку)
-Start-Process -FilePath "https://localhost:3000/panel_selftest.html?v=dev" -ArgumentList @('')
+Start-Process -FilePath "https://localhost:3000/panel_selftest.html?v=dev"
 
 # 7) Запустити Word — далі «Вставка → Мои надстройки → Общая папка → Contract AI — Draft Assistant»
-Start-Process -FilePath winword.exe -ArgumentList @('')
+Start-Process -FilePath winword.exe

@@ -874,9 +874,15 @@ export function wireUI() {
   });
 
   const s = logSupportMatrix();
-  const disable = (id: string) => {
+  const disable = (id: string, reason?: string) => {
     const el = document.getElementById(id) as HTMLButtonElement | null;
-    if (el) { el.disabled = true; el.title = 'Not supported'; }
+    if (el) {
+      el.disabled = true;
+      el.title = reason ? `Not supported: ${reason}` : 'Not supported';
+    }
+    if (reason) {
+      try { console.log(`disabled ${id}: ${reason}`); } catch {}
+    }
   };
 
   bindClick("#btnUseWholeDoc", onUseWholeDoc);
@@ -930,10 +936,10 @@ export function wireUI() {
   ensureHeaders();
   updateStatusChip();
 
-  if (!s.revisions) { disable('btnApplyTracked'); disable('btnAcceptAll'); disable('btnRejectAll'); }
-  if (!s.comments) { disable('btnAcceptAll'); }
-  if (!s.search) { disable('btnPrevIssue'); disable('btnNextIssue'); disable('btnQARecheck'); }
-  if (!s.contentControls) { disable('btnAnnotate'); }
+  if (!s.revisions) { disable('btnApplyTracked', 'revisions'); disable('btnAcceptAll', 'revisions'); disable('btnRejectAll', 'revisions'); }
+  if (!s.comments) { disable('btnAcceptAll', s.commentsReason); }
+  if (!s.search) { disable('btnPrevIssue', 'search'); disable('btnNextIssue', 'search'); disable('btnQARecheck', 'search'); }
+  if (!s.contentControls) { disable('btnAnnotate', 'contentControls'); }
   if (!s.revisions || !s.comments || !s.search || !s.contentControls) {
     try { setOfficeBadge('Word ⚠'); } catch {}
   }

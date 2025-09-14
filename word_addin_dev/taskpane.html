@@ -126,14 +126,7 @@
     window.__DEV_DEFAULT_API_KEY__ = "{{DEFAULT_API_KEY}}";
   </script>
 
-  <!-- Единый модульный загрузчик -->
-  <script type="module">
-    import { bootstrapHeaders } from './app/assets/bootstrap.js?v=DEV';
-    await bootstrapHeaders();
-    await import('./app/assets/store.js?v=DEV');
-    await import('./app/assets/api-client.js?v=DEV');
-      await import('./taskpane.bundle.js?b=build-20250914-100041');
-  </script>
+  <script src="./taskpane.bundle.js?b=build-20250914-100041"></script>
 
   <script nomodule>
     document.body.innerHTML =

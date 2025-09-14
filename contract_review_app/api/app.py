@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from collections import OrderedDict
 import secrets
 from starlette.middleware.base import BaseHTTPMiddleware
+import mimetypes
 
 try:  # Starlette <0.37 compatibility
     from starlette.middleware.timeout import TimeoutMiddleware
@@ -48,6 +49,9 @@ from contract_review_app.config import CH_ENABLED, CH_API_KEY
 
 
 log = logging.getLogger("contract_ai")
+
+# prevent serving TypeScript files with executable MIME types
+mimetypes.add_type("text/plain", ".ts")
 
 # корень репо: .../contract_ai
 REPO_DIR = Path(__file__).resolve().parents[2]
@@ -716,8 +720,10 @@ if PANEL_READY:
     )
     panel_app.mount("/", StaticFiles(directory=str(PANEL_DIR), html=True), name="root")
 else:
+
     async def panel_app(scope, receive, send):  # type: ignore[override]
         await Response(status_code=404)(scope, receive, send)
+
 
 app.mount("/panel", panel_app, name="panel")
 
@@ -1073,7 +1079,9 @@ async def add_response_headers(request: Request, call_next):
     try:
         body = await _read_body_guarded(request)
     except HTTPException:
-        cid = getattr(request.state, "cid", request.headers.get("x-cid") or _PROCESS_CID)
+        cid = getattr(
+            request.state, "cid", request.headers.get("x-cid") or _PROCESS_CID
+        )
         return _problem_response(
             413,
             "Payload too large",
@@ -1454,6 +1462,7 @@ def _extract_context(
     after_norm, _ = normalize_text(after_raw)
     return before_norm, after_norm
 
+
 RULE_DISCOVERY_TIMEOUT_S = float(os.getenv("RULE_DISCOVERY_TIMEOUT_S", "1.5"))
 
 
@@ -1796,10 +1805,7 @@ def api_admin_purge(dry: int = 1):
     "/api/analyze",
     response_model=AnalyzeResponse,
 )
-def api_analyze(
-
-    request: Request, body: dict = Body(..., example={"text": "Hello"})
-):
+def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello"})):
     try:
         req = AnalyzeRequest.model_validate(body.get("payload", body))
     except ValidationError as e:

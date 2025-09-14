@@ -33,3 +33,6 @@
 - Keep files free of conflict markers and temporary strings like `codex/...`.
 - Remove generated caches (`__pycache__`) before committing.
 - All tests and the doctor script must succeed with `LLM_PROVIDER=mock` and without external API keys.
+
+## API Contracts
+See [docs/api_contracts.md](docs/api_contracts.md) for request/response examples, such as `/api/analyze`.

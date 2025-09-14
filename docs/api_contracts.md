@@ -1,5 +1,7 @@
 # API contracts: /api/analyze
 
+See the TypeScript types in [word_addin_dev/app/types/api.d.ts](../word_addin_dev/app/types/api.d.ts).
+
 Frontend sends a flat JSON body.
 
 Older deployments wrapped the payload inside a `{ "payload": { ... } }` object, but this wrapper is no longer supported. Requests using the wrapper will be rejected with a validation error.

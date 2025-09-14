@@ -19,3 +19,8 @@ repos:
         entry: npm --prefix word_addin_dev run lint
         language: system
         pass_filenames: false
+      - id: api-types
+        name: api types up-to-date
+        entry: bash -c 'npm --prefix word_addin_dev run generate:types && git diff --exit-code word_addin_dev/app/types/api.d.ts'
+        language: system
+        pass_filenames: false

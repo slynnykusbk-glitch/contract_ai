@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "vite build && node tools/copy-bundle.cjs",
+    "generate:types": "openapi-typescript ../api/openapi.json -o app/types/api.d.ts",
+    "build": "npm run generate:types && vite build && node tools/copy-bundle.cjs",
     "test": "vitest run",
     "lint": "eslint app --ext .ts --max-warnings=0"
   },
@@ -16,7 +17,8 @@
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@testing-library/jest-dom": "^6.4.2",
     "jsdom": "^24.0.0",
-    "diff-match-patch": "^1.0.5"
+    "diff-match-patch": "^1.0.5",
+    "openapi-typescript": "^6.7.0"
   },
   "engines": {
     "node": ">=20 <23"

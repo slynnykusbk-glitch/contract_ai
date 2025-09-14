@@ -1,5 +1,7 @@
 Param()
 $ErrorActionPreference = 'Stop'
+$root = Join-Path $PSScriptRoot '..'
+& npm --prefix $root run generate:types | Out-Null
 $ts = Get-Date -Format 'yyyyMMdd-HHmm'
 $dest = Join-Path $PSScriptRoot "build-$ts"
 if (-not (Test-Path $dest)) { New-Item -Path $dest -ItemType Directory | Out-Null }

@@ -36,3 +36,4 @@
 
 ## API Contracts
 See [docs/api_contracts.md](docs/api_contracts.md) for request/response examples, such as `/api/analyze`.
+TypeScript types are generated to [word_addin_dev/app/types/api.d.ts](word_addin_dev/app/types/api.d.ts).

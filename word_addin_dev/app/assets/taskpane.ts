@@ -1307,7 +1307,7 @@ export function wireUI() {
     annotateBtn.classList.remove("js-disable-while-busy");
     annotateBtn.removeAttribute("disabled");
 
-  document.body.addEventListener('ca.qa', (ev: any) => {
+  mustGetElementById<HTMLElement>('results').addEventListener('ca.qa', (ev: any) => {
     const json = ev?.detail;
     try {
       if (!json || json.error) {

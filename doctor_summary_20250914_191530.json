@@ -1,0 +1,83 @@
+﻿{
+    "startedAt":  "2025-09-14T19:15:30",
+    "steps":  [
+                  {
+                      "name":  "Git status",
+                      "ok":  false,
+                      "details":  [
+
+                                  ]
+                  },
+                  {
+                      "name":  "Merge markers",
+                      "ok":  false,
+                      "details":  [
+
+                                  ]
+                  },
+                  {
+                      "name":  "Pattern scan: legacy imports / bad API usage",
+                      "ok":  false,
+                      "details":  [
+
+                                  ]
+                  },
+                  {
+                      "name":  "Tools: node/npm/pre-commit",
+                      "ok":  false,
+                      "details":  [
+
+                                  ]
+                  },
+                  {
+                      "name":  "AOAI / env",
+                      "ok":  false,
+                      "details":  [
+
+                                  ]
+                  },
+                  {
+                      "name":  "npm ci (panel)",
+                      "ok":  false,
+                      "details":  [
+
+                                  ]
+                  },
+                  {
+                      "name":  "vite build (panel)",
+                      "ok":  false,
+                      "details":  [
+
+                                  ]
+                  },
+                  {
+                      "name":  "API health",
+                      "ok":  false,
+                      "details":  [
+
+                                  ]
+                  },
+                  {
+                      "name":  "API analyze (smoke)",
+                      "ok":  false,
+                      "details":  [
+
+                                  ]
+                  },
+                  {
+                      "name":  "API draft (smoke)",
+                      "ok":  false,
+                      "details":  [
+
+                                  ]
+                  },
+                  {
+                      "name":  "pre-commit run --all-files",
+                      "ok":  false,
+                      "details":  [
+
+                                  ]
+                  }
+              ],
+    "endedAt":  "2025-09-14T19:15:35"
+}

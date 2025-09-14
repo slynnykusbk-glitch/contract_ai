@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 (globalThis as any).window = { addEventListener() {}, dispatchEvent() {} } as any;
 (globalThis as any).document = { addEventListener() {}, querySelectorAll() { return [] as any; } } as any;
 
-describe('analyze payload wrapping', () => {
+describe('analyze request body', () => {
   it('sends flat payload when given text only', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: new Headers(), json: async () => ({}) });
     (globalThis as any).fetch = fetchMock;

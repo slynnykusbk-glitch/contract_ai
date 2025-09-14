@@ -1,209 +1,286 @@
-// word_addin_dev/app/assets/api-client.ts
-function parseFindings(resp) {
-  const arr = resp?.analysis?.findings ?? resp?.findings ?? resp?.issues ?? [];
-  return Array.isArray(arr) ? arr.filter(Boolean) : [];
+import { getApiKeyFromStore, getSchemaFromStore } from "./store.ts";
+import { registerFetch, deregisterFetch, registerTimer, deregisterTimer, withBusy } from './pending.ts';
+import { checkHealth } from './health.ts';
+import { notifyWarn } from './notifier.ts';
+export function parseFindings(resp) {
+    const arr = resp?.analysis?.findings ?? resp?.findings ?? resp?.issues ?? [];
+    return Array.isArray(arr) ? arr.filter(Boolean) : [];
 }
+// (dev aid; harmless in prod)
+;
 window.parseFindings = parseFindings;
-function metaFromResponse(r) {
-  const h = r.headers;
-  const js = r.json || {};
-  const llm = js.llm || js;
-  return {
-    cid: h.get("x-cid"),
-    xcache: h.get("x-cache"),
-    latencyMs: h.get("x-latency-ms"),
-    schema: h.get("x-schema-version"),
-    provider: h.get("x-provider") || llm.provider || js.provider || null,
-    model: h.get("x-model") || llm.model || js.model || null,
-    llm_mode: h.get("x-llm-mode") || llm.mode || js.mode || null,
-    usage: h.get("x-usage-total"),
-    status: r.status != null ? String(r.status) : null
-  };
+export function metaFromResponse(r) {
+    const h = r.headers;
+    const js = r.json || {};
+    const llm = js.llm || js;
+    return {
+        cid: h.get('x-cid'),
+        xcache: h.get('x-cache'),
+        latencyMs: h.get('x-latency-ms'),
+        schema: h.get('x-schema-version'),
+        provider: h.get('x-provider') || llm.provider || js.provider || null,
+        model: h.get('x-model') || llm.model || js.model || null,
+        llm_mode: h.get('x-llm-mode') || llm.mode || js.mode || null,
+        usage: h.get('x-usage-total'),
+        status: r.status != null ? String(r.status) : null,
+    };
 }
-function applyMetaToBadges(m) {
-  const set = (id, v) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = v && v.length ? v : "\u2014";
-  };
-  set("status", m.status);
-  set("cid", m.cid);
-  set("xcache", m.xcache);
-  set("latency", m.latencyMs);
-  set("schema", m.schema);
-  set("provider", m.provider);
-  set("model", m.model);
-  set("mode", m.llm_mode);
-  set("usage", m.usage);
+export function applyMetaToBadges(m) {
+    const set = (id, v) => {
+        const el = document.getElementById(id);
+        if (el)
+            el.textContent = v && v.length ? v : '—';
+    };
+    set('status', m.status);
+    set('cid', m.cid);
+    set('xcache', m.xcache);
+    set('latency', m.latencyMs);
+    set('schema', m.schema);
+    set('provider', m.provider);
+    set('model', m.model);
+    set('mode', m.llm_mode);
+    set('usage', m.usage);
 }
-async function logApiClientChecksum() {
-  const url = new URL(import.meta.url).toString();
-  try {
-    const res = await fetch(url);
-    const text = await res.text();
-    const buf = new TextEncoder().encode(text);
-    const hashBuf = await crypto.subtle.digest("SHA-256", buf);
-    const hash = Array.from(new Uint8Array(hashBuf)).slice(0, 4).map(b => b.toString(16).padStart(2, "0")).join("");
-    console.log(`[selftest] api-client.js ${hash} ${url}`);
-  } catch {
-    console.log(`[selftest] api-client.js fail ${url}`);
-  }
+export async function logApiClientChecksum() {
+    const url = new URL(import.meta.url).toString();
+    try {
+        const res = await fetch(url);
+        const text = await res.text();
+        const buf = new TextEncoder().encode(text);
+        const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+        const hash = Array.from(new Uint8Array(hashBuf))
+            .slice(0, 4)
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join('');
+        console.log(`[selftest] api-client.js ${hash} ${url}`);
+    }
+    catch {
+        console.log(`[selftest] api-client.js fail ${url}`);
+    }
 }
-var DEFAULT_BASE = "https://localhost:9443";
+const DEFAULT_BASE = 'https://localhost:9443';
 function base() {
-  try {
-    return (localStorage.getItem("backendUrl") || DEFAULT_BASE).replace(/\/+$/, "");
-  } catch {
-    return DEFAULT_BASE;
-  }
-}
-async function postJson(path, body, opts = {}) {
-  const url = base() + path;
-  const headers = { "content-type": "application/json" };
-  const apiKey = opts.apiKey ?? (() => {
     try {
-      const storeKey = window.CAI?.Store?.get?.()?.apiKey;
-      if (storeKey) return storeKey;
-    } catch {
+        return (localStorage.getItem('backendUrl') || DEFAULT_BASE).replace(/\/+$/, '');
     }
+    catch {
+        return DEFAULT_BASE;
+    }
+}
+const ANALYZE_BASE_MS = 9000;
+const ANALYZE_PER_KB_MS = 60;
+const ANALYZE_MAX_MS = 90000;
+const ANALYZE_RETRY_COUNT = 1;
+const ANALYZE_RETRY_BACKOFF_MS = 3000;
+export async function postJSON(path, body, timeoutOverride) {
+    return withBusy(async () => {
+        const url = base() + path;
+        const headers = { 'Content-Type': 'application/json' };
+        const schema = getSchemaFromStore() || '1.4';
+        headers['x-schema-version'] = schema;
+        const key = getApiKeyFromStore();
+        if (key)
+            headers['x-api-key'] = key;
+        const bodyStr = JSON.stringify(body || {});
+        const sizeBytes = new TextEncoder().encode(bodyStr).length;
+        let timeoutMs = timeoutOverride;
+        let retryCount = ANALYZE_RETRY_COUNT;
+        let backoffMs = ANALYZE_RETRY_BACKOFF_MS;
+        if (path === '/api/analyze') {
+            if (timeoutMs == null) {
+                const dyn = ANALYZE_BASE_MS + ANALYZE_PER_KB_MS * (sizeBytes / 1024);
+                timeoutMs = Math.max(ANALYZE_BASE_MS, Math.min(ANALYZE_MAX_MS, Math.floor(dyn)));
+            }
+            try {
+                for (const k of [
+                    'cai.timeout.analyze.ms',
+                    'cai_timeout_ms:/api/analyze',
+                    'cai_timeout_ms:analyze',
+                ]) {
+                    const v = localStorage.getItem(k);
+                    if (v) {
+                        const parsed = parseInt(v, 10);
+                        if (Number.isFinite(parsed)) {
+                            timeoutMs = parsed;
+                            break;
+                        }
+                    }
+                }
+            }
+            catch { }
+            try {
+                const v = localStorage.getItem('cai.retry.analyze.count');
+                if (v)
+                    retryCount = parseInt(v, 10);
+            }
+            catch { }
+            try {
+                const v = localStorage.getItem('cai.retry.analyze.backoff.ms');
+                if (v)
+                    backoffMs = parseInt(v, 10);
+            }
+            catch { }
+            try {
+                const params = new URLSearchParams(location.search);
+                const ta = params.get('ta');
+                if (ta)
+                    timeoutMs = parseInt(ta, 10);
+                const rac = params.get('rac');
+                if (rac)
+                    retryCount = parseInt(rac, 10);
+                const rb = params.get('rb');
+                if (rb)
+                    backoffMs = parseInt(rb, 10);
+            }
+            catch { }
+        }
+        timeoutMs = timeoutMs ?? ANALYZE_BASE_MS;
+        async function attempt(n) {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(`timeout ${timeoutMs}ms`), timeoutMs);
+            registerFetch(ctrl);
+            registerTimer(t);
+            try {
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers,
+                    body: bodyStr,
+                    credentials: 'include',
+                    signal: ctrl.signal,
+                });
+                const json = await resp.json().catch(() => ({}));
+                if (resp.status === 422) {
+                    console.warn('[analyze] 422', json.detail);
+                    const msg = Array.isArray(json?.detail) ? json.detail.map((d) => d.msg).join('; ') : json?.detail;
+                    try {
+                        notifyWarn(`Validation error: ${msg}`);
+                    }
+                    catch { }
+                }
+                if (path === '/api/analyze' && (resp.status === 504 || resp.status >= 500) && n < retryCount) {
+                    await new Promise(res => setTimeout(res, backoffMs));
+                    return attempt(n + 1);
+                }
+                return { resp, json };
+            }
+            catch (e) {
+                if (path === '/api/analyze' && e?.name === 'AbortError') {
+                    const reason = ctrl.signal.reason || 'aborted';
+                    console.log(`[NET] analyze aborted: ${reason}`);
+                    if (n < retryCount && String(reason).startsWith('timeout')) {
+                        await new Promise(res => setTimeout(res, backoffMs));
+                        return attempt(n + 1);
+                    }
+                    throw new DOMException(reason, 'AbortError');
+                }
+                throw e;
+            }
+            finally {
+                clearTimeout(t);
+                deregisterTimer(t);
+                deregisterFetch(ctrl);
+            }
+        }
+        return attempt(0);
+    });
+}
+export { postJSON as postJson };
+;
+window.postJson = postJSON;
+async function req(path, { method = 'GET', body = null, key = path, timeoutMs = 9000 } = {}) {
+    return withBusy(async () => {
+        const headers = { 'Content-Type': 'application/json' };
+        const apiKey = getApiKeyFromStore();
+        if (apiKey)
+            headers['x-api-key'] = apiKey;
+        headers['x-schema-version'] = getSchemaFromStore() || '1.4';
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
+        registerFetch(ctrl);
+        registerTimer(t);
+        let r;
+        try {
+            r = await fetch(base() + path, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined,
+                credentials: 'include',
+                signal: ctrl.signal,
+            });
+        }
+        finally {
+            clearTimeout(t);
+            deregisterTimer(t);
+            deregisterFetch(ctrl);
+        }
+        const json = await r.json().catch(() => ({}));
+        const meta = metaFromResponse({ headers: r.headers, json, status: r.status });
+        try {
+            applyMetaToBadges(meta);
+        }
+        catch { }
+        try {
+            const w = window;
+            if (!w.__last)
+                w.__last = {};
+            w.__last[key] = { status: r.status, req: { path, method, body }, json };
+        }
+        catch { }
+        return { ok: r.ok, json, resp: r, meta };
+    });
+}
+export async function apiHealth(backend) {
+    return withBusy(() => checkHealth({ backend }));
+}
+export async function analyze(payload = {}) {
+    const body = {
+        text: payload?.text ?? payload?.content,
+        mode: payload?.mode ?? 'live',
+        schema: payload?.schema ?? '1.4',
+    };
+    const { resp, json } = await postJSON('/api/analyze', body);
+    const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
     try {
-      return localStorage.getItem("api_key") || "";
-    } catch {
-      return "";
+        applyMetaToBadges(meta);
     }
-  })();
-  if (apiKey) {
-    headers["x-api-key"] = apiKey;
+    catch { }
     try {
-      localStorage.setItem("api_key", apiKey);
-    } catch {
+        const w = window;
+        if (!w.__last)
+            w.__last = {};
+        w.__last.analyze = { status: resp.status, req: { path: '/api/analyze', method: 'POST', body }, json };
     }
+    catch { }
+    return { ok: resp.ok, json, resp, meta };
+}
+export async function apiAnalyze(text) {
+    return analyze({ text });
+}
+export async function apiGptDraft(cid, clause, mode = 'friendly') {
+    const { resp, json } = await postJSON('/api/gpt-draft', { cid, clause, mode });
+    const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
     try {
-      window.CAI?.Store?.setApiKey?.(apiKey);
-    } catch {
+        applyMetaToBadges(meta);
     }
-  }
-  const schemaVersion = opts.schemaVersion ?? (() => {
+    catch { }
+    return { ok: resp.ok, json, resp, meta };
+}
+export async function apiSummary(cid) {
+    return req('/api/summary', { method: 'POST', body: { cid }, key: 'summary' });
+}
+export async function apiSummaryGet() {
+    return req('/api/summary', { method: 'GET', key: 'summary' });
+}
+export async function apiQaRecheck(text, rules = {}) {
+    const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
+    const { resp, json } = await postJSON('/api/qa-recheck', { text, rules: dict });
+    const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
     try {
-      const storeSchema = window.CAI?.Store?.get?.()?.schemaVersion;
-      if (storeSchema) return storeSchema;
-    } catch {
+        applyMetaToBadges(meta);
     }
-    try {
-      return localStorage.getItem("schema_version") || "";
-    } catch {
-      return "";
-    }
-  })();
-  if (schemaVersion) headers["x-schema-version"] = schemaVersion;
-  const http = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body || {}),
-    credentials: "include"
-  });
-  const json = await http.json().catch(() => ({}));
-  const hdr = http.headers;
-  try {
-    window.CAI?.Store?.setMeta?.({ cid: hdr.get("x-cid") || void 0, schema: hdr.get("x-schema-version") || void 0 });
-  } catch {
-  }
-  return { http, json, headers: hdr };
+    catch { }
+    return { ok: resp.ok, json, resp, meta };
 }
-window.postJson = postJson;
-async function req(path, { method = "GET", body = null, key = path } = {}) {
-  const headers = { "content-type": "application/json" };
-  try {
-    const store = window.CAI?.Store?.get?.() || {};
-    const apiKey = store.apiKey || localStorage.getItem("api_key");
-    if (apiKey) headers["x-api-key"] = apiKey;
-    const schema = store.schemaVersion || localStorage.getItem("schema_version");
-    if (schema) headers["x-schema-version"] = schema;
-  } catch {
-  }
-  const r = await fetch(base() + path, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : void 0,
-    credentials: "include"
-  });
-  const json = await r.json().catch(() => ({}));
-  const meta = metaFromResponse({ headers: r.headers, json, status: r.status });
-  try {
-    applyMetaToBadges(meta);
-  } catch {
-  }
-  try {
-    const w = window;
-    if (!w.__last) w.__last = {};
-    w.__last[key] = { status: r.status, req: { path, method, body }, json };
-  } catch {
-  }
-  return { ok: r.ok, json, resp: r, meta };
+export async function postRedlines(before_text, after_text) {
+    return postJSON('/api/panel/redlines', { before_text, after_text });
 }
-async function apiHealth() {
-  return req("/health", { key: "health" });
-}
-async function analyze(payload = {}) {
-  const headers = {
-    "Content-Type": "application/json",
-    "X-Schema-Version": "1.4"
-  };
-  const key = getApiKeyFromStore();
-  if (key) headers["X-Api-Key"] = key;
-  const body = { payload: { schema: "1.4", mode: (payload == null ? void 0 : payload.mode) ?? "live" } };
-  const text = (payload == null ? void 0 : payload.text) ?? (payload == null ? void 0 : payload.content);
-  if (text) body.payload.text = text;
-  const resp = await fetch("/api/analyze", {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body)
-  });
-  const json = await resp.json().catch(() => ({}));
-  const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
-  try {
-    applyMetaToBadges(meta);
-  } catch {
-  }
-  try {
-    const w = window;
-    if (!w.__last) w.__last = {};
-    w.__last.analyze = { status: resp.status, req: { path: "/api/analyze", method: "POST", body }, json };
-  } catch {
-  }
-  return { ok: resp.ok, json, resp, meta };
-}
-async function apiAnalyze(text) {
-  return analyze({ text });
-}
-async function apiGptDraft(cid, clause, mode = "friendly") {
-  return req("/api/gpt-draft", { method: "POST", body: { cid, clause, mode }, key: "gpt-draft" });
-}
-async function apiSummary(cid) {
-  return req("/api/summary", { method: "POST", body: { cid }, key: "summary" });
-}
-async function apiSummaryGet() {
-  return req("/api/summary", { method: "GET", key: "summary" });
-}
-async function apiQaRecheck(text, rules = {}) {
-  const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : rules || {};
-  return req("/api/qa-recheck", { method: "POST", body: { text, rules: dict }, key: "qa-recheck" });
-}
-async function postRedlines(before_text, after_text) {
-  const fn = window.postJson || postJson;
-  return fn("/api/panel/redlines", { before_text, after_text });
-}
-export {
-  analyze,
-  apiAnalyze,
-  apiGptDraft,
-  apiHealth,
-  apiQaRecheck,
-  apiSummary,
-  apiSummaryGet,
-  applyMetaToBadges,
-  logApiClientChecksum,
-  metaFromResponse,
-  parseFindings,
-  postJson,
-  postRedlines
-};

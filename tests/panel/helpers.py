@@ -4,7 +4,7 @@ from contract_review_app.api.app import app
 client = TestClient(app)
 
 def analyze_and_render(text: str) -> str:
-    resp = client.post("/api/analyze", json={"payload": {"schema": "1.4", "mode": "live", "text": text}})
+    resp = client.post("/api/analyze", json={"schema": "1.4", "mode": "live", "text": text})
     assert resp.status_code == 200
     data = resp.json()
     out = []

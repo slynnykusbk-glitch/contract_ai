@@ -8,7 +8,7 @@ client = TestClient(app)
 def test_gpt_draft_payload_and_response():
     r_an = client.post(
         "/api/analyze",
-        json={"payload": {"schema": "1.4", "mode": "live", "text": "Ping"}},
+        json={"schema": "1.4", "mode": "live", "text": "Ping"},
         headers={"x-api-key": "k", "x-schema-version": "1.4"},
     )
     cid = r_an.headers.get("x-cid")

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 describe('postRedlines', () => {
   it('sends two fields', async () => {
-    (globalThis as any).window = globalThis;
+    (globalThis as any).window = { dispatchEvent() {} } as any;
     (globalThis as any).localStorage = { getItem: () => null } as any;
     (globalThis as any).fetch = vi.fn().mockResolvedValue({
       ok: true,

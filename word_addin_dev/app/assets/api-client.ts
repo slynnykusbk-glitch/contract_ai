@@ -196,6 +196,7 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
 
     async function attempt(n: number): Promise<any> {
       const ctrl = new AbortController();
+      (ctrl as any).__key = path;
       const t = setTimeout(() => ctrl.abort(`timeout ${timeoutMs}ms`), timeoutMs!);
       registerFetch(ctrl);
       registerTimer(t);
@@ -258,6 +259,7 @@ async function req(path: string, { method='GET', body=null, key=path, timeoutMs=
     const payload = body && method !== 'GET' ? { ...body, schema } : method !== 'GET' ? { schema } : undefined;
 
     const ctrl = new AbortController();
+    (ctrl as any).__key = path;
     const t = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
     registerFetch(ctrl);
     registerTimer(t);

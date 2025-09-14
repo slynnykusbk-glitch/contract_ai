@@ -208,12 +208,6 @@ function slot(id: string, role: string): HTMLElement {
   return mustGetElementById<HTMLElement>(id);
 }
 
-function mustGetElementById<T extends HTMLElement = HTMLElement>(id: string): T {
-  const el = document.getElementById(id);
-  if (!el) throw new Error(`Element not found: ${id}`);
-  return el as T;
-}
-
 export function getRiskThreshold(): "low" | "medium" | "high" {
   const sel = mustGetElementById<HTMLSelectElement>("selectRiskThreshold");
   const v = sel.value.toLowerCase();
@@ -504,7 +498,6 @@ async function navigateFinding(dir: number) {
   w.__findingIdx = (w.__findingIdx ?? 0) + dir;
   if (w.__findingIdx < 0) w.__findingIdx = arr.length - 1;
   if (w.__findingIdx >= arr.length) w.__findingIdx = 0;
-<<
   const list = mustGetElementById<HTMLElement>("findingsList");
   const items = Array.from(list.querySelectorAll("li"));
   items.forEach((li, i) => {
@@ -599,10 +592,7 @@ export function renderAnalysisSummary(json: any) {
       }
 
       fCont.appendChild(li);
-
-    }
-
-    fCont.appendChild(li);
+    });
   }
   findingsBlock.style.display = visibleFindings.length ? '' : 'none';
 
@@ -1201,30 +1191,32 @@ async function onRejectAll() {
 
 export function wireUI() {
   console.log('[PANEL] wireUI start');
-    if (!(globalThis as any).__CAI_TESTING__) {
-      const missing = REQUIRED_IDS.filter(id => {
-        try { mustGetElementById<HTMLElement>(id); return false; }
-        catch { return true; }
-      });
-      if (missing.length) {
-      console.error('[PANEL] wireUI missing IDs:', missing);
-      const msg = `FATAL: panel template mismatch (missing: ${missing.join(', ')}). Check build pipeline.`;
-      try {
-        const banner = document.createElement ? document.createElement('div') : null;
-        if (banner) {
-          banner.textContent = msg;
-          banner.style.padding = '12px';
-          banner.style.color = '#f66';
-          document.body.innerHTML = '';
-          document.body.appendChild(banner);
-        }
-      } catch {}
-      console.error(msg);
-      return;
-    }
+  if ((globalThis as any).__CAI_TESTING__) {
+    console.log('[PANEL] wireUI skipped (__CAI_TESTING__)');
+    return;
+  }
+  const missing = REQUIRED_IDS.filter(id => {
+    try { mustGetElementById<HTMLElement>(id); return false; }
+    catch { return true; }
+  });
+  if (missing.length) {
+    console.error('[PANEL] wireUI missing IDs:', missing);
+    const msg = `FATAL: panel template mismatch (missing: ${missing.join(', ')}). Check build pipeline.`;
+    try {
+      const banner = document.createElement ? document.createElement('div') : null;
+      if (banner) {
+        banner.textContent = msg;
+        banner.style.padding = '12px';
+        banner.style.color = '#f66';
+        document.body.innerHTML = '';
+        document.body.appendChild(banner);
+      }
+    } catch {}
+    console.error(msg);
+    return;
   }
 
-    const bookEl = mustGetElementById<HTMLElement>('loading-book');
+  const bookEl = mustGetElementById<HTMLElement>('loading-book');
     window.addEventListener('cai:busy', (e: any) => {
       const busy = !!(e?.detail?.busy);
       if (busy) bookEl.classList.remove('hidden');

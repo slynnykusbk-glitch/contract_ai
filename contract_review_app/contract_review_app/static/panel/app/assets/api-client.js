@@ -274,16 +274,16 @@ export async function apiSummaryGet() {
     return req('/api/summary', { method: 'GET', key: 'summary' });
 }
 export async function apiQaRecheck(input, rules = {}) {
-    let payload;
+    let text;
     if (typeof input === 'string') {
-        payload = { text: input };
+        text = input;
     }
     else {
-        payload = input.document_id ? { document_id: input.document_id } : { text: input.text };
+        text = (input.text || "");
         rules = input.rules ?? {};
     }
     const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
-    const { resp, json } = await postJSON('/api/qa-recheck', { ...payload, rules: dict });
+    const { resp, json } = await postJSON('/api/qa-recheck', { text, rules: dict });
     const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
     try {
         applyMetaToBadges(meta);

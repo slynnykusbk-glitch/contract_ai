@@ -38,7 +38,6 @@ describe('qa recheck navigation', () => {
       parseFindings: (resp: any) => resp.analysis.findings,
       analyze: vi.fn(),
     }));
-    (window as any).__docId = 'doc1';
     const mod = await import('../assets/taskpane.ts');
     const resultsEl = document.getElementById('results')!;
     resultsEl.addEventListener('ca.qa', (e: any) => {
@@ -68,10 +67,10 @@ describe('qa recheck navigation', () => {
       li.scrollIntoView = () => {};
       fl.appendChild(li);
     });
-    await postJSON('/api/qa-recheck', { document_id: 'doc1', rules: {} });
+    await postJSON('/api/qa-recheck', { text: 'doc text', rules: {} });
     resultsEl.dispatchEvent(new CustomEvent('ca.qa', { detail: qaResp }));
 
-    expect(postJSON).toHaveBeenCalledWith('/api/qa-recheck', { document_id: 'doc1', rules: {} });
+    expect(postJSON).toHaveBeenCalledWith('/api/qa-recheck', { text: 'doc text', rules: {} });
 
     const items = (window as any).__findings;
     expect(items).toEqual(qaResp.analysis.findings);

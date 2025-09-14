@@ -1068,16 +1068,9 @@ async function doQARecheck() {
     await clearHighlight();
     ensureHeaders();
 
-    const docId = (window as any).__docId;
-    let payload: any;
-    if (docId) {
-      payload = { document_id: docId, rules: {} };
-    } else {
-      const text = await getWholeDocText();
-      (window as any).__lastAnalyzed = text;
-      payload = { text, rules: {} };
-    }
-    const { json } = await postJSON('/api/qa-recheck', payload);
+    const text = await getWholeDocText();
+    (window as any).__lastAnalyzed = text;
+    const { json } = await postJSON('/api/qa-recheck', { text, rules: {} });
       mustGetElementById<HTMLElement>("results").dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
     const ok = !json?.error;
     if (ok) {

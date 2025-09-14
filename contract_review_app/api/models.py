@@ -125,6 +125,7 @@ class DraftRequest(_DTOBase):
     )
     mode: str | None = None
     cid: str | None = None
+    schema_: str | None = Field(None, alias="schema")
 
     @field_validator("mode", "cid", mode="before")
     @classmethod

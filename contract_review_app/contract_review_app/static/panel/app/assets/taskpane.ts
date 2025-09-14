@@ -339,7 +339,10 @@ export async function applyOpsTracked(
         const sFull = await safeBodySearch(body, searchText, searchOpts);
         const fullRange = pick(sFull, occIdx);
         if (fullRange) {
-          const inner: any = fullRange.search(snippet, searchOpts);
+          // Clamp snippet before searching to avoid Word's
+          // SearchStringInvalidOrTooLong errors (limit ~255 chars).
+          const needle = snippet.slice(0, 240);
+          const inner: any = fullRange.search(needle, searchOpts);
           if (inner && typeof inner.load === 'function') inner.load('items');
           await ctx.sync();
           target = pick(inner, 0);

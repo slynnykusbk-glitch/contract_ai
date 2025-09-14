@@ -21,27 +21,27 @@ describe('insertDraftText', () => {
     expect(run).toHaveBeenCalledTimes(1)
   })
 
-  it('inserts only changed phrase', async () => {
-    const original = 'The quick brown fox jumps over the lazy dog.'
-    const updated = 'The quick brown fox leaps over the lazy dog.'
+  it('inserts draft_text without replacing whole paragraph', async () => {
+    const draft = 'draft_text'
     const range: any = {
       isEmpty: false,
       load: vi.fn(),
-      text: original,
+      text: 'orig',
       insertText: vi.fn((txt: string) => {
         range.text = txt
         return {}
       }),
     }
-    const doc = { getSelection: () => range, body: { getRange: vi.fn() }, comments: { add: vi.fn() } }
+    const body = { getRange: vi.fn() }
+    const doc = { getSelection: () => range, body, comments: { add: vi.fn() } }
     const run = vi.fn(async (cb: any) => {
       await cb({ document: doc, sync: vi.fn() })
     })
     ;(globalThis as any).Word = { run, InsertLocation: { replace: 'Replace' } }
-    await insertDraftText(updated, 'live')
-    expect(range.insertText).toHaveBeenCalledWith(updated, 'Replace')
-    expect(range.text).toBe(updated)
-    expect(range.text.replace('leaps', 'jumps')).toBe(original)
+    await insertDraftText(draft, 'live')
+    expect(range.insertText).toHaveBeenCalledWith(draft, 'Replace')
+    expect(body.getRange).not.toHaveBeenCalled()
+    expect(range.text).toBe(draft)
   })
 
   it('logs debug info and rethrows', async () => {

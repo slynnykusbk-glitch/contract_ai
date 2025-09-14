@@ -16,7 +16,7 @@ describe('safeBodySearch', () => {
     const body: any = {
       context: { sync: vi.fn() },
       search: vi.fn().mockImplementation((txt: string) => {
-        if (txt.length > 80) { const err: any = new Error('fail'); err.code = 'SearchStringInvalidOrTooLong'; throw err; }
+        if (txt.length > 200) { const err: any = new Error('fail'); err.code = 'SearchStringInvalidOrTooLong'; throw err; }
         return { items: [1], load: vi.fn() };
       })
     };

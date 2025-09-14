@@ -264,8 +264,8 @@ export async function clearAnnotations() {
   try {
     await Word.run(async ctx => {
       const body = ctx.document.body;
-      const cmts = ctx.document.comments;
-      cmts.load('items');
+      const cmts: any = (ctx.document as any).comments;
+      if (cmts && typeof cmts.load === 'function') cmts.load('items');
       await ctx.sync();
       for (const c of cmts.items) {
         try {
@@ -328,8 +328,8 @@ export async function applyOpsTracked(
         const sFull = await safeBodySearch(body, searchText, searchOpts);
         const fullRange = pick(sFull, occIdx);
         if (fullRange) {
-          const inner = fullRange.search(snippet, searchOpts);
-          inner.load('items');
+          const inner: any = fullRange.search(snippet, searchOpts);
+          if (inner && typeof inner.load === 'function') inner.load('items');
           await ctx.sync();
           target = pick(inner, 0);
         }

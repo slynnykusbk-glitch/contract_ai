@@ -1,7 +1,9 @@
 import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON, analyze } from "./api-client.ts";
 import domSchema from "../panel_dom.schema.json";
-import { normalizeText, dedupeFindings, severityRank } from "./dedupe.ts";
+import { normalizeText, severityRank } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
+import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX } from "./annotate.ts";
+import { findAnchors } from "./anchors.ts";
 import {
   getApiKeyFromStore,
   getSchemaFromStore,
@@ -241,177 +243,11 @@ function buildLegalComment(f: AnalyzeFinding): string {
   return `[${sev}] ${rid}${ct}\nReason: ${advice}\nLaw: ${law}\nConflict: ${conflict}${citations}\nSuggested fix: ${fix}`;
 }
 
-function nthOccurrenceIndex(hay: string, needle: string, startPos?: number): number {
-  if (!needle) return 0;
-  let idx = -1, n = 0;
-  const bound = typeof startPos === "number" ? Math.max(0, startPos) : Number.MAX_SAFE_INTEGER;
-  while ((idx = hay.indexOf(needle, idx + 1)) !== -1 && idx < bound) n++;
-  return n;
-}
-
-export function buildParagraphIndex(paragraphs: string[]): { starts: number[]; texts: string[] } {
-  const starts: number[] = [];
-  const texts: string[] = [];
-  let pos = 0;
-  for (const p of paragraphs) {
-    const t = normalizeText(p);
-    starts.push(pos);
-    texts.push(t);
-    pos += t.length + 1; // assume joined by \n
-  }
-  return { starts, texts };
-}
-
-export async function mapFindingToRange(
-  f: AnalyzeFinding,
-): Promise<Word.Range | null> {
-  const last: string = (window as any).__lastAnalyzed || "";
-  const base = normalizeText(last);
-  const snippet = normalizeText(f.snippet || "");
-  const occIdx = nthOccurrenceIndex(base, snippet, f.start);
-
-  try {
-    return await Word.run(async ctx => {
-      const body = ctx.document.body;
-      const searchRes = body.search(snippet, { matchCase: false, matchWholeWord: false });
-      searchRes.load("items");
-      await ctx.sync();
-      const items = searchRes.items || [];
-      return items[Math.min(occIdx, Math.max(0, items.length - 1))] || null;
-    });
-  } catch (e) {
-    logRichError(e, "findings");
-    console.warn("mapFindingToRange fail", e);
-    return null;
-  }
-}
-
-export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Promise<number> {
-  return withBusy(async () => {
-  const cb = document.getElementById("cai-dry-run-annotate") as HTMLInputElement | null;
-  function isDryRunAnnotateEnabled() {
-    if (cb) return !!cb.checked;
-    return !!(document.getElementById("cai-dry-run-annotate") as HTMLInputElement | null)?.checked;
-  }
-  const base = normalizeText((window as any).__lastAnalyzed || "");
-
-  // 1) валидируем, чистим и сортируем с защитой от overlaps
-  const deduped = dedupeFindings(findings || []);
-  const sorted = deduped.slice().sort((a, b) => (b.end ?? 0) - (a.end ?? 0));
-
-  const todo: AnalyzeFinding[] = [];
-  let lastStart = Number.POSITIVE_INFINITY;
-  let skipped = 0;
-  for (const f of sorted) {
-    if (!f || !f.rule_id || !f.snippet) { skipped++; continue; }
-    const snippet = f.snippet;
-    const end = typeof f.end === "number" ? f.end : (typeof f.start === "number" ? f.start + snippet.length : undefined);
-    if (typeof end === "number" && end > lastStart) { skipped++; continue; }
-    todo.push(f);
-    if (typeof f.start === "number") lastStart = f.start;
-  }
-  if (skipped) notifyWarn(`Skipped ${skipped} overlaps/invalid`);
-  notifyOk(`Will insert: ${todo.length}`);
-
-  // 2) готовим элементы + индекс вхождения (чтобы попадать в нужный occurrence)
-  const items = todo.map(f => {
-    const raw = f.snippet || "";
-    const norm = normalizeText(raw);
-    const occIdx = nthOccurrenceIndex(base, norm, f.start);
-    return {
-      raw,
-      norm,
-      msg: buildLegalComment(f),
-      rule_id: f.rule_id,
-      occIdx,
-      normalized_fallback: normalizeText((f as any).normalized_snippet || "")
-    };
-  });
-
-  // 3) СЕРИЙНАЯ вставка: один Word.run на одну цель (чтобы не ловить InvalidObjectPath)
-  const searchOpts = { matchCase: false, matchWholeWord: false } as Word.SearchOptions;
-  let inserted = 0;
-
-
-  for (const it of items) {
-    await Word.run(async ctx => {
-      const body = ctx.document.body;
-
-      // primary: raw текст
-      let target: Word.Range | null = null;
-      const sRaw = body.search(it.raw, searchOpts);
-      sRaw.load("items");
-      await ctx.sync();
-
-
-      const pick = (coll: Word.RangeCollection | undefined | null, occ: number): Word.Range | null => {
-        const arr = coll?.items || [];
-        if (!arr.length) return null;
-        return arr[Math.min(Math.max(occ, 0), arr.length - 1)] || null;
-      };
-      target = pick(sRaw, it.occIdx);
-
-      // fallback #1: нормализованный текст из finding (если есть и отличается)
-      if (!target) {
-        const fb = it.normalized_fallback && it.normalized_fallback !== it.norm ? it.normalized_fallback : it.norm;
-        if (fb && fb.trim()) {
-          const sNorm = body.search(fb, searchOpts);
-          sNorm.load("items");
-          await ctx.sync();
-          target = pick(sNorm, it.occIdx);
-        }
-      }
-
-      // fallback #2: длинный токен (самое длинное слово/фраза) из raw
-      if (!target) {
-        const token = (() => {
-          const tks = it.raw.replace(/[^\p{L}\p{N} ]/gu, " ").split(" ").filter(x => x.length >= 12);
-          if (tks.length) return tks.sort((a, b) => b.length - a.length)[0].slice(0, 64);
-          return null;
-        })();
-        if (token) {
-          const sTok = body.search(token, searchOpts);
-          sTok.load("items");
-          await ctx.sync();
-          target = pick(sTok, 0);
-        }
-      }
-
-      // вставка / dry-run select
-      if (target) {
-        if (isDryRunAnnotateEnabled()) {
-          try { target.select(); } catch {}
-        } else if (it.msg) {
-          target.insertComment(it.msg);
-        }
-        inserted++;
-      } else {
-        console.warn("[annotate] no match for snippet", { rid: it.rule_id, snippet: it.raw.slice(0, 120) });
-      }
-
-      await ctx.sync();
-    }).catch(e => {
-      logRichError(e, "annotate");
-      console.warn("annotate run fail", e?.code, e?.message, e?.debugInfo);
-    });
-  }
-
-  console.log("panel:annotate", {
-    total: findings.length,
-    deduped: deduped.length,
-    skipped_overlaps: skipped,
-    will_annotate: todo.length,
-    inserted
-  });
-
-    return inserted;
-  });
-}
 
 
 g.annotateFindingsIntoWord = g.annotateFindingsIntoWord || annotateFindingsIntoWord;
 
-async function onClearAnnots() {
+export async function clearAnnotations() {
   try {
     await Word.run(async ctx => {
       const body = ctx.document.body;
@@ -419,7 +255,10 @@ async function onClearAnnots() {
       cmts.load('items');
       await ctx.sync();
       for (const c of cmts.items) {
-        try { c.delete(); } catch {}
+        try {
+          const txt = (c as any).text || "";
+          if (txt.startsWith(COMMENT_PREFIX)) c.delete();
+        } catch {}
       }
       try { body.font.highlightColor = "NoColor" as any; } catch {}
       await ctx.sync();
@@ -524,51 +363,15 @@ g.applyOpsTracked = g.applyOpsTracked || applyOpsTracked;
 
 
 
-async function highlightFinding(f: AnalyzeFinding) {
-  const base = normalizeText((window as any).__lastAnalyzed || "");
-  const raw = f?.snippet || "";
-  const norm = normalizeText(raw);
-  const occIdx = nthOccurrenceIndex(base, norm, f.start);
-  const searchOpts = { matchCase: false, matchWholeWord: false } as Word.SearchOptions;
-
+async function highlightFinding(op: AnnotationPlan) {
   await Word.run(async ctx => {
-    const body = ctx.document.body;
-    let target: Word.Range | null = null;
-    const pick = (coll: Word.RangeCollection | undefined | null, occ: number): Word.Range | null => {
-      const arr = coll?.items || [];
-      if (!arr.length) return null;
-      return arr[Math.min(Math.max(occ, 0), arr.length - 1)] || null;
-    };
-
-    const sRaw = body.search(raw, searchOpts);
-    sRaw.load("items");
-    await ctx.sync();
-    target = pick(sRaw, occIdx);
-
-    if (!target) {
-      const fb = (f as any).normalized_snippet && (f as any).normalized_snippet !== norm ? (f as any).normalized_snippet : norm;
-      if (fb && fb.trim()) {
-        const sNorm = body.search(fb, searchOpts);
-        sNorm.load("items");
-        await ctx.sync();
-        target = pick(sNorm, occIdx);
-      }
+    const body = ctx.document.body as any;
+    let anchors = await findAnchors(body, op.raw);
+    let target: any = anchors[Math.min(op.occIdx, anchors.length - 1)] || null;
+    if (!target && op.normalized_fallback && op.normalized_fallback !== op.norm) {
+      anchors = await findAnchors(body, op.normalized_fallback);
+      target = anchors[Math.min(op.occIdx, anchors.length - 1)] || null;
     }
-
-    if (!target) {
-      const token = (() => {
-        const tks = raw.replace(/[^\p{L}\p{N} ]/gu, " ").split(" ").filter(x => x.length >= 12);
-        if (tks.length) return tks.sort((a, b) => b.length - a.length)[0].slice(0, 64);
-        return null;
-      })();
-      if (token) {
-        const sTok = body.search(token, searchOpts);
-        sTok.load("items");
-        await ctx.sync();
-        target = pick(sTok, 0);
-      }
-    }
-
     if (target) {
       try { target.select(); } catch {}
     }
@@ -577,7 +380,7 @@ async function highlightFinding(f: AnalyzeFinding) {
 }
 
 async function navigateFinding(dir: number) {
-  const arr: AnalyzeFinding[] = (window as any).__findings || [];
+  const arr: AnnotationPlan[] = (window as any).__findings || [];
   if (!arr.length) return;
   const w: any = window as any;
   w.__findingIdx = (w.__findingIdx ?? 0) + dir;
@@ -879,8 +682,19 @@ async function doAnalyze() {
         const all = (globalThis as any).parseFindings(json);
         const thr = getRiskThreshold();
         const filtered = filterByThreshold(all, thr);
+        const ops = planAnnotations(filtered);
+        (window as any).__findings = ops;
+        const list = document.getElementById("findingsList");
+        if (list) {
+          list.innerHTML = "";
+          ops.forEach(o => {
+            const li = document.createElement("li");
+            li.textContent = o.rule_id || o.raw.slice(0, 64);
+            list.appendChild(li);
+          });
+        }
         if (isAddCommentsOnAnalyzeEnabled() && filtered.length) {
-          await (globalThis as any).annotateFindingsIntoWord(filtered);
+          await annotateFindingsIntoWord(filtered);
         }
       } catch (e) {
         console.warn("auto-annotate after analyze failed", e);
@@ -1081,7 +895,7 @@ export function wireUI() {
   bindClick("#btnPrevIssue", onPrevIssue);
   bindClick("#btnNextIssue", onNextIssue);
   bindClick("#btnPreviewDiff", onPreviewDiff);
-  bindClick("#btnClearAnnots", onClearAnnots);
+  bindClick("#btnClearAnnots", clearAnnotations);
   bindClick("#btnSave", onSaveBackend);
   const cb = (document.getElementById("cai-comment-on-analyze") as HTMLInputElement | null)
     || (document.getElementById("chkAddCommentsOnAnalyze") as HTMLInputElement | null);

@@ -1,8 +1,10 @@
 import { logSupportMatrix } from './supports.ts';
 import { checkHealth } from './health.ts';
+import { logApiClientChecksum } from './api-client.ts';
 
 export async function runStartupSelftest(backend: string) {
   const missing: string[] = [];
+  try { await logApiClientChecksum(); } catch {}
   ['btnAnalyze', 'selectRiskThreshold'].forEach(id => {
     if (!document.getElementById(id)) missing.push(`missingID:${id}`);
   });

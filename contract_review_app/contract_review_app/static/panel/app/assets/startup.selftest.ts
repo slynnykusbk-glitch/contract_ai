@@ -24,7 +24,7 @@ export async function runStartupSelftest(backend: string) {
   } catch {
     missing.push('health:timeout');
   }
-    const build = 'build-20250914-100041';
+    const build = 'build-20250914-114304';
   const host = (Office as any)?.context?.host || 'Word';
   const ok = missing.length === 0;
   const msg = ok

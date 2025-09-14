@@ -1,5 +1,6 @@
 import { AnalyzeFinding } from "./api-client.ts";
 import { dedupeFindings, normalizeText } from "./dedupe.ts";
+import { findAnchors } from "./anchors.ts";
 
 /** Utilities for inserting comments into Word with batching and retries. */
 export interface CommentItem {
@@ -64,6 +65,8 @@ function isDryRunAnnotateEnabled(): boolean {
   }
 }
 
+export const COMMENT_PREFIX = "AI edit:";
+
 function buildLegalComment(f: AnalyzeFinding): string {
   if (!f.rule_id || !f.snippet) {
     console.warn("buildLegalComment: missing required fields", f);
@@ -72,7 +75,7 @@ function buildLegalComment(f: AnalyzeFinding): string {
   const parts = [f.rule_id];
   if (f.advice) parts.push(f.advice);
   if (f.law_refs?.length) parts.push(f.law_refs.join("; "));
-  return parts.join("\n");
+  return `${COMMENT_PREFIX} ${parts.join("\n")}`;
 }
 
 export interface AnnotationPlan {
@@ -136,58 +139,26 @@ export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
 }
 
 /**
- * Convert findings directly into Word comments using a two-phase plan.
+ * Insert comments for provided findings. Builds an annotation plan and anchors
+ * each snippet to Word ranges using ``findAnchors``.
  */
-export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number> {
+export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Promise<number> {
   const ops = planAnnotations(findings);
   if (!ops.length) return 0;
   const g: any = globalThis as any;
   return await g.Word?.run?.(async (ctx: any) => {
-    const body = ctx.document.body;
-    const searchOpts = { matchCase: false, matchWholeWord: false } as Word.SearchOptions;
+    const body = ctx.document.body as any;
     const used: { start: number; end: number }[] = [];
     let inserted = 0;
-
-    const pick = (coll: any, occ: number) => {
-      const arr = coll?.items || [];
-      if (!arr.length) return null;
-      return arr[Math.min(Math.max(occ, 0), arr.length - 1)] || null;
-    };
-
     for (const op of ops) {
-      let target: any = null;
-
-      const sRaw = body.search(op.raw, searchOpts);
-      sRaw.load("items");
-      await ctx.sync();
-      target = pick(sRaw, op.occIdx);
-
-      if (!target) {
-        const fb = op.normalized_fallback && op.normalized_fallback !== op.norm ? op.normalized_fallback : op.norm;
-        if (fb && fb.trim()) {
-          const sNorm = body.search(fb, searchOpts);
-          sNorm.load("items");
-          await ctx.sync();
-          target = pick(sNorm, op.occIdx);
-        }
+      let anchors = await findAnchors(body, op.raw);
+      let target: any = anchors[Math.min(op.occIdx, anchors.length - 1)] || null;
+      if (!target && op.normalized_fallback && op.normalized_fallback !== op.norm) {
+        anchors = await findAnchors(body, op.normalized_fallback);
+        target = anchors[Math.min(op.occIdx, anchors.length - 1)] || null;
       }
-
-      if (!target) {
-        const token = (() => {
-          const tks = op.raw.replace(/[^\p{L}\p{N} ]/gu, " ").split(" ").filter(x => x.length >= 12);
-          if (tks.length) return tks.sort((a, b) => b.length - a.length)[0].slice(0, 64);
-          return null;
-        })();
-        if (token) {
-          const sTok = body.search(token, searchOpts);
-          sTok.load("items");
-          await ctx.sync();
-          target = pick(sTok, 0);
-        }
-      }
-
       if (target) {
-        target.load(["start", "end"]);
+        target.load?.(["start", "end"]);
         await ctx.sync();
         const start = target.start ?? 0;
         const end = target.end ?? start;
@@ -205,9 +176,8 @@ export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number
       } else {
         console.warn("[annotate] no match for snippet", { rid: op.rule_id, snippet: op.raw.slice(0, 120) });
       }
+      await ctx.sync();
     }
-
-    await ctx.sync();
     return inserted;
   }).catch((e: any) => {
     const gg: any = globalThis as any;
@@ -216,4 +186,3 @@ export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number
     return 0;
   });
 }
-

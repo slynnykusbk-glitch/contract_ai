@@ -1338,17 +1338,13 @@ def _normalize_analyze_response(payload: dict) -> dict:
 
 
 async def _read_body_guarded(request: Request) -> bytes:
+    body = await request.body()
     clen = request.headers.get("content-length")
     if clen and clen.isdigit() and int(clen) > MAX_BODY_BYTES:
         raise HTTPException(status_code=413, detail="Payload too large")
-
-    body = bytearray()
-    async for chunk in request.stream():
-        if len(body) + len(chunk) > MAX_BODY_BYTES:
-            raise HTTPException(status_code=413, detail="Payload too large")
-        body.extend(chunk)
-
-    return bytes(body)
+    if len(body) > MAX_BODY_BYTES:
+        raise HTTPException(status_code=413, detail="Payload too large")
+    return body
 
 
 def _count_placeholders(text: str) -> int:
@@ -1800,6 +1796,7 @@ def api_admin_purge(dry: int = 1):
     response_model=AnalyzeResponse,
 )
 def api_analyze(
+
     request: Request, body: dict = Body(..., example={"text": "Hello"})
 ):
     try:

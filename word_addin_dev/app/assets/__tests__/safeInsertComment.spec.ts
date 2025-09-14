@@ -21,7 +21,7 @@ describe('safeInsertComment', () => {
     vi.stubGlobal('logRichError', logRichError);
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    await safeInsertComment(range, 'oops');
+    await expect(safeInsertComment(range, 'oops')).rejects.toThrow('fail');
 
     expect(notifyWarn).toHaveBeenCalledWith('Failed to insert comment');
     expect(logRichError).toHaveBeenCalled();

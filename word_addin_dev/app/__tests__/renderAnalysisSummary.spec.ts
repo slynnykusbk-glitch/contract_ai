@@ -6,7 +6,9 @@ describe('renderAnalysisSummary', () => {
       clauseTypeOut: { textContent: '' },
       visibleHiddenOut: { textContent: '' },
       findingsList: { innerHTML: '', children: [] as any[], appendChild(el: any){ this.children.push(el) } },
-      recsList: { innerHTML: '', children: [] as any[], appendChild(el: any){ this.children.push(el) } },
+      recommendationsList: { innerHTML: '', children: [] as any[], appendChild(el: any){ this.children.push(el) } },
+      findingsBlock: { style: { display: 'none' } },
+      recommendationsBlock: { style: { display: 'none' } },
       resultsBlock: { style: { display: 'none', removeProperty(prop: string){ delete (this as any)[prop] } } }
     }
     ;(globalThis as any).document = {
@@ -21,7 +23,7 @@ describe('renderAnalysisSummary', () => {
     expect(elements.clauseTypeOut.textContent).toBe('—')
     expect(elements.visibleHiddenOut.textContent).toBe('0 / 0')
     expect(elements.findingsList.children.length).toBe(0)
-    expect(elements.recsList.children.length).toBe(0)
+    expect(elements.recommendationsList.children.length).toBe(0)
     expect(elements.resultsBlock.style.display).toBeUndefined()
   })
 
@@ -30,7 +32,9 @@ describe('renderAnalysisSummary', () => {
       clauseTypeOut: { textContent: '' },
       visibleHiddenOut: { textContent: '' },
       findingsList: { innerHTML: '', children: [] as any[], appendChild(el: any){ this.children.push(el) } },
-      recsList: { innerHTML: '', children: [] as any[], appendChild(el: any){ this.children.push(el) } },
+      recommendationsList: { innerHTML: '', children: [] as any[], appendChild(el: any){ this.children.push(el) } },
+      findingsBlock: { style: { display: 'none' } },
+      recommendationsBlock: { style: { display: 'none' } },
       resultsBlock: { style: { display: 'none', removeProperty(prop: string){ delete (this as any)[prop] } } }
     }
     ;(globalThis as any).document = {

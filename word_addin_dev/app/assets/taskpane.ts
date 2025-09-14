@@ -207,6 +207,12 @@ function slot(id: string, role: string): HTMLElement | null {
   ) || document.getElementById(id);
 }
 
+function mustGetElementById<T extends HTMLElement = HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Element not found: ${id}`);
+  return el as T;
+}
+
 export function getRiskThreshold(): "low" | "medium" | "high" {
   const sel = document.getElementById("selectRiskThreshold") as HTMLSelectElement | null;
   const v = sel?.value?.toLowerCase();
@@ -525,6 +531,7 @@ export function renderAnalysisSummary(json: any) {
   setText("visibleHiddenOut", `${visible} / ${hidden}`);
 
   // Заполняем findings
+  const findingsBlock = mustGetElementById('findingsBlock');
   const fCont = document.getElementById("findingsList");
   if (fCont) {
     fCont.innerHTML = "";
@@ -555,17 +562,20 @@ export function renderAnalysisSummary(json: any) {
       fCont.appendChild(li);
     }
   }
+  findingsBlock.style.display = visibleFindings.length ? '' : 'none';
 
   // Заполняем рекомендации
-  const rCont = document.getElementById("recsList");
-  if (rCont) {
-    rCont.innerHTML = "";
+  const recommendationsBlock = mustGetElementById('recommendationsBlock');
+  const recommendationsList = document.getElementById("recommendationsList");
+  if (recommendationsList) {
+    recommendationsList.innerHTML = "";
     for (const r of recs) {
       const li = document.createElement("li");
       li.textContent = r?.text || r?.advice || r?.message || "Recommendation";
-      rCont.appendChild(li);
+      recommendationsList.appendChild(li);
     }
   }
+  recommendationsBlock.style.display = recs.length ? '' : 'none';
 
   // Показать блок результатов (если был скрыт стилями)
   const rb = document.getElementById("resultsBlock") as HTMLElement | null;
@@ -588,17 +598,21 @@ function renderResults(res: any) {
       findingsList.appendChild(li);
     });
   }
+  const findingsBlock = mustGetElementById('findingsBlock');
+  findingsBlock.style.display = findingsArr.length ? '' : 'none';
 
   const recoArr = Array.isArray(res?.recommendations) ? res.recommendations : [];
-  const recoList = slot("recoList", "recommendations") as HTMLElement | null;
-  if (recoList) {
-    recoList.innerHTML = "";
+  const recommendationsList = slot("recommendationsList", "recommendations") as HTMLElement | null;
+  if (recommendationsList) {
+    recommendationsList.innerHTML = "";
     recoArr.forEach((r: any) => {
       const li = document.createElement("li");
       li.textContent = typeof r === "string" ? r : JSON.stringify(r);
-      recoList.appendChild(li);
+      recommendationsList.appendChild(li);
     });
   }
+  const recommendationsBlock = mustGetElementById('recommendationsBlock');
+  recommendationsBlock.style.display = recoArr.length ? '' : 'none';
 
   const count = slot("resFindingsCount", "findings-count");
   if (count) count.textContent = String(findingsArr.length);

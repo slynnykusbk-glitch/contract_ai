@@ -149,7 +149,8 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
     setDraft(null);
     try {
       const base = getBackend().replace(/\/+$/, '');
-      const env = await postJSON<AnalyzeEnvelope>(`${base}/api/analyze`, { text, clause_type: clauseType || undefined });
+      const url = `${base}/api/analyze${clauseType ? `?clause_type=${encodeURIComponent(clauseType)}` : ''}`;
+      const env = await postJSON<AnalyzeEnvelope>(url, { text });
       const a = (env?.analysis ?? env) as any;
       a.cid = a.cid || (env as any)?.cid;
       a.clause_type = a.clause_type || clauseType || undefined;

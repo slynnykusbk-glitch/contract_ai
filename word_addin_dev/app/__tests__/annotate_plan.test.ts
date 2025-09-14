@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { AnalyzeFinding } from '../assets/api-client';
-import { planAnnotations, MAX_ANNOTATE_OPS } from '../assets/annotate';
+import { planAnnotations, MAX_ANNOTATE_OPS, annotateFindingsIntoWord, COMMENT_PREFIX } from '../assets/annotate';
 import { findAnchors } from '../assets/anchors';
 
 
@@ -79,6 +79,25 @@ describe('annotate scheduler', () => {
     }));
     const ops = planAnnotations(findings);
     expect(ops.length).toBe(MAX_ANNOTATE_OPS);
+  });
+
+  it('annotates findings on correct ranges with prefix', async () => {
+    const findings: AnalyzeFinding[] = [
+      { start: 0, end: 3, snippet: 'abc', rule_id: 'r1' }
+    ];
+    const inserted: string[] = [];
+    const ranges = [
+      { start: 0, end: 3, load: () => {}, insertComment: (msg: string) => inserted.push(msg) }
+    ];
+    (globalThis as any).Word = {
+      run: async (cb: any) => {
+        const ctx = { document: { body: { context: { sync: async () => {}, trackedObjects: { add: () => {} } }, search: () => ({ items: ranges, load: () => {} }) } }, sync: async () => {} };
+        return await cb(ctx);
+      }
+    };
+    const count = await annotateFindingsIntoWord(findings);
+    expect(count).toBe(1);
+    expect(inserted[0].startsWith(COMMENT_PREFIX)).toBe(true);
   });
 });
 

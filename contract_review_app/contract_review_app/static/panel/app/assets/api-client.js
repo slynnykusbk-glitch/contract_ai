@@ -143,22 +143,10 @@ async function req(path, { method = "GET", body = null, key = path } = {}) {
 async function apiHealth() {
   return req("/health", { key: "health" });
 }
-async function analyze(payload = {}) {
-  const headers = {
-    "Content-Type": "application/json",
-    "X-Schema-Version": "1.4"
-  };
-  const key = getApiKeyFromStore();
-  if (key) headers["X-Api-Key"] = key;
-  const body = { payload: { schema: "1.4", mode: (payload == null ? void 0 : payload.mode) ?? "live" } };
-  const text = (payload == null ? void 0 : payload.text) ?? (payload == null ? void 0 : payload.content);
-  if (text) body.payload.text = text;
-  const resp = await fetch("/api/analyze", {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body)
-  });
-  const json = await resp.json().catch(() => ({}));
+async function analyze(args = {}) {
+  const body = { mode: args.mode ?? "live", schema: args.schema ?? "1.4" };
+  if (args.text != null) body.text = args.text;
+  const { resp, json } = await postJson("/api/analyze", body);
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
   try {
     applyMetaToBadges(meta);
@@ -172,8 +160,8 @@ async function analyze(payload = {}) {
   }
   return { ok: resp.ok, json, resp, meta };
 }
-async function apiAnalyze(text) {
-  return analyze({ text });
+async function apiAnalyze(text, mode = "live", schema) {
+  return analyze({ text, mode, schema });
 }
 async function apiGptDraft(cid, clause, mode = "friendly") {
   return req("/api/gpt-draft", { method: "POST", body: { cid, clause, mode }, key: "gpt-draft" });

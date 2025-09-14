@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 describe('analyze flow', () => {
-  it('sends only text payload', async () => {
+  it('sends only text body', async () => {
     (globalThis as any).window = {
       dispatchEvent: () => {},
       addEventListener: () => {},

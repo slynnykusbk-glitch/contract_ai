@@ -260,36 +260,14 @@ export async function apiHealth(backend?: string) {
   return withBusy(() => checkHealth({ backend }));
 }
 
-export async function analyze(payload: any = {}) {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'X-Schema-Version': '1.4',
+export async function analyze(args: { text?: string; mode?: string; schema?: string } = {}) {
+  const body: any = {
+    mode: args.mode ?? 'live',
+    schema: args.schema ?? '1.4',
   };
-  const key = getApiKeyFromStore();
-  if (key) headers['X-Api-Key'] = key;
+  if (args.text != null) body.text = args.text;
 
-  let body: any;
-  if (payload && typeof payload === 'object' && 'schema' in payload) {
-    body = { payload };
-  } else {
-    const normalized: any = { schema: '1.4', mode: payload?.mode ?? 'live' };
-    const text = payload?.text ?? payload?.content;
-    if (text) normalized.text = text;
-    body = { payload: normalized };
-  }
-
-  const resp = await fetch('/api/analyze', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
-
-  const json = await resp.json().catch(() => ({}));
-  if (resp.status === 422) {
-    console.warn('[analyze] 422', json.detail);
-    const msg = Array.isArray(json?.detail) ? json.detail.map((d: any) => d.msg).join('; ') : json?.detail;
-    try { notifyWarn(`Validation error: ${msg}`); } catch {}
-  }
+  const { resp, json } = await postJSON('/api/analyze', body);
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
   try { applyMetaToBadges(meta); } catch {}
   try {
@@ -300,8 +278,8 @@ export async function analyze(payload: any = {}) {
   return { ok: resp.ok, json, resp, meta };
 }
 
-export async function apiAnalyze(text: string) {
-  return analyze({ text });
+export async function apiAnalyze(text: string, mode = 'live', schema?: string) {
+  return analyze({ text, mode, schema });
 }
 
 export async function apiGptDraft(cid: string, clause: string, mode = 'friendly') {

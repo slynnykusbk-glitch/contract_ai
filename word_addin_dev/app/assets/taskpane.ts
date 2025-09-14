@@ -742,7 +742,7 @@ async function doAnalyze() {
         }
       } else if (typeof e?.message === 'string') {
         if (e.message.includes('HTTP 504')) tail = '(HTTP 504)';
-        else if (e.message.includes('HTTP 413')) tail = '(payload too large 413)';
+        else if (e.message.includes('HTTP 413')) tail = '(request too large 413)';
         else if (e.message.includes('HTTP 401')) tail = '(unauthorized 401)';
         else if (e.message.includes('HTTP 403')) tail = '(forbidden 403)';
         else if (e.message.includes('HTTP 422')) tail = '(schema mismatch 422)';

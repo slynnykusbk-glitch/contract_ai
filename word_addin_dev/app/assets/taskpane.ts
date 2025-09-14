@@ -1195,7 +1195,7 @@ export function wireUI() {
 
   onDraftReady('');
   wireResultsToggle();
-  console.log("Panel UI wired");
+  console.log("Panel UI wired [OK]");
   const ab = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
   if (ab) ab.disabled = true;
   ensureHeaders();

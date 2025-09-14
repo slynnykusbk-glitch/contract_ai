@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { AnalyzeFinding } from '../assets/api-client';
 import { planAnnotations, MAX_ANNOTATE_OPS, annotateFindingsIntoWord, COMMENT_PREFIX } from '../assets/annotate';
 import { findAnchors } from '../assets/anchors';
@@ -98,6 +98,31 @@ describe('annotate scheduler', () => {
     const count = await annotateFindingsIntoWord(findings);
     expect(count).toBe(1);
     expect(inserted[0].startsWith(COMMENT_PREFIX)).toBe(true);
+  });
+
+  it('handles very long snippets gracefully', async () => {
+    const long = 'a'.repeat(5000);
+    const findings: AnalyzeFinding[] = [
+      { start: 0, end: long.length, snippet: long, rule_id: 'r1' }
+    ];
+    const plan = planAnnotations(findings);
+    expect(plan.length).toBe(1);
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    (globalThis as any).Word = {
+      run: async (cb: any) => {
+        const body = {
+          context: { sync: async () => {}, trackedObjects: { add: () => {} } },
+          search: () => { const err: any = new Error('fail'); err.code = 'SearchStringInvalidOrTooLong'; throw err; }
+        } as any;
+        const ctx = { document: { body }, sync: async () => {} };
+        return await cb(ctx);
+      }
+    };
+    const inserted = await annotateFindingsIntoWord(findings);
+    expect(inserted).toBe(0);
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 });
 

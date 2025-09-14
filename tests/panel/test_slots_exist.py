@@ -16,7 +16,7 @@ def test_findings_list_slot_exists():
 
 
 def test_recommendations_list_slot_exists():
-    assert _exists('recsList', 'recommendations')
+    assert _exists('recommendationsList', 'recommendations')
 
 
 def test_raw_json_toggle_slot_exists():

@@ -1,7 +1,7 @@
 import { getApiKeyFromStore, getSchemaFromStore } from "./store.ts";
 import { registerFetch, deregisterFetch, registerTimer, deregisterTimer, withBusy } from './pending.ts';
 import { checkHealth } from './health.ts';
-import { notifyWarn } from './notifier.ts';
+import { notifyWarn } from './notifier';
 export function parseFindings(resp) {
     const arr = resp?.analysis?.findings ?? resp?.findings ?? resp?.issues ?? [];
     return Array.isArray(arr) ? arr.filter(Boolean) : [];

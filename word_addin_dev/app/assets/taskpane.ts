@@ -18,6 +18,7 @@ import { supports, logSupportMatrix } from './supports.ts';
 import { registerUnloadHandlers, wasUnloaded, resetUnloadFlag, withBusy } from './pending.ts';
 import { checkHealth } from './health.ts';
 import { runStartupSelftest } from './startup.selftest.ts';
+import DiffMatchPatch from 'diff-match-patch';
 
 declare const Violins: { initAudio: () => void };
 
@@ -90,10 +91,14 @@ g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
 g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
 g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
 g.logRichError = g.logRichError || logRichError;
-import { notifyOk, notifyErr, notifyWarn } from "./notifier.ts";
+import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText, getSelectionText } from "./office.ts"; // у вас уже есть хелперы; если имя иное — поправьте импорт.
 g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 g.getSelectionText = g.getSelectionText || getSelectionText;
+
+// track already processed ranges to avoid reapplying the same ops
+const appliedRangeHashes: Set<string> = g.__appliedRangeHashes || new Set<string>();
+g.__appliedRangeHashes = appliedRangeHashes;
 
 type Mode = "live" | "friendly" | "doctor";
 let currentMode: Mode = 'live';
@@ -202,6 +207,12 @@ function slot(id: string, role: string): HTMLElement {
   return mustGetElementById<HTMLElement>(id);
 }
 
+function mustGetElementById<T extends HTMLElement = HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Element not found: ${id}`);
+  return el as T;
+}
+
 export function getRiskThreshold(): "low" | "medium" | "high" {
   const sel = mustGetElementById<HTMLSelectElement>("selectRiskThreshold");
   const v = sel.value.toLowerCase();
@@ -298,6 +309,29 @@ export async function clearAnnotations() {
   }
 }
 
+function diffTokens(before: string, after: string): [number, string][] {
+  const dmp = new DiffMatchPatch();
+  const tokenize = (s: string) => s.match(/\S+|\s+/g) || [];
+  const { chars1, chars2, tokenArray } = tokensToChars(tokenize(before), tokenize(after));
+  let diffs = dmp.diff_main(chars1, chars2);
+  dmp.diff_cleanupSemantic(diffs);
+  return diffs.map(([op, data]) => [op, data.split('').map(ch => tokenArray[ch.charCodeAt(0)]).join('')]);
+}
+
+function tokensToChars(tokens1: string[], tokens2: string[]) {
+  const tokenArray: string[] = [];
+  const tokenHash = new Map<string, number>();
+  const toChar = (tok: string) => {
+    if (tokenHash.has(tok)) return String.fromCharCode(tokenHash.get(tok)!);
+    tokenArray.push(tok);
+    tokenHash.set(tok, tokenArray.length - 1);
+    return String.fromCharCode(tokenArray.length - 1);
+  };
+  const chars1 = tokens1.map(toChar).join('');
+  const chars2 = tokens2.map(toChar).join('');
+  return { chars1, chars2, tokenArray };
+}
+
 export async function applyOpsTracked(
   ops: { start: number; end: number; replacement: string; context_before?: string; context_after?: string; rationale?: string; source?: string }[]
 ) {
@@ -329,6 +363,9 @@ export async function applyOpsTracked(
     };
 
     for (const op of cleaned) {
+      const hashKey = `${op.start}:${op.end}:${op.replacement}`;
+      if (appliedRangeHashes.has(hashKey)) continue;
+
       const snippet = last.slice(op.start, op.end);
       const occIdx = (() => {
         let idx = -1, n = 0;
@@ -343,7 +380,10 @@ export async function applyOpsTracked(
         const sFull = await safeBodySearch(body, searchText, searchOpts);
         const fullRange = pick(sFull, occIdx);
         if (fullRange) {
-          const inner: any = fullRange.search(snippet, searchOpts);
+          // Clamp snippet before searching to avoid Word's
+          // SearchStringInvalidOrTooLong errors (limit ~255 chars).
+          const needle = snippet.slice(0, 240);
+          const inner: any = fullRange.search(needle, searchOpts);
           if (inner && typeof inner.load === 'function') inner.load('items');
           await ctx.sync();
           target = pick(inner, 0);
@@ -368,10 +408,35 @@ export async function applyOpsTracked(
       }
 
       if (target) {
-
-        target.insertText(op.replacement, 'Replace');
+        const diffs = diffTokens(snippet, op.replacement);
+        let cursor = target.getRange('Start');
+        for (const [kind, txt] of diffs) {
+          if (!txt) continue;
+          if (kind === 0) {
+            const rest = cursor.getRange('After');
+            const foundEq: any = rest.search(txt, searchOpts);
+            if (foundEq && typeof foundEq.load === 'function') foundEq.load('items');
+            await ctx.sync();
+            const eq = pick(foundEq, 0);
+            if (eq) cursor = eq.getRange('After');
+          } else if (kind === -1) {
+            const rest = cursor.getRange('After');
+            const foundDel: any = rest.search(txt, searchOpts);
+            if (foundDel && typeof foundDel.load === 'function') foundDel.load('items');
+            await ctx.sync();
+            const del = pick(foundDel, 0);
+            if (del) {
+              del.insertText('', 'Replace');
+              cursor = del.getRange('After');
+            }
+          } else if (kind === 1) {
+            const ins = cursor.insertText(txt, 'Before');
+            cursor = ins.getRange('After');
+          }
+        }
         const comment = `${COMMENT_PREFIX} ${op.rationale || op.source || 'AI edit'}`;
         try { await safeInsertComment(target, comment); } catch {}
+
       } else {
         console.warn('[applyOpsTracked] match not found', { snippet, occIdx });
       }
@@ -462,43 +527,55 @@ export function renderAnalysisSummary(json: any) {
   setText("visibleHiddenOut", `${visible} / ${hidden}`);
 
   // Заполняем findings
-  const fCont = mustGetElementById<HTMLElement>("findingsList");
-  fCont.innerHTML = "";
-  for (const f of visibleFindings) {
-    const li = document.createElement("li");
-    const title =
-      f?.title || f?.finding?.title || f?.rule_id || "Issue";
-    const snippet = f?.snippet || f?.evidence?.text || "";
-    li.textContent = snippet ? `${title}: ${snippet}` : String(title);
 
-    const links = Array.isArray((f as any).links)
-      ? (f as any).links.filter((l: any) => l?.type === 'conflict' && l?.targetFindingId)
-      : [];
-    if (links.length) {
-      const div = document.createElement('div');
-      div.textContent = `Conflicts: ${links.length} `;
-      links.forEach((lnk: any, idx: number) => {
-        const a = document.createElement('a');
-        a.href = '#';
-        a.textContent = 'Jump to';
-        a.addEventListener('click', ev => { ev.preventDefault(); jumpToFinding(lnk.targetFindingId); });
-        div.appendChild(a);
-        if (idx < links.length - 1) div.append(' ');
-      });
-      li.appendChild(div);
+  const findingsBlock = mustGetElementById('findingsBlock');
+  const fCont = document.getElementById("findingsList");
+  if (fCont) {
+    fCont.innerHTML = "";
+    for (const f of visibleFindings) {
+      const li = document.createElement("li");
+      const title =
+        f?.title || f?.finding?.title || f?.rule_id || "Issue";
+      const snippet = f?.snippet || f?.evidence?.text || "";
+      li.textContent = snippet ? `${title}: ${snippet}` : String(title);
+
+      const links = Array.isArray((f as any).links)
+        ? (f as any).links.filter((l: any) => l?.type === 'conflict' && l?.targetFindingId)
+        : [];
+      if (links.length) {
+        const div = document.createElement('div');
+        div.textContent = `Conflicts: ${links.length} `;
+        links.forEach((lnk: any, idx: number) => {
+          const a = document.createElement('a');
+          a.href = '#';
+          a.textContent = 'Jump to';
+          a.addEventListener('click', ev => { ev.preventDefault(); jumpToFinding(lnk.targetFindingId); });
+          div.appendChild(a);
+          if (idx < links.length - 1) div.append(' ');
+        });
+        li.appendChild(div);
+      }
+
+      fCont.appendChild(li);
     }
 
     fCont.appendChild(li);
   }
+  findingsBlock.style.display = visibleFindings.length ? '' : 'none';
 
   // Заполняем рекомендации
-  const rCont = mustGetElementById<HTMLElement>("recsList");
-  rCont.innerHTML = "";
-  for (const r of recs) {
-    const li = document.createElement("li");
-    li.textContent = r?.text || r?.advice || r?.message || "Recommendation";
-    rCont.appendChild(li);
+
+  const recommendationsBlock = mustGetElementById('recommendationsBlock');
+  const recommendationsList = document.getElementById("recommendationsList");
+  if (recommendationsList) {
+    recommendationsList.innerHTML = "";
+    for (const r of recs) {
+      const li = document.createElement("li");
+      li.textContent = r?.text || r?.advice || r?.message || "Recommendation";
+      recommendationsList.appendChild(li);
+    }
   }
+  recommendationsBlock.style.display = recs.length ? '' : 'none';
 
   // Показать блок результатов (если был скрыт стилями)
   const rb = mustGetElementById<HTMLElement>("resultsBlock");
@@ -512,22 +589,31 @@ function renderResults(res: any) {
   const findingsArr: AnalyzeFinding[] = parseFindings(res);
   (window as any).__findings = findingsArr;
   (window as any).__findingIdx = 0;
-  const findingsList = slot("findingsList", "findings");
-  findingsList.innerHTML = "";
-  findingsArr.forEach((f: any) => {
-    const li = document.createElement("li");
-    li.textContent = typeof f === "string" ? f : JSON.stringify(f);
-    findingsList.appendChild(li);
-  });
+
+  const findingsList = slot("findingsList", "findings") as HTMLElement | null;
+  if (findingsList) {
+    findingsList.innerHTML = "";
+    findingsArr.forEach((f: any) => {
+      const li = document.createElement("li");
+      li.textContent = typeof f === "string" ? f : JSON.stringify(f);
+      findingsList.appendChild(li);
+    });
+  }
+  const findingsBlock = mustGetElementById('findingsBlock');
+  findingsBlock.style.display = findingsArr.length ? '' : 'none';
 
   const recoArr = Array.isArray(res?.recommendations) ? res.recommendations : [];
-  const recoList = slot("recoList", "recommendations");
-  recoList.innerHTML = "";
-  recoArr.forEach((r: any) => {
-    const li = document.createElement("li");
-    li.textContent = typeof r === "string" ? r : JSON.stringify(r);
-    recoList.appendChild(li);
-  });
+  const recommendationsList = slot("recommendationsList", "recommendations") as HTMLElement | null;
+  if (recommendationsList) {
+    recommendationsList.innerHTML = "";
+    recoArr.forEach((r: any) => {
+      const li = document.createElement("li");
+      li.textContent = typeof r === "string" ? r : JSON.stringify(r);
+      recommendationsList.appendChild(li);
+    });
+  }
+  const recommendationsBlock = mustGetElementById('recommendationsBlock');
+  recommendationsBlock.style.display = recoArr.length ? '' : 'none';
 
   const count = slot("resFindingsCount", "findings-count");
   count.textContent = String(findingsArr.length);
@@ -1116,12 +1202,13 @@ export function wireUI() {
 
   onDraftReady('');
   wireResultsToggle();
-  console.log("Panel UI wired");
-    const ab = mustGetElementById<HTMLButtonElement>("btnAnalyze");
-    ab.disabled = true;
-    ensureHeaders();
-    updateStatusChip();
-    updateAnchorBadge();
+
+  console.log("Panel UI wired [OK]");
+  const ab = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
+  if (ab) ab.disabled = true;
+  ensureHeaders();
+  updateStatusChip();
+  updateAnchorBadge();
 
   if (!s.revisions) { disable('btnApplyTracked', 'revisions'); disable('btnAcceptAll', 'revisions'); disable('btnRejectAll', 'revisions'); }
   if (!s.comments) { disable('btnAcceptAll', s.commentsReason); }

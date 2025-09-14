@@ -1,11 +1,13 @@
 import json
+import pytest
 from fastapi.testclient import TestClient
 from contract_review_app.api.app import app
 
 client = TestClient(app)
 
 
-def test_gpt_draft_payload_and_response():
+@pytest.mark.parametrize("extra", [{}, {"schema": "1.4"}])
+def test_gpt_draft_payload_and_response(extra):
     r_an = client.post(
         "/api/analyze",
         json={"mode": "live", "text": "Ping"},
@@ -13,7 +15,12 @@ def test_gpt_draft_payload_and_response():
     )
     cid = r_an.headers.get("x-cid")
     payload = {"cid": cid, "clause": "Ping", "mode": "friendly"}
-    r = client.post("/api/gpt-draft", json=payload, headers={"x-api-key": "k", "x-schema-version": "1.4"})
+    payload.update(extra)
+    r = client.post(
+        "/api/gpt-draft",
+        json=payload,
+        headers={"x-api-key": "k", "x-schema-version": "1.4"},
+    )
     assert r.status_code == 200
     data = r.json()
     for k in ("cid", "clause", "mode"):

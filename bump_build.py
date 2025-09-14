@@ -14,11 +14,11 @@ both manual execution and invocation from tests.
 
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Sequence
 import re
 
 ROOT = Path(__file__).resolve().parent
-TOKEN_FILE = ROOT / "contract_review_app" / "contract_review_app" / "static" / "panel" / ".build-token"
+TOKEN_FILE_REL = Path("contract_review_app/contract_review_app/static/panel/.build-token")
 PLACEHOLDER = "__BUILD_TS__"
 TOKEN_PATTERN = re.compile(r"build-\d{8}-\d{6}|__BUILD_TS__")
 
@@ -34,7 +34,7 @@ def _iter_files(paths: Iterable[Path]) -> Iterable[Path]:
                     yield path
 
 
-def bump_build(root: Path | None = None) -> str:
+def bump_build(root: Path | None = None, paths: Sequence[Path] | None = None) -> str:
     """Generate a new build token and inject it into static files.
 
     Parameters
@@ -42,6 +42,9 @@ def bump_build(root: Path | None = None) -> str:
     root:
         Optional repository root.  Defaults to the directory containing this
         module.
+    paths:
+        Optional explicit paths to scan for the placeholder.  When provided,
+        only these paths are searched.
 
     Returns
     -------
@@ -52,7 +55,10 @@ def bump_build(root: Path | None = None) -> str:
     repo = root or ROOT
     token = datetime.utcnow().strftime("build-%Y%m%d-%H%M%S")
 
-    targets = [repo / "word_addin_dev", repo / "contract_review_app" / "contract_review_app" / "static" / "panel"]
+    targets = list(paths) if paths is not None else [
+        repo / "word_addin_dev",
+        repo / "contract_review_app" / "contract_review_app" / "static" / "panel",
+    ]
     for path in _iter_files(targets):
         try:
             text = path.read_text(encoding="utf-8")
@@ -61,8 +67,9 @@ def bump_build(root: Path | None = None) -> str:
         if TOKEN_PATTERN.search(text):
             path.write_text(TOKEN_PATTERN.sub(token, text), encoding="utf-8")
 
-    TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
-    TOKEN_FILE.write_text(token, encoding="utf-8")
+    token_file = (root or ROOT) / TOKEN_FILE_REL
+    token_file.parent.mkdir(parents=True, exist_ok=True)
+    token_file.write_text(token, encoding="utf-8")
 
     return token
 

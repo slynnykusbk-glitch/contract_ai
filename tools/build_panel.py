@@ -56,7 +56,7 @@ def main(*, run_tests: bool = False) -> None:
             cwd=ROOT,
         )
 
-    token = bump_build(ROOT)
+    token = bump_build(paths=[DEST])
 
     DEST.mkdir(parents=True, exist_ok=True)
     for name in FILES:

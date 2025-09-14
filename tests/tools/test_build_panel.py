@@ -23,7 +23,7 @@ def test_build_panel_copies_and_substitutes(tmp_path, monkeypatch):
     monkeypatch.setattr(bp, 'DEST', dest)
     monkeypatch.setattr(bp, 'ASSETS_SRC', src / 'app' / 'assets')
 
-    def fake_bump(path):
+    def fake_bump(*args, **kwargs):
         token = '123'
         for p in src.rglob('*'):
             if p.is_file():
@@ -67,12 +67,14 @@ def test_build_panel_cli(tmp_path):
     # write simple bump_build
     (root / 'bump_build.py').write_text(
         'from pathlib import Path\n'
-        'def bump_build(root: Path | None = None):\n'
+        'def bump_build(root: Path | None = None, paths=None):\n'
         '    root = Path(root or ".")\n'
         '    token = "123"\n'
         '    for p in (root/"word_addin_dev").rglob("*"):\n'
         '        if p.is_file():\n'
         '            p.write_text(p.read_text().replace("__BUILD_TS__", token))\n'
+        '    (root/"contract_review_app/contract_review_app/static/panel").mkdir(parents=True, exist_ok=True)\n'
+        '    (root/"contract_review_app/contract_review_app/static/panel/.build-token").write_text(token)\n'
         '    return token\n'
     )
 

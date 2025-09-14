@@ -35,6 +35,19 @@ function applyMetaToBadges(m) {
   set("mode", m.llm_mode);
   set("usage", m.usage);
 }
+async function logApiClientChecksum() {
+  const url = new URL(import.meta.url).toString();
+  try {
+    const res = await fetch(url);
+    const text = await res.text();
+    const buf = new TextEncoder().encode(text);
+    const hashBuf = await crypto.subtle.digest("SHA-256", buf);
+    const hash = Array.from(new Uint8Array(hashBuf)).slice(0, 4).map(b => b.toString(16).padStart(2, "0")).join("");
+    console.log(`[selftest] api-client.js ${hash} ${url}`);
+  } catch {
+    console.log(`[selftest] api-client.js fail ${url}`);
+  }
+}
 var DEFAULT_BASE = "https://localhost:9443";
 function base() {
   try {
@@ -188,6 +201,7 @@ export {
   apiSummary,
   apiSummaryGet,
   applyMetaToBadges,
+  logApiClientChecksum,
   metaFromResponse,
   parseFindings,
   postJson,

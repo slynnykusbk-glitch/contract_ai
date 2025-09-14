@@ -1,8 +1,10 @@
 import { logSupportMatrix } from './supports.ts';
 import { checkHealth } from './health.ts';
+import { logApiClientChecksum } from './api-client.ts';
 
 export async function runStartupSelftest(backend: string) {
   const missing: string[] = [];
+  try { await logApiClientChecksum(); } catch {}
   ['btnAnalyze', 'selectRiskThreshold'].forEach(id => {
     if (!document.getElementById(id)) missing.push(`missingID:${id}`);
   });
@@ -22,7 +24,7 @@ export async function runStartupSelftest(backend: string) {
   } catch {
     missing.push('health:timeout');
   }
-    const build = 'build-20250912-070625';
+    const build = 'build-20250914-100041';
   const host = (Office as any)?.context?.host || 'Word';
   const ok = missing.length === 0;
   const msg = ok

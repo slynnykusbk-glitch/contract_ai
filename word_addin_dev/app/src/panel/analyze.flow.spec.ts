@@ -19,7 +19,8 @@ describe('analyze flow', () => {
     const { postJson } = await import('../../assets/api-client.ts');
     await postJson('/api/analyze', { text: 'hello' });
     const body = JSON.parse(captured.body);
-    expect(body).toEqual({ text: 'hello' });
+    expect(body).toEqual({ text: 'hello', schema: '1.2' });
+    expect(captured.headers['x-schema-version']).toBe('1.2');
     expect(body).not.toHaveProperty('mode');
   });
 });

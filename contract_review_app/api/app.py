@@ -880,6 +880,7 @@ class AnalyzeRequest(BaseModel):
     language: str = "en-GB"
     mode: Optional[str] = None
     risk: Optional[str] = None
+    schema_: Optional[str] = Field(default=None, alias="schema")
 
     @field_validator("text")
     @classmethod

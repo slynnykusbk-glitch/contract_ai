@@ -27,5 +27,7 @@ def test_analyze_contract_ok():
 def test_analyze_contract_empty_text():
     resp = client.post("/api/analyze", json={"text": ""}, headers=_h())
     assert resp.status_code == 422
-    assert resp.json() == {"detail": "validation error"}
+    data = resp.json()
+    assert isinstance(data.get("detail"), list)
+    assert any("loc" in d and "msg" in d for d in data["detail"])
 

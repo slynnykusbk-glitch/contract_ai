@@ -12,6 +12,8 @@ describe('postRedlines', () => {
     const mod = await import('../assets/api-client');
     await mod.postRedlines('a', 'b');
     const [, opts] = (globalThis.fetch as any).mock.calls[0];
-    expect(JSON.parse(opts.body)).toEqual({ before_text: 'a', after_text: 'b' });
+    const body = JSON.parse(opts.body);
+    expect(body).toEqual({ before_text: 'a', after_text: 'b', schema: '1.4' });
+    expect(opts.headers['x-schema-version']).toBe('1.4');
   });
 });

@@ -81,7 +81,8 @@ export async function postJSON(path, body, timeoutOverride) {
         const key = getApiKeyFromStore();
         if (key)
             headers['x-api-key'] = key;
-        const bodyStr = JSON.stringify(body || {});
+        const bodyWithSchema = Object.assign({}, body || {}, { schema });
+        const bodyStr = JSON.stringify(bodyWithSchema);
         const sizeBytes = new TextEncoder().encode(bodyStr).length;
         let timeoutMs = timeoutOverride;
         let retryCount = ANALYZE_RETRY_COUNT;
@@ -193,7 +194,9 @@ async function req(path, { method = 'GET', body = null, key = path, timeoutMs = 
         const apiKey = getApiKeyFromStore();
         if (apiKey)
             headers['x-api-key'] = apiKey;
-        headers['x-schema-version'] = getSchemaFromStore() || '1.4';
+        const schema = getSchemaFromStore() || '1.4';
+        headers['x-schema-version'] = schema;
+        const payload = body && method !== 'GET' ? Object.assign({}, body, { schema }) : method !== 'GET' ? { schema } : undefined;
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
         registerFetch(ctrl);
@@ -203,7 +206,7 @@ async function req(path, { method = 'GET', body = null, key = path, timeoutMs = 
             r = await fetch(base() + path, {
                 method,
                 headers,
-                body: body ? JSON.stringify(body) : undefined,
+                body: payload ? JSON.stringify(payload) : undefined,
                 credentials: 'include',
                 signal: ctrl.signal,
             });
@@ -223,7 +226,7 @@ async function req(path, { method = 'GET', body = null, key = path, timeoutMs = 
             const w = window;
             if (!w.__last)
                 w.__last = {};
-            w.__last[key] = { status: r.status, req: { path, method, body }, json };
+            w.__last[key] = { status: r.status, req: { path, method, body: payload }, json };
         }
         catch { }
         return { ok: r.ok, json, resp: r, meta };
@@ -232,10 +235,10 @@ async function req(path, { method = 'GET', body = null, key = path, timeoutMs = 
 export async function apiHealth(backend) {
     return withBusy(() => checkHealth({ backend }));
 }
-export async function analyze(payload = {}) {
+export async function analyze(opts = {}) {
     const body = {
-        text: payload?.text ?? payload?.content,
-        mode: payload?.mode ?? 'live',
+        text: opts?.text ?? opts?.content,
+        mode: opts?.mode ?? 'live',
     };
     const { resp, json } = await postJSON('/api/analyze', body);
     const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });

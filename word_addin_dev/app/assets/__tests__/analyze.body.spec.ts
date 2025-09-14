@@ -9,9 +9,10 @@ describe('analyze request body', () => {
     (globalThis as any).fetch = fetchMock;
     const { analyze } = await import('../api-client.ts');
     await analyze({ text: 'hi' });
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body).toMatchObject({ text: 'hi', mode: 'live' });
-    expect(body.schema).toBeUndefined();
+    const { headers, body: bodyStr } = fetchMock.mock.calls[0][1];
+    const body = JSON.parse(bodyStr);
+    expect(body).toMatchObject({ text: 'hi', mode: 'live', schema: '1.4' });
+    expect(headers['x-schema-version']).toBe('1.4');
   });
 
   it('ignores provided schema but preserves mode', async () => {
@@ -19,8 +20,9 @@ describe('analyze request body', () => {
     (globalThis as any).fetch = fetchMock;
     const { analyze } = await import('../api-client.ts');
     await analyze({ schema: '1.4', mode: 'test', text: 'hi' });
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body).toMatchObject({ text: 'hi', mode: 'test' });
-    expect(body.schema).toBeUndefined();
+    const { headers, body: bodyStr } = fetchMock.mock.calls[0][1];
+    const body = JSON.parse(bodyStr);
+    expect(body).toMatchObject({ text: 'hi', mode: 'test', schema: '1.4' });
+    expect(headers['x-schema-version']).toBe('1.4');
   });
 });

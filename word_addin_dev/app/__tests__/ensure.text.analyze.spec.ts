@@ -38,10 +38,11 @@ describe('ensure text for analyze', () => {
     expect(getWholeDocText).toHaveBeenCalledOnce();
     const analyzeCalls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/analyze'));
     expect(analyzeCalls.length).toBe(1);
-    const body = JSON.parse(analyzeCalls[0][1].body);
+    const opts = analyzeCalls[0][1];
+    const body = JSON.parse(opts.body);
     expect(body.text.length).toBeGreaterThan(0);
-    expect(body).toMatchObject({ mode: 'live' });
-    expect(body.schema).toBeUndefined();
+    expect(body).toMatchObject({ mode: 'live', schema: '1.4' });
+    expect(opts.headers['x-schema-version']).toBe('1.4');
   });
 
   it('warns when document empty', async () => {

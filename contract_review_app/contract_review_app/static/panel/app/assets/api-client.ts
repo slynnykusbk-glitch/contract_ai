@@ -123,7 +123,8 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
     const key = getApiKeyFromStore();
     if (key) headers['x-api-key'] = key;
 
-    const bodyStr = JSON.stringify(body || {});
+    const bodyWithSchema = { ...(body || {}), schema };
+    const bodyStr = JSON.stringify(bodyWithSchema);
     const sizeBytes = new TextEncoder().encode(bodyStr).length;
 
     let timeoutMs = timeoutOverride;
@@ -224,7 +225,10 @@ async function req(path: string, { method='GET', body=null, key=path, timeoutMs=
     const headers: Record<string, string> = { 'Content-Type':'application/json' };
     const apiKey = getApiKeyFromStore();
     if (apiKey) headers['x-api-key'] = apiKey;
-    headers['x-schema-version'] = getSchemaFromStore() || '1.4';
+    const schema = getSchemaFromStore() || '1.4';
+    headers['x-schema-version'] = schema;
+
+    const payload = body && method !== 'GET' ? { ...body, schema } : method !== 'GET' ? { schema } : undefined;
 
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
@@ -235,7 +239,7 @@ async function req(path: string, { method='GET', body=null, key=path, timeoutMs=
       r = await fetch(base()+path, {
         method,
         headers,
-        body: body ? JSON.stringify(body) : undefined,
+        body: payload ? JSON.stringify(payload) : undefined,
         credentials: 'include',
         signal: ctrl.signal,
       });
@@ -250,7 +254,7 @@ async function req(path: string, { method='GET', body=null, key=path, timeoutMs=
     try {
       const w = window as any;
       if (!w.__last) w.__last = {};
-      w.__last[key] = { status: r.status, req: { path, method, body }, json };
+      w.__last[key] = { status: r.status, req: { path, method, body: payload }, json };
     } catch {}
     return { ok: r.ok, json, resp: r, meta };
   });
@@ -260,10 +264,10 @@ export async function apiHealth(backend?: string) {
   return withBusy(() => checkHealth({ backend }));
 }
 
-export async function analyze(payload: any = {}) {
+export async function analyze(opts: any = {}) {
   const body = {
-    text:  payload?.text ?? payload?.content,
-    mode:  payload?.mode ?? 'live',
+    text:  opts?.text ?? opts?.content,
+    mode:  opts?.mode ?? 'live',
   };
   const { resp, json } = await postJSON('/api/analyze', body);
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });

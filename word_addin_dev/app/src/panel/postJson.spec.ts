@@ -38,5 +38,7 @@ describe('postJson', () => {
     await postJson('/test', { a: 1 });
     expect(captured.headers['x-api-key']).toBe('KEY');
     expect(captured.headers['x-schema-version']).toBe('1.2');
+    const parsed = JSON.parse(captured.body);
+    expect(parsed).toMatchObject({ a: 1, schema: '1.2' });
   });
 });

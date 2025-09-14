@@ -283,10 +283,10 @@ def main():
     # 2) Backend / API behaviour
     # emulate panel call with x-cid + invariants
     cid = f"cid-{int(time.time())}"
-    payload = {"text": "The Receiving Party shall keep Confidential Information secret and not disclose to third parties.", "clause_type": None}
+    body = {"text": "The Receiving Party shall keep Confidential Information secret and not disclose to third parties.", "clause_type": None}
     headers = {"x-cid": cid, "content-type": "application/json"}
     if args.backend:
-        ok, sc, j, err, ms = http_post_json(args.backend.rstrip("/") + "/api/analyze", payload, headers=headers)
+        ok, sc, j, err, ms = http_post_json(args.backend.rstrip("/") + "/api/analyze", body, headers=headers)
         inv = []
         if ok:
             # invariants

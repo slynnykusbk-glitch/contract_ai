@@ -41,22 +41,22 @@ describe('get draft', () => {
     const btn = document.getElementById('btnSuggestEdit') as HTMLButtonElement;
     expect(btn.disabled).toBe(true);
     await onSuggestEdit();
-    const calls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/gpt-draft'));
+    const calls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/gpt/draft'));
     expect(calls.length).toBe(0);
   });
 
   it('selection enables and sends request with clause', async () => {
-    (globalThis as any).getSelectionText = vi.fn().mockResolvedValue('Hello');
+    (globalThis as any).getSelectionText = vi.fn().mockResolvedValue('This is a sample clause with sufficient length.');
     const { wireUI, getClauseText, onSuggestEdit } = await import('../assets/taskpane.ts');
     wireUI();
     await getClauseText();
     const btn = document.getElementById('btnSuggestEdit') as HTMLButtonElement;
     expect(btn.disabled).toBe(false);
     await onSuggestEdit();
-    const calls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/gpt-draft'));
+    const calls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/gpt/draft'));
     expect(calls.length).toBe(1);
     const body = JSON.parse(calls[0][1].body);
-    expect(body).toMatchObject({ clause: 'Hello' });
+    expect(body).toMatchObject({ clause: 'This is a sample clause with sufficient length.' });
   });
 
   it('Word API failure warns and skips request', async () => {
@@ -66,8 +66,8 @@ describe('get draft', () => {
     const { notifyWarn } = await import('../assets/notifier.ts');
     wireUI();
     await onSuggestEdit();
-    const calls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/gpt-draft'));
+    const calls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/gpt/draft'));
     expect(calls.length).toBe(0);
-    expect(notifyWarn).toHaveBeenCalledWith("Select some text or paste into 'Original clause'");
+    expect(notifyWarn).toHaveBeenCalledWith('Please paste the original clause (min 20 chars) or select text in the document.');
   });
 });

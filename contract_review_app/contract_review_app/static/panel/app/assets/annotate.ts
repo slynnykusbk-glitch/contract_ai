@@ -1,6 +1,6 @@
 import { AnalyzeFinding } from "./api-client.ts";
 import { dedupeFindings, normalizeText } from "./dedupe.ts";
-import { safeBodySearch } from "./safe-search.ts";
+import { safeBodySearch } from "./safeBodySearch.ts";
 
 /** Utilities for inserting comments into Word with batching and retries. */
 export interface CommentItem {
@@ -160,17 +160,13 @@ export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number
     for (const op of ops) {
       let target: any = null;
 
-      const sRaw = safeBodySearch(body, op.raw, searchOpts);
-      sRaw.load("items");
-      await ctx.sync();
+      const sRaw = await safeBodySearch(body, op.raw, searchOpts);
       target = pick(sRaw, op.occIdx);
 
       if (!target) {
         const fb = op.normalized_fallback && op.normalized_fallback !== op.norm ? op.normalized_fallback : op.norm;
         if (fb && fb.trim()) {
-          const sNorm = safeBodySearch(body, fb, searchOpts);
-          sNorm.load("items");
-          await ctx.sync();
+          const sNorm = await safeBodySearch(body, fb, searchOpts);
           target = pick(sNorm, op.occIdx);
         }
       }
@@ -182,9 +178,7 @@ export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number
           return null;
         })();
         if (token) {
-          const sTok = safeBodySearch(body, token, searchOpts);
-          sTok.load("items");
-          await ctx.sync();
+          const sTok = await safeBodySearch(body, token, searchOpts);
           target = pick(sTok, 0);
         }
       }
@@ -219,4 +213,3 @@ export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number
     return 0;
   });
 }
-

@@ -1799,7 +1799,7 @@ def api_analyze(
     request: Request,
     body: Dict[str, Any] = Body(..., example={"text": "Hello", "mode": "live"}),
 ):
-    payload = body.get("payload") if isinstance(body, dict) else body
+    payload = body.get("payload", body) if isinstance(body, dict) else body
     try:
         req = AnalyzeRequest.model_validate(payload)
     except ValidationError as exc:  # pragma: no cover - handled by FastAPI

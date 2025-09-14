@@ -17,9 +17,11 @@ import { notifyWarn } from './notifier';
 
 export type AnalyzeFinding = components["schemas"]["Finding"] & Record<string, any>;
 
+
 export type AnalyzeResponse = components["schemas"]["AnalyzeResponse"] & Record<string, any>;
 
-export function parseFindings(resp: AnalyzeResponse): AnalyzeFinding[] {
+export function parseFindings(resp: AnalyzeResponse | Findings): Findings {
+  if (Array.isArray(resp)) return resp.filter(Boolean);
   const arr = resp?.analysis?.findings ?? resp?.findings ?? resp?.issues ?? [];
   return Array.isArray(arr) ? arr.filter(Boolean) : [];
 }
@@ -272,6 +274,7 @@ export async function apiSummary(cid: string) {
 export async function apiSummaryGet() {
   return req('/api/summary', { method: 'GET', key: 'summary' });
 }
+
 
 export async function apiQaRecheck(
   input: { document_id?: string; text?: string; rules?: any } | string,

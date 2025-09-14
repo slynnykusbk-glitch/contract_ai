@@ -136,9 +136,9 @@ async function analyze(payload = {}) {
     "X-Api-Key": window.CONTRACT_AI_API_KEY || "local-test-key-123",
     "X-Schema-Version": "1.4"
   };
-  const body = { schema: "1.4", mode: payload.mode || "live" };
-  if (payload.text) body.text = payload.text;
-  else if (payload.content) body.text = payload.content;
+  const body = { payload: { schema: "1.4", mode: payload.mode || "live" } };
+  if (payload.text) body.payload.text = payload.text;
+  else if (payload.content) body.payload.text = payload.content;
   const res = await fetch("/api/analyze", {
     method: "POST",
     headers,

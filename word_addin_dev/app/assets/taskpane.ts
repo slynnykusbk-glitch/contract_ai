@@ -15,7 +15,7 @@ import {
   setApiKey,
 } from "./store.ts";
 import { supports, logSupportMatrix } from './supports.ts';
-import { registerUnloadHandlers, wasUnloaded, resetUnloadFlag, withBusy } from './pending.ts';
+import { registerUnloadHandlers, wasUnloaded, resetUnloadFlag, withBusy, pendingFetches } from './pending.ts';
 import { checkHealth } from './health.ts';
 import { runStartupSelftest } from './startup.selftest.ts';
 
@@ -105,6 +105,7 @@ const Q = {
 
 let lastCid: string = "";
 let analyzeBound = false;
+let analyzeInProgress = false;
 const REQUIRED_IDS: string[] = (domSchema as any).required_ids || [];
 
 function updateStatusChip(schema?: string | null, cid?: string | null) {
@@ -837,9 +838,24 @@ export async function ensureTextForAnalysis(): Promise<string | null> {
 }
 
 export async function onAnalyze() {
-  const base = await ensureTextForAnalysis();
-  if (!base) return;
-  await doAnalyze();
+  if (analyzeInProgress) {
+    console.log('[PANEL] analyze in progress - ignoring click');
+    return;
+  }
+  for (const ctrl of pendingFetches) {
+    if ((ctrl as any).__key === '/api/analyze') {
+      console.log('[PANEL] pending /api/analyze fetch - ignoring click');
+      return;
+    }
+  }
+  analyzeInProgress = true;
+  try {
+    const base = await ensureTextForAnalysis();
+    if (!base) return;
+    await doAnalyze();
+  } finally {
+    analyzeInProgress = false;
+  }
 }
 
 async function doAnalyze() {

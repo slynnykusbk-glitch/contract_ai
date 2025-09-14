@@ -158,6 +158,7 @@ export async function postJSON(path, body, timeoutOverride) {
         timeoutMs = timeoutMs ?? ANALYZE_BASE_MS;
         async function attempt(n) {
             const ctrl = new AbortController();
+            ctrl.__key = path;
             const t = setTimeout(() => ctrl.abort(`timeout ${timeoutMs}ms`), timeoutMs);
             registerFetch(ctrl);
             registerTimer(t);
@@ -224,6 +225,7 @@ async function req(path, { method = 'GET', body = null, key = path, timeoutMs = 
         headers['x-schema-version'] = schema;
         const payload = body && method !== 'GET' ? Object.assign({}, body, { schema }) : method !== 'GET' ? { schema } : undefined;
         const ctrl = new AbortController();
+        ctrl.__key = path;
         const t = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
         registerFetch(ctrl);
         registerTimer(t);

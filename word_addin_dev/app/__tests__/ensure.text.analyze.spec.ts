@@ -39,8 +39,8 @@ describe('ensure text for analyze', () => {
     const analyzeCalls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/analyze'));
     expect(analyzeCalls.length).toBe(1);
     const body = JSON.parse(analyzeCalls[0][1].body);
-    expect(Object.keys(body)).toEqual(['payload']);
-    expect(body.payload.text.length).toBeGreaterThan(0);
+    expect(body.text.length).toBeGreaterThan(0);
+    expect(body).toMatchObject({ schema: '1.4', mode: 'live' });
   });
 
   it('warns when document empty', async () => {

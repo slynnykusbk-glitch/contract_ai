@@ -144,7 +144,10 @@ async function apiHealth() {
   return req("/health", { key: "health" });
 }
 async function analyze(args = {}) {
-  const body = { mode: args.mode ?? "live", schema: args.schema ?? "1.4" };
+  const body = {
+    mode: args.mode ?? "live",
+    schema: args.schema ?? (window.CAI?.Store?.get?.()?.schemaVersion || localStorage.getItem("schema_version") || "1.4")
+  };
   if (args.text != null) body.text = args.text;
   const { resp, json } = await postJson("/api/analyze", body);
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });

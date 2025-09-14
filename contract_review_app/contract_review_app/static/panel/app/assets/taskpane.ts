@@ -90,7 +90,7 @@ g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
 g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
 g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
 g.logRichError = g.logRichError || logRichError;
-import { notifyOk, notifyErr, notifyWarn } from "./notifier.ts";
+import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText, getSelectionText } from "./office.ts"; // у вас уже есть хелперы; если имя иное — поправьте импорт.
 g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 g.getSelectionText = g.getSelectionText || getSelectionText;

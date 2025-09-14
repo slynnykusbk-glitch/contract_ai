@@ -48,9 +48,9 @@ describe('ensure text for analyze', () => {
   it('warns when document empty', async () => {
     const getWholeDocText = vi.fn().mockResolvedValue('');
     (globalThis as any).getWholeDocText = getWholeDocText;
-    vi.mock('../assets/notifier.ts', () => ({ notifyWarn: vi.fn(), notifyErr: vi.fn(), notifyOk: vi.fn() }));
-    const { onAnalyze } = await import('../assets/taskpane.ts');
-    const { notifyWarn } = await import('../assets/notifier.ts');
+    vi.mock('../assets/notifier', () => ({ notifyWarn: vi.fn(), notifyErr: vi.fn(), notifyOk: vi.fn() }));
+    const { onAnalyze } = await import('../assets/taskpane');
+    const { notifyWarn } = await import('../assets/notifier');
     await onAnalyze();
     expect(getWholeDocText).toHaveBeenCalledOnce();
     const analyzeCalls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/analyze'));

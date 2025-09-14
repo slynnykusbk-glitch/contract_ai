@@ -652,6 +652,108 @@ export async function getClauseText(): Promise<string> {
   return text.trim();
 }
 
+function getOriginalClauseOrSelection(): string {
+  const src = $(Q.original) as HTMLTextAreaElement | null;
+  return (src?.value || '').trim();
+}
+
+async function ensureClauseForDraftOrWarn(): Promise<string | null> {
+  let clause = getOriginalClauseOrSelection();
+  if (clause.length >= 20) return clause;
+  try {
+    clause = ((await (globalThis as any).getSelectionText()) || '').trim();
+    if (clause.length >= 20) {
+      const src = $(Q.original) as HTMLTextAreaElement | null;
+      if (src) {
+        src.value = clause;
+        try { src.dispatchEvent(new Event('input', { bubbles: true })); } catch {}
+      }
+      return clause;
+    }
+  } catch {}
+  notifyWarn('Please paste the original clause (min 20 chars) or select text in the document.');
+  return null;
+}
+
+function detectContractType(): string {
+  try { return (globalThis as any).detectContractType?.() || 'unknown'; }
+  catch { return 'unknown'; }
+}
+
+function getVisibleFindingsForCurrentIssue(): any[] {
+  try {
+    const arr = (window as any).__findings || [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function getSelectionOffsetsSafe(): { start: number; end: number } | null {
+  try { return (window as any).getSelectionOffsets?.() || null; }
+  catch { return null; }
+}
+
+async function requestDraft(mode: 'friendly' | 'strict') {
+  const clause = await ensureClauseForDraftOrWarn();
+  if (!clause) return;
+
+  const payload = {
+    mode,
+    clause,
+    context: {
+      law: 'UK',
+      language: 'en-GB',
+      contractType: detectContractType(),
+    },
+    findings: getVisibleFindingsForCurrentIssue().slice(0, 10),
+    selection: getSelectionOffsetsSafe(),
+  };
+
+  let res: Response;
+  try {
+    res = await fetch('/api/gpt/draft', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': getApiKeyFromStore() || '',
+        'X-Schema-Version': '1.4',
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    console.warn('Draft error', e);
+    notifyWarn('Draft error');
+    return;
+  }
+
+  if (!res.ok) {
+    const t = await res.text();
+    console.warn(`Draft failed: ${res.status} ${t}`);
+    return;
+  }
+
+  const json = await res.json();
+  const proposed = (json?.proposed_text ?? json?.text ?? '').toString();
+  const dst = $(Q.proposed);
+  const w: any = window as any;
+  w.__last = w.__last || {};
+  w.__last['gpt-draft'] = { json };
+  if (dst) {
+    if (!dst.id) dst.id = 'draftText';
+    if (!dst.name) dst.name = 'proposed';
+    (dst as any).dataset.role = 'proposed-text';
+    dst.value = proposed;
+    dst.dispatchEvent(new Event('input', { bubbles: true }));
+    notifyOk('Draft ready');
+    try { await insertDraftText(proposed, currentMode, json?.meta?.rationale); } catch {}
+    onDraftReady(proposed);
+  } else {
+    notifyWarn('Proposed textarea not found');
+    onDraftReady('');
+  }
+}
+
 async function onUseWholeDoc() {
   const src = $(Q.original);
   const raw = await getWholeDocText();
@@ -670,41 +772,7 @@ async function onUseWholeDoc() {
 }
 
 export async function onSuggestEdit(ev?: Event) {
-  return withBusy(async () => {
-    let clause: string;
-    try {
-      clause = await getClauseText();
-    } catch (e) {
-      notifyWarn("Select some text or paste into 'Original clause'");
-      return;
-    }
-    if (!clause) { notifyWarn("Select some text or paste into 'Original clause'"); return; }
-    try {
-      const dst = $(Q.proposed);
-      const { json } = await postJSON('/api/gpt-draft', { cid: lastCid, clause, mode: currentMode });
-      const proposed = (json?.proposed_text ?? json?.text ?? "").toString();
-      const w: any = window as any;
-      w.__last = w.__last || {};
-      w.__last['gpt-draft'] = { json };
-      if (dst) {
-        if (!dst.id) dst.id = "draftText";
-        if (!dst.name) dst.name = "proposed";
-        (dst as any).dataset.role = "proposed-text";
-        dst.value = proposed;
-        dst.dispatchEvent(new Event("input", { bubbles: true }));
-        notifyOk("Draft ready");
-        try { await insertDraftText(proposed, currentMode, json?.meta?.rationale); } catch {}
-        onDraftReady(proposed);
-      } else {
-        notifyWarn("Proposed textarea not found");
-        onDraftReady('');
-      }
-    } catch (e) {
-      notifyWarn("Draft error");
-      console.error(e);
-      onDraftReady('');
-    }
-  });
+  return withBusy(() => requestDraft(currentMode === 'friendly' ? 'friendly' : 'strict'));
 }
 
 async function doHealth() {

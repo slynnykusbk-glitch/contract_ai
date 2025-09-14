@@ -344,11 +344,20 @@ export async function applyOpsTracked(
         if (fullRange) {
           // Clamp snippet before searching to avoid Word's
           // SearchStringInvalidOrTooLong errors (limit ~255 chars).
-          const needle = snippet.slice(0, 240);
-          const inner: any = fullRange.search(needle, searchOpts);
-          if (inner && typeof inner.load === 'function') inner.load('items');
+          const head = snippet.slice(0, 240);
+          const tail = snippet.slice(-240);
+          const innerStart: any = fullRange.search(head, searchOpts);
+          const innerEnd: any = fullRange.search(tail, searchOpts);
+          if (innerStart && typeof innerStart.load === 'function') innerStart.load('items');
+          if (innerEnd && typeof innerEnd.load === 'function') innerEnd.load('items');
           await ctx.sync();
-          target = pick(inner, 0);
+          const startRange = pick(innerStart, 0);
+          const endRange = pick(innerEnd, 0);
+          if (startRange && endRange && typeof startRange.expandTo === 'function') {
+            target = startRange.expandTo(endRange);
+          } else {
+            target = startRange;
+          }
         }
       }
 

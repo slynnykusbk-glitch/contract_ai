@@ -14,7 +14,10 @@ vi.mock('../assets/annotate.ts', async () => {
   return { ...actual, COMMENT_PREFIX: '[CAI]', safeInsertComment: vi.fn() }
 })
 
-const innerRange = { insertText: vi.fn() }
+const innerRange: any = {}
+innerRange.insertText = vi.fn().mockReturnValue(innerRange)
+innerRange.getRange = vi.fn().mockReturnThis()
+innerRange.search = vi.fn().mockReturnValue({ items: [innerRange], load: vi.fn() })
 const innerCollection = { items: [innerRange], load: vi.fn() }
 const fullSearch = vi.fn().mockReturnValue(innerCollection)
 
@@ -36,7 +39,8 @@ describe('applyOpsTracked long replacements', () => {
     const mod = await import('../assets/taskpane.ts')
     await mod.applyOpsTracked([{ start: 0, end: 500, replacement: 'R', context_before: 'a' }])
 
-    expect(fullSearch).toHaveBeenCalledTimes(1)
-    expect(fullSearch.mock.calls[0][0]).toBe(longText.slice(0, 240))
+      expect(fullSearch).toHaveBeenCalledTimes(2)
+      expect(fullSearch.mock.calls[0][0]).toBe(longText.slice(0, 240))
+      expect(fullSearch.mock.calls[1][0]).toBe(longText.slice(-240))
+    })
   })
-})

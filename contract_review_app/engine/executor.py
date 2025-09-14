@@ -28,8 +28,10 @@ except Exception:  # pragma: no cover
 try:
     from contract_review_app.legal_rules.cross_checks import cross_check_clauses  # type: ignore
 except Exception:  # pragma: no cover
+
     def cross_check_clauses(inputs, outputs):  # type: ignore
         return outputs
+
 
 # deterministic scoring weights per finding severity
 _SEV_WEIGHT = {
@@ -50,8 +52,12 @@ def _coerce_span(v) -> Span:
         return v
     # dict or other -> try to coerce
     try:
-        start = int(getattr(v, "start", None) if hasattr(v, "start") else v.get("start", 0))
-        length = int(getattr(v, "length", None) if hasattr(v, "length") else v.get("length", 0))
+        start = int(
+            getattr(v, "start", None) if hasattr(v, "start") else v.get("start", 0)
+        )
+        length = int(
+            getattr(v, "length", None) if hasattr(v, "length") else v.get("length", 0)
+        )
         if start < 0:
             start = 0
         if length < 0:
@@ -61,7 +67,9 @@ def _coerce_span(v) -> Span:
         return Span(start=0, length=0)
 
 
-def _ensure_abs_spans(out: AnalysisOutput, clause_span_start: int, clause_text_len: int) -> None:
+def _ensure_abs_spans(
+    out: AnalysisOutput, clause_span_start: int, clause_text_len: int
+) -> None:
     """
     Make every finding's span absolute (document coords). If missing, pin to clause span.
     """
@@ -73,7 +81,9 @@ def _ensure_abs_spans(out: AnalysisOutput, clause_span_start: int, clause_text_l
                 f.span = Span(start=int(clause_span_start), length=int(clause_text_len))
             else:
                 # local (relative to clause) -> convert to absolute
-                f.span = Span(start=int(clause_span_start) + int(sp.start), length=int(sp.length))
+                f.span = Span(
+                    start=int(clause_span_start) + int(sp.start), length=int(sp.length)
+                )
     except Exception:
         # do not fail the pipeline
         pass
@@ -94,14 +104,22 @@ def _compute_clause_metrics(out: AnalysisOutput) -> None:
         if not r and getattr(f, "severity_level", None):
             # severity->risk fallback is handled in Finding, but keep defensive
             sev = str(f.severity_level)
-            r = {"info": "low", "minor": "medium", "major": "high", "critical": "critical"}.get(sev, "medium")
+            r = {
+                "info": "low",
+                "minor": "medium",
+                "major": "high",
+                "critical": "critical",
+            }.get(sev, "medium")
         max_ord = max(max_ord, risk_to_ord(r or "medium"))
     out.risk = ord_to_risk(max_ord)
 
     # status
-    has_critical = any(getattr(f, "severity_level", None) == "critical" for f in findings)
+    has_critical = any(
+        getattr(f, "severity_level", None) == "critical" for f in findings
+    )
     has_major_or_high = any(
-        getattr(f, "severity_level", None) == "major" or (getattr(f, "risk", None) == "high")
+        getattr(f, "severity_level", None) == "major"
+        or (getattr(f, "risk", None) == "high")
         for f in findings
     )
     if has_critical:
@@ -121,7 +139,11 @@ def _compute_clause_metrics(out: AnalysisOutput) -> None:
 
     # legacy textual fields (compat layer)
     out.risk_level = str(out.risk)
-    out.severity = "high" if out.risk in ("high", "critical") else ("medium" if out.risk == "medium" else "low")
+    out.severity = (
+        "high"
+        if out.risk in ("high", "critical")
+        else ("medium" if out.risk == "medium" else "low")
+    )
 
 
 def analyze_index_with_rules(
@@ -146,7 +168,9 @@ def analyze_index_with_rules(
 
     ordered = list(getattr(index, "clauses", []) or [])
     for i, clause in enumerate(ordered):
-        clause_type = (getattr(clause, "type", None) or getattr(clause, "clause_type", None) or "").lower()
+        clause_type = (
+            getattr(clause, "type", None) or getattr(clause, "clause_type", None) or ""
+        ).lower()
         if not clause_type:
             continue
 
@@ -180,8 +204,13 @@ def analyze_index_with_rules(
 
         # enrich diagnostics/trace
         try:
-            out.trace = list((out.trace or [])) + [f"rule:{clause_type}", f"elapsed_ms:{elapsed_ms}"]
-            out.diagnostics = list((out.diagnostics or [])) + [f"runner: {clause_type} in {elapsed_ms}ms"]
+            out.trace = list((out.trace or [])) + [
+                f"rule:{clause_type}",
+                f"elapsed_ms:{elapsed_ms}",
+            ]
+            out.diagnostics = list((out.diagnostics or [])) + [
+                f"runner: {clause_type} in {elapsed_ms}ms"
+            ]
         except Exception:
             pass
 
@@ -194,13 +223,15 @@ def analyze_index_with_rules(
     try:
         outputs = cross_check_clauses(inputs, outputs) or outputs
     except Exception as e:
-        logger.warning("cross_check_clauses failed: %r", e)
+        logger.warning("cross_check_clauses failed: {!r}", e)
 
     # ensure spans still absolute after cross-checks
     try:
         for i, clause in enumerate(ordered):
             span_obj = getattr(clause, "span", None)
-            span_start = int(getattr(span_obj, "start", 0) if span_obj is not None else 0)
+            span_start = int(
+                getattr(span_obj, "start", 0) if span_obj is not None else 0
+            )
             clause_text = getattr(clause, "text", "") or ""
             _ensure_abs_spans(outputs[i], span_start, len(clause_text))
             _compute_clause_metrics(outputs[i])  # re-evaluate if CC changed findings
@@ -218,7 +249,9 @@ def analyze_document(file_path: str) -> Dict[str, AnalysisOutput]:
     Prefer using pipeline.analyze_document(text) for SSOT response.
     """
     if not load_docx_text:
-        raise RuntimeError("doc_loader is not available; use pipeline.analyze_document(text) instead.")
+        raise RuntimeError(
+            "doc_loader is not available; use pipeline.analyze_document(text) instead."
+        )
     text = load_docx_text(file_path)
     index = segment_document(text)
     outs = analyze_index_with_rules(index=index)

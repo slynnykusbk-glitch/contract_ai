@@ -43,9 +43,8 @@ def register_error_handlers(app: FastAPI) -> None:
         )
         return resp
 
-    @app.exception_handler(ConnectionResetError)
     @app.exception_handler(ClientDisconnect)
-    async def _disconnect_error(request: Request, exc: Exception):
+    async def _disconnect_error(request: Request, exc: ClientDisconnect):
         log.info("client disconnected")
         resp = JSONResponse({"detail": "client disconnected"}, status_code=499)
         apply_std_headers(
@@ -56,7 +55,7 @@ def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(Exception)
     async def _unhandled_error(request: Request, exc: Exception):
         # HTTPException carries explicit status/detail; everything else maps to 500
-        if isinstance(exc, (ConnectionResetError, ClientDisconnect)):
+        if isinstance(exc, ClientDisconnect):
             # disconnects are routine; return 499-like status without error logging
             status = 499
             detail = "client disconnected"

@@ -11,13 +11,13 @@ def test_privacy_redaction_and_scrub():
     )
     r_an = client.post("/api/analyze", json={"text": text})
     cid = r_an.headers.get("x-cid")
-    r = client.post("/api/gpt-draft", json={"cid": cid, "clause": text, "mode": "friendly"})
+    r = client.post("/api/gpt-draft", json={"clause_id": cid, "text": text, "mode": "friendly"})
     assert r.status_code == 200
     data = r.json()
     sensitive = ["John Smith", "john@example.com", "+44 1234 567890", "AB123456C"]
     combined = " ".join(
         [
-            data.get("proposed_text", ""),
+            data.get("draft_text", ""),
             data.get("rationale", ""),
             data.get("after_text", ""),
             data.get("diff", {}).get("value", ""),

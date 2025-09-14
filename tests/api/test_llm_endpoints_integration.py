@@ -33,6 +33,6 @@ def client():
 def test_endpoints_ok(client):
     r = client.post("/api/analyze", json={"text": "hi"})
     cid = r.headers.get("x-cid")
-    assert client.post("/api/gpt-draft", json={"cid": cid, "clause": "hi"}).status_code == 200
+    assert client.post("/api/gpt-draft", json={"clause_id": cid, "text": "hi"}).status_code == 200
     assert client.post("/api/suggest_edits", json={"text": "hi"}).status_code == 200
     assert client.post("/api/qa-recheck", json={"text": "hi"}).status_code == 200

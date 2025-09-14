@@ -194,7 +194,7 @@ def test_summary_endpoint():
 def test_gpt_draft_endpoint():
     r_an = client.post("/api/analyze", json={"text": "sample"})
     cid = r_an.headers.get("x-cid")
-    r = client.post("/api/gpt-draft", json={"cid": cid, "clause": "sample"})
+    r = client.post("/api/gpt-draft", json={"clause_id": cid, "text": "sample"})
     assert r.status_code == 200
 
 

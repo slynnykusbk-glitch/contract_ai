@@ -32,7 +32,7 @@ def test_e2e_smoke(api):
     assert r_summary.status_code == 200
 
     # GPT draft
-    payload = {'cid': cid, 'clause': 'Ping', 'mode': 'friendly'}
+    payload = {'clause_id': cid, 'text': 'Ping', 'mode': 'friendly'}
     r_draft = api.post('/api/gpt-draft', json=payload)
     assert r_draft.status_code == 200
-    assert r_draft.json().get('proposed_text', '').strip()
+    assert r_draft.json().get('draft_text', '').strip()

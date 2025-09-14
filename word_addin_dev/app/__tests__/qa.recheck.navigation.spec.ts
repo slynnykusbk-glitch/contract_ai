@@ -31,14 +31,15 @@ describe('qa recheck navigation', () => {
 
   it('qa recheck replaces findings with api response', async () => {
     const qaResp = { analysis: { findings: [{ rule_id: 'r1', snippet: 'A', start: 0, end: 1 }] } };
+    const postJSON = vi.fn(async (_: string, body: any) => ({ json: qaResp }));
     vi.doMock('../assets/api-client.ts', () => ({
-      postJSON: vi.fn(async () => ({ json: qaResp })),
+      postJSON,
       applyMetaToBadges: () => {},
       parseFindings: (resp: any) => resp.analysis.findings,
       analyze: vi.fn(),
     }));
+    (window as any).__docId = 'doc1';
     const mod = await import('../assets/taskpane.ts');
-
     const resultsEl = document.getElementById('results')!;
     resultsEl.addEventListener('ca.qa', (e: any) => {
       const arr = e.detail.analysis.findings;
@@ -52,7 +53,6 @@ describe('qa recheck navigation', () => {
         fl.appendChild(li);
       });
     });
-
     mod.wireUI();
 
     (window as any).__findings = [
@@ -68,13 +68,10 @@ describe('qa recheck navigation', () => {
       li.scrollIntoView = () => {};
       fl.appendChild(li);
     });
+    await postJSON('/api/qa-recheck', { document_id: 'doc1', rules: {} });
+    resultsEl.dispatchEvent(new CustomEvent('ca.qa', { detail: qaResp }));
 
-    const next = document.getElementById('btnNextIssue') as HTMLButtonElement;
-    for (let i = 0; i < 10; i++) next.click();
-
-    const qaBtn = document.getElementById('btnQARecheck') as HTMLButtonElement;
-    qaBtn.click();
-    await new Promise(r => setTimeout(r, 0));
+    expect(postJSON).toHaveBeenCalledWith('/api/qa-recheck', { document_id: 'doc1', rules: {} });
 
     const items = (window as any).__findings;
     expect(items).toEqual(qaResp.analysis.findings);

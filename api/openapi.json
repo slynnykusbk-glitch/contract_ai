@@ -6803,9 +6803,13 @@
             "title": "Mode",
             "type": "string"
           },
-          "clause": {
+          "clause_id": {
+            "title": "Clauseid",
+            "type": "string"
+          },
+          "text": {
             "minLength": 20,
-            "title": "Clause",
+            "title": "Text",
             "type": "string"
           },
           "context": {
@@ -6832,7 +6836,7 @@
         },
         "required": [
           "mode",
-          "clause",
+          "text",
           "context"
         ],
         "title": "DraftRequest",
@@ -6840,9 +6844,9 @@
       },
       "DraftResponse": {
         "properties": {
-          "draft": {
+          "draft_text": {
             "type": "string",
-            "title": "Draft"
+            "title": "Drafttext"
           },
           "notes": {
             "items": {

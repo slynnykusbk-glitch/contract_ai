@@ -349,7 +349,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/gpt-draft": {
+    "/api/gpt/draft": {
         parameters: {
             query?: never;
             header?: never;
@@ -360,7 +360,7 @@ export interface paths {
         put?: never;
         /**
          * Gpt Draft
-         * @description LLM draft endpoint with mock-friendly minimal payload support.
+         * @description Simplified LLM draft endpoint with strict validation.
          */
         post: operations["gpt_draft_api_gpt_draft_post"];
         delete?: never;
@@ -653,6 +653,11 @@ export interface components {
              */
             risk: string | null;
             /**
+             * Clause Type
+             * @default null
+             */
+            clause_type: string | null;
+            /**
              * Schema
              * @default null
              */
@@ -711,6 +716,26 @@ export interface components {
             /** Citations */
             citations: components["schemas"]["CitationInput"][];
         };
+        /** Context */
+        Context: {
+            /**
+             * Law
+             * @default UK
+             * @constant
+             */
+            law: "UK";
+            /**
+             * Language
+             * @default en-GB
+             * @constant
+             */
+            language: "en-GB";
+            /**
+             * Contracttype
+             * @default unknown
+             */
+            contractType: string;
+        };
         /** Coverage */
         Coverage: {
             /** Rules Total */
@@ -719,6 +744,80 @@ export interface components {
             rules_fired: number;
             /** Coverage */
             coverage: number;
+        };
+        /** DraftFinding */
+        DraftFinding: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * DraftRequest
+         * @description Input model for ``/api/gpt/draft``.
+         */
+        DraftRequest: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "friendly" | "strict";
+            /** Clauseid */
+            clause_id?: string;
+            /** Text */
+            text: string;
+            context: components["schemas"]["Context"];
+            /** Findings */
+            findings?: components["schemas"]["DraftFinding"][];
+            /** @default null */
+            selection: components["schemas"]["Selection"] | null;
+            $defs: {
+                /** Context */
+                Context: {
+                    /**
+                     * Law
+                     * @default UK
+                     * @constant
+                     */
+                    law: "UK";
+                    /**
+                     * Language
+                     * @default en-GB
+                     * @constant
+                     */
+                    language: "en-GB";
+                    /**
+                     * Contracttype
+                     * @default unknown
+                     */
+                    contractType: string;
+                };
+                /** DraftFinding */
+                DraftFinding: {
+                    /** Id */
+                    id: string;
+                    /** Title */
+                    title: string;
+                    /** Text */
+                    text: string;
+                };
+                /** Selection */
+                Selection: {
+                    /** Start */
+                    start: number;
+                    /** End */
+                    end: number;
+                };
+            };
+        };
+        /** DraftResponse */
+        DraftResponse: {
+            /** Drafttext */
+            draft_text?: string;
+            /** Notes */
+            notes?: string[];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -870,6 +969,13 @@ export interface components {
             /** F1 */
             f1: number;
         };
+        /** Selection */
+        Selection: {
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+        };
         /**
          * SummaryIn
          * @description Input model for ``/api/summary``.
@@ -900,24 +1006,6 @@ export interface components {
              * @default 10
              */
             limit: number;
-        };
-        /**
-         * DraftRequest
-         * @description Input model for ``/api/gpt-draft``.
-         */
-        DraftRequest: {
-            /** Text */
-            text: string;
-            /**
-             * Mode
-             * @default null
-             */
-            mode: string | null;
-            /**
-             * Cid
-             * @default null
-             */
-            cid: string | null;
         };
         /** Finding */
         Finding: {
@@ -3419,9 +3507,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["DraftRequest"];
             };
         };
         responses: {
@@ -3434,7 +3520,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DraftResponse"];
                 };
             };
             /** @description Bad Request */
@@ -3859,9 +3945,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["DraftRequest"];
             };
         };
         responses: {
@@ -3874,7 +3958,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["DraftResponse"];
                 };
             };
             /** @description Bad Request */

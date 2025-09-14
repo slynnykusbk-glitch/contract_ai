@@ -1062,6 +1062,7 @@ async function doQARecheck() {
     await clearHighlight();
     ensureHeaders();
 
+
     const docId = (window as any).__docId;
     let payload: any;
     if (docId) {

@@ -301,6 +301,7 @@ export async function apiSummary(cid) {
 export async function apiSummaryGet() {
     return req('/api/summary', { method: 'GET', key: 'summary' });
 }
+
 export async function apiQaRecheck(input, rules = {}) {
     let payload;
     if (typeof input === 'string') {

@@ -139,22 +139,31 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
   }, []);
 
   const callAnalyze = async () => {
+    const text = clauseText.trim();
+    if (!text) {
+      setToast('Пустой документ/выделение');
+      return;
+    }
     setStatus('loading');
     setError('');
     setDraft(null);
     try {
       const base = getBackend().replace(/\/+$/, '');
-      const env = await postJSON<AnalyzeEnvelope>(`${base}/api/analyze`, { text: clauseText, clause_type: clauseType || undefined });
+      const env = await postJSON<AnalyzeEnvelope>(`${base}/api/analyze`, { text, clause_type: clauseType || undefined });
       const a = (env?.analysis ?? env) as any;
       a.cid = a.cid || (env as any)?.cid;
       a.clause_type = a.clause_type || clauseType || undefined;
-      a.text = a.text || clauseText || undefined;
+      a.text = a.text || text || undefined;
       setAnalysis(a);
       setAnalysisMeta((env as any)?.meta || null);
       setStatus('ready');
     } catch (e: any) {
       console.error(e);
-      setError(e?.message || 'Analyze failed');
+      const msg = e?.message || 'Analyze failed';
+      setError(msg);
+      if (e?.status === 422) {
+        setToast(msg);
+      }
       setStatus('error');
     }
   };

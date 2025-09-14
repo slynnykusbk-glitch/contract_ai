@@ -65,8 +65,7 @@ describe('use whole doc + analyze flow', () => {
     const analyzeCalls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/analyze'));
     expect(analyzeCalls.length).toBe(1);
     const body = JSON.parse(analyzeCalls[0][1].body);
-    expect(body).toHaveProperty('payload');
-    expect(body.payload).toMatchObject({ schema: '1.4', mode: 'live', text: 'TEST BODY' });
+    expect(body).toMatchObject({ schema: '1.4', mode: 'live', text: 'TEST BODY' });
     vi.useRealTimers();
   }, 10000);
 });

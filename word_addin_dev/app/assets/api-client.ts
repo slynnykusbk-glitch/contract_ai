@@ -58,15 +58,18 @@ export type AnalyzeFinding = {
   clause_id?: string;
 };
 
+export type Findings = AnalyzeFinding[];
+
 export type AnalyzeResponse = {
   status: "ok" | "OK";
-  analysis?: { findings?: AnalyzeFinding[] };
-  findings?: AnalyzeFinding[];
-  issues?: AnalyzeFinding[];
+  analysis?: { findings?: Findings };
+  findings?: Findings;
+  issues?: Findings;
   meta?: any;
 };
 
-export function parseFindings(resp: AnalyzeResponse): AnalyzeFinding[] {
+export function parseFindings(resp: AnalyzeResponse | Findings): Findings {
+  if (Array.isArray(resp)) return resp.filter(Boolean);
   const arr = resp?.analysis?.findings ?? resp?.findings ?? resp?.issues ?? [];
   return Array.isArray(arr) ? arr.filter(Boolean) : [];
 }
@@ -327,9 +330,8 @@ export async function apiSummaryGet() {
   return req('/api/summary', { method: 'GET', key: 'summary' });
 }
 
-export async function apiQaRecheck(text: string, rules: any = {}) {
-  const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
-  const { resp, json } = await postJSON('/api/qa-recheck', { text, rules: dict });
+export async function apiQaRecheck(document_id: string) {
+  const { resp, json } = await postJSON('/api/qa-recheck', { document_id });
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
   try { applyMetaToBadges(meta); } catch {}
   return { ok: resp.ok, json, resp, meta };

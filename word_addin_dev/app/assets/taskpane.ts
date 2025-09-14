@@ -1,4 +1,4 @@
-import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON, analyze } from "./api-client.ts";
+import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, analyze, apiQaRecheck } from "./api-client.ts";
 import domSchema from "../panel_dom.schema.json";
 import { normalizeText, severityRank, dedupeFindings } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
@@ -77,8 +77,8 @@ export function logRichError(e: any, tag = "Word") {
   } catch {}
 }
 
-function parseFindings(resp: AnalyzeResponse): AnalyzeFinding[] {
-  const arr = apiParseFindings(resp) || [];
+function parseFindings(resp: AnalyzeResponse | AnalyzeFinding[]): AnalyzeFinding[] {
+  const arr = apiParseFindings(resp as any) || [];
   return arr
     .filter(f => f && f.rule_id && f.snippet)
     .map(f => ({ ...f, clause_type: f.clause_type || 'Unknown' }))
@@ -1068,7 +1068,8 @@ async function doQARecheck() {
     ensureHeaders();
     const text = await getWholeDocText();
     (window as any).__lastAnalyzed = text;
-    const { json } = await postJSON('/api/qa-recheck', { text, rules: {} });
+    if (!lastCid) { notifyWarn('No document id'); return; }
+    const { json } = await apiQaRecheck(lastCid);
       mustGetElementById<HTMLElement>("results").dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
     const ok = !json?.error;
     if (ok) {

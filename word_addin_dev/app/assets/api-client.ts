@@ -13,6 +13,7 @@ export type Meta = {
 import { getApiKeyFromStore, getSchemaFromStore } from "./store.ts";
 import { registerFetch, deregisterFetch, registerTimer, deregisterTimer, withBusy } from './pending.ts';
 import { checkHealth } from './health.ts';
+import { notifyWarn } from './notifier.ts';
 
 export type AnalyzeFinding = {
   rule_id: string;
@@ -184,6 +185,11 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
           signal: ctrl.signal,
         });
         const json = await resp.json().catch(() => ({}));
+        if (resp.status === 422) {
+          console.warn('[analyze] 422', json.detail);
+          const msg = Array.isArray(json?.detail) ? json.detail.map((d: any) => d.msg).join('; ') : json?.detail;
+          try { notifyWarn(`Validation error: ${msg}`); } catch {}
+        }
         if (path === '/api/analyze' && (resp.status === 504 || resp.status >= 500) && n < retryCount) {
           await new Promise(res => setTimeout(res, backoffMs));
           return attempt(n + 1);
@@ -262,15 +268,15 @@ export async function analyze(payload: any = {}) {
   const key = getApiKeyFromStore();
   if (key) headers['X-Api-Key'] = key;
 
-  const body: any = {
-    payload: {
-      schema: '1.4',
-      mode: payload?.mode ?? 'live',
-    },
-  };
-
-  const text = payload?.text ?? payload?.content;
-  if (text) body.payload.text = text;
+  let body: any;
+  if (payload && typeof payload === 'object' && 'schema' in payload) {
+    body = { payload };
+  } else {
+    const normalized: any = { schema: '1.4', mode: payload?.mode ?? 'live' };
+    const text = payload?.text ?? payload?.content;
+    if (text) normalized.text = text;
+    body = { payload: normalized };
+  }
 
   const resp = await fetch('/api/analyze', {
     method: 'POST',
@@ -279,6 +285,11 @@ export async function analyze(payload: any = {}) {
   });
 
   const json = await resp.json().catch(() => ({}));
+  if (resp.status === 422) {
+    console.warn('[analyze] 422', json.detail);
+    const msg = Array.isArray(json?.detail) ? json.detail.map((d: any) => d.msg).join('; ') : json?.detail;
+    try { notifyWarn(`Validation error: ${msg}`); } catch {}
+  }
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
   try { applyMetaToBadges(meta); } catch {}
   try {

@@ -114,7 +114,7 @@ function updateStatusChip(schema?: string | null, cid?: string | null) {
 
 function enableAnalyze() {
   if (analyzeBound) return;
-  bindClick("#btnAnalyze", doAnalyze);
+  bindClick("#btnAnalyze", onAnalyze);
   const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
   if (btn) btn.disabled = false;
   analyzeBound = true;
@@ -648,6 +648,35 @@ async function doHealth() {
   }
 }
 
+export async function ensureTextForAnalysis(): Promise<string | null> {
+  const orig = document.getElementById("originalText") as HTMLTextAreaElement | null;
+  let text = normalizeText(orig?.value || "");
+  if (!text) {
+    const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
+    if (btn) btn.disabled = true;
+    try {
+      text = normalizeText(await (globalThis as any).getWholeDocText());
+      if (orig) orig.value = text || "";
+    } catch {
+      text = "";
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+  if (!text) {
+    notifyWarn("Document is empty");
+    return null;
+  }
+  (window as any).__lastAnalyzed = text;
+  return text;
+}
+
+export async function onAnalyze() {
+  const base = await ensureTextForAnalysis();
+  if (!base) return;
+  await doAnalyze();
+}
+
 async function doAnalyze() {
   return withBusy(async () => {
     const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
@@ -656,15 +685,10 @@ async function doAnalyze() {
     if (busy) busy.style.display = "";
     try {
       onDraftReady('');
-      const cached = (window as any).__lastAnalyzed as string | undefined;
-      const base = cached && cached.trim() ? cached : normalizeText(await (globalThis as any).getWholeDocText());
+      const base = (window as any).__lastAnalyzed as string | undefined;
       if (!base) { notifyErr("В документе нет текста"); return; }
 
       ensureHeaders();
-
-      (window as any).__lastAnalyzed = base;
-      const orig = document.getElementById("originalText") as HTMLTextAreaElement | null;
-      if (orig) orig.value = base;
 
       const { resp, json } = await analyze({ text: base, mode: currentMode });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);

@@ -28,6 +28,7 @@ Force Majeure: epidemic, war, governmental order; notice within 10 days; reasona
 Indemnity: Supplier shall indemnify Customer against losses, claims, costs and expenses; subject to the limitation of liability set out herein.
 """
 
+
 def load_contract_text() -> str:
     """
     1) ./sample_contract.docx
@@ -40,19 +41,19 @@ def load_contract_text() -> str:
     # DOCX
     if load_docx_text and os.path.exists(docx_path):
         try:
-            logger.info("📄 Loading DOCX: %s", docx_path)
+            logger.info("📄 Loading DOCX: {}", docx_path)
             return load_docx_text(docx_path)
         except Exception as e:
-            logger.warning("⚠ DOCX loader failed: %s", e)
+            logger.warning("⚠ DOCX loader failed: {}", e)
 
     # TXT
     if os.path.exists(txt_path):
         try:
-            logger.info("📄 Loading TXT: %s", txt_path)
+            logger.info("📄 Loading TXT: {}", txt_path)
             with open(txt_path, "r", encoding="utf-8", errors="ignore") as f:
                 return f.read()
         except Exception as e:
-            logger.warning("⚠ TXT loader failed: %s", e)
+            logger.warning("⚠ TXT loader failed: {}", e)
 
     logger.warning("⚠ sample_contract.* not found — using built-in demo text.")
     return DEMO_TEXT
@@ -64,7 +65,9 @@ def main():
 
     # Готуємо інпути для ВСІХ правил бізнес-рівня (усі ключі з реєстру)
     inputs = [
-        AnalysisInput(clause_type=rule_name, text=contract_text, metadata={"name": rule_name})
+        AnalysisInput(
+            clause_type=rule_name, text=contract_text, metadata={"name": rule_name}
+        )
         for rule_name in RULES_REGISTRY.keys()
     ]
 
@@ -75,10 +78,12 @@ def main():
         try:
             out = run_rule(inp)  # legal_rules.legal_rules.analyze
             results.append(out)
-            print(f"  ✔ {inp.clause_type}: {out.status} (score={getattr(out, 'score', '?')})")
-        except Exception as e:
+            print(
+                f"  ✔ {inp.clause_type}: {out.status} (score={getattr(out, 'score', '?')})"
+            )
+        except Exception:
             # Безпечно фіксуємо збій одного правила, щоб інші не постраждали
-            logger.exception("Rule '%s' crashed; continuing…", inp.clause_type)
+            logger.exception("Rule '{rule}' crashed; continuing…", rule=inp.clause_type)
 
     # Генеруємо звіт
     out_file = os.path.abspath("report.html")
@@ -88,13 +93,16 @@ def main():
         # Для Windows можна одразу відкрити в браузері:
         try:
             import webbrowser
+
             webbrowser.open(f"file:///{out_file}")
         except Exception:
             pass
     except TypeError as e:
         # Підказка якщо знову сплутаємо параметр
         if "output_path" in str(e):
-            print("❌ generate_report() не приймає 'output_path'. Використай 'output_file'.")
+            print(
+                "❌ generate_report() не приймає 'output_path'. Використай 'output_file'."
+            )
         raise
 
 

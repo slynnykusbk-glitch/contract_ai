@@ -8,6 +8,30 @@ export interface CommentItem {
   message: string;
 }
 
+export async function safeInsertComment(range: Word.Range, text: string) {
+  const context = range.context;
+  try {
+    const anyDoc = (context.document as any);
+    if (anyDoc?.comments?.add) {
+      anyDoc.comments.add(range, text);
+      await context.sync();
+      return;
+    }
+  } catch (_) {}
+  try {
+    range.insertComment(text);
+    await context.sync();
+    return;
+  } catch (_) {}
+  const cc = range.insertContentControl();
+  cc.tag = "CAI_COMMENT";
+  cc.title = "Contract AI — comment";
+  cc.color = "yellow";
+  cc.appearance = "BoundingBox";
+  cc.insertText(`COMMENT: ${text}`, Word.InsertLocation.replace);
+  await context.sync();
+}
+
 /**
  * Insert comments for provided ranges. Operations are batched: ``context.sync``
  * is called after every 20 successful insertions and once at the end. If
@@ -19,18 +43,17 @@ export interface CommentItem {
  */
 export async function insertComments(ctx: any, items: CommentItem[]): Promise<number> {
   let inserted = 0;
-  let pending = 0;
   for (const it of items) {
     let r = it.range;
     const msg = it.message;
     try {
-      r.insertComment(msg);
+      await safeInsertComment(r, msg);
       inserted++;
     } catch (e: any) {
       if (String(e).includes("0xA7210002")) {
         try {
           r = r.expandTo ? r.expandTo(ctx.document.body) : r;
-          r.insertComment(msg);
+          await safeInsertComment(r, msg);
           inserted++;
         } catch (e2) {
           console.warn("annotate retry failed", e2);
@@ -39,13 +62,6 @@ export async function insertComments(ctx: any, items: CommentItem[]): Promise<nu
         console.warn("annotate error", e);
       }
     }
-    pending++;
-    if (pending % 20 === 0) {
-      await ctx.sync();
-    }
-  }
-  if (pending % 20 !== 0) {
-    await ctx.sync();
   }
   return inserted;
 }
@@ -195,7 +211,7 @@ export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number
         if (isDryRunAnnotateEnabled()) {
           try { target.select(); } catch {}
         } else if (op.msg) {
-          target.insertComment(op.msg);
+          await safeInsertComment(target, op.msg);
         }
         used.push({ start, end });
         inserted++;

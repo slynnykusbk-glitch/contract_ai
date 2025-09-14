@@ -1,5 +1,7 @@
-import { safeBodySearch } from '../../assets/safeBodySearch.ts';
-import { postJSON } from '../../assets/api-client.ts';
+
+import { safeBodySearch } from '../assets/safeBodySearch.ts';
+import { postJSON } from '../assets/api-client.ts';
+import { safeInsertComment } from '../assets/annotate.ts';
 
 export interface Finding {
   id: string;
@@ -30,17 +32,15 @@ export type PanelState = {
  * Safely add a comment at the provided Word range. If inserting the comment
  * directly fails, the comment is added to the first paragraph of the range.
  */
-export function addCommentAtRange(range: Word.Range, text: string) {
+export async function addCommentAtRange(range: Word.Range, text: string) {
   try {
-    range.insertComment(text);
-  } catch (e) {
-    console.error('[panel] insertComment failed at range', e);
+
+    await safeInsertComment(range, text);
+  } catch { /* ignore */
     try {
       const p = range.paragraphs.getFirst();
-      p.insertComment(text);
-    } catch (err) {
-      console.error('[panel] insertComment fallback failed', err);
-    }
+      await safeInsertComment(p as unknown as Word.Range, text);
+    } catch { /* ignore */ }
   }
 }
 
@@ -52,14 +52,13 @@ async function focusRange(body: Word.Body, anchor: string) {
   const searchOpts = { matchCase: false, matchWholeWord: false };
   const res = await safeBodySearch(body, anchor, searchOpts);
   const range = res?.items?.[0];
-  if (range) {
-    try {
-      range.select();
-      if (range.font) range.font.highlightColor = '#ffff00';
-    } catch {
-      /* ignore */
+
+    if (range) {
+      try {
+        range.select();
+        if (range.font) range.font.highlightColor = '#ffff00';
+      } catch { /* ignore */ }
     }
-  }
 }
 
 async function move(state: PanelState, dir: -1 | 1, doc: Word.Document) {
@@ -101,15 +100,14 @@ export async function applyDraft(state: PanelState, id: string, draft: Draft, do
       range.insertText(op.replace.after, 'Replace');
     }
   }
-    try {
-      const raw = localStorage.getItem('cai_history') || '[]';
-      const hist = JSON.parse(raw);
-      hist.push({ id, ts: Date.now(), ops: draft.ops });
-      localStorage.setItem('cai_history', JSON.stringify(hist));
-    } catch {
-      /* ignore */
-    }
-  }
+
+  try {
+    const raw = localStorage.getItem('cai_history') || '[]';
+    const hist = JSON.parse(raw);
+    hist.push({ id, ts: Date.now(), ops: draft.ops });
+    localStorage.setItem('cai_history', JSON.stringify(hist));
+  } catch { /* ignore */ }
+}
 
 export function rejectFinding(state: PanelState, id: string) {
   const idx = itemIndex(state, id);

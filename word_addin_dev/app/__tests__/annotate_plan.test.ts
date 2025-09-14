@@ -25,6 +25,15 @@ describe('annotate scheduler', () => {
     expect(map['r2']).toBe(1);
   });
 
+  it('deduplicates identical findings', () => {
+    const findings: AnalyzeFinding[] = [
+      { start: 0, end: 3, snippet: 'abc', rule_id: 'r1' },
+      { start: 0, end: 3, snippet: 'abc', rule_id: 'r1' },
+    ];
+    const ops = planAnnotations(findings);
+    expect(ops.length).toBe(1);
+  });
+
   it('returns empty array for invalid findings', () => {
     const findings: AnalyzeFinding[] = [
       { start: undefined, end: undefined, snippet: '', rule_id: 'r1' },

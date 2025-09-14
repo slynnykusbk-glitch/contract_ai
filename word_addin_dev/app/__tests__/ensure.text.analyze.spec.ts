@@ -40,7 +40,8 @@ describe('ensure text for analyze', () => {
     expect(analyzeCalls.length).toBe(1);
     const body = JSON.parse(analyzeCalls[0][1].body);
     expect(body.text.length).toBeGreaterThan(0);
-    expect(body).toMatchObject({ schema: '1.4', mode: 'live' });
+    expect(body).toMatchObject({ mode: 'live' });
+    expect(body.schema).toBeUndefined();
   });
 
   it('warns when document empty', async () => {

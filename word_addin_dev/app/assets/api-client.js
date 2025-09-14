@@ -236,7 +236,6 @@ export async function analyze(payload = {}) {
     const body = {
         text: payload?.text ?? payload?.content,
         mode: payload?.mode ?? 'live',
-        schema: payload?.schema ?? '1.4',
     };
     const { resp, json } = await postJSON('/api/analyze', body);
     const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });

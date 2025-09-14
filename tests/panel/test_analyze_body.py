@@ -5,7 +5,7 @@ client = TestClient(app)
 
 
 def test_analyze_body_ok():
-    r = client.post('/api/analyze', json={'schema': '1.4', 'text': 'Ping'}, headers={'x-api-key': 'k', 'x-schema-version': '1.4'})
+    r = client.post('/api/analyze', json={'mode': 'live', 'text': 'Ping'}, headers={'x-api-key': 'k', 'x-schema-version': '1.4'})
     assert r.status_code == 200
 
 

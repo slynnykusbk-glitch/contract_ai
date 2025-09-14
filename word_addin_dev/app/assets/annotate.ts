@@ -84,6 +84,7 @@ export interface AnnotationPlan {
   occIdx: number;
   msg: string;
   rule_id: string;
+  code?: string;
   normalized_fallback: string;
 }
 
@@ -125,6 +126,7 @@ export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
       occIdx,
       msg: buildLegalComment(f),
       rule_id: f.rule_id,
+      code: (f as any).code,
       normalized_fallback: normalizeText((f as any).normalized_snippet || "")
     });
 

@@ -284,6 +284,7 @@ from .models import (
     Segment,
     SearchHit,
     DraftRequest,
+    DraftResponse,
     SCHEMA_VERSION,
 )
 from contract_review_app.core.cache import TTLCache
@@ -2653,39 +2654,16 @@ class RedlinesOut(BaseModel):
 
 
 @router.post(
-    "/api/gpt-draft",
+    "/api/gpt/draft",
+    response_model=DraftResponse,
     responses={422: {"model": ProblemDetail}},
 )
-async def gpt_draft(request: Request, body: dict = Body(...)):
-    """LLM draft endpoint with mock-friendly minimal payload support."""
+async def gpt_draft(inp: DraftRequest):
+    """Simplified LLM draft endpoint with strict validation."""
 
-    try:
-        inp = DraftRequest.model_validate(body.get("payload", body))
-    except ValidationError as exc:
-        raise RequestValidationError(exc.errors()) from exc
-    if LLM_CONFIG.provider == "azure" and not PROVIDER_META.get("valid_config"):
-        problem = _llm_key_problem()
-        return JSONResponse(problem.model_dump(), status_code=400)
-
-    started = time.perf_counter()  # noqa: F841
-    req_cid = inp.cid or compute_cid(request)  # noqa: F841
-    raw_json = _json_dumps_safe(inp.model_dump(exclude_none=True))
-    etag = _sha256_hex(raw_json)
-    inm = request.headers.get("if-none-match")
-    if inm == etag:
-        cached = gpt_cache.get(etag)
-        if cached:
-            resp = Response(status_code=304)
-            resp.headers.update(
-                {
-                    "ETag": etag,
-                    "x-cache": "hit",
-                    "x-cid": cached["cid"],
-                    "x-schema-version": SCHEMA_VERSION,
-                }
-            )
-            _set_llm_headers(resp, cached["meta"])
-            return resp
+    # In this simplified version we just echo back a draft based on the clause.
+    draft_text = f"Draft: {inp.clause.strip()}"
+    return DraftResponse(draft=draft_text)
 
 
 @router.post(
@@ -2723,9 +2701,13 @@ async def suggest_edits_alias(
     return await api_suggest_edits(request, response, x_cid)
 
 
-@router.post("/api/draft", responses={422: {"model": ProblemDetail}})
-async def draft_alias(request: Request, body: dict = Body(...)):
-    return await gpt_draft(request, body)
+@router.post(
+    "/api/draft",
+    response_model=DraftResponse,
+    responses={422: {"model": ProblemDetail}},
+)
+async def draft_alias(req: DraftRequest):
+    return await gpt_draft(req)
 
 
 @app.get("/llm/ping")

@@ -14,7 +14,7 @@ def test_gpt_draft_payload_and_response(extra):
         headers={"x-api-key": "k", "x-schema-version": "1.4"},
     )
     cid = r_an.headers.get("x-cid")
-    payload = {"cid": cid, "clause": "Ping", "mode": "friendly"}
+    payload = {"clause_id": cid, "text": "Ping", "mode": "friendly"}
     payload.update(extra)
     r = client.post(
         "/api/gpt-draft",
@@ -23,7 +23,7 @@ def test_gpt_draft_payload_and_response(extra):
     )
     assert r.status_code == 200
     data = r.json()
-    for k in ("cid", "clause", "mode"):
+    for k in ("clause_id", "text", "mode"):
         assert k in payload and isinstance(payload[k], str)
-    assert isinstance(data.get("proposed_text"), str)
-    assert data["proposed_text"].strip() != ""
+    assert isinstance(data.get("draft_text"), str)
+    assert data["draft_text"].strip() != ""

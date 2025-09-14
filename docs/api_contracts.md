@@ -29,7 +29,7 @@ Content-Type: application/json
 
 # API contracts: /api/gpt-draft
 
-Frontend sends a flat JSON body. Aliases `text` and `clause` are accepted.
+Frontend sends a flat JSON body with `clause_id` and `text`.
 
 ## Request
 
@@ -38,6 +38,7 @@ POST /api/gpt-draft
 Content-Type: application/json
 
 {
+  "clause_id": "123",
   "text": "Hello"
 }
 ```
@@ -47,7 +48,7 @@ Content-Type: application/json
 ```json
 {
   "status": "ok",
-  "proposed_text": "...",
+  "draft_text": "...",
   "schema_version": "1.4"
 }
 ```

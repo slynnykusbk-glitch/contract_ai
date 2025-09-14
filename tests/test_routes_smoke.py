@@ -43,7 +43,7 @@ def test_suggest_ok():
 def test_gpt_draft_ok():
     r_an = client.post("/api/analyze", json={"text": "Hi"}, headers=_headers())
     cid = r_an.headers.get("x-cid")
-    payload = {"cid": cid, "clause": "Draft confidentiality clause"}
+    payload = {"clause_id": cid, "text": "Draft confidentiality clause"}
     r = client.post("/api/gpt-draft", json=payload, headers=_headers())
     assert r.status_code == 200
     r_alias = client.post("/api/draft", json=payload, headers=_headers())

@@ -260,8 +260,8 @@ export async function apiAnalyze(text: string) {
   return analyze({ text });
 }
 
-export async function apiGptDraft(cid: string, clause: string, mode = 'friendly') {
-  const { resp, json } = await postJSON('/api/gpt-draft', { cid, clause, mode });
+export async function apiGptDraft(clause_id: string, text: string, mode = 'friendly') {
+  const { resp, json } = await postJSON('/api/gpt-draft', { clause_id, text, mode });
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
   try { applyMetaToBadges(meta); } catch {}
   return { ok: resp.ok, json, resp, meta };
@@ -275,8 +275,20 @@ export async function apiSummaryGet() {
   return req('/api/summary', { method: 'GET', key: 'summary' });
 }
 
-export async function apiQaRecheck(document_id: string) {
-  const { resp, json } = await postJSON('/api/qa-recheck', { document_id });
+
+export async function apiQaRecheck(
+  input: { document_id?: string; text?: string; rules?: any } | string,
+  rules: any = {},
+) {
+  let payload: any;
+  if (typeof input === 'string') {
+    payload = { text: input };
+  } else {
+    payload = input.document_id ? { document_id: input.document_id } : { text: input.text };
+    rules = input.rules ?? {};
+  }
+  const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
+  const { resp, json } = await postJSON('/api/qa-recheck', { ...payload, rules: dict });
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
   try { applyMetaToBadges(meta); } catch {}
   return { ok: resp.ok, json, resp, meta };

@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
 
 vi.mock('../../common/http', () => ({
-  postJSON: vi.fn(async () => ({ proposed_text: 'Hello from AI' })),
+  postJSON: vi.fn(async () => ({ draft_text: 'Hello from AI' })),
   getHealth: vi.fn(async () => ({})),
   ensureHeadersSet: vi.fn(),
 }));
@@ -11,7 +11,7 @@ vi.mock('../../common/http', () => ({
 import { DraftAssistantPanel } from '../index';
 
 describe('DraftAssistantPanel', () => {
-  it('renders proposed draft text from API response', async () => {
+  it('renders draft text from API response', async () => {
     (globalThis as any).localStorage = { getItem: () => '', setItem: () => {} };
     (globalThis as any).navigator = { clipboard: { writeText: async (_: string) => {} } };
     (globalThis as any).Office = {

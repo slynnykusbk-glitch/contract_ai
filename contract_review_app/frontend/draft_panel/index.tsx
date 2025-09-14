@@ -36,7 +36,6 @@ interface AnalyzeEnvelope {
   [k: string]: any;
 }
 interface DraftEnvelope {
-  proposed_text?: string;
   draft_text?: string;
   [k: string]: any;
 }
@@ -176,11 +175,11 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
     try {
       const base = getBackend().replace(/\/+$/, '');
       const env = await postJSON<DraftEnvelope>(`${base}${DRAFT_PATH}`, {
-        cid: (analysis as any)?.cid,
-        clause: analysis?.text || clauseText,
+        clause_id: (analysis as any)?.cid,
+        text: analysis?.text || clauseText,
       });
-      const text = env?.proposed_text || env?.draft_text || '';
-      setDraft({ ...env, proposed_text: text });
+      const text = env?.draft_text || '';
+      setDraft({ ...env, draft_text: text });
       setStatus('ready');
       try { await insertIntoWord(text); } catch {}
     } catch (e: any) {
@@ -269,9 +268,9 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
           {status === 'loading' ? 'Generating…' : 'Get AI Draft'}
         </button>
 
-        {draft?.proposed_text && (
+        {draft?.draft_text && (
           <button
-            onClick={() => insertIntoWord(draft.proposed_text || '')}
+            onClick={() => insertIntoWord(draft.draft_text || '')}
             style={{ background: '#28a745', color: 'white', padding: '8px 12px', border: 'none', borderRadius: 4 }}
           >
             Insert result into Word
@@ -311,11 +310,11 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
             </div>
           )}
 
-          {draft?.proposed_text && (
+          {draft?.draft_text && (
             <div style={{ marginTop: 20 }}>
               <h3>Suggested Draft</h3>
               <pre style={{ background: '#f5f5f5', padding: '1rem', borderRadius: 4, whiteSpace: 'pre-wrap' }}>
-                {draft.proposed_text}
+                {draft.draft_text}
               </pre>
             </div>
           )}

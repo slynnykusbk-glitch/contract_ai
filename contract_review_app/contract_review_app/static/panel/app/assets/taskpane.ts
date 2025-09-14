@@ -819,7 +819,8 @@ async function requestDraft(mode: 'friendly' | 'strict') {
 
   const payload = {
     mode,
-    clause,
+    clause_id: lastCid || undefined,
+    text: clause,
     context: {
       law: 'UK',
       language: 'en-GB',
@@ -853,7 +854,7 @@ async function requestDraft(mode: 'friendly' | 'strict') {
   }
 
   const json = await res.json();
-  const proposed = (json?.proposed_text ?? json?.text ?? '').toString();
+  const proposed = (json?.draft_text || '').toString();
   const dst = $(Q.proposed);
   const w: any = window as any;
   w.__last = w.__last || {};
@@ -1066,10 +1067,17 @@ async function doQARecheck() {
   return withBusy(async () => {
     await clearHighlight();
     ensureHeaders();
-    const text = await getWholeDocText();
-    (window as any).__lastAnalyzed = text;
-    if (!lastCid) { notifyWarn('No document id'); return; }
-    const { json } = await apiQaRecheck(lastCid);
+
+    const docId = (window as any).__docId;
+    let payload: any;
+    if (docId) {
+      payload = { document_id: docId, rules: {} };
+    } else {
+      const text = await getWholeDocText();
+      (window as any).__lastAnalyzed = text;
+      payload = { text, rules: {} };
+    }
+    const { json } = await postJSON('/api/qa-recheck', payload);
       mustGetElementById<HTMLElement>("results").dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
     const ok = !json?.error;
     if (ok) {

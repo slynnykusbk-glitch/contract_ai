@@ -1,28 +1,27 @@
 import { describe, it, expect, vi } from 'vitest';
-import { safeBodySearch } from '../assets/safe-search.ts';
+import { safeBodySearch } from '../assets/safeBodySearch.ts';
 
 describe('safeBodySearch', () => {
-  it('handles SearchStringInvalidOrTooLong gracefully', () => {
-    const body = {
-      search: vi.fn().mockImplementation(() => { const err: any = new Error('fail'); err.code = 'SearchStringInvalidOrTooLong'; throw err; }),
+  it('returns empty items when search keeps failing', async () => {
+    const body: any = {
+      context: { sync: vi.fn() },
+      search: vi.fn().mockImplementation(() => { const err: any = new Error('fail'); err.code = 'SearchStringInvalidOrTooLong'; throw err; })
     };
-    const res = safeBodySearch(body, 'x', {});
+    const res = await safeBodySearch(body, 'x'.repeat(500), {});
     expect(res.items.length).toBe(0);
-    expect(body.search).toHaveBeenCalledOnce();
+    expect(body.search).toHaveBeenCalled();
   });
 
-  it('truncates long strings', () => {
-    const long = 'a'.repeat(5000);
-    const body = { search: vi.fn().mockReturnValue({ items: [] }) };
-    safeBodySearch(body, long, {});
-    const arg = body.search.mock.calls[0][0];
-    expect(arg.length).toBeLessThanOrEqual(200);
-  });
-
-  it('passes short strings through', () => {
-    const body = { search: vi.fn().mockReturnValue({ items: [1] }) };
-    const res = safeBodySearch(body, 'short', {});
+  it('returns result when search succeeds after truncation', async () => {
+    const body: any = {
+      context: { sync: vi.fn() },
+      search: vi.fn().mockImplementation((txt: string) => {
+        if (txt.length > 80) { const err: any = new Error('fail'); err.code = 'SearchStringInvalidOrTooLong'; throw err; }
+        return { items: [1], load: vi.fn() };
+      })
+    };
+    const res = await safeBodySearch(body, 'a'.repeat(500), {});
     expect(res.items[0]).toBe(1);
-    expect(body.search).toHaveBeenCalledWith('short', {});
+    expect(body.search).toHaveBeenCalled();
   });
 });

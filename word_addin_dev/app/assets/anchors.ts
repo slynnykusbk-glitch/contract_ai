@@ -1,5 +1,5 @@
 import { normalizeText } from "./dedupe.ts";
-import { safeBodySearch } from "./safe-search.ts";
+import { safeBodySearch } from "./safeBodySearch.ts";
 
 interface RangeLike {
   start?: number;
@@ -9,7 +9,7 @@ interface RangeLike {
 
 interface BodyLike {
   context: any;
-  search: (txt: string, opts: any) => { items: RangeLike[]; load?: (arg: string) => void };
+  search: (txt: string, opts: any) => any;
 }
 
 /**
@@ -25,20 +25,14 @@ export async function findAnchors(body: BodyLike, snippetRaw: string): Promise<R
   const ctx = body.context;
   const opt = { matchCase: false, matchWholeWord: false };
 
-  const attempt = (txt: string) => {
-    const res = safeBodySearch(body, txt, opt) as any;
-    if (res && typeof res.load === "function") res.load("items");
-    return res;
-  };
+  const attempt = async (txt: string) => await safeBodySearch(body, txt, opt);
 
-  const rawRes = attempt(snippetRaw || "");
-  await ctx.sync();
+  const rawRes = await attempt(snippetRaw || "");
   let items: RangeLike[] = rawRes?.items || [];
 
   if (!items.length) {
     const norm = normalizeText(snippetRaw || "");
-    const normRes = attempt(norm);
-    await ctx.sync();
+    const normRes = await attempt(norm);
     items = normRes?.items || [];
   }
 

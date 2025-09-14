@@ -1,5 +1,5 @@
-import { safeBodySearch } from '../assets/safeBodySearch.ts';
-import { postJSON } from '../assets/api-client.ts';
+import { safeBodySearch } from '../../assets/safeBodySearch.ts';
+import { postJSON } from '../../assets/api-client.ts';
 
 export interface Finding {
   id: string;
@@ -33,11 +33,14 @@ export type PanelState = {
 export function addCommentAtRange(range: Word.Range, text: string) {
   try {
     range.insertComment(text);
-  } catch {
+  } catch (e) {
+    console.error('[panel] insertComment failed at range', e);
     try {
       const p = range.paragraphs.getFirst();
       p.insertComment(text);
-    } catch {}
+    } catch (err) {
+      console.error('[panel] insertComment fallback failed', err);
+    }
   }
 }
 
@@ -53,7 +56,9 @@ async function focusRange(body: Word.Body, anchor: string) {
     try {
       range.select();
       if (range.font) range.font.highlightColor = '#ffff00';
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -96,13 +101,15 @@ export async function applyDraft(state: PanelState, id: string, draft: Draft, do
       range.insertText(op.replace.after, 'Replace');
     }
   }
-  try {
-    const raw = localStorage.getItem('cai_history') || '[]';
-    const hist = JSON.parse(raw);
-    hist.push({ id, ts: Date.now(), ops: draft.ops });
-    localStorage.setItem('cai_history', JSON.stringify(hist));
-  } catch {}
-}
+    try {
+      const raw = localStorage.getItem('cai_history') || '[]';
+      const hist = JSON.parse(raw);
+      hist.push({ id, ts: Date.now(), ops: draft.ops });
+      localStorage.setItem('cai_history', JSON.stringify(hist));
+    } catch {
+      /* ignore */
+    }
+  }
 
 export function rejectFinding(state: PanelState, id: string) {
   const idx = itemIndex(state, id);

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 """Demo entry point for Contract AI rule analysis."""
 
-import logging
 import os
 import sys
 
@@ -10,6 +9,7 @@ from contract_review_app.core.schemas import AnalysisInput
 from contract_review_app.generate_report import generate_report
 from contract_review_app.legal_rules.legal_rules import analyze as run_rule
 from contract_review_app.legal_rules.registry import RULES_REGISTRY
+from contract_review_app.utils.logging import init_logging
 
 # спробуємо взяти зручний лоадер DOCX, якщо є
 try:
@@ -17,8 +17,7 @@ try:
 except Exception:
     load_docx_text = None  # впадемо на fallback
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("main")
+logger = init_logging()
 
 DEMO_TEXT = """\
 THIS SAMPLE CONTRACT (demo) — minimal text to let rules run.
@@ -79,7 +78,7 @@ def main():
             print(f"  ✔ {inp.clause_type}: {out.status} (score={getattr(out, 'score', '?')})")
         except Exception as e:
             # Безпечно фіксуємо збій одного правила, щоб інші не постраждали
-            logging.exception("Rule '%s' crashed; continuing…", inp.clause_type)
+            logger.exception("Rule '%s' crashed; continuing…", inp.clause_type)
 
     # Генеруємо звіт
     out_file = os.path.abspath("report.html")

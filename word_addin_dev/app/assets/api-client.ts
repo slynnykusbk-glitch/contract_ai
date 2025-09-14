@@ -15,6 +15,23 @@ import { registerFetch, deregisterFetch, registerTimer, deregisterTimer, withBus
 import { checkHealth } from './health.ts';
 import { notifyWarn } from './notifier.ts';
 
+const DEV_MODE = (() => {
+  try {
+    const ls = localStorage.getItem('cai_dev');
+    if (ls === '1') return true;
+    const params = new URLSearchParams(globalThis.location?.search || '');
+    return params.get('debug') === '1';
+  } catch { return false; }
+})();
+
+function logError(msg: string, err: any, extra?: any) {
+  if (DEV_MODE) {
+    console.error(msg, err, extra);
+  } else {
+    console.error(msg, err);
+  }
+}
+
 export type AnalyzeFinding = {
   rule_id: string;
   code?: string;
@@ -208,6 +225,11 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
           }
           throw new DOMException(reason, 'AbortError');
         }
+        logError(`[NET] ${path} failed`, e, { body: bodyWithSchema });
+        try {
+          const msg = DEV_MODE ? String(e) : 'Analysis failed, please try again';
+          notifyWarn(msg);
+        } catch {}
         throw e;
       } finally {
         clearTimeout(t);

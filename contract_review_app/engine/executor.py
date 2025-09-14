@@ -1,9 +1,10 @@
 # contract_review_app/engine/executor.py
 from __future__ import annotations
 
-import logging
 from time import monotonic
 from typing import Dict, List, Optional
+
+from loguru import logger
 
 from contract_review_app.core.schemas import (
     AnalysisInput,
@@ -29,8 +30,6 @@ try:
 except Exception:  # pragma: no cover
     def cross_check_clauses(inputs, outputs):  # type: ignore
         return outputs
-
-logger = logging.getLogger("contract_review_app.engine.executor")
 
 # deterministic scoring weights per finding severity
 _SEV_WEIGHT = {

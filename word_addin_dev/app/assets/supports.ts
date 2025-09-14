@@ -12,7 +12,11 @@ export function detectSupports(): FeatureSupport {
   const com = req && !!w?.Comment;
   const srch = req && !!w?.SearchOptions;
   const cc = req && !!w?.ContentControl;
-  return { revisions: rev, comments: com, search: srch, contentControls: cc };
+  const base = { revisions: rev, comments: com, search: srch, contentControls: cc };
+  if (!req && w?.Comment && localStorage.getItem('cai.force.comments') === '1') {
+    return { ...base, comments: true };
+  }
+  return base;
 }
 
 export const supports = {

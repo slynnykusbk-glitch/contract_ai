@@ -37,6 +37,7 @@ export async function safeInsertComment(range: Word.Range, text: string) {
   console.warn("safeInsertComment failed", lastErr);
   g.logRichError?.(lastErr, "insertComment");
   g.notifyWarn?.("Failed to insert comment");
+  throw lastErr;
 }
 
 /**

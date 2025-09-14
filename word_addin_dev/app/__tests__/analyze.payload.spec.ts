@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 describe('analyze payload wrapper', () => {
-  it('sends flat payload with schema and mode', async () => {
+  it('sends flat payload with mode only', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}), headers: new Headers(), status:200 });
     (globalThis as any).fetch = fetchMock;
     (globalThis as any).window = { dispatchEvent() {} } as any;
@@ -11,6 +11,7 @@ describe('analyze payload wrapper', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [, opts] = fetchMock.mock.calls[0];
     const body = JSON.parse(opts.body);
-    expect(body).toMatchObject({ schema: '1.4', mode: 'live', text: 'hello' });
+    expect(body).toMatchObject({ mode: 'live', text: 'hello' });
+    expect(body.schema).toBeUndefined();
   });
 });

@@ -11,14 +11,14 @@ describe('analyze 422 diagnostics', () => {
       ok: false,
       status: 422,
       headers: new Headers(),
-      json: async () => ({ detail: [{ loc: ['body','payload'], msg: 'bad' }] })
+      json: async () => ({ detail: [{ loc: ['body','text'], msg: 'bad' }] })
     });
     (globalThis as any).fetch = fetchMock;
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { analyze } = await import('../api-client.ts');
     const { notifyWarn } = await import('../notifier.ts');
     await analyze({ text: 'x' });
-    expect(warnSpy).toHaveBeenCalledWith('[analyze] 422', [{ loc: ['body','payload'], msg: 'bad' }]);
+    expect(warnSpy).toHaveBeenCalledWith('[analyze] 422', [{ loc: ['body','text'], msg: 'bad' }]);
     expect(notifyWarn).toHaveBeenCalledWith('Validation error: bad');
     warnSpy.mockRestore();
   });

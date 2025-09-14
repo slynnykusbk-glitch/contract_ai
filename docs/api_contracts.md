@@ -1,6 +1,8 @@
 # API contracts: /api/analyze
 
-Frontend sends a flat JSON body. The server tolerates the legacy wrapper `{ "payload": { ... } }` only for backward compatibility.
+Frontend sends a flat JSON body.
+
+Older deployments wrapped the payload inside a `{ "payload": { ... } }` object, but this wrapper is no longer supported. Requests using the wrapper will be rejected with a validation error.
 
 ## Request
 

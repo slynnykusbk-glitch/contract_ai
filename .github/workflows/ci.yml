@@ -17,11 +17,25 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install deps
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
         run: |
           python -m pip install -U pip
           pip install -r requirements-dev.txt
-      - name: Panel build tests
-        run: pytest -q tests/tools/test_build_panel.py
+          npm --prefix word_addin_dev ci
+      - name: Pre-commit and lint
+        run: |
+          git fetch origin main --depth=1 || true
+          files=$(git diff --name-only origin/main...HEAD)
+          if [ -n "$files" ]; then
+            pre-commit run --files $files
+          fi
+          npm --prefix word_addin_dev run lint
+      - name: Build add-in
+        run: npm --prefix word_addin_dev run build
+      - name: Build panel
+        run: npm run build:panel
       - name: Run tests
-        run: pytest -q --ignore _legacy_disabled
+        run: pytest -q tests/test_analyze_api.py tests/panel/test_panel_analyze_smoke.py

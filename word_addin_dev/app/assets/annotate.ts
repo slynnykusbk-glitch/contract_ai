@@ -9,27 +9,34 @@ export interface CommentItem {
 }
 
 export async function safeInsertComment(range: Word.Range, text: string) {
-  const context = range.context;
+  const context: any = (range as any).context;
+  let lastErr: any = null;
   try {
-    const anyDoc = (context.document as any);
+    const anyDoc = (context?.document as any);
     if (anyDoc?.comments?.add) {
       anyDoc.comments.add(range, text);
-      await context.sync();
+      await context?.sync?.();
       return;
     }
-  } catch (_) {}
+  } catch (e) { lastErr = e; }
   try {
     range.insertComment(text);
-    await context.sync();
+    await context?.sync?.();
     return;
-  } catch (_) {}
-  const cc = range.insertContentControl();
-  cc.tag = "CAI_COMMENT";
-  cc.title = "Contract AI — comment";
-  cc.color = "yellow";
-  cc.appearance = "BoundingBox";
-  cc.insertText(`COMMENT: ${text}`, Word.InsertLocation.replace);
-  await context.sync();
+  } catch (e) { lastErr = e; }
+  try {
+    await context?.sync?.();
+    const anyDoc = (context?.document as any);
+    if (anyDoc?.comments?.add) {
+      anyDoc.comments.add(range, text);
+      await context?.sync?.();
+      return;
+    }
+  } catch (e) { lastErr = e; }
+  const g: any = globalThis as any;
+  console.warn("safeInsertComment failed", lastErr);
+  g.logRichError?.(lastErr, "insertComment");
+  g.notifyWarn?.("Failed to insert comment");
 }
 
 /**

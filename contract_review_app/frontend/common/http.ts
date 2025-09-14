@@ -40,6 +40,7 @@ export async function postJSON<T>(url: string, body: unknown, extra: HeadersMap 
     'x-schema-version': schema,
     ...extra,
   };
+
   const payload = { ...(body as any || {}), schema };
   const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
   const respSchema = r.headers.get('x-schema-version');

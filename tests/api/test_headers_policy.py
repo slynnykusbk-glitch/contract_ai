@@ -30,5 +30,5 @@ def test_post_analyze_ok_headers():
     headers = {"x-api-key": "k", "x-schema-version": SCHEMA_VERSION}
     r = client.post("/api/analyze", json={"text": "hi"}, headers=headers)
     assert r.status_code == 200
-    assert r.headers["X-Schema-Version"] == SCHEMA_VERSION
+    assert r.headers["x-schema-version"] == SCHEMA_VERSION
     assert r.headers.get("X-Cid")

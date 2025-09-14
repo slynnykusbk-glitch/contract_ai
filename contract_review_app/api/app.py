@@ -1338,17 +1338,13 @@ def _normalize_analyze_response(payload: dict) -> dict:
 
 
 async def _read_body_guarded(request: Request) -> bytes:
+    body = await request.body()
     clen = request.headers.get("content-length")
     if clen and clen.isdigit() and int(clen) > MAX_BODY_BYTES:
         raise HTTPException(status_code=413, detail="Payload too large")
-
-    body = bytearray()
-    async for chunk in request.stream():
-        if len(body) + len(chunk) > MAX_BODY_BYTES:
-            raise HTTPException(status_code=413, detail="Payload too large")
-        body.extend(chunk)
-
-    return bytes(body)
+    if len(body) > MAX_BODY_BYTES:
+        raise HTTPException(status_code=413, detail="Payload too large")
+    return body
 
 
 def _count_placeholders(text: str) -> int:
@@ -1800,8 +1796,15 @@ def api_admin_purge(dry: int = 1):
     response_model=AnalyzeResponse,
 )
 def api_analyze(
-    request: Request, req: AnalyzeRequest = Body(..., example={"text": "Hello"})
+    request: Request,
+    body: Dict[str, Any] = Body(..., example={"text": "Hello", "mode": "live"}),
 ):
+    payload = body.get("payload") if isinstance(body, dict) else body
+    try:
+        req = AnalyzeRequest.model_validate(payload)
+    except ValidationError as exc:  # pragma: no cover - handled by FastAPI
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
     txt = req.text
     debug = request.query_params.get("debug")  # noqa: F841
     risk_param = (

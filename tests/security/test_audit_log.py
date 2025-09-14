@@ -21,7 +21,7 @@ def test_audit_events_written(tmp_path):
     r1 = client.post("/api/analyze", json={"text": "Hello"})
     assert r1.status_code == 200
     cid = r1.headers.get("x-cid")
-    r2 = client.post("/api/gpt-draft", json={"cid": cid, "clause": "Draft clause"})
+    r2 = client.post("/api/gpt-draft", json={"clause_id": cid, "text": "Draft clause"})
     assert r2.status_code == 200
     r3 = client.post("/api/suggest_edits", json={"text": "Hello"})
     assert r3.status_code == 200

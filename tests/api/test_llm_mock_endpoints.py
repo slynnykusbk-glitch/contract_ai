@@ -32,6 +32,6 @@ def test_llm_mock_endpoints():
 
 def test_llm_mock_invalid_gpt_draft_payload():
     client = _create_client()
-    resp = client.post("/api/gpt-draft", json={"cid": "only"})
+    resp = client.post("/api/gpt-draft", json={"clause_id": "only"})
     assert resp.status_code == 422
     assert isinstance(resp.json().get("detail"), list)

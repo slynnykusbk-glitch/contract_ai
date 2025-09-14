@@ -401,9 +401,19 @@ async function highlightFinding(op: AnnotationPlan) {
   });
 }
 
+let isNavigating = false;
 async function navigateFinding(dir: number) {
+  if (isNavigating) return;
+  isNavigating = true;
   const arr: AnnotationPlan[] = (window as any).__findings || [];
-  if (!arr.length) return;
+  if (!arr.length) {
+    isNavigating = false;
+    return;
+  }
+  const prevBtn = document.getElementById("btnPrevIssue") as HTMLButtonElement | null;
+  const nextBtn = document.getElementById("btnNextIssue") as HTMLButtonElement | null;
+  if (prevBtn) prevBtn.disabled = true;
+  if (nextBtn) nextBtn.disabled = true;
   const w: any = window as any;
   w.__findingIdx = (w.__findingIdx ?? 0) + dir;
   if (w.__findingIdx < 0) w.__findingIdx = arr.length - 1;
@@ -417,7 +427,16 @@ async function navigateFinding(dir: number) {
     const act = items[w.__findingIdx] as HTMLElement | undefined;
     if (act) act.scrollIntoView({ block: "nearest" });
   }
-  try { await highlightFinding(arr[w.__findingIdx]); } catch {}
+  const idxEl = document.getElementById('findingIndex');
+  if (idxEl) {
+    idxEl.textContent = `${w.__findingIdx + 1}/${arr.length}`;
+  }
+  try {
+    await highlightFinding(arr[w.__findingIdx]);
+  } catch {}
+  if (prevBtn) prevBtn.disabled = false;
+  if (nextBtn) nextBtn.disabled = false;
+  isNavigating = false;
 }
 
 function jumpToFinding(code: string) {
@@ -438,8 +457,8 @@ function jumpToFinding(code: string) {
   try { highlightFinding(arr[idx]); } catch {}
 }
 
-function onPrevIssue() { navigateFinding(-1); }
-function onNextIssue() { navigateFinding(1); }
+async function onPrevIssue() { await navigateFinding(-1); }
+async function onNextIssue() { await navigateFinding(1); }
 
 export function renderAnalysisSummary(json: any) {
   // аккуратно вытаскиваем ключевые поля
@@ -521,6 +540,10 @@ function renderResults(res: any) {
   const findingsArr: AnalyzeFinding[] = parseFindings(res);
   (window as any).__findings = findingsArr;
   (window as any).__findingIdx = 0;
+  const idxInit = document.getElementById('findingIndex');
+  if (idxInit) {
+    idxInit.textContent = findingsArr.length ? `1/${findingsArr.length}` : '0/0';
+  }
   const findingsList = slot("findingsList", "findings") as HTMLElement | null;
   if (findingsList) {
     findingsList.innerHTML = "";

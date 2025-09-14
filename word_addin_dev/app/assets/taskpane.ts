@@ -598,7 +598,7 @@ export async function onSuggestEdit(ev?: Event) {
     if (!clause) { notifyWarn("Select some text or paste into 'Original clause'"); return; }
     try {
       const dst = $(Q.proposed);
-      const { json } = await postJSON('/api/gpt-draft', { cid: lastCid, text: clause, mode: 'friendly' });
+      const { json } = await postJSON('/api/gpt-draft', { cid: lastCid, clause, mode: 'friendly' });
       const proposed = (json?.proposed_text ?? json?.text ?? "").toString();
       const w: any = window as any;
       w.__last = w.__last || {};

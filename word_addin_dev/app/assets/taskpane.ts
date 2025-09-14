@@ -1,6 +1,6 @@
 import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON, analyze } from "./api-client.ts";
 import domSchema from "../panel_dom.schema.json";
-import { normalizeText, severityRank } from "./dedupe.ts";
+import { normalizeText, severityRank, dedupeFindings } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX, safeInsertComment } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
@@ -18,6 +18,7 @@ import { supports, logSupportMatrix } from './supports.ts';
 import { registerUnloadHandlers, wasUnloaded, resetUnloadFlag, withBusy } from './pending.ts';
 import { checkHealth } from './health.ts';
 import { runStartupSelftest } from './startup.selftest.ts';
+import DiffMatchPatch from 'diff-match-patch';
 
 declare const Violins: { initAudio: () => void };
 
@@ -90,10 +91,14 @@ g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
 g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
 g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
 g.logRichError = g.logRichError || logRichError;
-import { notifyOk, notifyErr, notifyWarn } from "./notifier.ts";
+import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText, getSelectionText } from "./office.ts"; // у вас уже есть хелперы; если имя иное — поправьте импорт.
 g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 g.getSelectionText = g.getSelectionText || getSelectionText;
+
+// track already processed ranges to avoid reapplying the same ops
+const appliedRangeHashes: Set<string> = g.__appliedRangeHashes || new Set<string>();
+g.__appliedRangeHashes = appliedRangeHashes;
 
 type Mode = "live" | "friendly" | "doctor";
 let currentMode: Mode = 'live';
@@ -107,17 +112,23 @@ let lastCid: string = "";
 let analyzeBound = false;
 const REQUIRED_IDS: string[] = (domSchema as any).required_ids || [];
 
+function mustGetElementById<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) {
+    throw new Error(`missing element #${id}`);
+  }
+  return el as T;
+}
+
 function updateStatusChip(schema?: string | null, cid?: string | null) {
-  const el = document.getElementById('status-chip');
-  if (!el) return;
+  const el = mustGetElementById<HTMLElement>('status-chip');
   const s = (schema ?? getSchemaFromStore()) || '—';
   const c = (cid ?? lastCid) || '—';
   el.textContent = `schema: ${s} | cid: ${c}`;
 }
 
 function updateAnchorBadge() {
-  const el = document.getElementById('anchorsBadge');
-  if (!el) return;
+  const el = mustGetElementById<HTMLElement>('anchorsBadge');
   const skipped = (globalThis as any).__anchorsSkipped || 0;
   el.style.display = skipped > 0 ? '' : 'none';
 }
@@ -126,8 +137,8 @@ g.updateAnchorBadge = g.updateAnchorBadge || updateAnchorBadge;
 function enableAnalyze() {
   if (analyzeBound) return;
   bindClick("#btnAnalyze", onAnalyze);
-  const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
-  if (btn) btn.disabled = false;
+  const btn = mustGetElementById<HTMLButtonElement>("btnAnalyze");
+  btn.disabled = false;
   analyzeBound = true;
   console.log('[PANEL] analyze enabled');
 }
@@ -145,8 +156,8 @@ function getBackend(): string {
 }
 
 function onSaveBackend() {
-  const inp = document.getElementById('backendUrl') as HTMLInputElement | null;
-  const val = inp?.value?.trim();
+  const inp = mustGetElementById<HTMLInputElement>('backendUrl');
+  const val = inp.value.trim();
   if (val) {
     try {
       localStorage.setItem('backend.url', val);
@@ -157,65 +168,66 @@ function onSaveBackend() {
 }
 
 function ensureHeaders(): boolean {
-  try {
-    let apiKey = getApiKeyFromStore();
-    let schema = getSchemaFromStore();
-    const warn = document.getElementById('hdrWarn') as HTMLElement | null;
-    const host = (globalThis as any)?.location?.hostname ?? '';
-    const isDev = host === 'localhost' || host === '127.0.0.1';
+  let apiKey = getApiKeyFromStore();
+  let schema = getSchemaFromStore();
+  const warn = mustGetElementById<HTMLElement>('hdrWarn');
+  const host = (globalThis as any)?.location?.hostname ?? '';
+  const isDev = host === 'localhost' || host === '127.0.0.1';
 
-    if (isDev) {
-      if (!apiKey) {
-        apiKey = 'local-test-key-123';
-        setApiKey(apiKey);
-      }
-      if (!schema) {
-        const envSchema =
-          (globalThis as any)?.SCHEMA_VERSION ||
-          (typeof process !== 'undefined' && (process as any).env?.SCHEMA_VERSION) ||
-          '1.4';
-        schema = String(envSchema);
-        setSchemaVersion(schema);
-      }
+  if (isDev) {
+    if (!apiKey) {
+      apiKey = 'local-test-key-123';
+      setApiKey(apiKey);
     }
+    if (!schema) {
+      const envSchema =
+        (globalThis as any)?.SCHEMA_VERSION ||
+        (typeof process !== 'undefined' && (process as any).env?.SCHEMA_VERSION) ||
+        '1.4';
+      schema = String(envSchema);
+      setSchemaVersion(schema);
+    }
+  }
 
-    if (warn) {
-      if (!apiKey && !schema && !isDev) {
-        warn.style.display = '';
-      } else {
-        warn.style.display = 'none';
-      }
-    }
+  if (!apiKey && !schema && !isDev) {
+    warn.style.display = '';
+  } else {
+    warn.style.display = 'none';
+  }
 
-    if (!apiKey || !schema) {
-      console.warn('missing headers', { apiKey: !!apiKey, schema: !!schema });
-    }
-  } catch {
-    // swallow errors – missing storage should not stop the flow
+  if (!apiKey || !schema) {
+    console.warn('missing headers', { apiKey: !!apiKey, schema: !!schema });
   }
   return true; // allow all actions regardless of header state
 }
 
-function slot(id: string, role: string): HTMLElement | null {
-  return (
-    document.querySelector(`[data-role="${role}"]`) as HTMLElement | null
-  ) || document.getElementById(id);
+function slot(id: string, role: string): HTMLElement {
+  const byRole = document.querySelector(`[data-role="${role}"]`) as HTMLElement | null;
+  if (byRole) return byRole;
+  return mustGetElementById<HTMLElement>(id);
+}
+
+function mustGetElementById<T extends HTMLElement = HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Element not found: ${id}`);
+  return el as T;
 }
 
 export function getRiskThreshold(): "low" | "medium" | "high" {
-  const sel = document.getElementById("selectRiskThreshold") as HTMLSelectElement | null;
-  const v = sel?.value?.toLowerCase();
+  const sel = mustGetElementById<HTMLSelectElement>("selectRiskThreshold");
+  const v = sel.value.toLowerCase();
   return (v === "low" || v === "medium" || v === "high") ? v : "medium";
 }
 
 export function isAddCommentsOnAnalyzeEnabled(): boolean {
   const val = getAddCommentsFlag();
   try {
-    const doc: any = (globalThis as any).document;
-    const cb = (doc?.getElementById("cai-comment-on-analyze") as HTMLInputElement | null)
-      || (doc?.getElementById("chkAddCommentsOnAnalyze") as HTMLInputElement | null);
-    if (cb) cb.checked = val;
-    return cb ? !!cb.checked : val;
+    const cb = (() => {
+      try { return mustGetElementById<HTMLInputElement>("cai-comment-on-analyze"); }
+      catch { return mustGetElementById<HTMLInputElement>("chkAddCommentsOnAnalyze"); }
+    })();
+    cb.checked = val;
+    return !!cb.checked;
   } catch {
     return val;
   }
@@ -226,8 +238,8 @@ export function setAddCommentsOnAnalyze(val: boolean): void {
 }
 
 function isDryRunAnnotateEnabled(): boolean {
-  const cb = document.getElementById("cai-dry-run-annotate") as HTMLInputElement | null;
-  return cb ? !!cb.checked : false;
+  const cb = mustGetElementById<HTMLInputElement>("cai-dry-run-annotate");
+  return !!cb.checked;
 }
 
 function filterByThreshold(list: AnalyzeFinding[], thr: "low" | "medium" | "high"): AnalyzeFinding[] {
@@ -270,22 +282,21 @@ export async function clearAnnotations() {
         ? body.search(COMMENT_PREFIX, { matchCase: false })
         : null;
       if (cmts && typeof cmts.load === 'function') cmts.load('items');
+      if (found && typeof found.load === 'function') found.load('items');
       await ctx.sync();
-      for (const c of cmts.items) {
-        try {
-          const txt = (c as any).text || "";
-          if (txt.startsWith(COMMENT_PREFIX)) c.delete();
-        } catch {}
+      if (cmts?.items) {
+        for (const c of cmts.items) {
+          try {
+            const txt = (c as any).text || "";
+            if (txt.startsWith(COMMENT_PREFIX)) c.delete();
+          } catch {}
+        }
       }
-      if (found) {
-        found.load('items');
-        await ctx.sync();
-        if (found.items && found.items.length) {
-          for (const r of found.items) {
-            try {
-              r.insertText('', Word.InsertLocation.replace);
-            } catch {}
-          }
+      if (found?.items && found.items.length) {
+        for (const r of found.items) {
+          try {
+            r.insertText('', Word.InsertLocation.replace);
+          } catch {}
         }
       }
       try { body.font.highlightColor = "NoColor" as any; } catch {}
@@ -296,6 +307,29 @@ export async function clearAnnotations() {
     logRichError(e, 'annotate');
     notifyWarn('Failed to clear annotations');
   }
+}
+
+function diffTokens(before: string, after: string): [number, string][] {
+  const dmp = new DiffMatchPatch();
+  const tokenize = (s: string) => s.match(/\S+|\s+/g) || [];
+  const { chars1, chars2, tokenArray } = tokensToChars(tokenize(before), tokenize(after));
+  let diffs = dmp.diff_main(chars1, chars2);
+  dmp.diff_cleanupSemantic(diffs);
+  return diffs.map(([op, data]) => [op, data.split('').map(ch => tokenArray[ch.charCodeAt(0)]).join('')]);
+}
+
+function tokensToChars(tokens1: string[], tokens2: string[]) {
+  const tokenArray: string[] = [];
+  const tokenHash = new Map<string, number>();
+  const toChar = (tok: string) => {
+    if (tokenHash.has(tok)) return String.fromCharCode(tokenHash.get(tok)!);
+    tokenArray.push(tok);
+    tokenHash.set(tok, tokenArray.length - 1);
+    return String.fromCharCode(tokenArray.length - 1);
+  };
+  const chars1 = tokens1.map(toChar).join('');
+  const chars2 = tokens2.map(toChar).join('');
+  return { chars1, chars2, tokenArray };
 }
 
 export async function applyOpsTracked(
@@ -329,6 +363,9 @@ export async function applyOpsTracked(
     };
 
     for (const op of cleaned) {
+      const hashKey = `${op.start}:${op.end}:${op.replacement}`;
+      if (appliedRangeHashes.has(hashKey)) continue;
+
       const snippet = last.slice(op.start, op.end);
       const occIdx = (() => {
         let idx = -1, n = 0;
@@ -343,7 +380,10 @@ export async function applyOpsTracked(
         const sFull = await safeBodySearch(body, searchText, searchOpts);
         const fullRange = pick(sFull, occIdx);
         if (fullRange) {
-          const inner: any = fullRange.search(snippet, searchOpts);
+          // Clamp snippet before searching to avoid Word's
+          // SearchStringInvalidOrTooLong errors (limit ~255 chars).
+          const needle = snippet.slice(0, 240);
+          const inner: any = fullRange.search(needle, searchOpts);
           if (inner && typeof inner.load === 'function') inner.load('items');
           await ctx.sync();
           target = pick(inner, 0);
@@ -368,10 +408,35 @@ export async function applyOpsTracked(
       }
 
       if (target) {
-
-        target.insertText(op.replacement, 'Replace');
+        const diffs = diffTokens(snippet, op.replacement);
+        let cursor = target.getRange('Start');
+        for (const [kind, txt] of diffs) {
+          if (!txt) continue;
+          if (kind === 0) {
+            const rest = cursor.getRange('After');
+            const foundEq: any = rest.search(txt, searchOpts);
+            if (foundEq && typeof foundEq.load === 'function') foundEq.load('items');
+            await ctx.sync();
+            const eq = pick(foundEq, 0);
+            if (eq) cursor = eq.getRange('After');
+          } else if (kind === -1) {
+            const rest = cursor.getRange('After');
+            const foundDel: any = rest.search(txt, searchOpts);
+            if (foundDel && typeof foundDel.load === 'function') foundDel.load('items');
+            await ctx.sync();
+            const del = pick(foundDel, 0);
+            if (del) {
+              del.insertText('', 'Replace');
+              cursor = del.getRange('After');
+            }
+          } else if (kind === 1) {
+            const ins = cursor.insertText(txt, 'Before');
+            cursor = ins.getRange('After');
+          }
+        }
         const comment = `${COMMENT_PREFIX} ${op.rationale || op.source || 'AI edit'}`;
         try { await safeInsertComment(target, comment); } catch {}
+
       } else {
         console.warn('[applyOpsTracked] match not found', { snippet, occIdx });
       }
@@ -428,15 +493,13 @@ async function navigateFinding(dir: number) {
   w.__findingIdx = (w.__findingIdx ?? 0) + dir;
   if (w.__findingIdx < 0) w.__findingIdx = arr.length - 1;
   if (w.__findingIdx >= arr.length) w.__findingIdx = 0;
-  const list = document.getElementById("findingsList");
-  if (list) {
-    const items = Array.from(list.querySelectorAll("li"));
-    items.forEach((li, i) => {
-      (li as HTMLElement).classList.toggle("active", i === w.__findingIdx);
-    });
-    const act = items[w.__findingIdx] as HTMLElement | undefined;
-    if (act) act.scrollIntoView({ block: "nearest" });
-  }
+  const list = mustGetElementById<HTMLElement>("findingsList");
+  const items = Array.from(list.querySelectorAll("li"));
+  items.forEach((li, i) => {
+    (li as HTMLElement).classList.toggle("active", i === w.__findingIdx);
+  });
+  const act = items[w.__findingIdx] as HTMLElement | undefined;
+  if (act) act.scrollIntoView({ block: "nearest" });
   try { await highlightFinding(arr[w.__findingIdx]); } catch {}
 }
 
@@ -446,15 +509,13 @@ function jumpToFinding(code: string) {
   const idx = arr.findIndex(o => o.rule_id === code || (o as any).code === code);
   if (idx < 0) return;
   (window as any).__findingIdx = idx;
-  const list = document.getElementById("findingsList");
-  if (list) {
-    const items = Array.from(list.querySelectorAll("li"));
-    items.forEach((li, i) => {
-      (li as HTMLElement).classList.toggle("active", i === idx);
-    });
-    const act = items[idx] as HTMLElement | undefined;
-    if (act) act.scrollIntoView({ block: "nearest" });
-  }
+  const list = mustGetElementById<HTMLElement>("findingsList");
+  const items = Array.from(list.querySelectorAll("li"));
+  items.forEach((li, i) => {
+    (li as HTMLElement).classList.toggle("active", i === idx);
+  });
+  const act = items[idx] as HTMLElement | undefined;
+  if (act) act.scrollIntoView({ block: "nearest" });
   try { highlightFinding(arr[idx]); } catch {}
 }
 
@@ -479,8 +540,7 @@ export function renderAnalysisSummary(json: any) {
   const hidden = findings.length - visible;
 
   const setText = (id: string, val: string) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
+    mustGetElementById<HTMLElement>(id).textContent = val;
   };
 
   setText("clauseTypeOut", String(clauseType));
@@ -488,6 +548,8 @@ export function renderAnalysisSummary(json: any) {
   setText("visibleHiddenOut", `${visible} / ${hidden}`);
 
   // Заполняем findings
+
+  const findingsBlock = mustGetElementById('findingsBlock');
   const fCont = document.getElementById("findingsList");
   if (fCont) {
     fCont.innerHTML = "";
@@ -525,32 +587,40 @@ export function renderAnalysisSummary(json: any) {
       }
 
       fCont.appendChild(li);
-    });
+
+    }
+
+    fCont.appendChild(li);
   }
+  findingsBlock.style.display = visibleFindings.length ? '' : 'none';
 
   // Заполняем рекомендации
-  const rCont = document.getElementById("recsList");
-  if (rCont) {
-    rCont.innerHTML = "";
+
+  const recommendationsBlock = mustGetElementById('recommendationsBlock');
+  const recommendationsList = document.getElementById("recommendationsList");
+  if (recommendationsList) {
+    recommendationsList.innerHTML = "";
     for (const r of recs) {
       const li = document.createElement("li");
       li.textContent = r?.text || r?.advice || r?.message || "Recommendation";
-      rCont.appendChild(li);
+      recommendationsList.appendChild(li);
     }
   }
+  recommendationsBlock.style.display = recs.length ? '' : 'none';
 
   // Показать блок результатов (если был скрыт стилями)
-  const rb = document.getElementById("resultsBlock") as HTMLElement | null;
-  if (rb) rb.style.removeProperty("display");
+  const rb = mustGetElementById<HTMLElement>("resultsBlock");
+  rb.style.removeProperty("display");
 }
 
 function renderResults(res: any) {
   const clause = slot("resClauseType", "clause-type");
-  if (clause) clause.textContent = res?.clause_type || "—";
+  clause.textContent = res?.clause_type || "—";
 
   const findingsArr: AnalyzeFinding[] = parseFindings(res);
   (window as any).__findings = findingsArr;
   (window as any).__findingIdx = 0;
+
   const findingsList = slot("findingsList", "findings") as HTMLElement | null;
   if (findingsList) {
     findingsList.innerHTML = "";
@@ -560,44 +630,53 @@ function renderResults(res: any) {
       findingsList.appendChild(li);
     });
   }
+  const findingsBlock = mustGetElementById('findingsBlock');
+  findingsBlock.style.display = findingsArr.length ? '' : 'none';
 
   const recoArr = Array.isArray(res?.recommendations) ? res.recommendations : [];
-  const recoList = slot("recoList", "recommendations") as HTMLElement | null;
-  if (recoList) {
-    recoList.innerHTML = "";
+  const recommendationsList = slot("recommendationsList", "recommendations") as HTMLElement | null;
+  if (recommendationsList) {
+    recommendationsList.innerHTML = "";
     recoArr.forEach((r: any) => {
       const li = document.createElement("li");
       li.textContent = typeof r === "string" ? r : JSON.stringify(r);
-      recoList.appendChild(li);
+      recommendationsList.appendChild(li);
     });
   }
+  const recommendationsBlock = mustGetElementById('recommendationsBlock');
+  recommendationsBlock.style.display = recoArr.length ? '' : 'none';
 
   const count = slot("resFindingsCount", "findings-count");
-  if (count) count.textContent = String(findingsArr.length);
+  count.textContent = String(findingsArr.length);
 
-  const pre = slot("rawJson", "raw-json") as HTMLElement | null;
-  if (pre) pre.textContent = JSON.stringify(res ?? {}, null, 2);
+  const pre = slot("rawJson", "raw-json");
+  pre.textContent = JSON.stringify(res ?? {}, null, 2);
+}
+
+function mergeQaResults(json: any) {
+  const existing: AnalyzeFinding[] = (window as any).__findings || [];
+  const incoming = parseFindings(json);
+  const merged = dedupeFindings([...existing, ...incoming]);
+  return { ...(json || {}), findings: merged };
 }
 
 function wireResultsToggle() {
   const toggle = slot("toggleRaw", "toggle-raw-json");
-  const pre = slot("rawJson", "raw-json") as HTMLElement | null;
-  if (toggle && pre) {
-    pre.style.display = "none";
-    toggle.addEventListener("click", () => {
-      pre.style.display = pre.style.display === "none" ? "block" : "none";
-    });
-  }
+  const pre = slot("rawJson", "raw-json");
+  pre.style.display = "none";
+  toggle.addEventListener("click", () => {
+    pre.style.display = pre.style.display === "none" ? "block" : "none";
+  });
 }
 
 function setConnBadge(ok: boolean | null) {
-  const el = document.getElementById("connBadge");
-  if (el) el.textContent = `Conn: ${ok === null ? "—" : ok ? "✓" : "×"}`;
+  const el = mustGetElementById<HTMLElement>("connBadge");
+  el.textContent = `Conn: ${ok === null ? "—" : ok ? "✓" : "×"}`;
 }
 
 function setOfficeBadge(txt: string | null) {
-  const el = document.getElementById("officeBadge");
-  if (el) el.textContent = `Office: ${txt ?? "—"}`;
+  const el = mustGetElementById<HTMLElement>("officeBadge");
+  el.textContent = `Office: ${txt ?? "—"}`;
 }
 
 async function onFixNumbering() {
@@ -790,8 +869,8 @@ async function onUseWholeDoc() {
     src.value = text;
     try { src.dispatchEvent(new Event("input", { bubbles: true })); } catch {}
   }
-  const hid = document.getElementById("originalText") as HTMLTextAreaElement | null;
-  if (hid && hid !== src) {
+  const hid = mustGetElementById<HTMLTextAreaElement>("originalText");
+  if (hid !== src) {
     hid.value = text;
     try { hid.dispatchEvent(new Event("input", { bubbles: true })); } catch {}
   }
@@ -844,18 +923,18 @@ async function doHealth() {
 }
 
 export async function ensureTextForAnalysis(): Promise<string | null> {
-  const orig = document.getElementById("originalText") as HTMLTextAreaElement | null;
-  let text = normalizeText(orig?.value || "");
+  const orig = mustGetElementById<HTMLTextAreaElement>("originalText");
+  let text = normalizeText(orig.value || "");
   if (!text) {
-    const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
-    if (btn) btn.disabled = true;
+    const btn = mustGetElementById<HTMLButtonElement>("btnAnalyze");
+    btn.disabled = true;
     try {
       text = normalizeText(await (globalThis as any).getWholeDocText());
-      if (orig) orig.value = text || "";
+      orig.value = text || "";
     } catch {
       text = "";
     } finally {
-      if (btn) btn.disabled = false;
+      btn.disabled = false;
     }
   }
   if (!text) {
@@ -874,11 +953,11 @@ export async function onAnalyze() {
 
 async function doAnalyze() {
   return withBusy(async () => {
-    await clearHighlight();
-    const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
-    const busy = document.getElementById("busyBar") as HTMLElement | null;
-    if (btn) btn.disabled = true;
-    if (busy) busy.style.display = "";
+
+    const btn = mustGetElementById<HTMLButtonElement>("btnAnalyze");
+    const busy = mustGetElementById<HTMLElement>("busyBar");
+    btn.disabled = true;
+    busy.style.display = "";
     try {
       onDraftReady('');
       const base = (window as any).__lastAnalyzed as string | undefined;
@@ -911,8 +990,8 @@ async function doAnalyze() {
         console.warn("auto-annotate after analyze failed", e);
       }
 
-      (document.getElementById("results") || document.body)
-        .dispatchEvent(new CustomEvent("ca.results", { detail: json }));
+        mustGetElementById<HTMLElement>("results")
+          .dispatchEvent(new CustomEvent("ca.results", { detail: json }));
 
       notifyOk("Analyze OK");
     } catch (e: any) {
@@ -937,8 +1016,8 @@ async function doAnalyze() {
       notifyWarn(`Analyze failed ${tail}`.trim());
       console.error(e);
     } finally {
-      if (btn) btn.disabled = false;
-      if (busy) busy.style.display = "none";
+      btn.disabled = false;
+      busy.style.display = "none";
     }
   });
 }
@@ -948,10 +1027,49 @@ async function doQARecheck() {
     await clearHighlight();
     ensureHeaders();
     const text = await getWholeDocText();
+    (window as any).__lastAnalyzed = text;
     const { json } = await postJSON('/api/qa-recheck', { text, rules: {} });
-    (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
+      mustGetElementById<HTMLElement>("results").dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
     const ok = !json?.error;
     if (ok) {
+      const prev: AnnotationPlan[] = (window as any).__findings || [];
+      const prevIdx = (window as any).__findingIdx ?? 0;
+      const key = (f: any) => f?.code || f?.rule_id || `${f?.rule_id}|${f?.raw || f?.snippet || ''}`;
+      const prevKey = prev[prevIdx] ? key(prev[prevIdx]) : null;
+
+      const parsed = parseFindings(json);
+      const thr = getRiskThreshold();
+      const filtered = filterByThreshold(parsed, thr);
+      const ops = planAnnotations(filtered);
+      const uniq = new Map<string, AnnotationPlan>();
+      ops.forEach(op => {
+        const k = key(op);
+        if (k && !uniq.has(k)) uniq.set(k, op);
+      });
+      const deduped = Array.from(uniq.values());
+      (window as any).__findings = deduped;
+
+      let newIdx = 0;
+      if (prevKey) {
+        const found = deduped.findIndex(o => key(o) === prevKey);
+        if (found >= 0) newIdx = found;
+      }
+      if (newIdx >= deduped.length) newIdx = 0;
+      (window as any).__findingIdx = newIdx;
+
+      const list = document.getElementById("findingsList");
+      if (list) {
+        const frag = document.createDocumentFragment();
+        deduped.forEach((op, i) => {
+          const li = document.createElement("li");
+          li.textContent = `${op.rule_id}: ${op.raw}`;
+          if (i === newIdx) li.classList.add("active");
+          frag.appendChild(li);
+        });
+        list.innerHTML = "";
+        list.appendChild(frag);
+      }
+
       notifyOk("QA recheck OK");
     } else {
       const msg = json?.error || json?.message || 'unknown';
@@ -975,12 +1093,10 @@ async function onPreviewDiff() {
     if (!after) { notifyWarn('No draft to diff'); return; }
     const diff: any = await postRedlines(before, after);
     const html = diff?.json?.html || diff?.json?.diff_html || diff?.json?.redlines || '';
-    const out = document.getElementById('diffOutput') as HTMLElement | null;
-    const cont = document.getElementById('diffContainer') as HTMLElement | null;
-    if (out && cont) {
+      const out = mustGetElementById<HTMLElement>('diffOutput');
+      const cont = mustGetElementById<HTMLElement>('diffContainer');
       out.innerHTML = html || '';
       cont.style.display = html ? 'block' : 'none';
-    }
   } catch (e) {
     notifyWarn('Diff failed');
     console.error(e);
@@ -1006,7 +1122,7 @@ async function onAcceptAll() {
     const proposed = (dst?.value || "").trim();
     if (!proposed) { (window as any).toast?.("Nothing to accept"); return; }
 
-    const cid = (document.getElementById("cid")?.textContent || "").trim();
+    const cid = (mustGetElementById<HTMLElement>("cid").textContent || "").trim();
     const base = (() => {
       try { return (localStorage.getItem("backendUrl") || "https://localhost:9443").replace(/\/+$/, ""); }
       catch { return "https://localhost:9443"; }
@@ -1057,9 +1173,12 @@ async function onRejectAll() {
 
 export function wireUI() {
   console.log('[PANEL] wireUI start');
-  if (!(globalThis as any).__CAI_TESTING__) {
-    const missing = REQUIRED_IDS.filter(id => !document.getElementById(id));
-    if (missing.length) {
+    if (!(globalThis as any).__CAI_TESTING__) {
+      const missing = REQUIRED_IDS.filter(id => {
+        try { mustGetElementById<HTMLElement>(id); return false; }
+        catch { return true; }
+      });
+      if (missing.length) {
       console.error('[PANEL] wireUI missing IDs:', missing);
       const msg = `FATAL: panel template mismatch (missing: ${missing.join(', ')}). Check build pipeline.`;
       try {
@@ -1077,40 +1196,37 @@ export function wireUI() {
     }
   }
 
-  const bookEl = document.getElementById('loading-book');
-  window.addEventListener('cai:busy', (e: any) => {
-    if (!bookEl) return;
-    const busy = !!(e?.detail?.busy);
-    if (busy) bookEl.classList.remove('hidden');
-    else bookEl.classList.add('hidden');
-  });
+    const bookEl = mustGetElementById<HTMLElement>('loading-book');
+    window.addEventListener('cai:busy', (e: any) => {
+      const busy = !!(e?.detail?.busy);
+      if (busy) bookEl.classList.remove('hidden');
+      else bookEl.classList.add('hidden');
+    });
 
-  const s = logSupportMatrix();
-  const disable = (id: string, reason?: string) => {
-    const el = document.getElementById(id) as HTMLButtonElement | null;
-    if (el) {
+    const s = logSupportMatrix();
+    const disable = (id: string, reason?: string) => {
+      const el = mustGetElementById<HTMLButtonElement>(id);
       el.disabled = true;
       el.title = reason ? `Not supported: ${reason}` : 'Not supported';
-    }
-    if (reason) {
-      try { console.log(`disabled ${id}: ${reason}`); } catch {}
-    }
-  };
+      if (reason) {
+        try { console.log(`disabled ${id}: ${reason}`); } catch {}
+      }
+    };
 
-  bindClick("#btnUseWholeDoc", onUseWholeDoc);
-  const wholeBtn = document.getElementById('btnUseWholeDoc') as HTMLButtonElement | null;
-  if (wholeBtn) wholeBtn.disabled = false;
+    bindClick("#btnUseWholeDoc", onUseWholeDoc);
+    const wholeBtn = mustGetElementById<HTMLButtonElement>('btnUseWholeDoc');
+    wholeBtn.disabled = false;
   bindClick("#btnFixNumbering", onFixNumbering);
   if (ENV_MODE === 'dev') bindClick("#btnTest", doHealth);
-  else {
-    const bt = document.getElementById('btnTest');
-    if (bt) (bt as HTMLElement).style.display = 'none';
-  }
+    else {
+      const bt = mustGetElementById<HTMLElement>('btnTest');
+      bt.style.display = 'none';
+    }
   bindClick("#btnQARecheck", doQARecheck);
-  const draftBtn = document.getElementById('btnSuggestEdit') as HTMLButtonElement | null;
-  const origClause = $(Q.original);
-  const syncDraftBtn = () => { if (draftBtn) draftBtn.disabled = !(origClause && origClause.value.trim()); };
-  origClause?.addEventListener('input', syncDraftBtn);
+    const draftBtn = mustGetElementById<HTMLButtonElement>('btnSuggestEdit');
+    const origClause = $(Q.original);
+    const syncDraftBtn = () => { draftBtn.disabled = !(origClause && origClause.value.trim()); };
+    origClause?.addEventListener('input', syncDraftBtn);
   try {
     Office.context.document.addHandlerAsync?.(Office.EventType.DocumentSelectionChanged, async () => {
       try {
@@ -1122,8 +1238,8 @@ export function wireUI() {
       } catch {}
     });
   } catch {}
-  syncDraftBtn();
-  draftBtn?.addEventListener('click', onSuggestEdit);
+    syncDraftBtn();
+    draftBtn.addEventListener('click', onSuggestEdit);
   bindClick("#btnApplyTracked", onApplyTracked);
   bindClick("#btnAcceptAll", onAcceptAll);
   bindClick("#btnRejectAll", onRejectAll);
@@ -1132,16 +1248,13 @@ export function wireUI() {
   bindClick("#btnPreviewDiff", onPreviewDiff);
   bindClick("#btnClearAnnots", clearAnnotations);
   bindClick("#btnSave", onSaveBackend);
-  const cb = (document.getElementById("cai-comment-on-analyze") as HTMLInputElement | null)
-    || (document.getElementById("chkAddCommentsOnAnalyze") as HTMLInputElement | null);
-  if (cb) {
+    const cb = (() => {
+      try { return mustGetElementById<HTMLInputElement>("cai-comment-on-analyze"); }
+      catch { return mustGetElementById<HTMLInputElement>("chkAddCommentsOnAnalyze"); }
+    })();
     cb.checked = isAddCommentsOnAnalyzeEnabled();
     cb.addEventListener("change", () => setAddCommentsOnAnalyze(!!cb.checked));
-  } else {
-    isAddCommentsOnAnalyzeEnabled();
-  }
-  const annotateBtn = document.getElementById("btnAnnotate") as HTMLButtonElement | null;
-  if (annotateBtn) {
+    const annotateBtn = mustGetElementById<HTMLButtonElement>("btnAnnotate");
     annotateBtn.addEventListener("click", async () => {
       if (annotateBtn.disabled) return;
       annotateBtn.disabled = true;
@@ -1165,11 +1278,29 @@ export function wireUI() {
     });
     annotateBtn.classList.remove("js-disable-while-busy");
     annotateBtn.removeAttribute("disabled");
-  }
+
+  document.body.addEventListener('ca.qa', (ev: any) => {
+    const json = ev?.detail;
+    try {
+      if (!json || json.error) {
+        renderResults(json || {});
+        renderAnalysisSummary(json || {});
+        return;
+      }
+      const merged = mergeQaResults(json);
+      renderResults(merged);
+      renderAnalysisSummary(merged);
+    } catch (e) {
+      console.warn('ca.qa handler failed', e);
+      renderResults(json || {});
+      renderAnalysisSummary(json || {});
+    }
+  });
 
   onDraftReady('');
   wireResultsToggle();
-  console.log("Panel UI wired");
+
+  console.log("Panel UI wired [OK]");
   const ab = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
   if (ab) ab.disabled = true;
   ensureHeaders();
@@ -1189,21 +1320,21 @@ g.wireUI = g.wireUI || wireUI;
 
 // self-test moved to startup.selftest.ts
 
-function onDraftReady(text: string) {
-  const show = !!text.trim();
-  const apply = document.getElementById('btnApplyTracked') as HTMLButtonElement | null;
-  const accept = document.getElementById('btnAcceptAll') as HTMLButtonElement | null;
-  const reject = document.getElementById('btnRejectAll') as HTMLButtonElement | null;
-  const diff = document.getElementById('btnPreviewDiff') as HTMLButtonElement | null;
-  const pane = document.getElementById('draftPane') as HTMLElement | null;
-  const dst = document.getElementById('draftText') as HTMLTextAreaElement | null;
-  if (dst) dst.value = text;
-  if (pane) pane.style.display = show ? '' : 'none';
-  if (apply) apply.disabled = !show;
-  if (accept) accept.disabled = !show;
-  if (reject) reject.disabled = !show;
-  if (diff) diff.disabled = !show;
-}
+  function onDraftReady(text: string) {
+    const show = !!text.trim();
+    const apply = mustGetElementById<HTMLButtonElement>('btnApplyTracked');
+    const accept = mustGetElementById<HTMLButtonElement>('btnAcceptAll');
+    const reject = mustGetElementById<HTMLButtonElement>('btnRejectAll');
+    const diff = mustGetElementById<HTMLButtonElement>('btnPreviewDiff');
+    const pane = mustGetElementById<HTMLElement>('draftPane');
+    const dst = mustGetElementById<HTMLTextAreaElement>('draftText');
+    dst.value = text;
+    pane.style.display = show ? '' : 'none';
+    apply.disabled = !show;
+    accept.disabled = !show;
+    reject.disabled = !show;
+    diff.disabled = !show;
+  }
 
 async function bootstrap(info?: Office.OfficeInfo) {
   console.log('[PANEL] bootstrap start');
@@ -1222,26 +1353,45 @@ async function bootstrap(info?: Office.OfficeInfo) {
   }
 }
 
+let domReady = false;
+let officeReady = false;
+let officeInfo: Office.OfficeInfo | undefined;
+let bootstrapped = false;
 let bootstrapCalls = 0;
-export function invokeBootstrap(info?: Office.OfficeInfo) {
-  if (wasUnloaded()) {
-    bootstrapCalls = 0;
-  }
-  if (bootstrapCalls > 0) {
+
+function tryBootstrap() {
+  if (bootstrapped) {
     console.log(`bootstrap invoked x${bootstrapCalls+1}`);
     return;
   }
+  if (!(domReady && officeReady)) return;
+  bootstrapped = true;
   bootstrapCalls++;
   console.log('bootstrap invoked x1');
-  void bootstrap(info);
+  void bootstrap(officeInfo);
+}
+
+export function invokeBootstrap(info?: Office.OfficeInfo) {
+  officeInfo = info;
+  domReady = true;
+  officeReady = true;
+  tryBootstrap();
 }
 export function getBootstrapCount() { return bootstrapCalls; }
 
 if (!(globalThis as any).__CAI_TESTING__) {
-  const launch = () => Office.onReady(info => invokeBootstrap(info));
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', launch);
+    document.addEventListener('DOMContentLoaded', () => {
+      domReady = true;
+      tryBootstrap();
+    });
   } else {
-    launch();
+    domReady = true;
+    tryBootstrap();
   }
+  Office.onReady(info => {
+    officeReady = true;
+    officeInfo = info;
+    tryBootstrap();
+  });
 }

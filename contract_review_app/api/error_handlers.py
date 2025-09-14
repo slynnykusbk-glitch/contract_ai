@@ -14,6 +14,7 @@ import time
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.requests import ClientDisconnect
 
 from .errors import UpstreamTimeoutError
 from .headers import apply_std_headers
@@ -29,19 +30,37 @@ def register_error_handlers(app: FastAPI) -> None:
     async def _validation_error(request: Request, exc: RequestValidationError):
         log.warning("validation error: %s", exc)
         resp = JSONResponse({"detail": "validation error"}, status_code=422)
-        apply_std_headers(resp, request, getattr(request.state, "started_at", time.perf_counter()))
+        apply_std_headers(
+            resp, request, getattr(request.state, "started_at", time.perf_counter())
+        )
         return resp
 
     @app.exception_handler(UpstreamTimeoutError)
     async def _timeout_error(request: Request, exc: UpstreamTimeoutError):
         resp = JSONResponse({"detail": "upstream timeout"}, status_code=504)
-        apply_std_headers(resp, request, getattr(request.state, "started_at", time.perf_counter()))
+        apply_std_headers(
+            resp, request, getattr(request.state, "started_at", time.perf_counter())
+        )
+        return resp
+
+    @app.exception_handler(ConnectionResetError)
+    @app.exception_handler(ClientDisconnect)
+    async def _disconnect_error(request: Request, exc: Exception):
+        log.info("client disconnected")
+        resp = JSONResponse({"detail": "client disconnected"}, status_code=499)
+        apply_std_headers(
+            resp, request, getattr(request.state, "started_at", time.perf_counter())
+        )
         return resp
 
     @app.exception_handler(Exception)
     async def _unhandled_error(request: Request, exc: Exception):
         # HTTPException carries explicit status/detail; everything else maps to 500
-        if isinstance(exc, HTTPException):
+        if isinstance(exc, (ConnectionResetError, ClientDisconnect)):
+            # disconnects are routine; return 499-like status without error logging
+            status = 499
+            detail = "client disconnected"
+        elif isinstance(exc, HTTPException):
             status = exc.status_code
             detail = exc.detail if isinstance(exc.detail, str) else "internal error"
         else:
@@ -50,6 +69,7 @@ def register_error_handlers(app: FastAPI) -> None:
             detail = "internal error"
 
         resp = JSONResponse({"detail": detail}, status_code=status)
-        apply_std_headers(resp, request, getattr(request.state, "started_at", time.perf_counter()))
+        apply_std_headers(
+            resp, request, getattr(request.state, "started_at", time.perf_counter())
+        )
         return resp
-

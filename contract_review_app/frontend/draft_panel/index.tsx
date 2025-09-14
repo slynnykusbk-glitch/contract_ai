@@ -36,6 +36,7 @@ interface AnalyzeEnvelope {
   [k: string]: any;
 }
 interface DraftEnvelope {
+  proposed_text?: string;
   draft_text?: string;
   [k: string]: any;
 }
@@ -149,7 +150,8 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
     setDraft(null);
     try {
       const base = getBackend().replace(/\/+$/, '');
-      const env = await postJSON<AnalyzeEnvelope>(`${base}/api/analyze`, { text, clause_type: clauseType || undefined });
+      const url = `${base}/api/analyze${clauseType ? `?clause_type=${encodeURIComponent(clauseType)}` : ''}`;
+      const env = await postJSON<AnalyzeEnvelope>(url, { text });
       const a = (env?.analysis ?? env) as any;
       a.cid = a.cid || (env as any)?.cid;
       a.clause_type = a.clause_type || clauseType || undefined;
@@ -177,9 +179,10 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
         cid: (analysis as any)?.cid,
         clause: analysis?.text || clauseText,
       });
-      setDraft(env);
+      const text = env?.proposed_text || env?.draft_text || '';
+      setDraft({ ...env, proposed_text: text });
       setStatus('ready');
-      try { await insertIntoWord(env?.draft_text || ''); } catch {}
+      try { await insertIntoWord(text); } catch {}
     } catch (e: any) {
       console.error(e);
       setError(e?.message || 'Draft failed');
@@ -266,9 +269,9 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
           {status === 'loading' ? 'Generating…' : 'Get AI Draft'}
         </button>
 
-        {draft?.draft_text && (
+        {draft?.proposed_text && (
           <button
-            onClick={() => insertIntoWord(draft.draft_text || '')}
+            onClick={() => insertIntoWord(draft.proposed_text || '')}
             style={{ background: '#28a745', color: 'white', padding: '8px 12px', border: 'none', borderRadius: 4 }}
           >
             Insert result into Word
@@ -308,11 +311,11 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
             </div>
           )}
 
-          {draft?.draft_text && (
+          {draft?.proposed_text && (
             <div style={{ marginTop: 20 }}>
               <h3>Suggested Draft</h3>
               <pre style={{ background: '#f5f5f5', padding: '1rem', borderRadius: 4, whiteSpace: 'pre-wrap' }}>
-                {draft.draft_text}
+                {draft.proposed_text}
               </pre>
             </div>
           )}

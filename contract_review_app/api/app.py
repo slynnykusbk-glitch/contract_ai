@@ -46,6 +46,7 @@ from contract_review_app.core.audit import audit
 from contract_review_app.security.secure_store import secure_write
 from contract_review_app.core.trace import TraceStore, compute_cid
 from contract_review_app.config import CH_ENABLED, CH_API_KEY
+from contract_review_app.utils.logging import logger as cai_logger
 
 
 log = logging.getLogger("contract_ai")
@@ -892,6 +893,7 @@ class AnalyzeRequest(BaseModel):
     language: str = "en-GB"
     mode: Optional[str] = None
     risk: Optional[str] = None
+    clause_type: Optional[str] = None
     schema_: Optional[str] = Field(default=None, alias="schema")
 
     @field_validator("text")
@@ -1053,6 +1055,33 @@ app.add_middleware(
         "x-usage-total",
     ],
 )
+
+
+# log request details at INFO level
+@app.middleware("http")
+async def _request_logger(request: Request, call_next):
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        ms = (time.perf_counter() - start) * 1000
+        cai_logger.info(
+            "{method} {path} -> {status} ({ms:.2f} ms)",
+            method=request.method,
+            path=request.url.path,
+            status=500,
+            ms=ms,
+        )
+        raise
+    ms = (time.perf_counter() - start) * 1000
+    cai_logger.info(
+        "{method} {path} -> {status} ({ms:.2f} ms)",
+        method=request.method,
+        path=request.url.path,
+        status=response.status_code,
+        ms=ms,
+    )
+    return response
 
 
 # ---- Trace middleware and store ------------------------------------
@@ -1823,6 +1852,9 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         req = AnalyzeRequest.model_validate(body.get("payload", body))
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=e.errors())
+    clause_type = request.query_params.get("clause_type")
+    if clause_type:
+        req.clause_type = clause_type
     txt = req.text
     debug = request.query_params.get("debug")  # noqa: F841
     risk_param = (

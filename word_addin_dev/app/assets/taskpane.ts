@@ -1189,26 +1189,45 @@ async function bootstrap(info?: Office.OfficeInfo) {
   }
 }
 
+let domReady = false;
+let officeReady = false;
+let officeInfo: Office.OfficeInfo | undefined;
+let bootstrapped = false;
 let bootstrapCalls = 0;
-export function invokeBootstrap(info?: Office.OfficeInfo) {
-  if (wasUnloaded()) {
-    bootstrapCalls = 0;
-  }
-  if (bootstrapCalls > 0) {
+
+function tryBootstrap() {
+  if (bootstrapped) {
     console.log(`bootstrap invoked x${bootstrapCalls+1}`);
     return;
   }
+  if (!(domReady && officeReady)) return;
+  bootstrapped = true;
   bootstrapCalls++;
   console.log('bootstrap invoked x1');
-  void bootstrap(info);
+  void bootstrap(officeInfo);
+}
+
+export function invokeBootstrap(info?: Office.OfficeInfo) {
+  officeInfo = info;
+  domReady = true;
+  officeReady = true;
+  tryBootstrap();
 }
 export function getBootstrapCount() { return bootstrapCalls; }
 
 if (!(globalThis as any).__CAI_TESTING__) {
-  const launch = () => Office.onReady(info => invokeBootstrap(info));
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', launch);
+    document.addEventListener('DOMContentLoaded', () => {
+      domReady = true;
+      tryBootstrap();
+    });
   } else {
-    launch();
+    domReady = true;
+    tryBootstrap();
   }
+  Office.onReady(info => {
+    officeReady = true;
+    officeInfo = info;
+    tryBootstrap();
+  });
 }

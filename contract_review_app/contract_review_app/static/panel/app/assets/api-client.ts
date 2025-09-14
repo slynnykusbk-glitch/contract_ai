@@ -34,6 +34,9 @@ export type AnalyzeFinding = {
   ops?: { start?: number; end?: number; replacement?: string }[];
   scope?: { unit?: string; nth?: number };
   occurrences?: number;
+  norm_quote?: string;
+  clause_url?: string;
+  clause_id?: string;
 };
 
 export type AnalyzeResponse = {

@@ -39,6 +39,23 @@ describe('annotate scheduler', () => {
     expect(ops.length).toBe(0);
   });
 
+  it('includes quote and clause link in comment', () => {
+    const findings: AnalyzeFinding[] = [
+      {
+        start: 0,
+        end: 3,
+        snippet: 'abc',
+        rule_id: 'r1',
+        norm_quote: 'norm',
+        clause_url: 'http://example.com/clause/1',
+        clause_id: '1'
+      }
+    ];
+    const ops = planAnnotations(findings);
+    expect(ops[0].msg).toContain('norm');
+    expect(ops[0].msg).toContain('http://example.com/clause/1');
+  });
+
   it('merges overlapping anchors', async () => {
     const body = {
       context: { sync: async () => {}, trackedObjects: { add: () => {} } },

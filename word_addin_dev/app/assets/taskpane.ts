@@ -208,12 +208,6 @@ function slot(id: string, role: string): HTMLElement {
   return mustGetElementById<HTMLElement>(id);
 }
 
-function mustGetElementById<T extends HTMLElement = HTMLElement>(id: string): T {
-  const el = document.getElementById(id);
-  if (!el) throw new Error(`Element not found: ${id}`);
-  return el as T;
-}
-
 export function getRiskThreshold(): "low" | "medium" | "high" {
   const sel = mustGetElementById<HTMLSelectElement>("selectRiskThreshold");
   const v = sel.value.toLowerCase();
@@ -504,7 +498,6 @@ async function navigateFinding(dir: number) {
   w.__findingIdx = (w.__findingIdx ?? 0) + dir;
   if (w.__findingIdx < 0) w.__findingIdx = arr.length - 1;
   if (w.__findingIdx >= arr.length) w.__findingIdx = 0;
-<<
   const list = mustGetElementById<HTMLElement>("findingsList");
   const items = Array.from(list.querySelectorAll("li"));
   items.forEach((li, i) => {
@@ -599,10 +592,7 @@ export function renderAnalysisSummary(json: any) {
       }
 
       fCont.appendChild(li);
-
-    }
-
-    fCont.appendChild(li);
+    });
   }
   findingsBlock.style.display = visibleFindings.length ? '' : 'none';
 
@@ -1011,6 +1001,19 @@ async function doAnalyze() {
         const filtered = filterByThreshold(all, thr);
         const ops = planAnnotations(filtered);
         (window as any).__findings = ops;
+        (window as any).__findingIdx = 0;
+        const list = document.getElementById("findingsList");
+        if (list) {
+          const frag = document.createDocumentFragment();
+          ops.forEach((op, i) => {
+            const li = document.createElement("li");
+            li.textContent = `${op.rule_id}: ${op.raw}`;
+            if (i === 0) li.classList.add("active");
+            frag.appendChild(li);
+          });
+          list.innerHTML = "";
+          list.appendChild(frag);
+        }
         if (isAddCommentsOnAnalyzeEnabled() && filtered.length) {
           await annotateFindingsIntoWord(filtered);
         }

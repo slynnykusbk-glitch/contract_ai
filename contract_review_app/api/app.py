@@ -892,6 +892,7 @@ class AnalyzeRequest(BaseModel):
     language: str = "en-GB"
     mode: Optional[str] = None
     risk: Optional[str] = None
+    clause_type: Optional[str] = None
     schema_: Optional[str] = Field(default=None, alias="schema")
 
     @field_validator("text")
@@ -1823,6 +1824,9 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         req = AnalyzeRequest.model_validate(body.get("payload", body))
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=e.errors())
+    clause_type = request.query_params.get("clause_type")
+    if clause_type:
+        req.clause_type = clause_type
     txt = req.text
     debug = request.query_params.get("debug")  # noqa: F841
     risk_param = (

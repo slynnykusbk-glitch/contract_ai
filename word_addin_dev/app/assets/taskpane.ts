@@ -5,6 +5,7 @@ export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
 import { safeBodySearch } from "./safe-search.ts";
+import { insertDraftText } from "./insert.ts";
 import {
   getApiKeyFromStore,
   getSchemaFromStore,
@@ -113,6 +114,14 @@ function updateStatusChip(schema?: string | null, cid?: string | null) {
   const c = (cid ?? lastCid) || '—';
   el.textContent = `schema: ${s} | cid: ${c}`;
 }
+
+function updateAnchorBadge() {
+  const el = document.getElementById('anchorsBadge');
+  if (!el) return;
+  const skipped = (globalThis as any).__anchorsSkipped || 0;
+  el.style.display = skipped > 0 ? '' : 'none';
+}
+g.updateAnchorBadge = g.updateAnchorBadge || updateAnchorBadge;
 
 function enableAnalyze() {
   if (analyzeBound) return;
@@ -350,7 +359,7 @@ export async function applyOpsTracked(
       if (target) {
 
         target.insertText(op.replacement, 'Replace');
-        const comment = op.rationale || op.source || 'AI edit';
+        const comment = `${COMMENT_PREFIX} ${op.rationale || op.source || 'AI edit'}`;
         try { target.insertComment(comment); } catch {}
       } else {
         console.warn('[applyOpsTracked] match not found', { snippet, occIdx });
@@ -598,7 +607,7 @@ export async function onSuggestEdit(ev?: Event) {
     if (!clause) { notifyWarn("Select some text or paste into 'Original clause'"); return; }
     try {
       const dst = $(Q.proposed);
-      const { json } = await postJSON('/api/gpt-draft', { cid: lastCid, clause, mode: 'friendly' });
+      const { json } = await postJSON('/api/gpt-draft', { cid: lastCid, clause, mode: currentMode });
       const proposed = (json?.proposed_text ?? json?.text ?? "").toString();
       const w: any = window as any;
       w.__last = w.__last || {};
@@ -610,6 +619,7 @@ export async function onSuggestEdit(ev?: Event) {
         dst.value = proposed;
         dst.dispatchEvent(new Event("input", { bubbles: true }));
         notifyOk("Draft ready");
+        try { await insertDraftText(proposed, currentMode, json?.meta?.rationale); } catch {}
         onDraftReady(proposed);
       } else {
         notifyWarn("Proposed textarea not found");
@@ -844,7 +854,7 @@ async function onAcceptAll() {
       const range = ctx.document.getSelection();
       (ctx.document as any).trackRevisions = true;
       range.insertText(proposed, Word.InsertLocation.replace);
-      try { range.insertComment(link); } catch {}
+      try { range.insertComment(`${COMMENT_PREFIX} ${link}`); } catch {}
       await ctx.sync();
     });
 
@@ -990,6 +1000,7 @@ export function wireUI() {
   if (ab) ab.disabled = true;
   ensureHeaders();
   updateStatusChip();
+  updateAnchorBadge();
 
   if (!s.revisions) { disable('btnApplyTracked', 'revisions'); disable('btnAcceptAll', 'revisions'); disable('btnRejectAll', 'revisions'); }
   if (!s.comments) { disable('btnAcceptAll', s.commentsReason); }

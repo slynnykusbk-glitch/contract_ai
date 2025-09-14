@@ -65,7 +65,7 @@ function isDryRunAnnotateEnabled(): boolean {
   }
 }
 
-export const COMMENT_PREFIX = "AI edit:";
+export const COMMENT_PREFIX = "[CAI]";
 
 function buildLegalComment(f: AnalyzeFinding): string {
   if (!f.rule_id || !f.snippet) {

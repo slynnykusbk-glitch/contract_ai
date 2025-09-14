@@ -65,6 +65,8 @@ function isDryRunAnnotateEnabled(): boolean {
   }
 }
 
+export const COMMENT_PREFIX = "[CAI]";
+
 function buildLegalComment(f: AnalyzeFinding): string {
   if (!f.rule_id || !f.snippet) {
     console.warn("buildLegalComment: missing required fields", f);
@@ -73,7 +75,7 @@ function buildLegalComment(f: AnalyzeFinding): string {
   const parts = [f.rule_id];
   if (f.advice) parts.push(f.advice);
   if (f.law_refs?.length) parts.push(f.law_refs.join("; "));
-  return parts.join("\n");
+  return `${COMMENT_PREFIX} ${parts.join("\n")}`;
 }
 
 export interface AnnotationPlan {

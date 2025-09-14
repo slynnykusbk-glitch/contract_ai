@@ -1,4 +1,5 @@
 import { notifyOk, notifyWarn } from '../../assets/notifier';
+import { insertDraftText } from '../../assets/insert';
 import { ensureHeadersSet as ensureHeadersAuto } from '../../../../contract_review_app/frontend/common/http';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) =>
@@ -16,11 +17,7 @@ export function onDraftReady() {
 export async function onInsertIntoWord() {
   const txt = ($<HTMLTextAreaElement>('#txtDraft')?.value ?? '').trim();
   if (!txt) { notifyWarn('No draft text'); return; }
-  await Word.run(async (ctx) => {
-    const sel = ctx.document.getSelection();
-    sel.insertText(txt, Word.InsertLocation.replace);
-    await ctx.sync();
-  }).catch(e => console.error('Word.run failed', e));
+  await insertDraftText(txt, 'live');
 }
 
 function enableAnalyzeUI(enable: boolean) {

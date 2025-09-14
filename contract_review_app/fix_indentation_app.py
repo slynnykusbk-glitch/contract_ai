@@ -57,7 +57,7 @@ def fix_except_finally(lines: list[str]) -> int:
 
 def fix_try_json_blocks(lines: list[str]) -> int:
     """
-    Для відомих ендпойнтів вирівнює тіло після 'try:' (payload = await req.json()).
+    Для відомих ендпойнтів вирівнює тіло після 'try:' (body = await req.json()).
     Патерни шукаємо у функціях: /api/analyze, /api/gpt-draft, /api/suggest_edits, /api/qa-recheck.
     """
     cnt = 0

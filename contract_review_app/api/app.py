@@ -1800,8 +1800,12 @@ def api_admin_purge(dry: int = 1):
     response_model=AnalyzeResponse,
 )
 def api_analyze(
-    request: Request, req: AnalyzeRequest = Body(..., example={"text": "Hello"})
+    request: Request, body: dict = Body(..., example={"text": "Hello"})
 ):
+    try:
+        req = AnalyzeRequest.model_validate(body.get("payload", body))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=e.errors())
     txt = req.text
     debug = request.query_params.get("debug")  # noqa: F841
     risk_param = (

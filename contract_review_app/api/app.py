@@ -1648,6 +1648,13 @@ async def health() -> JSONResponse:
     return _finalize_json("/health", payload, headers, status_code=status_code)
 
 
+@router.get("/api/supports")
+async def api_supports() -> JSONResponse:
+    payload = {"status": "ok", "supports": {"comments": True, "content_controls": True}}
+    headers = {"x-schema-version": SCHEMA_VERSION}
+    return _finalize_json("/api/supports", payload, headers)
+
+
 @router.get("/api/trace")
 async def list_trace():
     return {"cids": TRACE.list()[-50:]}
@@ -2674,7 +2681,7 @@ async def health_alias():
 
 @app.post("/analyze")
 def analyze_alias(req: AnalyzeRequest, request: Request):
-    return api_analyze(request, req)
+    return api_analyze(request, req.model_dump())
 
 
 @router.post("/suggest_edits")
@@ -2682,6 +2689,11 @@ async def suggest_edits_alias(
     request: Request, response: Response, x_cid: Optional[str] = Header(None)
 ):
     return await api_suggest_edits(request, response, x_cid)
+
+
+@router.post("/api/draft", responses={422: {"model": ProblemDetail}})
+async def draft_alias(request: Request, body: dict = Body(...)):
+    return await gpt_draft(request, body)
 
 
 @app.get("/llm/ping")

@@ -925,10 +925,49 @@ async function doQARecheck() {
   return withBusy(async () => {
     ensureHeaders();
     const text = await getWholeDocText();
+    (window as any).__lastAnalyzed = text;
     const { json } = await postJSON('/api/qa-recheck', { text, rules: {} });
     (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
     const ok = !json?.error;
     if (ok) {
+      const prev: AnnotationPlan[] = (window as any).__findings || [];
+      const prevIdx = (window as any).__findingIdx ?? 0;
+      const key = (f: any) => f?.code || f?.rule_id || `${f?.rule_id}|${f?.raw || f?.snippet || ''}`;
+      const prevKey = prev[prevIdx] ? key(prev[prevIdx]) : null;
+
+      const parsed = parseFindings(json);
+      const thr = getRiskThreshold();
+      const filtered = filterByThreshold(parsed, thr);
+      const ops = planAnnotations(filtered);
+      const uniq = new Map<string, AnnotationPlan>();
+      ops.forEach(op => {
+        const k = key(op);
+        if (k && !uniq.has(k)) uniq.set(k, op);
+      });
+      const deduped = Array.from(uniq.values());
+      (window as any).__findings = deduped;
+
+      let newIdx = 0;
+      if (prevKey) {
+        const found = deduped.findIndex(o => key(o) === prevKey);
+        if (found >= 0) newIdx = found;
+      }
+      if (newIdx >= deduped.length) newIdx = 0;
+      (window as any).__findingIdx = newIdx;
+
+      const list = document.getElementById("findingsList");
+      if (list) {
+        const frag = document.createDocumentFragment();
+        deduped.forEach((op, i) => {
+          const li = document.createElement("li");
+          li.textContent = `${op.rule_id}: ${op.raw}`;
+          if (i === newIdx) li.classList.add("active");
+          frag.appendChild(li);
+        });
+        list.innerHTML = "";
+        list.appendChild(frag);
+      }
+
       notifyOk("QA recheck OK");
     } else {
       const msg = json?.error || json?.message || 'unknown';

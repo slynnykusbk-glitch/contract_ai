@@ -96,6 +96,10 @@ import { getWholeDocText, getSelectionText } from "./office.ts"; // у вас у
 g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 g.getSelectionText = g.getSelectionText || getSelectionText;
 
+// track already processed ranges to avoid reapplying the same ops
+const appliedRangeHashes: Set<string> = g.__appliedRangeHashes || new Set<string>();
+g.__appliedRangeHashes = appliedRangeHashes;
+
 type Mode = "live" | "friendly" | "doctor";
 let currentMode: Mode = 'live';
 
@@ -271,22 +275,21 @@ export async function clearAnnotations() {
         ? body.search(COMMENT_PREFIX, { matchCase: false })
         : null;
       if (cmts && typeof cmts.load === 'function') cmts.load('items');
+      if (found && typeof found.load === 'function') found.load('items');
       await ctx.sync();
-      for (const c of cmts.items) {
-        try {
-          const txt = (c as any).text || "";
-          if (txt.startsWith(COMMENT_PREFIX)) c.delete();
-        } catch {}
+      if (cmts?.items) {
+        for (const c of cmts.items) {
+          try {
+            const txt = (c as any).text || "";
+            if (txt.startsWith(COMMENT_PREFIX)) c.delete();
+          } catch {}
+        }
       }
-      if (found) {
-        found.load('items');
-        await ctx.sync();
-        if (found.items && found.items.length) {
-          for (const r of found.items) {
-            try {
-              r.insertText('', Word.InsertLocation.replace);
-            } catch {}
-          }
+      if (found?.items && found.items.length) {
+        for (const r of found.items) {
+          try {
+            r.insertText('', Word.InsertLocation.replace);
+          } catch {}
         }
       }
       try { body.font.highlightColor = "NoColor" as any; } catch {}
@@ -353,6 +356,9 @@ export async function applyOpsTracked(
     };
 
     for (const op of cleaned) {
+      const hashKey = `${op.start}:${op.end}:${op.replacement}`;
+      if (appliedRangeHashes.has(hashKey)) continue;
+
       const snippet = last.slice(op.start, op.end);
       const occIdx = (() => {
         let idx = -1, n = 0;
@@ -420,6 +426,7 @@ export async function applyOpsTracked(
         }
         const comment = `${COMMENT_PREFIX} ${op.rationale || op.source || 'AI edit'}`;
         try { await safeInsertComment(target, comment); } catch {}
+
       } else {
         console.warn('[applyOpsTracked] match not found', { snippet, occIdx });
       }

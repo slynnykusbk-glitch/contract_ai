@@ -267,22 +267,21 @@ export async function clearAnnotations() {
         ? body.search(COMMENT_PREFIX, { matchCase: false })
         : null;
       if (cmts && typeof cmts.load === 'function') cmts.load('items');
+      if (found && typeof found.load === 'function') found.load('items');
       await ctx.sync();
-      for (const c of cmts.items) {
-        try {
-          const txt = (c as any).text || "";
-          if (txt.startsWith(COMMENT_PREFIX)) c.delete();
-        } catch {}
+      if (cmts?.items) {
+        for (const c of cmts.items) {
+          try {
+            const txt = (c as any).text || "";
+            if (txt.startsWith(COMMENT_PREFIX)) c.delete();
+          } catch {}
+        }
       }
-      if (found) {
-        found.load('items');
-        await ctx.sync();
-        if (found.items && found.items.length) {
-          for (const r of found.items) {
-            try {
-              r.insertText('', Word.InsertLocation.replace);
-            } catch {}
-          }
+      if (found?.items && found.items.length) {
+        for (const r of found.items) {
+          try {
+            r.insertText('', Word.InsertLocation.replace);
+          } catch {}
         }
       }
       try { body.font.highlightColor = "NoColor" as any; } catch {}

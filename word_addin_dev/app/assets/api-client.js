@@ -133,22 +133,31 @@ async function apiHealth() {
 async function analyze(payload = {}) {
   const headers = {
     "Content-Type": "application/json",
-    "X-Api-Key": window.CONTRACT_AI_API_KEY || "local-test-key-123",
     "X-Schema-Version": "1.4"
   };
-  const body = { payload: { schema: "1.4", mode: payload.mode || "live" } };
-  if (payload.text) body.payload.text = payload.text;
-  else if (payload.content) body.payload.text = payload.content;
-  const res = await fetch("/api/analyze", {
+  const key = getApiKeyFromStore();
+  if (key) headers["X-Api-Key"] = key;
+  const body = { payload: { schema: "1.4", mode: (payload == null ? void 0 : payload.mode) ?? "live" } };
+  const text = (payload == null ? void 0 : payload.text) ?? (payload == null ? void 0 : payload.content);
+  if (text) body.payload.text = text;
+  const resp = await fetch("/api/analyze", {
     method: "POST",
     headers,
     body: JSON.stringify(body)
   });
-  if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    throw new Error(`analyze ${res.status}: ${t}`);
+  const json = await resp.json().catch(() => ({}));
+  const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
+  try {
+    applyMetaToBadges(meta);
+  } catch {
   }
-  return res.json();
+  try {
+    const w = window;
+    if (!w.__last) w.__last = {};
+    w.__last.analyze = { status: resp.status, req: { path: "/api/analyze", method: "POST", body }, json };
+  } catch {
+  }
+  return { ok: resp.ok, json, resp, meta };
 }
 async function apiAnalyze(text) {
   return analyze({ text });

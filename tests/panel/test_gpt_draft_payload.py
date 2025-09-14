@@ -6,10 +6,14 @@ client = TestClient(app)
 
 
 def test_gpt_draft_payload_and_response():
-    r_an = client.post("/api/analyze", json={"text": "Ping"})
+    r_an = client.post(
+        "/api/analyze",
+        json={"payload": {"schema": "1.4", "mode": "live", "text": "Ping"}},
+        headers={"x-api-key": "k", "x-schema-version": "1.4"},
+    )
     cid = r_an.headers.get("x-cid")
     payload = {"cid": cid, "clause": "Ping", "mode": "friendly"}
-    r = client.post("/api/gpt-draft", json=payload)
+    r = client.post("/api/gpt-draft", json=payload, headers={"x-api-key": "k", "x-schema-version": "1.4"})
     assert r.status_code == 200
     data = r.json()
     for k in ("cid", "clause", "mode"):

@@ -1,6 +1,6 @@
 import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON, analyze } from "./api-client.ts";
 import domSchema from "../panel_dom.schema.json";
-import { normalizeText, severityRank } from "./dedupe.ts";
+import { normalizeText, severityRank, dedupeFindings } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX, safeInsertComment } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
@@ -622,6 +622,13 @@ function renderResults(res: any) {
   pre.textContent = JSON.stringify(res ?? {}, null, 2);
 }
 
+function mergeQaResults(json: any) {
+  const existing: AnalyzeFinding[] = (window as any).__findings || [];
+  const incoming = parseFindings(json);
+  const merged = dedupeFindings([...existing, ...incoming]);
+  return { ...(json || {}), findings: merged };
+}
+
 function wireResultsToggle() {
   const toggle = slot("toggleRaw", "toggle-raw-json");
   const pre = slot("rawJson", "raw-json");
@@ -1199,6 +1206,24 @@ export function wireUI() {
     });
     annotateBtn.classList.remove("js-disable-while-busy");
     annotateBtn.removeAttribute("disabled");
+
+  document.body.addEventListener('ca.qa', (ev: any) => {
+    const json = ev?.detail;
+    try {
+      if (!json || json.error) {
+        renderResults(json || {});
+        renderAnalysisSummary(json || {});
+        return;
+      }
+      const merged = mergeQaResults(json);
+      renderResults(merged);
+      renderAnalysisSummary(merged);
+    } catch (e) {
+      console.warn('ca.qa handler failed', e);
+      renderResults(json || {});
+      renderAnalysisSummary(json || {});
+    }
+  });
 
   onDraftReady('');
   wireResultsToggle();

@@ -1,4 +1,5 @@
 import { normalizeText } from "./dedupe.ts";
+import { safeBodySearch } from "./safe-search.ts";
 
 interface RangeLike {
   start?: number;
@@ -25,7 +26,7 @@ export async function findAnchors(body: BodyLike, snippetRaw: string): Promise<R
   const opt = { matchCase: false, matchWholeWord: false };
 
   const attempt = (txt: string) => {
-    const res = body.search(txt, opt) as any;
+    const res = safeBodySearch(body, txt, opt) as any;
     if (res && typeof res.load === "function") res.load("items");
     return res;
   };

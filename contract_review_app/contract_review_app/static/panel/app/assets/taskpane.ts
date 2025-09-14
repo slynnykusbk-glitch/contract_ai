@@ -4,6 +4,7 @@ import { normalizeText, severityRank } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
+import { safeBodySearch } from "./safe-search.ts";
 import {
   getApiKeyFromStore,
   getSchemaFromStore,
@@ -89,8 +90,9 @@ g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
 g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
 g.logRichError = g.logRichError || logRichError;
 import { notifyOk, notifyErr, notifyWarn } from "./notifier.ts";
-import { getWholeDocText } from "./office.ts"; // у вас уже есть хелпер; если имя иное — поправьте импорт.
+import { getWholeDocText, getSelectionText } from "./office.ts"; // у вас уже есть хелперы; если имя иное — поправьте импорт.
 g.getWholeDocText = g.getWholeDocText || getWholeDocText;
+g.getSelectionText = g.getSelectionText || getSelectionText;
 
 type Mode = "live" | "friendly" | "doctor";
 let currentMode: Mode = 'live';
@@ -312,7 +314,7 @@ export async function applyOpsTracked(
 
       if (op.context_before || op.context_after) {
         const searchText = `${op.context_before || ''}${snippet}${op.context_after || ''}`;
-        const sFull = body.search(searchText, searchOpts);
+        const sFull = safeBodySearch(body, searchText, searchOpts);
         sFull.load('items');
         await ctx.sync();
         const fullRange = pick(sFull, occIdx);
@@ -325,7 +327,7 @@ export async function applyOpsTracked(
       }
 
       if (!target) {
-        const found = body.search(snippet, searchOpts);
+        const found = safeBodySearch(body, snippet, searchOpts);
         found.load('items');
         await ctx.sync();
         target = pick(found, occIdx);
@@ -338,7 +340,7 @@ export async function applyOpsTracked(
           return null;
         })();
         if (token) {
-          const sTok = body.search(token, searchOpts);
+          const sTok = safeBodySearch(body, token, searchOpts);
           sTok.load('items');
           await ctx.sync();
           target = pick(sTok, 0);
@@ -555,6 +557,18 @@ async function getSelectionContext(chars = 200): Promise<{ before: string; after
 }
 
 
+export async function getClauseText(): Promise<string> {
+  const src = $(Q.original);
+  const direct = (src?.value || '').trim();
+  if (direct) return direct;
+  const text = await (globalThis as any).getSelectionText();
+  if (text && src) {
+    src.value = text;
+    try { src.dispatchEvent(new Event('input', { bubbles: true })); } catch {}
+  }
+  return text.trim();
+}
+
 async function onUseWholeDoc() {
   const src = $(Q.original);
   const raw = await getWholeDocText();
@@ -572,18 +586,19 @@ async function onUseWholeDoc() {
   (window as any).toast?.("Whole doc loaded");
 }
 
-async function onSuggestEdit(ev?: Event) {
+export async function onSuggestEdit(ev?: Event) {
   return withBusy(async () => {
+    let clause: string;
+    try {
+      clause = await getClauseText();
+    } catch (e) {
+      notifyWarn("Select some text or paste into 'Original clause'");
+      return;
+    }
+    if (!clause) { notifyWarn("Select some text or paste into 'Original clause'"); return; }
     try {
       const dst = $(Q.proposed);
-      const base = (window as any).__lastAnalyzed || normalizeText(await getWholeDocText());
-      if (!base) { notifyWarn("No document text"); return; }
-      const arr: AnalyzeFinding[] = (window as any).__findings || [];
-      const idx = (window as any).__findingIdx ?? 0;
-      const finding = arr[idx];
-      if (!finding) { notifyWarn("No active finding"); return; }
-      const clause = finding.snippet || '';
-      const { json } = await postJSON('/api/gpt-draft', { cid: lastCid, clause, mode: 'friendly' });
+      const { json } = await postJSON('/api/gpt-draft', { cid: lastCid, text: clause, mode: 'friendly' });
       const proposed = (json?.proposed_text ?? json?.text ?? "").toString();
       const w: any = window as any;
       w.__last = w.__last || {};
@@ -918,7 +933,23 @@ export function wireUI() {
     if (bt) (bt as HTMLElement).style.display = 'none';
   }
   bindClick("#btnQARecheck", doQARecheck);
-  document.getElementById("btnSuggestEdit")?.addEventListener("click", onSuggestEdit);
+  const draftBtn = document.getElementById('btnSuggestEdit') as HTMLButtonElement | null;
+  const origClause = $(Q.original);
+  const syncDraftBtn = () => { if (draftBtn) draftBtn.disabled = !(origClause && origClause.value.trim()); };
+  origClause?.addEventListener('input', syncDraftBtn);
+  try {
+    Office.context.document.addHandlerAsync?.(Office.EventType.DocumentSelectionChanged, async () => {
+      try {
+        const txt = await (globalThis as any).getSelectionText();
+        if (txt && origClause) {
+          origClause.value = txt;
+          try { origClause.dispatchEvent(new Event('input', { bubbles: true })); } catch {}
+        }
+      } catch {}
+    });
+  } catch {}
+  syncDraftBtn();
+  draftBtn?.addEventListener('click', onSuggestEdit);
   bindClick("#btnApplyTracked", onApplyTracked);
   bindClick("#btnAcceptAll", onAcceptAll);
   bindClick("#btnRejectAll", onRejectAll);

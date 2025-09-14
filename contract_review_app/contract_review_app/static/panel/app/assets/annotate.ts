@@ -1,5 +1,6 @@
 import { AnalyzeFinding } from "./api-client.ts";
 import { dedupeFindings, normalizeText } from "./dedupe.ts";
+import { safeBodySearch } from "./safe-search.ts";
 
 /** Utilities for inserting comments into Word with batching and retries. */
 export interface CommentItem {
@@ -157,7 +158,7 @@ export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number
     for (const op of ops) {
       let target: any = null;
 
-      const sRaw = body.search(op.raw, searchOpts);
+      const sRaw = safeBodySearch(body, op.raw, searchOpts);
       sRaw.load("items");
       await ctx.sync();
       target = pick(sRaw, op.occIdx);
@@ -165,7 +166,7 @@ export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number
       if (!target) {
         const fb = op.normalized_fallback && op.normalized_fallback !== op.norm ? op.normalized_fallback : op.norm;
         if (fb && fb.trim()) {
-          const sNorm = body.search(fb, searchOpts);
+          const sNorm = safeBodySearch(body, fb, searchOpts);
           sNorm.load("items");
           await ctx.sync();
           target = pick(sNorm, op.occIdx);
@@ -179,7 +180,7 @@ export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number
           return null;
         })();
         if (token) {
-          const sTok = body.search(token, searchOpts);
+          const sTok = safeBodySearch(body, token, searchOpts);
           sTok.load("items");
           await ctx.sync();
           target = pick(sTok, 0);

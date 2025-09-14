@@ -1069,7 +1069,7 @@ async function doQARecheck() {
     const text = await getWholeDocText();
     (window as any).__lastAnalyzed = text;
     if (!lastCid) { notifyWarn('No document id'); return; }
-    const { json } = await apiQaRecheck(lastCid);
+    const { json } = await apiQaRecheck(lastCid, text);
       mustGetElementById<HTMLElement>("results").dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
     const ok = !json?.error;
     if (ok) {

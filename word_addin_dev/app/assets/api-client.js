@@ -301,9 +301,9 @@ export async function apiSummary(cid) {
 export async function apiSummaryGet() {
     return req('/api/summary', { method: 'GET', key: 'summary' });
 }
-export async function apiQaRecheck(text, rules = {}) {
+export async function apiQaRecheck(document_id, text, rules = {}) {
     const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
-    const { resp, json } = await postJSON('/api/qa-recheck', { text, rules: dict });
+    const { resp, json } = await postJSON('/api/qa-recheck', { document_id, text, rules: dict });
     const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
     try {
         applyMetaToBadges(meta);

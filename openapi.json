@@ -154,7 +154,9 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AnalyzeRequest"
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
               },
               "example": {
                 "text": "Hello"
@@ -3535,6 +3537,18 @@
         "summary": "Gpt Draft",
         "description": "LLM draft endpoint with mock-friendly minimal payload support.",
         "operationId": "gpt_draft_api_gpt_draft_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -4552,385 +4566,6 @@
             "content": {
               "application/json": {
                 "schema": {}
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too Many Requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "504": {
-            "description": "Gateway Timeout",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/corpus/search": {
-      "post": {
-        "summary": "Corpus Search",
-        "operationId": "corpus_search_api_corpus_search_post",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1,
-              "title": "Page"
-            }
-          },
-          {
-            "name": "page_size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 50,
-              "minimum": 1,
-              "default": 10,
-              "title": "Page Size"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CorpusSearchRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CorpusSearchResponse"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "description": "Bad Request",
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "429": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "description": "Too Many Requests",
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "description": "Internal Server Error",
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          },
-          "504": {
-            "description": "Gateway Timeout",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetail"
-                }
-              }
-            },
-            "headers": {
-              "x-schema-version": {
-                "$ref": "#/components/headers/XSchemaVersion"
-              },
-              "x-latency-ms": {
-                "$ref": "#/components/headers/XLatencyMs"
-              },
-              "x-cid": {
-                "$ref": "#/components/headers/XCid"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/explain": {
-      "post": {
-        "summary": "Api Explain",
-        "operationId": "api_explain_api_explain_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ExplainRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExplainResponse"
-                },
-                "examples": {
-                  "default": {
-                    "summary": "Example",
-                    "value": {}
-                  }
-                }
               }
             },
             "headers": {
@@ -6567,6 +6202,18 @@
             ],
             "default": null,
             "title": "Risk"
+          },
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Schema"
           }
         },
         "required": [
@@ -6594,114 +6241,6 @@
         ],
         "title": "AnalyzeResponse",
         "type": "object"
-      },
-      "Citation": {
-        "properties": {
-          "system": {
-            "type": "string",
-            "enum": [
-              "UK",
-              "UA",
-              "EU",
-              "INT"
-            ],
-            "title": "System",
-            "default": "UK"
-          },
-          "instrument": {
-            "type": "string",
-            "title": "Instrument"
-          },
-          "section": {
-            "type": "string",
-            "title": "Section"
-          },
-          "url": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Url"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          },
-          "link": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Link"
-          },
-          "score": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Score"
-          },
-          "evidence": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Evidence"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "evidence_text": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Evidence Text"
-          }
-        },
-        "type": "object",
-        "required": [
-          "instrument",
-          "section"
-        ],
-        "title": "Citation",
-        "description": "Legal citation item; url is validated if present."
       },
       "CitationInput": {
         "additionalProperties": false,
@@ -6792,106 +6331,6 @@
           "citations"
         ],
         "title": "CitationResolveResponse"
-      },
-      "CorpusSearchRequest": {
-        "properties": {
-          "q": {
-            "type": "string",
-            "title": "Q"
-          },
-          "k": {
-            "type": "integer",
-            "title": "K",
-            "default": 10
-          },
-          "method": {
-            "type": "string",
-            "enum": [
-              "hybrid",
-              "bm25",
-              "vector"
-            ],
-            "title": "Method",
-            "default": "hybrid"
-          },
-          "jurisdiction": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Jurisdiction"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          },
-          "act_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Act Code"
-          },
-          "section_code": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Section Code"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "q"
-        ],
-        "title": "CorpusSearchRequest"
-      },
-      "CorpusSearchResponse": {
-        "properties": {
-          "hits": {
-            "items": {
-              "$ref": "#/components/schemas/SearchHit"
-            },
-            "type": "array",
-            "title": "Hits"
-          },
-          "paging": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Paging"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "hits"
-        ],
-        "title": "CorpusSearchResponse"
       },
       "Coverage": {
         "properties": {
@@ -6989,186 +6428,6 @@
         ],
         "title": "DraftOut"
       },
-      "Evidence": {
-        "properties": {
-          "text": {
-            "type": "string",
-            "title": "Text"
-          },
-          "source": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source"
-          },
-          "link": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1,
-                "format": "uri"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Link"
-          }
-        },
-        "type": "object",
-        "required": [
-          "text"
-        ],
-        "title": "Evidence",
-        "description": "Supporting evidence snippet for a citation."
-      },
-      "ExplainRequest": {
-        "properties": {
-          "finding": {
-            "$ref": "#/components/schemas/Finding"
-          },
-          "text": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Text"
-          },
-          "citations": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/Citation"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Citations"
-          }
-        },
-        "type": "object",
-        "required": [
-          "finding"
-        ],
-        "title": "ExplainRequest",
-        "description": "Request DTO for /api/explain."
-      },
-      "ExplainResponse": {
-        "properties": {
-          "reasoning": {
-            "type": "string",
-            "title": "Reasoning"
-          },
-          "citations": {
-            "items": {
-              "$ref": "#/components/schemas/Citation"
-            },
-            "type": "array",
-            "title": "Citations"
-          },
-          "evidence": {
-            "items": {
-              "$ref": "#/components/schemas/Evidence"
-            },
-            "type": "array",
-            "title": "Evidence"
-          },
-          "verification_status": {
-            "type": "string",
-            "enum": [
-              "ok",
-              "missing_citations",
-              "invalid"
-            ],
-            "title": "Verification Status",
-            "default": "ok"
-          },
-          "trace": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Trace"
-          },
-          "x_schema_version": {
-            "type": "string",
-            "title": "X Schema Version",
-            "default": "1.4"
-          }
-        },
-        "type": "object",
-        "required": [
-          "reasoning"
-        ],
-        "title": "ExplainResponse",
-        "description": "Response DTO for /api/explain."
-      },
-      "Finding": {
-        "$defs": {
-          "Span": {
-            "additionalProperties": false,
-            "properties": {
-              "start": {
-                "minimum": 0,
-                "title": "Start",
-                "type": "integer"
-              },
-              "end": {
-                "minimum": 0,
-                "title": "End",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "start",
-              "end"
-            ],
-            "title": "Span",
-            "type": "object"
-          }
-        },
-        "additionalProperties": false,
-        "properties": {
-          "span": {
-            "$ref": "#/components/schemas/Span"
-          },
-          "text": {
-            "title": "Text",
-            "type": "string"
-          },
-          "lang": {
-            "enum": [
-              "latin",
-              "cyrillic"
-            ],
-            "title": "Lang",
-            "type": "string"
-          }
-        },
-        "required": [
-          "span",
-          "text",
-          "lang"
-        ],
-        "title": "Finding",
-        "type": "object"
-      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -7222,34 +6481,6 @@
           "metrics"
         ],
         "title": "MetricsResponse"
-      },
-      "Paging": {
-        "properties": {
-          "page": {
-            "type": "integer",
-            "title": "Page"
-          },
-          "page_size": {
-            "type": "integer",
-            "title": "Page Size"
-          },
-          "total": {
-            "type": "integer",
-            "title": "Total"
-          },
-          "pages": {
-            "type": "integer",
-            "title": "Pages"
-          }
-        },
-        "type": "object",
-        "required": [
-          "page",
-          "page_size",
-          "total",
-          "pages"
-        ],
-        "title": "Paging"
       },
       "Perf": {
         "properties": {
@@ -7550,6 +6781,245 @@
         ],
         "title": "RuleMetric"
       },
+      "SummaryIn": {
+        "properties": {
+          "cid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cid"
+          },
+          "hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SummaryIn",
+        "description": "Input model for ``/api/summary``.\n\nExactly one of ``cid`` or ``hash`` must be provided."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "_CompanySearchIn": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Query"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "default": 10
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "_CompanySearchIn"
+      },
+      "DraftRequest": {
+        "additionalProperties": false,
+        "description": "Input model for ``/api/gpt-draft``.",
+        "properties": {
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mode"
+          },
+          "cid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cid"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "DraftRequest",
+        "type": "object"
+      },
+      "Finding": {
+        "$defs": {
+          "Span": {
+            "additionalProperties": false,
+            "properties": {
+              "start": {
+                "minimum": 0,
+                "title": "Start",
+                "type": "integer"
+              },
+              "end": {
+                "minimum": 0,
+                "title": "End",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "title": "Span",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "span": {
+            "$ref": "#/components/schemas/Span"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "lang": {
+            "enum": [
+              "latin",
+              "cyrillic"
+            ],
+            "title": "Lang",
+            "type": "string"
+          }
+        },
+        "required": [
+          "span",
+          "text",
+          "lang"
+        ],
+        "title": "Finding",
+        "type": "object"
+      },
+      "Span": {
+        "additionalProperties": false,
+        "properties": {
+          "start": {
+            "minimum": 0,
+            "title": "Start",
+            "type": "integer"
+          },
+          "end": {
+            "minimum": 0,
+            "title": "End",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "Span",
+        "type": "object"
+      },
+      "Segment": {
+        "$defs": {
+          "Span": {
+            "additionalProperties": false,
+            "properties": {
+              "start": {
+                "minimum": 0,
+                "title": "Start",
+                "type": "integer"
+              },
+              "end": {
+                "minimum": 0,
+                "title": "End",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "title": "Span",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "properties": {
+          "span": {
+            "$ref": "#/components/schemas/Span"
+          },
+          "lang": {
+            "enum": [
+              "latin",
+              "cyrillic"
+            ],
+            "title": "Lang",
+            "type": "string"
+          }
+        },
+        "required": [
+          "span",
+          "lang"
+        ],
+        "title": "Segment",
+        "type": "object"
+      },
       "SearchHit": {
         "$defs": {
           "Span": {
@@ -7679,253 +7149,6 @@
           "span"
         ],
         "title": "SearchHit",
-        "type": "object"
-      },
-      "Span-Input": {
-        "properties": {
-          "start": {
-            "type": "integer",
-            "title": "Start",
-            "default": 0
-          },
-          "length": {
-            "type": "integer",
-            "title": "Length",
-            "default": 0
-          },
-          "page": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Page"
-          },
-          "block": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Block"
-          }
-        },
-        "type": "object",
-        "title": "Span",
-        "description": "Text location anchor for UI annotations and cross-checks (absolute coords)."
-      },
-      "Span-Output": {
-        "properties": {
-          "start": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Start"
-          },
-          "end": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "End"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "start",
-          "end"
-        ],
-        "title": "Span"
-      },
-      "SummaryIn": {
-        "properties": {
-          "cid": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cid"
-          },
-          "hash": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hash"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "SummaryIn",
-        "description": "Input model for ``/api/summary``.\n\nExactly one of ``cid`` or ``hash`` must be provided."
-      },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "type": "array",
-            "title": "Location"
-          },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          }
-        },
-        "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError"
-      },
-      "_CompanySearchIn": {
-        "properties": {
-          "query": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Query"
-          },
-          "limit": {
-            "type": "integer",
-            "title": "Limit",
-            "default": 10
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "query"
-        ],
-        "title": "_CompanySearchIn"
-      },
-      "GptDraftIn": {
-        "additionalProperties": false,
-        "description": "Input model for ``/api/gpt-draft``.",
-        "properties": {
-          "cid": {
-            "title": "Cid",
-            "type": "string"
-          },
-          "clause": {
-            "title": "Clause",
-            "type": "string"
-          },
-          "mode": {
-            "anyOf": [
-              {
-                "enum": [
-                  "friendly",
-                  "neutral",
-                  "medium",
-                  "strict"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Mode"
-          }
-        },
-        "required": [
-          "cid",
-          "clause"
-        ],
-        "title": "GptDraftIn",
-        "type": "object"
-      },
-      "Span": {
-        "additionalProperties": false,
-        "properties": {
-          "start": {
-            "minimum": 0,
-            "title": "Start",
-            "type": "integer"
-          },
-          "end": {
-            "minimum": 0,
-            "title": "End",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "start",
-          "end"
-        ],
-        "title": "Span",
-        "type": "object"
-      },
-      "Segment": {
-        "$defs": {
-          "Span": {
-            "additionalProperties": false,
-            "properties": {
-              "start": {
-                "minimum": 0,
-                "title": "Start",
-                "type": "integer"
-              },
-              "end": {
-                "minimum": 0,
-                "title": "End",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "start",
-              "end"
-            ],
-            "title": "Span",
-            "type": "object"
-          }
-        },
-        "additionalProperties": false,
-        "properties": {
-          "span": {
-            "$ref": "#/components/schemas/Span"
-          },
-          "lang": {
-            "enum": [
-              "latin",
-              "cyrillic"
-            ],
-            "title": "Lang",
-            "type": "string"
-          }
-        },
-        "required": [
-          "span",
-          "lang"
-        ],
-        "title": "Segment",
         "type": "object"
       }
     },

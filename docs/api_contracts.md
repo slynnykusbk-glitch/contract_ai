@@ -24,3 +24,30 @@ Content-Type: application/json
   "schema_version": "1.4"
 }
 ```
+
+---
+
+# API contracts: /api/gpt-draft
+
+Frontend sends a flat JSON body. Aliases `text` and `clause` are accepted.
+
+## Request
+
+```http
+POST /api/gpt-draft
+Content-Type: application/json
+
+{
+  "text": "Hello"
+}
+```
+
+## Response
+
+```json
+{
+  "status": "ok",
+  "proposed_text": "...",
+  "schema_version": "1.4"
+}
+```

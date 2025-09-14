@@ -116,12 +116,29 @@ class AnalyzeResponse(_DTOBase):
     schema_version: str | None = None
 
 
-class GptDraftIn(_DTOBase):
+class DraftRequest(_DTOBase):
     """Input model for ``/api/gpt-draft``."""
 
-    cid: str
-    clause: str
-    mode: Literal["friendly", "neutral", "medium", "strict"] | None = None
+    text: str = Field(
+        min_length=1, validation_alias=AliasChoices("text", "clause", "body")
+    )
+    mode: str | None = None
+    cid: str | None = None
+
+    @field_validator("mode", "cid", mode="before")
+    @classmethod
+    def _blank_to_none(cls, v):
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
+    @model_validator(mode="after")
+    def _strip_text(self):
+        txt = (self.text or "").strip()
+        if not txt:
+            raise ValueError("text is empty")
+        self.text = txt
+        return self
 
 
 class QARecheckIn(_DTOBase):

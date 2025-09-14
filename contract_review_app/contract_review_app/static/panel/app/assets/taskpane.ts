@@ -1,11 +1,11 @@
 import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON, analyze } from "./api-client.ts";
 import domSchema from "../panel_dom.schema.json";
-import { normalizeText, severityRank } from "./dedupe.ts";
+import { normalizeText, severityRank, dedupeFindings } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX, safeInsertComment } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
-import { safeBodySearch } from "./safeBodySearch.ts";  // ← это оставить
-import { insertDraftText } from "./insert.ts";         // ← это оставить
+import { safeBodySearch } from "./safeBodySearch.ts";
+import { insertDraftText } from "./insert.ts";
 import {
   getApiKeyFromStore,
   getSchemaFromStore,
@@ -90,7 +90,7 @@ g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
 g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
 g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
 g.logRichError = g.logRichError || logRichError;
-import { notifyOk, notifyErr, notifyWarn } from "./notifier.ts";
+import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText, getSelectionText } from "./office.ts"; // у вас уже есть хелперы; если имя иное — поправьте импорт.
 g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 g.getSelectionText = g.getSelectionText || getSelectionText;
@@ -248,7 +248,10 @@ function buildLegalComment(f: AnalyzeFinding): string {
   const ct = f.clause_type ? ` (${f.clause_type})` : "";
   const advice = f.advice || "—";
   const law = Array.isArray(f.law_refs) && f.law_refs.length ? f.law_refs.join('; ') : "—";
-  const conflict = Array.isArray(f.conflict_with) && f.conflict_with.length ? f.conflict_with.join('; ') : "—";
+  const conflicts = Array.isArray((f as any).links)
+    ? (f as any).links.filter((l: any) => l?.type === 'conflict' && l?.targetFindingId).map((l: any) => l.targetFindingId)
+    : Array.isArray((f as any).conflict_with) ? (f as any).conflict_with : [];
+  const conflict = conflicts.length ? conflicts.join('; ') : "—";
   const fix = f.suggestion?.text || '—';
   const citations = Array.isArray(f.citations) && f.citations.length ? `\nCitations: ${f.citations.join('; ')}` : '';
   return `[${sev}] ${rid}${ct}\nReason: ${advice}\nLaw: ${law}\nConflict: ${conflict}${citations}\nSuggested fix: ${fix}`;
@@ -267,22 +270,21 @@ export async function clearAnnotations() {
         ? body.search(COMMENT_PREFIX, { matchCase: false })
         : null;
       if (cmts && typeof cmts.load === 'function') cmts.load('items');
+      if (found && typeof found.load === 'function') found.load('items');
       await ctx.sync();
-      for (const c of cmts.items) {
-        try {
-          const txt = (c as any).text || "";
-          if (txt.startsWith(COMMENT_PREFIX)) c.delete();
-        } catch {}
+      if (cmts?.items) {
+        for (const c of cmts.items) {
+          try {
+            const txt = (c as any).text || "";
+            if (txt.startsWith(COMMENT_PREFIX)) c.delete();
+          } catch {}
+        }
       }
-      if (found) {
-        found.load('items');
-        await ctx.sync();
-        if (found.items && found.items.length) {
-          for (const r of found.items) {
-            try {
-              r.insertText('', Word.InsertLocation.replace);
-            } catch {}
-          }
+      if (found?.items && found.items.length) {
+        for (const r of found.items) {
+          try {
+            r.insertText('', Word.InsertLocation.replace);
+          } catch {}
         }
       }
       try { body.font.highlightColor = "NoColor" as any; } catch {}
@@ -340,7 +342,10 @@ export async function applyOpsTracked(
         const sFull = await safeBodySearch(body, searchText, searchOpts);
         const fullRange = pick(sFull, occIdx);
         if (fullRange) {
-          const inner: any = fullRange.search(snippet, searchOpts);
+          // Clamp snippet before searching to avoid Word's
+          // SearchStringInvalidOrTooLong errors (limit ~255 chars).
+          const needle = snippet.slice(0, 240);
+          const inner: any = fullRange.search(needle, searchOpts);
           if (inner && typeof inner.load === 'function') inner.load('items');
           await ctx.sync();
           target = pick(inner, 0);
@@ -380,10 +385,27 @@ export async function applyOpsTracked(
 
 g.applyOpsTracked = g.applyOpsTracked || applyOpsTracked;
 
+function clearHighlightInCtx(ctx: Word.RequestContext, w: any) {
+  if (w.__highlight) {
+    try { w.__highlight.font.highlightColor = 'NoColor' as any; } catch {}
+    ctx.trackedObjects.remove(w.__highlight);
+    w.__highlight = null;
+  }
+}
 
+export async function clearHighlight() {
+  const w: any = window as any;
+  if (!w.__highlight) return;
+  await Word.run(async ctx => {
+    clearHighlightInCtx(ctx, w);
+    await ctx.sync();
+  });
+}
 
 async function highlightFinding(op: AnnotationPlan) {
   await Word.run(async ctx => {
+    const w: any = window as any;
+    clearHighlightInCtx(ctx, w);
     const body = ctx.document.body as any;
     let anchors = await findAnchors(body, op.raw);
     let target: any = anchors[Math.min(op.occIdx, anchors.length - 1)] || null;
@@ -392,7 +414,10 @@ async function highlightFinding(op: AnnotationPlan) {
       target = anchors[Math.min(op.occIdx, anchors.length - 1)] || null;
     }
     if (target) {
+      w.__highlight = target;
+      ctx.trackedObjects.add(target);
       try { target.select(); } catch {}
+      try { target.font.highlightColor = '#ffff00' as any; } catch {}
     }
     await ctx.sync();
   });
@@ -417,10 +442,29 @@ async function navigateFinding(dir: number) {
   try { await highlightFinding(arr[w.__findingIdx]); } catch {}
 }
 
+function jumpToFinding(code: string) {
+  const arr: AnnotationPlan[] = (window as any).__findings || [];
+  if (!arr.length) return;
+  const idx = arr.findIndex(o => o.rule_id === code || (o as any).code === code);
+  if (idx < 0) return;
+  (window as any).__findingIdx = idx;
+  const list = document.getElementById("findingsList");
+  if (list) {
+    const items = Array.from(list.querySelectorAll("li"));
+    items.forEach((li, i) => {
+      (li as HTMLElement).classList.toggle("active", i === idx);
+    });
+    const act = items[idx] as HTMLElement | undefined;
+    if (act) act.scrollIntoView({ block: "nearest" });
+  }
+  try { highlightFinding(arr[idx]); } catch {}
+}
+
 function onPrevIssue() { navigateFinding(-1); }
 function onNextIssue() { navigateFinding(1); }
 
 export function renderAnalysisSummary(json: any) {
+  clearHighlight().catch(() => {});
   // аккуратно вытаскиваем ключевые поля
   const clauseType =
     json?.summary?.clause_type ||
@@ -449,14 +493,34 @@ export function renderAnalysisSummary(json: any) {
   const fCont = document.getElementById("findingsList");
   if (fCont) {
     fCont.innerHTML = "";
-    for (const f of findings) {
+
+    for (const f of visibleFindings) {
       const li = document.createElement("li");
       const title =
         f?.title || f?.finding?.title || f?.rule_id || "Issue";
       const snippet = f?.snippet || f?.evidence?.text || "";
       li.textContent = snippet ? `${title}: ${snippet}` : String(title);
+
+
+      const links = Array.isArray((f as any).links)
+        ? (f as any).links.filter((l: any) => l?.type === 'conflict' && l?.targetFindingId)
+        : [];
+      if (links.length) {
+        const div = document.createElement('div');
+        div.textContent = `Conflicts: ${links.length} `;
+        links.forEach((lnk: any, idx: number) => {
+          const a = document.createElement('a');
+          a.href = '#';
+          a.textContent = 'Jump to';
+          a.addEventListener('click', ev => { ev.preventDefault(); jumpToFinding(lnk.targetFindingId); });
+          div.appendChild(a);
+          if (idx < links.length - 1) div.append(' ');
+        });
+        li.appendChild(div);
+      }
+
       fCont.appendChild(li);
-    }
+    });
   }
 
   // Заполняем рекомендации
@@ -510,6 +574,13 @@ function renderResults(res: any) {
   if (pre) pre.textContent = JSON.stringify(res ?? {}, null, 2);
 }
 
+function mergeQaResults(json: any) {
+  const existing: AnalyzeFinding[] = (window as any).__findings || [];
+  const incoming = parseFindings(json);
+  const merged = dedupeFindings([...existing, ...incoming]);
+  return { ...(json || {}), findings: merged };
+}
+
 function wireResultsToggle() {
   const toggle = slot("toggleRaw", "toggle-raw-json");
   const pre = slot("rawJson", "raw-json") as HTMLElement | null;
@@ -529,6 +600,31 @@ function setConnBadge(ok: boolean | null) {
 function setOfficeBadge(txt: string | null) {
   const el = document.getElementById("officeBadge");
   if (el) el.textContent = `Office: ${txt ?? "—"}`;
+}
+
+async function onFixNumbering() {
+  await Word.run(async ctx => {
+    const styles = ["Heading 1", "Heading 2", "Heading 3"];
+    for (let lvl = 0; lvl < styles.length; lvl++) {
+      const paras = ctx.document.body.paragraphs.getByStyle(styles[lvl]);
+      paras.load("items");
+      await ctx.sync();
+      for (const p of paras.items) {
+        try {
+          p.listFormat.removeNumbers();
+          p.listFormat.applyNumberedDefault();
+          if (p.listItem) p.listItem.level = lvl;
+          const indent = 36 * (lvl + 1);
+          p.paragraphFormat.leftIndent = indent;
+          p.paragraphFormat.firstLineIndent = -36;
+          p.paragraphFormat.lineSpacing = 240;
+        } catch (e) {
+          console.warn('fixNumbering', e);
+        }
+      }
+    }
+    await ctx.sync();
+  }).catch((e: any) => logRichError(e, 'fixNumbering'));
 }
 
 function $(sel: string): HTMLTextAreaElement | null {
@@ -780,6 +876,7 @@ export async function onAnalyze() {
 
 async function doAnalyze() {
   return withBusy(async () => {
+    await clearHighlight();
     const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
     const busy = document.getElementById("busyBar") as HTMLElement | null;
     if (btn) btn.disabled = true;
@@ -809,15 +906,6 @@ async function doAnalyze() {
         const filtered = filterByThreshold(all, thr);
         const ops = planAnnotations(filtered);
         (window as any).__findings = ops;
-        const list = document.getElementById("findingsList");
-        if (list) {
-          list.innerHTML = "";
-          ops.forEach(o => {
-            const li = document.createElement("li");
-            li.textContent = o.rule_id || o.raw.slice(0, 64);
-            list.appendChild(li);
-          });
-        }
         if (isAddCommentsOnAnalyzeEnabled() && filtered.length) {
           await annotateFindingsIntoWord(filtered);
         }
@@ -859,12 +947,52 @@ async function doAnalyze() {
 
 async function doQARecheck() {
   return withBusy(async () => {
+    await clearHighlight();
     ensureHeaders();
     const text = await getWholeDocText();
+    (window as any).__lastAnalyzed = text;
     const { json } = await postJSON('/api/qa-recheck', { text, rules: {} });
     (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
     const ok = !json?.error;
     if (ok) {
+      const prev: AnnotationPlan[] = (window as any).__findings || [];
+      const prevIdx = (window as any).__findingIdx ?? 0;
+      const key = (f: any) => f?.code || f?.rule_id || `${f?.rule_id}|${f?.raw || f?.snippet || ''}`;
+      const prevKey = prev[prevIdx] ? key(prev[prevIdx]) : null;
+
+      const parsed = parseFindings(json);
+      const thr = getRiskThreshold();
+      const filtered = filterByThreshold(parsed, thr);
+      const ops = planAnnotations(filtered);
+      const uniq = new Map<string, AnnotationPlan>();
+      ops.forEach(op => {
+        const k = key(op);
+        if (k && !uniq.has(k)) uniq.set(k, op);
+      });
+      const deduped = Array.from(uniq.values());
+      (window as any).__findings = deduped;
+
+      let newIdx = 0;
+      if (prevKey) {
+        const found = deduped.findIndex(o => key(o) === prevKey);
+        if (found >= 0) newIdx = found;
+      }
+      if (newIdx >= deduped.length) newIdx = 0;
+      (window as any).__findingIdx = newIdx;
+
+      const list = document.getElementById("findingsList");
+      if (list) {
+        const frag = document.createDocumentFragment();
+        deduped.forEach((op, i) => {
+          const li = document.createElement("li");
+          li.textContent = `${op.rule_id}: ${op.raw}`;
+          if (i === newIdx) li.classList.add("active");
+          frag.appendChild(li);
+        });
+        list.innerHTML = "";
+        list.appendChild(frag);
+      }
+
       notifyOk("QA recheck OK");
     } else {
       const msg = json?.error || json?.message || 'unknown';
@@ -1013,6 +1141,7 @@ export function wireUI() {
   bindClick("#btnUseWholeDoc", onUseWholeDoc);
   const wholeBtn = document.getElementById('btnUseWholeDoc') as HTMLButtonElement | null;
   if (wholeBtn) wholeBtn.disabled = false;
+  bindClick("#btnFixNumbering", onFixNumbering);
   if (ENV_MODE === 'dev') bindClick("#btnTest", doHealth);
   else {
     const bt = document.getElementById('btnTest');
@@ -1079,9 +1208,27 @@ export function wireUI() {
     annotateBtn.removeAttribute("disabled");
   }
 
+  document.body.addEventListener('ca.qa', (ev: any) => {
+    const json = ev?.detail;
+    try {
+      if (!json || json.error) {
+        renderResults(json || {});
+        renderAnalysisSummary(json || {});
+        return;
+      }
+      const merged = mergeQaResults(json);
+      renderResults(merged);
+      renderAnalysisSummary(merged);
+    } catch (e) {
+      console.warn('ca.qa handler failed', e);
+      renderResults(json || {});
+      renderAnalysisSummary(json || {});
+    }
+  });
+
   onDraftReady('');
   wireResultsToggle();
-  console.log("Panel UI wired");
+  console.log("Panel UI wired [OK]");
   const ab = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
   if (ab) ab.disabled = true;
   ensureHeaders();

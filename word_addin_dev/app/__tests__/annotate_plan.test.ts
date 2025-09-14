@@ -25,6 +25,15 @@ describe('annotate scheduler', () => {
     expect(map['r2']).toBe(1);
   });
 
+  it('deduplicates identical findings', () => {
+    const findings: AnalyzeFinding[] = [
+      { start: 0, end: 3, snippet: 'abc', rule_id: 'r1' },
+      { start: 0, end: 3, snippet: 'abc', rule_id: 'r1' },
+    ];
+    const ops = planAnnotations(findings);
+    expect(ops.length).toBe(1);
+  });
+
   it('returns empty array for invalid findings', () => {
     const findings: AnalyzeFinding[] = [
       { start: undefined, end: undefined, snippet: '', rule_id: 'r1' },
@@ -37,6 +46,23 @@ describe('annotate scheduler', () => {
     // @ts-expect-error deliberately passing invalid type
     const ops = planAnnotations('nope');
     expect(ops.length).toBe(0);
+  });
+
+  it('includes quote and clause link in comment', () => {
+    const findings: AnalyzeFinding[] = [
+      {
+        start: 0,
+        end: 3,
+        snippet: 'abc',
+        rule_id: 'r1',
+        norm_quote: 'norm',
+        clause_url: 'http://example.com/clause/1',
+        clause_id: '1'
+      }
+    ];
+    const ops = planAnnotations(findings);
+    expect(ops[0].msg).toContain('norm');
+    expect(ops[0].msg).toContain('http://example.com/clause/1');
   });
 
   it('merges overlapping anchors', async () => {

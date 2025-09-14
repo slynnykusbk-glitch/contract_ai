@@ -185,6 +185,7 @@ class AnalyzeIn(AppBaseModel):
     document_name: Optional[str] = None
     text: str
     language: str = "en-GB"
+    clause_type: Optional[str] = None
 
     # segment context (optional; used by pipeline/template selection)
     jurisdiction: Optional[str] = None

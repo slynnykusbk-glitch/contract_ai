@@ -41,6 +41,7 @@ class AnalyzeRequest(_DTOBase):
     language: str = "en-GB"
     mode: str | None = None
     risk: str | None = None
+    clause_type: str | None = None
     schema_: str | None = Field(None, alias="schema")
 
     @field_validator("language", mode="before")
@@ -51,7 +52,7 @@ class AnalyzeRequest(_DTOBase):
             return "en-GB"
         return v
 
-    @field_validator("mode", "risk", mode="before")
+    @field_validator("mode", "risk", "clause_type", mode="before")
     @classmethod
     def _blank_to_none(cls, v: str | None):
         if isinstance(v, str) and not v.strip():
@@ -124,6 +125,7 @@ class DraftRequest(_DTOBase):
     )
     mode: str | None = None
     cid: str | None = None
+    schema_: str | None = Field(None, alias="schema")
 
     @field_validator("mode", "cid", mode="before")
     @classmethod

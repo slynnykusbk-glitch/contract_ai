@@ -1208,7 +1208,7 @@ export function wireUI() {
     annotateBtn.removeAttribute("disabled");
   }
 
-  document.body.addEventListener('ca.qa', (ev: any) => {
+  (document.getElementById('results') || document.body).addEventListener('ca.qa', (ev: any) => {
     const json = ev?.detail;
     try {
       if (!json || json.error) {

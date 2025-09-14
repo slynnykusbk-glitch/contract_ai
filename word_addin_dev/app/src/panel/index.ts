@@ -1,6 +1,15 @@
 import { notifyOk, notifyWarn } from '../../assets/notifier';
 import { insertDraftText } from '../../assets/insert';
 import { ensureHeadersSet as ensureHeadersAuto } from '../../../../contract_review_app/frontend/common/http';
+export {
+  PanelState,
+  addCommentAtRange,
+  prevFinding,
+  nextFinding,
+  getDraft,
+  applyDraft,
+  rejectFinding,
+} from './state';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) =>
   document.querySelector(sel) as T | null;

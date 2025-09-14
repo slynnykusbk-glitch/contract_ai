@@ -260,10 +260,10 @@ export async function apiHealth(backend?: string) {
   return withBusy(() => checkHealth({ backend }));
 }
 
-export async function analyze(payload: any = {}) {
+export async function analyze(opts: any = {}) {
   const body = {
-    text:  payload?.text ?? payload?.content,
-    mode:  payload?.mode ?? 'live',
+    text:  opts?.text ?? opts?.content,
+    mode:  opts?.mode ?? 'live',
   };
   const { resp, json } = await postJSON('/api/analyze', body);
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });

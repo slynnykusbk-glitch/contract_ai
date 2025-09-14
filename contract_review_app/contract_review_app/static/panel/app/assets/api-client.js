@@ -232,10 +232,10 @@ async function req(path, { method = 'GET', body = null, key = path, timeoutMs = 
 export async function apiHealth(backend) {
     return withBusy(() => checkHealth({ backend }));
 }
-export async function analyze(payload = {}) {
+export async function analyze(opts = {}) {
     const body = {
-        text: payload?.text ?? payload?.content,
-        mode: payload?.mode ?? 'live',
+        text: opts?.text ?? opts?.content,
+        mode: opts?.mode ?? 'live',
     };
     const { resp, json } = await postJSON('/api/analyze', body);
     const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });

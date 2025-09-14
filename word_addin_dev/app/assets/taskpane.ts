@@ -96,6 +96,12 @@ g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 g.getSelectionText = g.getSelectionText || getSelectionText;
 
 type Mode = "live" | "friendly" | "doctor";
+type DraftMode = "friendly" | "standard" | "strict";
+const draftModeMap: Record<Mode, DraftMode> = {
+  live: "friendly",
+  friendly: "friendly",
+  doctor: "strict",
+};
 let currentMode: Mode = 'live';
 
 const Q = {
@@ -607,7 +613,8 @@ export async function onSuggestEdit(ev?: Event) {
     if (!clause) { notifyWarn("Select some text or paste into 'Original clause'"); return; }
     try {
       const dst = $(Q.proposed);
-      const { json } = await postJSON('/api/gpt-draft', { cid: lastCid, clause, mode: currentMode });
+      const draftMode = draftModeMap[currentMode] || 'friendly';
+      const { json } = await postJSON('/api/gpt-draft', { cid: lastCid, clause, mode: draftMode });
       const proposed = (json?.proposed_text ?? json?.text ?? "").toString();
       const w: any = window as any;
       w.__last = w.__last || {};

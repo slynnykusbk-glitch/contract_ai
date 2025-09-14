@@ -56,7 +56,7 @@ describe('get draft', () => {
     const calls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/gpt-draft'));
     expect(calls.length).toBe(1);
     const body = JSON.parse(calls[0][1].body);
-    expect(body).toMatchObject({ clause: 'Hello' });
+    expect(body).toMatchObject({ clause: 'Hello', mode: 'friendly' });
   });
 
   it('Word API failure warns and skips request', async () => {

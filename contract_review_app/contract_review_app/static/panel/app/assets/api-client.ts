@@ -13,7 +13,7 @@ export type Meta = {
 import { getApiKeyFromStore, getSchemaFromStore } from "./store.ts";
 import { registerFetch, deregisterFetch, registerTimer, deregisterTimer, withBusy } from './pending.ts';
 import { checkHealth } from './health.ts';
-import { notifyWarn } from './notifier.ts';
+import { notifyWarn } from './notifier';
 
 export type AnalyzeFinding = {
   rule_id: string;

@@ -61,9 +61,9 @@ describe('get draft', () => {
 
   it('Word API failure warns and skips request', async () => {
     (globalThis as any).getSelectionText = vi.fn().mockRejectedValue(new Error('fail'));
-    vi.mock('../assets/notifier.ts', () => ({ notifyWarn: vi.fn(), notifyErr: vi.fn(), notifyOk: vi.fn() }));
-    const { wireUI, onSuggestEdit } = await import('../assets/taskpane.ts');
-    const { notifyWarn } = await import('../assets/notifier.ts');
+    vi.mock('../assets/notifier', () => ({ notifyWarn: vi.fn(), notifyErr: vi.fn(), notifyOk: vi.fn() }));
+    const { wireUI, onSuggestEdit } = await import('../assets/taskpane');
+    const { notifyWarn } = await import('../assets/notifier');
     wireUI();
     await onSuggestEdit();
     const calls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/gpt/draft'));

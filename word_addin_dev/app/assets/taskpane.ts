@@ -4,7 +4,7 @@ import { normalizeText, severityRank } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
-import { safeBodySearch } from "./safe-search.ts";
+import { safeBodySearch } from "./safeBodySearch.ts";
 import {
   getApiKeyFromStore,
   getSchemaFromStore,
@@ -314,9 +314,7 @@ export async function applyOpsTracked(
 
       if (op.context_before || op.context_after) {
         const searchText = `${op.context_before || ''}${snippet}${op.context_after || ''}`;
-        const sFull = safeBodySearch(body, searchText, searchOpts);
-        sFull.load('items');
-        await ctx.sync();
+        const sFull = await safeBodySearch(body, searchText, searchOpts);
         const fullRange = pick(sFull, occIdx);
         if (fullRange) {
           const inner = fullRange.search(snippet, searchOpts);
@@ -327,9 +325,7 @@ export async function applyOpsTracked(
       }
 
       if (!target) {
-        const found = safeBodySearch(body, snippet, searchOpts);
-        found.load('items');
-        await ctx.sync();
+        const found = await safeBodySearch(body, snippet, searchOpts);
         target = pick(found, occIdx);
       }
 
@@ -340,9 +336,7 @@ export async function applyOpsTracked(
           return null;
         })();
         if (token) {
-          const sTok = safeBodySearch(body, token, searchOpts);
-          sTok.load('items');
-          await ctx.sync();
+          const sTok = await safeBodySearch(body, token, searchOpts);
           target = pick(sTok, 0);
         }
       }
@@ -974,7 +968,17 @@ export function wireUI() {
       try {
         const data = (window as any).__last?.analyze?.json || {};
         const findings = (globalThis as any).parseFindings(data);
-        await (globalThis as any).annotateFindingsIntoWord(findings);
+        try {
+          await (globalThis as any).annotateFindingsIntoWord(findings);
+        } catch (e: any) {
+          const code = e?.code || e?.name || '';
+          if (code === 'SearchStringInvalidOrTooLong' || code === 'InvalidOrTooLong' || code === 'InvalidArgument') {
+            (globalThis as any).toast2?.('Search failed (long text), skipping some anchors', 'warn');
+            console.warn('[annotate run] search error', code);
+          } else {
+            console.warn('[annotate run] error', e);
+          }
+        }
       } finally {
         annotateBtn.disabled = false;
       }

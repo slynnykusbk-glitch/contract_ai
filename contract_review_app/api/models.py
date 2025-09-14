@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal
+from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import HTTPException
 from pydantic import (
@@ -8,6 +8,7 @@ from pydantic import (
     Field,
     model_validator,
     field_validator,
+    constr,
 )
 
 from contract_review_app.core.schemas import AppBaseModel
@@ -117,30 +118,36 @@ class AnalyzeResponse(_DTOBase):
     schema_version: str | None = None
 
 
+class Context(_DTOBase):
+    law: Literal["UK"] = "UK"
+    language: Literal["en-GB"] = "en-GB"
+    contractType: constr(strip_whitespace=True) = "unknown"
+
+
+class Selection(_DTOBase):
+    start: int
+    end: int
+
+
+class DraftFinding(_DTOBase):
+    id: str
+    title: str
+    text: str
+
+
 class DraftRequest(_DTOBase):
-    """Input model for ``/api/gpt-draft``."""
+    """Input model for ``/api/gpt/draft``."""
 
-    text: str = Field(
-        min_length=1, validation_alias=AliasChoices("text", "clause", "body")
-    )
-    mode: str | None = None
-    cid: str | None = None
-    schema_: str | None = Field(None, alias="schema")
+    mode: Literal["friendly", "strict"]
+    clause: constr(min_length=20)
+    context: Context
+    findings: List[DraftFinding] = Field(default_factory=list)
+    selection: Optional[Selection] = None
 
-    @field_validator("mode", "cid", mode="before")
-    @classmethod
-    def _blank_to_none(cls, v):
-        if isinstance(v, str) and not v.strip():
-            return None
-        return v
 
-    @model_validator(mode="after")
-    def _strip_text(self):
-        txt = (self.text or "").strip()
-        if not txt:
-            raise ValueError("text is empty")
-        self.text = txt
-        return self
+class DraftResponse(_DTOBase):
+    draft: str
+    notes: List[str] = Field(default_factory=list)
 
 
 class QARecheckIn(_DTOBase):

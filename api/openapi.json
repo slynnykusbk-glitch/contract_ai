@@ -3673,18 +3673,16 @@
         }
       }
     },
-    "/api/gpt-draft": {
+    "/api/gpt/draft": {
       "post": {
         "summary": "Gpt Draft",
-        "description": "LLM draft endpoint with mock-friendly minimal payload support.",
+        "description": "Simplified LLM draft endpoint with strict validation.",
         "operationId": "gpt_draft_api_gpt_draft_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": true,
-                "type": "object",
-                "title": "Body"
+                "$ref": "#/components/schemas/DraftRequest"
               }
             }
           },
@@ -3695,12 +3693,8 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {},
-                "examples": {
-                  "default": {
-                    "summary": "Example",
-                    "value": {}
-                  }
+                "schema": {
+                  "$ref": "#/components/schemas/DraftResponse"
                 }
               }
             },
@@ -4357,9 +4351,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "additionalProperties": true,
-                "type": "object",
-                "title": "Body"
+                "$ref": "#/components/schemas/DraftRequest"
               }
             }
           },
@@ -4370,7 +4362,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DraftResponse"
+                }
               }
             },
             "headers": {
@@ -6516,6 +6510,18 @@
             "default": null,
             "title": "Risk"
           },
+          "clause_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Clause Type"
+          },
           "schema": {
             "anyOf": [
               {
@@ -6645,6 +6651,30 @@
         ],
         "title": "CitationResolveResponse"
       },
+      "Context": {
+        "properties": {
+          "law": {
+            "type": "string",
+            "const": "UK",
+            "title": "Law",
+            "default": "UK"
+          },
+          "language": {
+            "type": "string",
+            "const": "en-GB",
+            "title": "Language",
+            "default": "en-GB"
+          },
+          "contractType": {
+            "type": "string",
+            "title": "Contracttype",
+            "default": "unknown"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Context"
+      },
       "Coverage": {
         "properties": {
           "rules_total": {
@@ -6667,6 +6697,167 @@
           "coverage"
         ],
         "title": "Coverage"
+      },
+      "DraftFinding": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "text"
+        ],
+        "title": "DraftFinding"
+      },
+      "DraftRequest": {
+        "$defs": {
+          "Context": {
+            "additionalProperties": false,
+            "properties": {
+              "law": {
+                "const": "UK",
+                "default": "UK",
+                "title": "Law",
+                "type": "string"
+              },
+              "language": {
+                "const": "en-GB",
+                "default": "en-GB",
+                "title": "Language",
+                "type": "string"
+              },
+              "contractType": {
+                "default": "unknown",
+                "title": "Contracttype",
+                "type": "string"
+              }
+            },
+            "title": "Context",
+            "type": "object"
+          },
+          "DraftFinding": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "text"
+            ],
+            "title": "DraftFinding",
+            "type": "object"
+          },
+          "Selection": {
+            "additionalProperties": false,
+            "properties": {
+              "start": {
+                "title": "Start",
+                "type": "integer"
+              },
+              "end": {
+                "title": "End",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "title": "Selection",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Input model for ``/api/gpt/draft``.",
+        "properties": {
+          "mode": {
+            "enum": [
+              "friendly",
+              "strict"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "clause": {
+            "minLength": 20,
+            "title": "Clause",
+            "type": "string"
+          },
+          "context": {
+            "$ref": "#/components/schemas/Context"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/DraftFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "selection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Selection"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "mode",
+          "clause",
+          "context"
+        ],
+        "title": "DraftRequest",
+        "type": "object"
+      },
+      "DraftResponse": {
+        "properties": {
+          "draft": {
+            "type": "string",
+            "title": "Draft"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "draft"
+        ],
+        "title": "DraftResponse"
       },
       "HTTPValidationError": {
         "properties": {
@@ -7021,6 +7212,25 @@
         ],
         "title": "RuleMetric"
       },
+      "Selection": {
+        "properties": {
+          "start": {
+            "type": "integer",
+            "title": "Start"
+          },
+          "end": {
+            "type": "integer",
+            "title": "End"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "Selection"
+      },
       "SummaryIn": {
         "properties": {
           "cid": {
@@ -7103,58 +7313,6 @@
           "query"
         ],
         "title": "_CompanySearchIn"
-      },
-      "DraftRequest": {
-        "additionalProperties": false,
-        "description": "Input model for ``/api/gpt-draft``.",
-        "properties": {
-          "text": {
-            "minLength": 1,
-            "title": "Text",
-            "type": "string"
-          },
-          "mode": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Mode"
-          },
-          "cid": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Cid"
-          },
-          "schema": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Schema"
-          }
-        },
-        "required": [
-          "text"
-        ],
-        "title": "DraftRequest",
-        "type": "object"
       },
       "Finding": {
         "$defs": {

@@ -4,7 +4,8 @@
 $IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
 ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $IsAdmin) {
-  Start-Process powershell "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+  $argList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',"`"$PSCommandPath`"" );
+  Start-Process -FilePath powershell -ArgumentList $argList -Verb RunAs
   exit
 }
 
@@ -49,20 +50,25 @@ Import-Certificate -FilePath $certPem -CertStoreLocation Cert:\CurrentUser\Root 
 
 # 5) Підняти бекенд (HTTPS localhost:9443) і панель (HTTPS localhost:3000)
 
-Start-Process $py -ArgumentList @(
+$backendArgs = @(
   "-m","uvicorn","contract_review_app.api.app:app",
   "--host","localhost","--port","9443",
   "--ssl-certfile", (Join-Path $repo "word_addin_dev\certs\localhost.pem"),
   "--ssl-keyfile",  (Join-Path $repo "word_addin_dev\certs\localhost-key.pem"),
   "--reload"
 )
+if (-not $backendArgs) { $backendArgs = @('') }
+Start-Process -FilePath $py -ArgumentList $backendArgs
 
 Start-Sleep -Seconds 1  # невелика пауза, щоб уникнути гонок портів
 
-Start-Process $py -ArgumentList (Join-Path $repo "word_addin_dev\serve_https_panel.py")
+$panelScript = Join-Path $repo "word_addin_dev\serve_https_panel.py"
+$panelArgs = @($panelScript)
+if (-not $panelArgs) { $panelArgs = @('') }
+Start-Process -FilePath $py -ArgumentList $panelArgs
 
 # 6) Відкрити self-test у браузері (для контролю зв’язку)
-Start-Process "https://localhost:3000/panel_selftest.html?v=dev"
+Start-Process -FilePath "https://localhost:3000/panel_selftest.html?v=dev" -ArgumentList @('')
 
 # 7) Запустити Word — далі «Вставка → Мои надстройки → Общая папка → Contract AI — Draft Assistant»
-Start-Process winword.exe
+Start-Process -FilePath winword.exe -ArgumentList @('')

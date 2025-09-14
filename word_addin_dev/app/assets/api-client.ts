@@ -10,6 +10,7 @@ export type Meta = {
   status?: string | null;
 };
 
+import type { components } from "../types/api";
 import { getApiKeyFromStore, getSchemaFromStore } from "./store.ts";
 import { registerFetch, deregisterFetch, registerTimer, deregisterTimer, withBusy } from './pending.ts';
 import { checkHealth } from './health.ts';
@@ -32,41 +33,10 @@ function logError(msg: string, err: any, extra?: any) {
   }
 }
 
-export type AnalyzeFinding = {
-  rule_id: string;
-  code?: string;
-  clause_type?: string;
-  severity?: "low" | "medium" | "high" | "critical" | string;
-  start?: number;
-  end?: number;
-  snippet?: string;
-  normalized_snippet?: string;
-  advice?: string;
-  law_refs?: string[];
-  law_reference?: string; // legacy
-  citations?: string[];
-  conflict_with?: string[]; // legacy
-  links?: { type?: string; targetFindingId?: string }[];
-  category?: string;
-  score?: number;
-  suggestion?: { text?: string };
-  ops?: { start?: number; end?: number; replacement?: string }[];
-  scope?: { unit?: string; nth?: number };
-  occurrences?: number;
-  norm_quote?: string;
-  clause_url?: string;
-  clause_id?: string;
-};
+export type AnalyzeFinding = components["schemas"]["Finding"] & Record<string, any>;
 
-export type Findings = AnalyzeFinding[];
 
-export type AnalyzeResponse = {
-  status: "ok" | "OK";
-  analysis?: { findings?: Findings };
-  findings?: Findings;
-  issues?: Findings;
-  meta?: any;
-};
+export type AnalyzeResponse = components["schemas"]["AnalyzeResponse"] & Record<string, any>;
 
 export function parseFindings(resp: AnalyzeResponse | Findings): Findings {
   if (Array.isArray(resp)) return resp.filter(Boolean);

@@ -5,19 +5,19 @@ describe('insertDraftText', () => {
   it('skips empty text', async () => {
     const run = vi.fn()
     ;(globalThis as any).Word = { run }
-    await insertDraftText('')
+    await insertDraftText('', 'live')
     expect(run).not.toHaveBeenCalled()
   })
 
   it('calls Word.run once', async () => {
     const run = vi.fn(async (cb: any) => {
-      const sel = { isEmpty: true, load: vi.fn(), insertText: vi.fn() }
-      const rangeEnd = { insertText: vi.fn() }
-      const doc = { getSelection: () => sel, body: { getRange: () => rangeEnd } }
+      const sel = { isEmpty: true, load: vi.fn(), insertText: vi.fn().mockReturnValue({}) }
+      const rangeEnd = { insertText: vi.fn().mockReturnValue({}) }
+      const doc = { getSelection: () => sel, body: { getRange: () => rangeEnd }, comments: { add: vi.fn() } }
       await cb({ document: doc, sync: vi.fn() })
     })
     ;(globalThis as any).Word = { run, InsertLocation: { replace: 'Replace' } }
-    await insertDraftText('hello')
+    await insertDraftText('hello', 'live')
     expect(run).toHaveBeenCalledTimes(1)
   })
 
@@ -26,7 +26,7 @@ describe('insertDraftText', () => {
     const run = vi.fn(async () => { throw err })
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     ;(globalThis as any).Word = { run }
-    await expect(insertDraftText('hi')).rejects.toBe(err)
+    await expect(insertDraftText('hi', 'live')).rejects.toBe(err)
     expect(spy).toHaveBeenCalledWith('insertDraftText error', err.code, err.message, err.debugInfo)
     spy.mockRestore()
   })

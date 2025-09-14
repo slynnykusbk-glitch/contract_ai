@@ -33,3 +33,8 @@ def test_analyze_bad_422_with_details():
     assert "detail" in j
     detail = j["detail"]
     assert isinstance(detail, list) and any("loc" in d and "msg" in d for d in detail)
+
+
+def test_panel_taskpane_html():
+    r = client.get("/panel/taskpane.html")
+    assert r.status_code == 200

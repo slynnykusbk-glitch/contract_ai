@@ -41,7 +41,7 @@ except Exception:  # pragma: no cover
             await self.app(scope, receive, send)
 
 
-from contract_review_app.core.privacy import redact_pii, scrub_llm_output
+from contract_review_app.core.privacy import redact_pii, scrub_llm_output  # noqa: F401
 from contract_review_app.core.audit import audit
 from contract_review_app.security.secure_store import secure_write
 from contract_review_app.core.trace import TraceStore, compute_cid
@@ -51,6 +51,8 @@ from contract_review_app.config import CH_ENABLED, CH_API_KEY
 log = logging.getLogger("contract_ai")
 
 # prevent serving TypeScript files with executable MIME types
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
 mimetypes.add_type("text/plain", ".ts")
 
 # корень репо: .../contract_ai
@@ -690,7 +692,11 @@ if PANEL_READY:
     @panel_app.middleware("http")
     async def _panel_no_cache(request: Request, call_next):
         resp = await call_next(request)
-        resp.headers["Cache-Control"] = "no-store, must-revalidate"
+        path = request.url.path
+        if path.endswith("taskpane.bundle.js"):
+            resp.headers["Cache-Control"] = "no-cache"
+        else:
+            resp.headers["Cache-Control"] = "no-store, must-revalidate"
         resp.headers["Pragma"] = "no-cache"
         resp.headers["Expires"] = "0"
         return resp
@@ -2622,8 +2628,8 @@ async def gpt_draft(request: Request, body: dict = Body(...)):
         problem = _llm_key_problem()
         return JSONResponse(problem.model_dump(), status_code=400)
 
-    started = time.perf_counter()
-    req_cid = inp.cid or compute_cid(request)
+    started = time.perf_counter()  # noqa: F841
+    req_cid = inp.cid or compute_cid(request)  # noqa: F841
     raw_json = _json_dumps_safe(inp.model_dump(exclude_none=True))
     etag = _sha256_hex(raw_json)
     inm = request.headers.get("if-none-match")
@@ -2641,6 +2647,8 @@ async def gpt_draft(request: Request, body: dict = Body(...)):
             )
             _set_llm_headers(resp, cached["meta"])
             return resp
+
+
 @router.post(
     "/api/panel/redlines",
     response_model=RedlinesOut,

@@ -125,4 +125,3 @@ describe('annotate scheduler', () => {
     warn.mockRestore();
   });
 });
-

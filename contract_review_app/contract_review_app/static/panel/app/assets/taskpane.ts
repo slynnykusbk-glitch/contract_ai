@@ -2,9 +2,7 @@ import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, A
 import domSchema from "../panel_dom.schema.json";
 import { normalizeText, severityRank } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
-import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX } from "./annotate.ts";
-import { findAnchors } from "./anchors.ts";
-import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX } from "./annotate.ts";
+import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX, safeInsertComment } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
 import { safeBodySearch } from "./safeBodySearch.ts";  // ← это оставить
 import { insertDraftText } from "./insert.ts";         // ← это оставить
@@ -370,7 +368,7 @@ export async function applyOpsTracked(
 
         target.insertText(op.replacement, 'Replace');
         const comment = `${COMMENT_PREFIX} ${op.rationale || op.source || 'AI edit'}`;
-        try { target.insertComment(comment); } catch {}
+        try { await safeInsertComment(target, comment); } catch {}
       } else {
         console.warn('[applyOpsTracked] match not found', { snippet, occIdx });
       }
@@ -932,7 +930,7 @@ async function onAcceptAll() {
       const range = ctx.document.getSelection();
       (ctx.document as any).trackRevisions = true;
       range.insertText(proposed, Word.InsertLocation.replace);
-      try { range.insertComment(`${COMMENT_PREFIX} ${link}`); } catch {}
+      try { await safeInsertComment(range, `${COMMENT_PREFIX} ${link}`); } catch {}
       await ctx.sync();
     });
 

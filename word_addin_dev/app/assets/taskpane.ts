@@ -1,4 +1,4 @@
-import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON } from "./api-client.ts";
+import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, postJSON, analyze } from "./api-client.ts";
 import domSchema from "../panel_dom.schema.json";
 import { normalizeText, dedupeFindings, severityRank } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
@@ -91,6 +91,7 @@ import { getWholeDocText } from "./office.ts"; // у вас уже есть хе
 g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 
 type Mode = "live" | "friendly" | "doctor";
+let currentMode: Mode = 'live';
 
 const Q = {
   proposed: 'textarea#proposedText, textarea#draftText, textarea[name="proposed"], textarea[data-role="proposed-text"]',
@@ -862,7 +863,7 @@ async function doAnalyze() {
       const orig = document.getElementById("originalText") as HTMLTextAreaElement | null;
       if (orig) orig.value = base;
 
-      const { resp, json } = await postJSON('/api/analyze', { text: base });
+      const { resp, json } = await analyze({ text: base, mode: currentMode });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const respSchema = resp.headers.get('x-schema-version');
       if (respSchema) setSchemaVersion(respSchema);

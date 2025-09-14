@@ -46,6 +46,7 @@ from contract_review_app.core.audit import audit
 from contract_review_app.security.secure_store import secure_write
 from contract_review_app.core.trace import TraceStore, compute_cid
 from contract_review_app.config import CH_ENABLED, CH_API_KEY
+from contract_review_app.utils.logging import logger as cai_logger
 
 
 log = logging.getLogger("contract_ai")
@@ -1053,6 +1054,33 @@ app.add_middleware(
         "x-usage-total",
     ],
 )
+
+
+# log request details at INFO level
+@app.middleware("http")
+async def _request_logger(request: Request, call_next):
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        ms = (time.perf_counter() - start) * 1000
+        cai_logger.info(
+            "{method} {path} -> {status} ({ms:.2f} ms)",
+            method=request.method,
+            path=request.url.path,
+            status=500,
+            ms=ms,
+        )
+        raise
+    ms = (time.perf_counter() - start) * 1000
+    cai_logger.info(
+        "{method} {path} -> {status} ({ms:.2f} ms)",
+        method=request.method,
+        path=request.url.path,
+        status=response.status_code,
+        ms=ms,
+    )
+    return response
 
 
 # ---- Trace middleware and store ------------------------------------

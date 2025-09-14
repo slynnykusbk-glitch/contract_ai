@@ -107,17 +107,23 @@ let lastCid: string = "";
 let analyzeBound = false;
 const REQUIRED_IDS: string[] = (domSchema as any).required_ids || [];
 
+function mustGetElementById<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) {
+    throw new Error(`missing element #${id}`);
+  }
+  return el as T;
+}
+
 function updateStatusChip(schema?: string | null, cid?: string | null) {
-  const el = document.getElementById('status-chip');
-  if (!el) return;
+  const el = mustGetElementById<HTMLElement>('status-chip');
   const s = (schema ?? getSchemaFromStore()) || '—';
   const c = (cid ?? lastCid) || '—';
   el.textContent = `schema: ${s} | cid: ${c}`;
 }
 
 function updateAnchorBadge() {
-  const el = document.getElementById('anchorsBadge');
-  if (!el) return;
+  const el = mustGetElementById<HTMLElement>('anchorsBadge');
   const skipped = (globalThis as any).__anchorsSkipped || 0;
   el.style.display = skipped > 0 ? '' : 'none';
 }
@@ -126,8 +132,8 @@ g.updateAnchorBadge = g.updateAnchorBadge || updateAnchorBadge;
 function enableAnalyze() {
   if (analyzeBound) return;
   bindClick("#btnAnalyze", onAnalyze);
-  const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
-  if (btn) btn.disabled = false;
+  const btn = mustGetElementById<HTMLButtonElement>("btnAnalyze");
+  btn.disabled = false;
   analyzeBound = true;
   console.log('[PANEL] analyze enabled');
 }
@@ -145,8 +151,8 @@ function getBackend(): string {
 }
 
 function onSaveBackend() {
-  const inp = document.getElementById('backendUrl') as HTMLInputElement | null;
-  const val = inp?.value?.trim();
+  const inp = mustGetElementById<HTMLInputElement>('backendUrl');
+  const val = inp.value.trim();
   if (val) {
     try {
       localStorage.setItem('backend.url', val);
@@ -157,65 +163,60 @@ function onSaveBackend() {
 }
 
 function ensureHeaders(): boolean {
-  try {
-    let apiKey = getApiKeyFromStore();
-    let schema = getSchemaFromStore();
-    const warn = document.getElementById('hdrWarn') as HTMLElement | null;
-    const host = (globalThis as any)?.location?.hostname ?? '';
-    const isDev = host === 'localhost' || host === '127.0.0.1';
+  let apiKey = getApiKeyFromStore();
+  let schema = getSchemaFromStore();
+  const warn = mustGetElementById<HTMLElement>('hdrWarn');
+  const host = (globalThis as any)?.location?.hostname ?? '';
+  const isDev = host === 'localhost' || host === '127.0.0.1';
 
-    if (isDev) {
-      if (!apiKey) {
-        apiKey = 'local-test-key-123';
-        setApiKey(apiKey);
-      }
-      if (!schema) {
-        const envSchema =
-          (globalThis as any)?.SCHEMA_VERSION ||
-          (typeof process !== 'undefined' && (process as any).env?.SCHEMA_VERSION) ||
-          '1.4';
-        schema = String(envSchema);
-        setSchemaVersion(schema);
-      }
+  if (isDev) {
+    if (!apiKey) {
+      apiKey = 'local-test-key-123';
+      setApiKey(apiKey);
     }
+    if (!schema) {
+      const envSchema =
+        (globalThis as any)?.SCHEMA_VERSION ||
+        (typeof process !== 'undefined' && (process as any).env?.SCHEMA_VERSION) ||
+        '1.4';
+      schema = String(envSchema);
+      setSchemaVersion(schema);
+    }
+  }
 
-    if (warn) {
-      if (!apiKey && !schema && !isDev) {
-        warn.style.display = '';
-      } else {
-        warn.style.display = 'none';
-      }
-    }
+  if (!apiKey && !schema && !isDev) {
+    warn.style.display = '';
+  } else {
+    warn.style.display = 'none';
+  }
 
-    if (!apiKey || !schema) {
-      console.warn('missing headers', { apiKey: !!apiKey, schema: !!schema });
-    }
-  } catch {
-    // swallow errors – missing storage should not stop the flow
+  if (!apiKey || !schema) {
+    console.warn('missing headers', { apiKey: !!apiKey, schema: !!schema });
   }
   return true; // allow all actions regardless of header state
 }
 
-function slot(id: string, role: string): HTMLElement | null {
-  return (
-    document.querySelector(`[data-role="${role}"]`) as HTMLElement | null
-  ) || document.getElementById(id);
+function slot(id: string, role: string): HTMLElement {
+  const byRole = document.querySelector(`[data-role="${role}"]`) as HTMLElement | null;
+  if (byRole) return byRole;
+  return mustGetElementById<HTMLElement>(id);
 }
 
 export function getRiskThreshold(): "low" | "medium" | "high" {
-  const sel = document.getElementById("selectRiskThreshold") as HTMLSelectElement | null;
-  const v = sel?.value?.toLowerCase();
+  const sel = mustGetElementById<HTMLSelectElement>("selectRiskThreshold");
+  const v = sel.value.toLowerCase();
   return (v === "low" || v === "medium" || v === "high") ? v : "medium";
 }
 
 export function isAddCommentsOnAnalyzeEnabled(): boolean {
   const val = getAddCommentsFlag();
   try {
-    const doc: any = (globalThis as any).document;
-    const cb = (doc?.getElementById("cai-comment-on-analyze") as HTMLInputElement | null)
-      || (doc?.getElementById("chkAddCommentsOnAnalyze") as HTMLInputElement | null);
-    if (cb) cb.checked = val;
-    return cb ? !!cb.checked : val;
+    const cb = (() => {
+      try { return mustGetElementById<HTMLInputElement>("cai-comment-on-analyze"); }
+      catch { return mustGetElementById<HTMLInputElement>("chkAddCommentsOnAnalyze"); }
+    })();
+    cb.checked = val;
+    return !!cb.checked;
   } catch {
     return val;
   }
@@ -226,8 +227,8 @@ export function setAddCommentsOnAnalyze(val: boolean): void {
 }
 
 function isDryRunAnnotateEnabled(): boolean {
-  const cb = document.getElementById("cai-dry-run-annotate") as HTMLInputElement | null;
-  return cb ? !!cb.checked : false;
+  const cb = mustGetElementById<HTMLInputElement>("cai-dry-run-annotate");
+  return !!cb.checked;
 }
 
 function filterByThreshold(list: AnalyzeFinding[], thr: "low" | "medium" | "high"): AnalyzeFinding[] {
@@ -407,15 +408,13 @@ async function navigateFinding(dir: number) {
   w.__findingIdx = (w.__findingIdx ?? 0) + dir;
   if (w.__findingIdx < 0) w.__findingIdx = arr.length - 1;
   if (w.__findingIdx >= arr.length) w.__findingIdx = 0;
-  const list = document.getElementById("findingsList");
-  if (list) {
-    const items = Array.from(list.querySelectorAll("li"));
-    items.forEach((li, i) => {
-      (li as HTMLElement).classList.toggle("active", i === w.__findingIdx);
-    });
-    const act = items[w.__findingIdx] as HTMLElement | undefined;
-    if (act) act.scrollIntoView({ block: "nearest" });
-  }
+  const list = mustGetElementById<HTMLElement>("findingsList");
+  const items = Array.from(list.querySelectorAll("li"));
+  items.forEach((li, i) => {
+    (li as HTMLElement).classList.toggle("active", i === w.__findingIdx);
+  });
+  const act = items[w.__findingIdx] as HTMLElement | undefined;
+  if (act) act.scrollIntoView({ block: "nearest" });
   try { await highlightFinding(arr[w.__findingIdx]); } catch {}
 }
 
@@ -425,15 +424,13 @@ function jumpToFinding(code: string) {
   const idx = arr.findIndex(o => o.rule_id === code || (o as any).code === code);
   if (idx < 0) return;
   (window as any).__findingIdx = idx;
-  const list = document.getElementById("findingsList");
-  if (list) {
-    const items = Array.from(list.querySelectorAll("li"));
-    items.forEach((li, i) => {
-      (li as HTMLElement).classList.toggle("active", i === idx);
-    });
-    const act = items[idx] as HTMLElement | undefined;
-    if (act) act.scrollIntoView({ block: "nearest" });
-  }
+  const list = mustGetElementById<HTMLElement>("findingsList");
+  const items = Array.from(list.querySelectorAll("li"));
+  items.forEach((li, i) => {
+    (li as HTMLElement).classList.toggle("active", i === idx);
+  });
+  const act = items[idx] as HTMLElement | undefined;
+  if (act) act.scrollIntoView({ block: "nearest" });
   try { highlightFinding(arr[idx]); } catch {}
 }
 
@@ -457,8 +454,7 @@ export function renderAnalysisSummary(json: any) {
   const hidden = findings.length - visible;
 
   const setText = (id: string, val: string) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
+    mustGetElementById<HTMLElement>(id).textContent = val;
   };
 
   setText("clauseTypeOut", String(clauseType));
@@ -466,107 +462,97 @@ export function renderAnalysisSummary(json: any) {
   setText("visibleHiddenOut", `${visible} / ${hidden}`);
 
   // Заполняем findings
-  const fCont = document.getElementById("findingsList");
-  if (fCont) {
-    fCont.innerHTML = "";
-    for (const f of visibleFindings) {
-      const li = document.createElement("li");
-      const title =
-        f?.title || f?.finding?.title || f?.rule_id || "Issue";
-      const snippet = f?.snippet || f?.evidence?.text || "";
-      li.textContent = snippet ? `${title}: ${snippet}` : String(title);
+  const fCont = mustGetElementById<HTMLElement>("findingsList");
+  fCont.innerHTML = "";
+  for (const f of visibleFindings) {
+    const li = document.createElement("li");
+    const title =
+      f?.title || f?.finding?.title || f?.rule_id || "Issue";
+    const snippet = f?.snippet || f?.evidence?.text || "";
+    li.textContent = snippet ? `${title}: ${snippet}` : String(title);
 
-      const links = Array.isArray((f as any).links)
-        ? (f as any).links.filter((l: any) => l?.type === 'conflict' && l?.targetFindingId)
-        : [];
-      if (links.length) {
-        const div = document.createElement('div');
-        div.textContent = `Conflicts: ${links.length} `;
-        links.forEach((lnk: any, idx: number) => {
-          const a = document.createElement('a');
-          a.href = '#';
-          a.textContent = 'Jump to';
-          a.addEventListener('click', ev => { ev.preventDefault(); jumpToFinding(lnk.targetFindingId); });
-          div.appendChild(a);
-          if (idx < links.length - 1) div.append(' ');
-        });
-        li.appendChild(div);
-      }
-
-      fCont.appendChild(li);
+    const links = Array.isArray((f as any).links)
+      ? (f as any).links.filter((l: any) => l?.type === 'conflict' && l?.targetFindingId)
+      : [];
+    if (links.length) {
+      const div = document.createElement('div');
+      div.textContent = `Conflicts: ${links.length} `;
+      links.forEach((lnk: any, idx: number) => {
+        const a = document.createElement('a');
+        a.href = '#';
+        a.textContent = 'Jump to';
+        a.addEventListener('click', ev => { ev.preventDefault(); jumpToFinding(lnk.targetFindingId); });
+        div.appendChild(a);
+        if (idx < links.length - 1) div.append(' ');
+      });
+      li.appendChild(div);
     }
+
+    fCont.appendChild(li);
   }
 
   // Заполняем рекомендации
-  const rCont = document.getElementById("recsList");
-  if (rCont) {
-    rCont.innerHTML = "";
-    for (const r of recs) {
-      const li = document.createElement("li");
-      li.textContent = r?.text || r?.advice || r?.message || "Recommendation";
-      rCont.appendChild(li);
-    }
+  const rCont = mustGetElementById<HTMLElement>("recsList");
+  rCont.innerHTML = "";
+  for (const r of recs) {
+    const li = document.createElement("li");
+    li.textContent = r?.text || r?.advice || r?.message || "Recommendation";
+    rCont.appendChild(li);
   }
 
   // Показать блок результатов (если был скрыт стилями)
-  const rb = document.getElementById("resultsBlock") as HTMLElement | null;
-  if (rb) rb.style.removeProperty("display");
+  const rb = mustGetElementById<HTMLElement>("resultsBlock");
+  rb.style.removeProperty("display");
 }
 
 function renderResults(res: any) {
   const clause = slot("resClauseType", "clause-type");
-  if (clause) clause.textContent = res?.clause_type || "—";
+  clause.textContent = res?.clause_type || "—";
 
   const findingsArr: AnalyzeFinding[] = parseFindings(res);
   (window as any).__findings = findingsArr;
   (window as any).__findingIdx = 0;
-  const findingsList = slot("findingsList", "findings") as HTMLElement | null;
-  if (findingsList) {
-    findingsList.innerHTML = "";
-    findingsArr.forEach((f: any) => {
-      const li = document.createElement("li");
-      li.textContent = typeof f === "string" ? f : JSON.stringify(f);
-      findingsList.appendChild(li);
-    });
-  }
+  const findingsList = slot("findingsList", "findings");
+  findingsList.innerHTML = "";
+  findingsArr.forEach((f: any) => {
+    const li = document.createElement("li");
+    li.textContent = typeof f === "string" ? f : JSON.stringify(f);
+    findingsList.appendChild(li);
+  });
 
   const recoArr = Array.isArray(res?.recommendations) ? res.recommendations : [];
-  const recoList = slot("recoList", "recommendations") as HTMLElement | null;
-  if (recoList) {
-    recoList.innerHTML = "";
-    recoArr.forEach((r: any) => {
-      const li = document.createElement("li");
-      li.textContent = typeof r === "string" ? r : JSON.stringify(r);
-      recoList.appendChild(li);
-    });
-  }
+  const recoList = slot("recoList", "recommendations");
+  recoList.innerHTML = "";
+  recoArr.forEach((r: any) => {
+    const li = document.createElement("li");
+    li.textContent = typeof r === "string" ? r : JSON.stringify(r);
+    recoList.appendChild(li);
+  });
 
   const count = slot("resFindingsCount", "findings-count");
-  if (count) count.textContent = String(findingsArr.length);
+  count.textContent = String(findingsArr.length);
 
-  const pre = slot("rawJson", "raw-json") as HTMLElement | null;
-  if (pre) pre.textContent = JSON.stringify(res ?? {}, null, 2);
+  const pre = slot("rawJson", "raw-json");
+  pre.textContent = JSON.stringify(res ?? {}, null, 2);
 }
 
 function wireResultsToggle() {
   const toggle = slot("toggleRaw", "toggle-raw-json");
-  const pre = slot("rawJson", "raw-json") as HTMLElement | null;
-  if (toggle && pre) {
-    pre.style.display = "none";
-    toggle.addEventListener("click", () => {
-      pre.style.display = pre.style.display === "none" ? "block" : "none";
-    });
-  }
+  const pre = slot("rawJson", "raw-json");
+  pre.style.display = "none";
+  toggle.addEventListener("click", () => {
+    pre.style.display = pre.style.display === "none" ? "block" : "none";
+  });
 }
 
 function setConnBadge(ok: boolean | null) {
-  const el = document.getElementById("connBadge");
-  if (el) el.textContent = `Conn: ${ok === null ? "—" : ok ? "✓" : "×"}`;
+  const el = mustGetElementById<HTMLElement>("connBadge");
+  el.textContent = `Conn: ${ok === null ? "—" : ok ? "✓" : "×"}`;
 }
 
 function setOfficeBadge(txt: string | null) {
-  const el = document.getElementById("officeBadge");
-  if (el) el.textContent = `Office: ${txt ?? "—"}`;
+  const el = mustGetElementById<HTMLElement>("officeBadge");
+  el.textContent = `Office: ${txt ?? "—"}`;
 }
 
 async function onFixNumbering() {
@@ -759,8 +745,8 @@ async function onUseWholeDoc() {
     src.value = text;
     try { src.dispatchEvent(new Event("input", { bubbles: true })); } catch {}
   }
-  const hid = document.getElementById("originalText") as HTMLTextAreaElement | null;
-  if (hid && hid !== src) {
+  const hid = mustGetElementById<HTMLTextAreaElement>("originalText");
+  if (hid !== src) {
     hid.value = text;
     try { hid.dispatchEvent(new Event("input", { bubbles: true })); } catch {}
   }
@@ -813,18 +799,18 @@ async function doHealth() {
 }
 
 export async function ensureTextForAnalysis(): Promise<string | null> {
-  const orig = document.getElementById("originalText") as HTMLTextAreaElement | null;
-  let text = normalizeText(orig?.value || "");
+  const orig = mustGetElementById<HTMLTextAreaElement>("originalText");
+  let text = normalizeText(orig.value || "");
   if (!text) {
-    const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
-    if (btn) btn.disabled = true;
+    const btn = mustGetElementById<HTMLButtonElement>("btnAnalyze");
+    btn.disabled = true;
     try {
       text = normalizeText(await (globalThis as any).getWholeDocText());
-      if (orig) orig.value = text || "";
+      orig.value = text || "";
     } catch {
       text = "";
     } finally {
-      if (btn) btn.disabled = false;
+      btn.disabled = false;
     }
   }
   if (!text) {
@@ -843,10 +829,10 @@ export async function onAnalyze() {
 
 async function doAnalyze() {
   return withBusy(async () => {
-    const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
-    const busy = document.getElementById("busyBar") as HTMLElement | null;
-    if (btn) btn.disabled = true;
-    if (busy) busy.style.display = "";
+    const btn = mustGetElementById<HTMLButtonElement>("btnAnalyze");
+    const busy = mustGetElementById<HTMLElement>("busyBar");
+    btn.disabled = true;
+    busy.style.display = "";
     try {
       onDraftReady('');
       const base = (window as any).__lastAnalyzed as string | undefined;
@@ -879,8 +865,8 @@ async function doAnalyze() {
         console.warn("auto-annotate after analyze failed", e);
       }
 
-      (document.getElementById("results") || document.body)
-        .dispatchEvent(new CustomEvent("ca.results", { detail: json }));
+        mustGetElementById<HTMLElement>("results")
+          .dispatchEvent(new CustomEvent("ca.results", { detail: json }));
 
       notifyOk("Analyze OK");
     } catch (e: any) {
@@ -905,8 +891,8 @@ async function doAnalyze() {
       notifyWarn(`Analyze failed ${tail}`.trim());
       console.error(e);
     } finally {
-      if (btn) btn.disabled = false;
-      if (busy) busy.style.display = "none";
+      btn.disabled = false;
+      busy.style.display = "none";
     }
   });
 }
@@ -916,7 +902,7 @@ async function doQARecheck() {
     ensureHeaders();
     const text = await getWholeDocText();
     const { json } = await postJSON('/api/qa-recheck', { text, rules: {} });
-    (document.getElementById("results") || document.body).dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
+      mustGetElementById<HTMLElement>("results").dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
     const ok = !json?.error;
     if (ok) {
       notifyOk("QA recheck OK");
@@ -942,12 +928,10 @@ async function onPreviewDiff() {
     if (!after) { notifyWarn('No draft to diff'); return; }
     const diff: any = await postRedlines(before, after);
     const html = diff?.json?.html || diff?.json?.diff_html || diff?.json?.redlines || '';
-    const out = document.getElementById('diffOutput') as HTMLElement | null;
-    const cont = document.getElementById('diffContainer') as HTMLElement | null;
-    if (out && cont) {
+      const out = mustGetElementById<HTMLElement>('diffOutput');
+      const cont = mustGetElementById<HTMLElement>('diffContainer');
       out.innerHTML = html || '';
       cont.style.display = html ? 'block' : 'none';
-    }
   } catch (e) {
     notifyWarn('Diff failed');
     console.error(e);
@@ -973,7 +957,7 @@ async function onAcceptAll() {
     const proposed = (dst?.value || "").trim();
     if (!proposed) { (window as any).toast?.("Nothing to accept"); return; }
 
-    const cid = (document.getElementById("cid")?.textContent || "").trim();
+    const cid = (mustGetElementById<HTMLElement>("cid").textContent || "").trim();
     const base = (() => {
       try { return (localStorage.getItem("backendUrl") || "https://localhost:9443").replace(/\/+$/, ""); }
       catch { return "https://localhost:9443"; }
@@ -1024,9 +1008,12 @@ async function onRejectAll() {
 
 export function wireUI() {
   console.log('[PANEL] wireUI start');
-  if (!(globalThis as any).__CAI_TESTING__) {
-    const missing = REQUIRED_IDS.filter(id => !document.getElementById(id));
-    if (missing.length) {
+    if (!(globalThis as any).__CAI_TESTING__) {
+      const missing = REQUIRED_IDS.filter(id => {
+        try { mustGetElementById<HTMLElement>(id); return false; }
+        catch { return true; }
+      });
+      if (missing.length) {
       console.error('[PANEL] wireUI missing IDs:', missing);
       const msg = `FATAL: panel template mismatch (missing: ${missing.join(', ')}). Check build pipeline.`;
       try {
@@ -1044,40 +1031,37 @@ export function wireUI() {
     }
   }
 
-  const bookEl = document.getElementById('loading-book');
-  window.addEventListener('cai:busy', (e: any) => {
-    if (!bookEl) return;
-    const busy = !!(e?.detail?.busy);
-    if (busy) bookEl.classList.remove('hidden');
-    else bookEl.classList.add('hidden');
-  });
+    const bookEl = mustGetElementById<HTMLElement>('loading-book');
+    window.addEventListener('cai:busy', (e: any) => {
+      const busy = !!(e?.detail?.busy);
+      if (busy) bookEl.classList.remove('hidden');
+      else bookEl.classList.add('hidden');
+    });
 
-  const s = logSupportMatrix();
-  const disable = (id: string, reason?: string) => {
-    const el = document.getElementById(id) as HTMLButtonElement | null;
-    if (el) {
+    const s = logSupportMatrix();
+    const disable = (id: string, reason?: string) => {
+      const el = mustGetElementById<HTMLButtonElement>(id);
       el.disabled = true;
       el.title = reason ? `Not supported: ${reason}` : 'Not supported';
-    }
-    if (reason) {
-      try { console.log(`disabled ${id}: ${reason}`); } catch {}
-    }
-  };
+      if (reason) {
+        try { console.log(`disabled ${id}: ${reason}`); } catch {}
+      }
+    };
 
-  bindClick("#btnUseWholeDoc", onUseWholeDoc);
-  const wholeBtn = document.getElementById('btnUseWholeDoc') as HTMLButtonElement | null;
-  if (wholeBtn) wholeBtn.disabled = false;
+    bindClick("#btnUseWholeDoc", onUseWholeDoc);
+    const wholeBtn = mustGetElementById<HTMLButtonElement>('btnUseWholeDoc');
+    wholeBtn.disabled = false;
   bindClick("#btnFixNumbering", onFixNumbering);
   if (ENV_MODE === 'dev') bindClick("#btnTest", doHealth);
-  else {
-    const bt = document.getElementById('btnTest');
-    if (bt) (bt as HTMLElement).style.display = 'none';
-  }
+    else {
+      const bt = mustGetElementById<HTMLElement>('btnTest');
+      bt.style.display = 'none';
+    }
   bindClick("#btnQARecheck", doQARecheck);
-  const draftBtn = document.getElementById('btnSuggestEdit') as HTMLButtonElement | null;
-  const origClause = $(Q.original);
-  const syncDraftBtn = () => { if (draftBtn) draftBtn.disabled = !(origClause && origClause.value.trim()); };
-  origClause?.addEventListener('input', syncDraftBtn);
+    const draftBtn = mustGetElementById<HTMLButtonElement>('btnSuggestEdit');
+    const origClause = $(Q.original);
+    const syncDraftBtn = () => { draftBtn.disabled = !(origClause && origClause.value.trim()); };
+    origClause?.addEventListener('input', syncDraftBtn);
   try {
     Office.context.document.addHandlerAsync?.(Office.EventType.DocumentSelectionChanged, async () => {
       try {
@@ -1089,8 +1073,8 @@ export function wireUI() {
       } catch {}
     });
   } catch {}
-  syncDraftBtn();
-  draftBtn?.addEventListener('click', onSuggestEdit);
+    syncDraftBtn();
+    draftBtn.addEventListener('click', onSuggestEdit);
   bindClick("#btnApplyTracked", onApplyTracked);
   bindClick("#btnAcceptAll", onAcceptAll);
   bindClick("#btnRejectAll", onRejectAll);
@@ -1099,16 +1083,13 @@ export function wireUI() {
   bindClick("#btnPreviewDiff", onPreviewDiff);
   bindClick("#btnClearAnnots", clearAnnotations);
   bindClick("#btnSave", onSaveBackend);
-  const cb = (document.getElementById("cai-comment-on-analyze") as HTMLInputElement | null)
-    || (document.getElementById("chkAddCommentsOnAnalyze") as HTMLInputElement | null);
-  if (cb) {
+    const cb = (() => {
+      try { return mustGetElementById<HTMLInputElement>("cai-comment-on-analyze"); }
+      catch { return mustGetElementById<HTMLInputElement>("chkAddCommentsOnAnalyze"); }
+    })();
     cb.checked = isAddCommentsOnAnalyzeEnabled();
     cb.addEventListener("change", () => setAddCommentsOnAnalyze(!!cb.checked));
-  } else {
-    isAddCommentsOnAnalyzeEnabled();
-  }
-  const annotateBtn = document.getElementById("btnAnnotate") as HTMLButtonElement | null;
-  if (annotateBtn) {
+    const annotateBtn = mustGetElementById<HTMLButtonElement>("btnAnnotate");
     annotateBtn.addEventListener("click", async () => {
       if (annotateBtn.disabled) return;
       annotateBtn.disabled = true;
@@ -1132,16 +1113,15 @@ export function wireUI() {
     });
     annotateBtn.classList.remove("js-disable-while-busy");
     annotateBtn.removeAttribute("disabled");
-  }
 
   onDraftReady('');
   wireResultsToggle();
   console.log("Panel UI wired");
-  const ab = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
-  if (ab) ab.disabled = true;
-  ensureHeaders();
-  updateStatusChip();
-  updateAnchorBadge();
+    const ab = mustGetElementById<HTMLButtonElement>("btnAnalyze");
+    ab.disabled = true;
+    ensureHeaders();
+    updateStatusChip();
+    updateAnchorBadge();
 
   if (!s.revisions) { disable('btnApplyTracked', 'revisions'); disable('btnAcceptAll', 'revisions'); disable('btnRejectAll', 'revisions'); }
   if (!s.comments) { disable('btnAcceptAll', s.commentsReason); }
@@ -1156,21 +1136,21 @@ g.wireUI = g.wireUI || wireUI;
 
 // self-test moved to startup.selftest.ts
 
-function onDraftReady(text: string) {
-  const show = !!text.trim();
-  const apply = document.getElementById('btnApplyTracked') as HTMLButtonElement | null;
-  const accept = document.getElementById('btnAcceptAll') as HTMLButtonElement | null;
-  const reject = document.getElementById('btnRejectAll') as HTMLButtonElement | null;
-  const diff = document.getElementById('btnPreviewDiff') as HTMLButtonElement | null;
-  const pane = document.getElementById('draftPane') as HTMLElement | null;
-  const dst = document.getElementById('draftText') as HTMLTextAreaElement | null;
-  if (dst) dst.value = text;
-  if (pane) pane.style.display = show ? '' : 'none';
-  if (apply) apply.disabled = !show;
-  if (accept) accept.disabled = !show;
-  if (reject) reject.disabled = !show;
-  if (diff) diff.disabled = !show;
-}
+  function onDraftReady(text: string) {
+    const show = !!text.trim();
+    const apply = mustGetElementById<HTMLButtonElement>('btnApplyTracked');
+    const accept = mustGetElementById<HTMLButtonElement>('btnAcceptAll');
+    const reject = mustGetElementById<HTMLButtonElement>('btnRejectAll');
+    const diff = mustGetElementById<HTMLButtonElement>('btnPreviewDiff');
+    const pane = mustGetElementById<HTMLElement>('draftPane');
+    const dst = mustGetElementById<HTMLTextAreaElement>('draftText');
+    dst.value = text;
+    pane.style.display = show ? '' : 'none';
+    apply.disabled = !show;
+    accept.disabled = !show;
+    reject.disabled = !show;
+    diff.disabled = !show;
+  }
 
 async function bootstrap(info?: Office.OfficeInfo) {
   console.log('[PANEL] bootstrap start');

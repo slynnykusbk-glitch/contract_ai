@@ -7136,6 +7136,18 @@
             ],
             "default": null,
             "title": "Cid"
+          },
+          "schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Schema"
           }
         },
         "required": [

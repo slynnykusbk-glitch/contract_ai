@@ -90,7 +90,7 @@ g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
 g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
 g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
 g.logRichError = g.logRichError || logRichError;
-import { notifyOk, notifyErr, notifyWarn } from "./notifier.ts";
+import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText, getSelectionText } from "./office.ts"; // у вас уже есть хелперы; если имя иное — поправьте импорт.
 g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 g.getSelectionText = g.getSelectionText || getSelectionText;
@@ -342,7 +342,10 @@ export async function applyOpsTracked(
         const sFull = await safeBodySearch(body, searchText, searchOpts);
         const fullRange = pick(sFull, occIdx);
         if (fullRange) {
-          const inner: any = fullRange.search(snippet, searchOpts);
+          // Clamp snippet before searching to avoid Word's
+          // SearchStringInvalidOrTooLong errors (limit ~255 chars).
+          const needle = snippet.slice(0, 240);
+          const inner: any = fullRange.search(needle, searchOpts);
           if (inner && typeof inner.load === 'function') inner.load('items');
           await ctx.sync();
           target = pick(inner, 0);

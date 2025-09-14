@@ -13,7 +13,7 @@ export type Meta = {
 import { getApiKeyFromStore, getSchemaFromStore } from "./store.ts";
 import { registerFetch, deregisterFetch, registerTimer, deregisterTimer, withBusy } from './pending.ts';
 import { checkHealth } from './health.ts';
-import { notifyWarn } from './notifier.ts';
+import { notifyWarn } from './notifier';
 
 const DEV_MODE = (() => {
   try {
@@ -53,6 +53,9 @@ export type AnalyzeFinding = {
   ops?: { start?: number; end?: number; replacement?: string }[];
   scope?: { unit?: string; nth?: number };
   occurrences?: number;
+  norm_quote?: string;
+  clause_url?: string;
+  clause_id?: string;
 };
 
 export type AnalyzeResponse = {

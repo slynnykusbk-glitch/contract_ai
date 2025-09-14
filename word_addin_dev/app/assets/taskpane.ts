@@ -18,6 +18,7 @@ import { supports, logSupportMatrix } from './supports.ts';
 import { registerUnloadHandlers, wasUnloaded, resetUnloadFlag, withBusy } from './pending.ts';
 import { checkHealth } from './health.ts';
 import { runStartupSelftest } from './startup.selftest.ts';
+import DiffMatchPatch from 'diff-match-patch';
 
 declare const Violins: { initAudio: () => void };
 
@@ -90,10 +91,14 @@ g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
 g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
 g.getSchemaFromStore = g.getSchemaFromStore || getSchemaFromStore;
 g.logRichError = g.logRichError || logRichError;
-import { notifyOk, notifyErr, notifyWarn } from "./notifier.ts";
+import { notifyOk, notifyErr, notifyWarn } from "./notifier";
 import { getWholeDocText, getSelectionText } from "./office.ts"; // у вас уже есть хелперы; если имя иное — поправьте импорт.
 g.getWholeDocText = g.getWholeDocText || getWholeDocText;
 g.getSelectionText = g.getSelectionText || getSelectionText;
+
+// track already processed ranges to avoid reapplying the same ops
+const appliedRangeHashes: Set<string> = g.__appliedRangeHashes || new Set<string>();
+g.__appliedRangeHashes = appliedRangeHashes;
 
 type Mode = "live" | "friendly" | "doctor";
 let currentMode: Mode = 'live';
@@ -297,6 +302,29 @@ export async function clearAnnotations() {
   }
 }
 
+function diffTokens(before: string, after: string): [number, string][] {
+  const dmp = new DiffMatchPatch();
+  const tokenize = (s: string) => s.match(/\S+|\s+/g) || [];
+  const { chars1, chars2, tokenArray } = tokensToChars(tokenize(before), tokenize(after));
+  let diffs = dmp.diff_main(chars1, chars2);
+  dmp.diff_cleanupSemantic(diffs);
+  return diffs.map(([op, data]) => [op, data.split('').map(ch => tokenArray[ch.charCodeAt(0)]).join('')]);
+}
+
+function tokensToChars(tokens1: string[], tokens2: string[]) {
+  const tokenArray: string[] = [];
+  const tokenHash = new Map<string, number>();
+  const toChar = (tok: string) => {
+    if (tokenHash.has(tok)) return String.fromCharCode(tokenHash.get(tok)!);
+    tokenArray.push(tok);
+    tokenHash.set(tok, tokenArray.length - 1);
+    return String.fromCharCode(tokenArray.length - 1);
+  };
+  const chars1 = tokens1.map(toChar).join('');
+  const chars2 = tokens2.map(toChar).join('');
+  return { chars1, chars2, tokenArray };
+}
+
 export async function applyOpsTracked(
   ops: { start: number; end: number; replacement: string; context_before?: string; context_after?: string; rationale?: string; source?: string }[]
 ) {
@@ -328,6 +356,9 @@ export async function applyOpsTracked(
     };
 
     for (const op of cleaned) {
+      const hashKey = `${op.start}:${op.end}:${op.replacement}`;
+      if (appliedRangeHashes.has(hashKey)) continue;
+
       const snippet = last.slice(op.start, op.end);
       const occIdx = (() => {
         let idx = -1, n = 0;
@@ -342,7 +373,10 @@ export async function applyOpsTracked(
         const sFull = await safeBodySearch(body, searchText, searchOpts);
         const fullRange = pick(sFull, occIdx);
         if (fullRange) {
-          const inner: any = fullRange.search(snippet, searchOpts);
+          // Clamp snippet before searching to avoid Word's
+          // SearchStringInvalidOrTooLong errors (limit ~255 chars).
+          const needle = snippet.slice(0, 240);
+          const inner: any = fullRange.search(needle, searchOpts);
           if (inner && typeof inner.load === 'function') inner.load('items');
           await ctx.sync();
           target = pick(inner, 0);
@@ -367,10 +401,35 @@ export async function applyOpsTracked(
       }
 
       if (target) {
-
-        target.insertText(op.replacement, 'Replace');
+        const diffs = diffTokens(snippet, op.replacement);
+        let cursor = target.getRange('Start');
+        for (const [kind, txt] of diffs) {
+          if (!txt) continue;
+          if (kind === 0) {
+            const rest = cursor.getRange('After');
+            const foundEq: any = rest.search(txt, searchOpts);
+            if (foundEq && typeof foundEq.load === 'function') foundEq.load('items');
+            await ctx.sync();
+            const eq = pick(foundEq, 0);
+            if (eq) cursor = eq.getRange('After');
+          } else if (kind === -1) {
+            const rest = cursor.getRange('After');
+            const foundDel: any = rest.search(txt, searchOpts);
+            if (foundDel && typeof foundDel.load === 'function') foundDel.load('items');
+            await ctx.sync();
+            const del = pick(foundDel, 0);
+            if (del) {
+              del.insertText('', 'Replace');
+              cursor = del.getRange('After');
+            }
+          } else if (kind === 1) {
+            const ins = cursor.insertText(txt, 'Before');
+            cursor = ins.getRange('After');
+          }
+        }
         const comment = `${COMMENT_PREFIX} ${op.rationale || op.source || 'AI edit'}`;
         try { await safeInsertComment(target, comment); } catch {}
+
       } else {
         console.warn('[applyOpsTracked] match not found', { snippet, occIdx });
       }

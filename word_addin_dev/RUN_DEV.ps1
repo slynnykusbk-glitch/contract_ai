@@ -22,13 +22,16 @@ $env:CONTRACTAI_LLM_API = "mock"
 $panelPy = Join-Path $repo 'serve_https_panel.py'
 $panelRoot = Join-Path $repo 'word_addin_dev'
 $panelArgs = @('--host','127.0.0.1','--port','3000','--root',$panelRoot)
-$panelProc = Start-Process "$repo\.venv\Scripts\python.exe" -ArgumentList @($panelPy) + $panelArgs -WindowStyle Minimized -PassThru
+$panelArgList = @($panelPy) + $panelArgs
+if (-not $panelArgList) { $panelArgList = @('') }
+$panelProc = Start-Process "$repo\.venv\Scripts\python.exe" -ArgumentList $panelArgList -WindowStyle Minimized -PassThru
 
 $cert = Join-Path $panelRoot 'certs\panel-cert.pem'
 $key  = Join-Path $panelRoot 'certs\panel-key.pem'
 $uvArgs = @('-m','uvicorn','contract_review_app.api.app:app',
             '--host','127.0.0.1','--port','9443',
             '--ssl-certfile',$cert,'--ssl-keyfile',$key)
+if (-not $uvArgs) { $uvArgs = @('') }
 $backendProc = Start-Process "$repo\.venv\Scripts\python.exe" -ArgumentList $uvArgs -WindowStyle Minimized -PassThru
 
 add-type @"
@@ -51,7 +54,7 @@ $okPanel = Wait-Ok 'https://127.0.0.1:3000/panel_selftest.html'
 if (-not $okApi)   { Write-Host '[ERR] Backend not ready' -ForegroundColor Red }
 if (-not $okPanel) { Write-Host '[ERR] Panel not ready'   -ForegroundColor Red }
 
-Start-Process 'https://127.0.0.1:3000/panel_selftest.html?v=dev'
+Start-Process -FilePath 'https://127.0.0.1:3000/panel_selftest.html?v=dev' -ArgumentList @('')
 Write-Host '[OK] READY. Panel self-test opened.'
 Read-Host 'Press Enter to stop services'
 

@@ -17,6 +17,7 @@ import { notifyWarn } from './notifier.ts';
 
 export type AnalyzeFinding = {
   rule_id: string;
+  code?: string;
   clause_type?: string;
   severity?: "low" | "medium" | "high" | "critical" | string;
   start?: number;
@@ -27,7 +28,8 @@ export type AnalyzeFinding = {
   law_refs?: string[];
   law_reference?: string; // legacy
   citations?: string[];
-  conflict_with?: string[];
+  conflict_with?: string[]; // legacy
+  links?: { type?: string; targetFindingId?: string }[];
   category?: string;
   score?: number;
   suggestion?: { text?: string };

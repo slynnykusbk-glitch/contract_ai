@@ -89,6 +89,7 @@ function base(): string {
   try { return (localStorage.getItem('backendUrl') || DEFAULT_BASE).replace(/\/+$/, ''); }
   catch { return DEFAULT_BASE; }
 }
+
 const ANALYZE_BASE_MS = 9000;
 const ANALYZE_PER_KB_MS = 60;
 const ANALYZE_MAX_MS = 90000;
@@ -117,8 +118,20 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
         timeoutMs = Math.max(ANALYZE_BASE_MS, Math.min(ANALYZE_MAX_MS, Math.floor(dyn)));
       }
       try {
-        const v = localStorage.getItem('cai.timeout.analyze.ms');
-        if (v) timeoutMs = parseInt(v, 10);
+        for (const k of [
+          'cai.timeout.analyze.ms',
+          'cai_timeout_ms:/api/analyze',
+          'cai_timeout_ms:analyze',
+        ]) {
+          const v = localStorage.getItem(k);
+          if (v) {
+            const parsed = parseInt(v, 10);
+            if (Number.isFinite(parsed)) {
+              timeoutMs = parsed;
+              break;
+            }
+          }
+        }
       } catch {}
       try {
         const v = localStorage.getItem('cai.retry.analyze.count');
@@ -137,22 +150,8 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
         const rb = params.get('rb');
         if (rb) backoffMs = parseInt(rb, 10);
       } catch {}
-      timeoutMs = timeoutMs ?? ANALYZE_BASE_MS;
-    } else {
-      if (timeoutMs == null) {
-        try {
-          const route = path.split('/').pop() || '';
-          const ov = localStorage.getItem(`cai.timeout.${route}.ms`);
-          if (ov) timeoutMs = parseInt(ov, 10);
-        } catch {}
-      }
-      if (timeoutMs == null) {
-        timeoutMs = 30000;
-        if (sizeBytes > 300000) timeoutMs = 90000;
-        else if (sizeBytes > 100000) timeoutMs = 60000;
-      }
-      timeoutMs = Math.min(timeoutMs, 120000);
     }
+    timeoutMs = timeoutMs ?? ANALYZE_BASE_MS;
 
     async function attempt(n: number): Promise<any> {
       const ctrl = new AbortController();
@@ -246,12 +245,14 @@ export async function analyze(payload: any = {}) {
   };
 
   const body: any = {
-    schema: '1.4',
-    mode: payload?.mode || 'live',
+    payload: {
+      schema: '1.4',
+      mode: payload?.mode || 'live',
+    },
   };
 
-  if (payload?.text) body.text = payload.text;
-  else if (payload?.content) body.text = payload.content;
+  if (payload?.text) body.payload.text = payload.text;
+  else if (payload?.content) body.payload.text = payload.content;
 
   const res = await fetch('/api/analyze', {
     method: 'POST',

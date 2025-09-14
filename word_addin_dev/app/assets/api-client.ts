@@ -245,12 +245,14 @@ export async function analyze(payload: any = {}) {
   };
 
   const body: any = {
-    schema: '1.4',
-    mode: payload?.mode || 'live',
+    payload: {
+      schema: '1.4',
+      mode: payload?.mode || 'live',
+    },
   };
 
-  if (payload?.text) body.text = payload.text;
-  else if (payload?.content) body.text = payload.content;
+  if (payload?.text) body.payload.text = payload.text;
+  else if (payload?.content) body.payload.text = payload.content;
 
   const res = await fetch('/api/analyze', {
     method: 'POST',

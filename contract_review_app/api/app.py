@@ -1242,7 +1242,7 @@ def _as_dict(model_or_obj: Any) -> Dict[str, Any]:
 
 
 def _set_schema_headers(response: Response) -> None:
-    response.headers["X-Schema-Version"] = SCHEMA_VERSION
+    response.headers["x-schema-version"] = SCHEMA_VERSION
 
 
 def _set_std_headers(

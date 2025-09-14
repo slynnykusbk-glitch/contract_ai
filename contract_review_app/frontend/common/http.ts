@@ -39,7 +39,12 @@ export async function postJSON<T>(url: string, body: unknown, extra: HeadersMap 
     'x-schema-version': getStoredSchema(),
     ...extra,
   };
-  const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+  const r = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+    credentials: 'include',
+  });
   const respSchema = r.headers.get('x-schema-version');
   if (respSchema) setStoredSchema(respSchema);
   if (!r.ok) {

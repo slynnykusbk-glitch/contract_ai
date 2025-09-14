@@ -30,7 +30,7 @@ class RequireHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         if 200 <= response.status_code < 400:
-            response.headers["X-Schema-Version"] = SCHEMA_VERSION
+            response.headers["x-schema-version"] = SCHEMA_VERSION
             if request.url.path == "/api/analyze":
                 cid = response.headers.get("x-cid") or request.state.cid
                 response.headers["X-Cid"] = cid

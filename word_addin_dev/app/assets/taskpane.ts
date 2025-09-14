@@ -486,13 +486,24 @@ async function highlightFinding(op: AnnotationPlan) {
   });
 }
 
+let isNavigating = false;
 async function navigateFinding(dir: number) {
+  if (isNavigating) return;
+  isNavigating = true;
   const arr: AnnotationPlan[] = (window as any).__findings || [];
-  if (!arr.length) return;
+  if (!arr.length) {
+    isNavigating = false;
+    return;
+  }
+  const prevBtn = document.getElementById("btnPrevIssue") as HTMLButtonElement | null;
+  const nextBtn = document.getElementById("btnNextIssue") as HTMLButtonElement | null;
+  if (prevBtn) prevBtn.disabled = true;
+  if (nextBtn) nextBtn.disabled = true;
   const w: any = window as any;
   w.__findingIdx = (w.__findingIdx ?? 0) + dir;
   if (w.__findingIdx < 0) w.__findingIdx = arr.length - 1;
   if (w.__findingIdx >= arr.length) w.__findingIdx = 0;
+<<
   const list = mustGetElementById<HTMLElement>("findingsList");
   const items = Array.from(list.querySelectorAll("li"));
   items.forEach((li, i) => {
@@ -519,8 +530,8 @@ function jumpToFinding(code: string) {
   try { highlightFinding(arr[idx]); } catch {}
 }
 
-function onPrevIssue() { navigateFinding(-1); }
-function onNextIssue() { navigateFinding(1); }
+async function onPrevIssue() { await navigateFinding(-1); }
+async function onNextIssue() { await navigateFinding(1); }
 
 export function renderAnalysisSummary(json: any) {
   clearHighlight().catch(() => {});
@@ -620,6 +631,7 @@ function renderResults(res: any) {
   const findingsArr: AnalyzeFinding[] = parseFindings(res);
   (window as any).__findings = findingsArr;
   (window as any).__findingIdx = 0;
+
 
   const findingsList = slot("findingsList", "findings") as HTMLElement | null;
   if (findingsList) {

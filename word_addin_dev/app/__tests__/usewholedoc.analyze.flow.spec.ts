@@ -64,9 +64,10 @@ describe('use whole doc + analyze flow', () => {
     expect(book.classList.contains('hidden')).toBe(true);
     const analyzeCalls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/analyze'));
     expect(analyzeCalls.length).toBe(1);
-    const body = JSON.parse(analyzeCalls[0][1].body);
-    expect(body).toMatchObject({ mode: 'live', text: 'TEST BODY' });
-    expect(body.schema).toBeUndefined();
+    const opts = analyzeCalls[0][1];
+    const body = JSON.parse(opts.body);
+    expect(body).toMatchObject({ mode: 'live', text: 'TEST BODY', schema: '1.4' });
+    expect(opts.headers['x-schema-version']).toBe('1.4');
     vi.useRealTimers();
   }, 10000);
 });

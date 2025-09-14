@@ -33,13 +33,15 @@ export function ensureHeadersSet() {
 }
 
 export async function postJSON<T>(url: string, body: unknown, extra: HeadersMap = {}): Promise<T> {
+  const schema = getStoredSchema() || '1.4';
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     'x-api-key': getStoredKey(),
-    'x-schema-version': getStoredSchema(),
+    'x-schema-version': schema,
     ...extra,
   };
-  const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+  const payload = { ...(body as any || {}), schema };
+  const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
   const respSchema = r.headers.get('x-schema-version');
   if (respSchema) setStoredSchema(respSchema);
   if (!r.ok) {

@@ -11,7 +11,7 @@ describe('analyze payload wrapper', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [, opts] = fetchMock.mock.calls[0];
     const body = JSON.parse(opts.body);
-    expect(body).toMatchObject({ mode: 'live', text: 'hello' });
-    expect(body.schema).toBeUndefined();
+    expect(body).toMatchObject({ mode: 'live', text: 'hello', schema: '1.4' });
+    expect(opts.headers['x-schema-version']).toBe('1.4');
   });
 });

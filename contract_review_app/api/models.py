@@ -41,6 +41,7 @@ class AnalyzeRequest(_DTOBase):
     language: str = "en-GB"
     mode: str | None = None
     risk: str | None = None
+    schema_: str | None = Field(None, alias="schema")
 
     @field_validator("language", mode="before")
     @classmethod

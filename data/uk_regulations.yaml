@@ -1,0 +1,25 @@
+- source: "OGUK Standard"
+  source_type: "OGUK"
+  jurisdiction: "UK"
+  topics: ["oil and gas", "master service agreement"]
+  excerpt: "OGUK standard requires specific indemnities for offshore services."
+- source: "ICO Guidance on Data Protection"
+  source_type: "ICO"
+  jurisdiction: "UK"
+  topics: ["data protection", "uk gdpr"]
+  excerpt: "Organisations must implement appropriate technical and organisational measures to ensure data security."
+- source: "FCA Regulations on Financial Promotions"
+  source_type: "FCA"
+  jurisdiction: "UK"
+  topics: ["financial", "promotions"]
+  excerpt: "Financial promotions must be fair, clear and not misleading."
+- source: "UK Legislation: Data Protection Act 2018"
+  source_type: "legislation"
+  jurisdiction: "UK"
+  topics: ["data protection", "uk gdpr"]
+  excerpt: "The Data Protection Act 2018 is the UK's implementation of the General Data Protection Regulation."
+- source: "US Export Control"
+  source_type: "EAR"
+  jurisdiction: "US"
+  topics: ["export", "sanctions"]
+  excerpt: "Placeholder rule used to ensure non-UK sources are ignored."

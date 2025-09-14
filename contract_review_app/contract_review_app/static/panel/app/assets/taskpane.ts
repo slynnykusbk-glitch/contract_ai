@@ -385,10 +385,27 @@ export async function applyOpsTracked(
 
 g.applyOpsTracked = g.applyOpsTracked || applyOpsTracked;
 
+function clearHighlightInCtx(ctx: Word.RequestContext, w: any) {
+  if (w.__highlight) {
+    try { w.__highlight.font.highlightColor = 'NoColor' as any; } catch {}
+    ctx.trackedObjects.remove(w.__highlight);
+    w.__highlight = null;
+  }
+}
 
+export async function clearHighlight() {
+  const w: any = window as any;
+  if (!w.__highlight) return;
+  await Word.run(async ctx => {
+    clearHighlightInCtx(ctx, w);
+    await ctx.sync();
+  });
+}
 
 async function highlightFinding(op: AnnotationPlan) {
   await Word.run(async ctx => {
+    const w: any = window as any;
+    clearHighlightInCtx(ctx, w);
     const body = ctx.document.body as any;
     let anchors = await findAnchors(body, op.raw);
     let target: any = anchors[Math.min(op.occIdx, anchors.length - 1)] || null;
@@ -397,7 +414,10 @@ async function highlightFinding(op: AnnotationPlan) {
       target = anchors[Math.min(op.occIdx, anchors.length - 1)] || null;
     }
     if (target) {
+      w.__highlight = target;
+      ctx.trackedObjects.add(target);
       try { target.select(); } catch {}
+      try { target.font.highlightColor = '#ffff00' as any; } catch {}
     }
     await ctx.sync();
   });
@@ -444,6 +464,7 @@ function onPrevIssue() { navigateFinding(-1); }
 function onNextIssue() { navigateFinding(1); }
 
 export function renderAnalysisSummary(json: any) {
+  clearHighlight().catch(() => {});
   // аккуратно вытаскиваем ключевые поля
   const clauseType =
     json?.summary?.clause_type ||
@@ -472,12 +493,14 @@ export function renderAnalysisSummary(json: any) {
   const fCont = document.getElementById("findingsList");
   if (fCont) {
     fCont.innerHTML = "";
+
     for (const f of visibleFindings) {
       const li = document.createElement("li");
       const title =
         f?.title || f?.finding?.title || f?.rule_id || "Issue";
       const snippet = f?.snippet || f?.evidence?.text || "";
       li.textContent = snippet ? `${title}: ${snippet}` : String(title);
+
 
       const links = Array.isArray((f as any).links)
         ? (f as any).links.filter((l: any) => l?.type === 'conflict' && l?.targetFindingId)
@@ -497,7 +520,7 @@ export function renderAnalysisSummary(json: any) {
       }
 
       fCont.appendChild(li);
-    }
+    });
   }
 
   // Заполняем рекомендации
@@ -853,6 +876,7 @@ export async function onAnalyze() {
 
 async function doAnalyze() {
   return withBusy(async () => {
+    await clearHighlight();
     const btn = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
     const busy = document.getElementById("busyBar") as HTMLElement | null;
     if (btn) btn.disabled = true;
@@ -923,6 +947,7 @@ async function doAnalyze() {
 
 async function doQARecheck() {
   return withBusy(async () => {
+    await clearHighlight();
     ensureHeaders();
     const text = await getWholeDocText();
     (window as any).__lastAnalyzed = text;

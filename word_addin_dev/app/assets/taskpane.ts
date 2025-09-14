@@ -448,10 +448,27 @@ export async function applyOpsTracked(
 
 g.applyOpsTracked = g.applyOpsTracked || applyOpsTracked;
 
+function clearHighlightInCtx(ctx: Word.RequestContext, w: any) {
+  if (w.__highlight) {
+    try { w.__highlight.font.highlightColor = 'NoColor' as any; } catch {}
+    ctx.trackedObjects.remove(w.__highlight);
+    w.__highlight = null;
+  }
+}
 
+export async function clearHighlight() {
+  const w: any = window as any;
+  if (!w.__highlight) return;
+  await Word.run(async ctx => {
+    clearHighlightInCtx(ctx, w);
+    await ctx.sync();
+  });
+}
 
 async function highlightFinding(op: AnnotationPlan) {
   await Word.run(async ctx => {
+    const w: any = window as any;
+    clearHighlightInCtx(ctx, w);
     const body = ctx.document.body as any;
     let anchors = await findAnchors(body, op.raw);
     let target: any = anchors[Math.min(op.occIdx, anchors.length - 1)] || null;
@@ -460,7 +477,10 @@ async function highlightFinding(op: AnnotationPlan) {
       target = anchors[Math.min(op.occIdx, anchors.length - 1)] || null;
     }
     if (target) {
+      w.__highlight = target;
+      ctx.trackedObjects.add(target);
       try { target.select(); } catch {}
+      try { target.font.highlightColor = '#ffff00' as any; } catch {}
     }
     await ctx.sync();
   });
@@ -503,6 +523,7 @@ function onPrevIssue() { navigateFinding(-1); }
 function onNextIssue() { navigateFinding(1); }
 
 export function renderAnalysisSummary(json: any) {
+  clearHighlight().catch(() => {});
   // аккуратно вытаскиваем ключевые поля
   const clauseType =
     json?.summary?.clause_type ||
@@ -532,12 +553,21 @@ export function renderAnalysisSummary(json: any) {
   const fCont = document.getElementById("findingsList");
   if (fCont) {
     fCont.innerHTML = "";
-    for (const f of visibleFindings) {
+    visibleFindings.forEach((f, idx) => {
       const li = document.createElement("li");
       const title =
         f?.title || f?.finding?.title || f?.rule_id || "Issue";
       const snippet = f?.snippet || f?.evidence?.text || "";
       li.textContent = snippet ? `${title}: ${snippet}` : String(title);
+
+      li.addEventListener('click', () => {
+        const items = Array.from(fCont.querySelectorAll('li'));
+        items.forEach((el, i) => {
+          (el as HTMLElement).classList.toggle('active', i === idx);
+        });
+        (window as any).__findingIdx = idx;
+        highlightFinding(f).catch(() => {});
+      });
 
       const links = Array.isArray((f as any).links)
         ? (f as any).links.filter((l: any) => l?.type === 'conflict' && l?.targetFindingId)
@@ -545,18 +575,19 @@ export function renderAnalysisSummary(json: any) {
       if (links.length) {
         const div = document.createElement('div');
         div.textContent = `Conflicts: ${links.length} `;
-        links.forEach((lnk: any, idx: number) => {
+        links.forEach((lnk: any, lidx: number) => {
           const a = document.createElement('a');
           a.href = '#';
           a.textContent = 'Jump to';
           a.addEventListener('click', ev => { ev.preventDefault(); jumpToFinding(lnk.targetFindingId); });
           div.appendChild(a);
-          if (idx < links.length - 1) div.append(' ');
+          if (lidx < links.length - 1) div.append(' ');
         });
         li.appendChild(div);
       }
 
       fCont.appendChild(li);
+
     }
 
     fCont.appendChild(li);
@@ -922,6 +953,7 @@ export async function onAnalyze() {
 
 async function doAnalyze() {
   return withBusy(async () => {
+
     const btn = mustGetElementById<HTMLButtonElement>("btnAnalyze");
     const busy = mustGetElementById<HTMLElement>("busyBar");
     btn.disabled = true;
@@ -992,6 +1024,7 @@ async function doAnalyze() {
 
 async function doQARecheck() {
   return withBusy(async () => {
+    await clearHighlight();
     ensureHeaders();
     const text = await getWholeDocText();
     (window as any).__lastAnalyzed = text;

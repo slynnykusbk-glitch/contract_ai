@@ -605,15 +605,19 @@ export function renderAnalysisSummary(json: any) {
 
   // Заполняем рекомендации
 
-  const recommendationsBlock = mustGetElementById('recommendationsBlock');
-  const recommendationsList = mustGetElementById<HTMLElement>("recommendationsList");
-  recommendationsList.innerHTML = "";
-  for (const r of recs) {
-    const li = document.createElement("li");
-    li.textContent = r?.text || r?.advice || r?.message || "Recommendation";
-    recommendationsList.appendChild(li);
+  const recommendationsBlock = document.getElementById('recommendationsBlock') as HTMLElement | null;
+  const recommendationsList = document.getElementById("recommendationsList") as HTMLElement | null;
+  if (recommendationsList) {
+    recommendationsList.innerHTML = "";
+    for (const r of recs) {
+      const li = document.createElement("li");
+      li.textContent = r?.text || r?.advice || r?.message || "Recommendation";
+      recommendationsList.appendChild(li);
+    }
   }
-  recommendationsBlock.style.display = recs.length ? '' : 'none';
+  if (recommendationsBlock) {
+    recommendationsBlock.style.display = recs.length ? '' : 'none';
+  }
 
   // Показать блок результатов (если был скрыт стилями)
   const rb = mustGetElementById<HTMLElement>("resultsBlock");

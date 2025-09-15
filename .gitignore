@@ -80,3 +80,6 @@ reports/
 # ==== Служебные ====
 .DS_Store
 .gitattributes.lock
+# dev artefacts (не нужны в репо)
+contract_review_app/contract_review_app/static/panel/.build-token
+wef/

@@ -33,10 +33,13 @@ export type PanelState = {
  * directly fails, the comment is added to the first paragraph of the range.
  */
 export async function addCommentAtRange(range: Word.Range, text: string) {
+  let ok = false;
   try {
-
-    await safeInsertComment(range, text);
-  } catch { /* ignore */
+    ok = await safeInsertComment(range, text);
+  } catch {
+    ok = false;
+  }
+  if (!ok) {
     try {
       const p = range.paragraphs.getFirst();
       await safeInsertComment(p as unknown as Word.Range, text);

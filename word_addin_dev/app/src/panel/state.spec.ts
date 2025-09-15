@@ -10,7 +10,7 @@ vi.mock('../assets/api-client.ts', () => ({
 }));
 const safeInsertMock = vi.fn()
   .mockRejectedValueOnce(new Error('fail'))
-  .mockResolvedValue(undefined);
+  .mockResolvedValue(true);
 vi.mock('../assets/annotate.ts', () => ({
   safeInsertComment: (...args: any[]) => safeInsertMock(...args)
 }));

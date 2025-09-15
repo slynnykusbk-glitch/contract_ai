@@ -439,7 +439,8 @@ export async function applyOpsTracked(
           }
         }
         const comment = `${COMMENT_PREFIX} ${op.rationale || op.source || 'AI edit'}`;
-        try { await safeInsertComment(target, comment); } catch {}
+        const ok = await safeInsertComment(target, comment);
+        if (!ok) { /* noop */ }
 
       } else {
         console.warn('[applyOpsTracked] match not found', { snippet, occIdx });
@@ -1175,7 +1176,8 @@ async function onAcceptAll() {
       const range = ctx.document.getSelection();
       (ctx.document as any).trackRevisions = true;
       range.insertText(proposed, Word.InsertLocation.replace);
-      try { await safeInsertComment(range, `${COMMENT_PREFIX} ${link}`); } catch {}
+      const ok = await safeInsertComment(range, `${COMMENT_PREFIX} ${link}`);
+      if (!ok) { /* noop */ }
       await ctx.sync();
     });
 

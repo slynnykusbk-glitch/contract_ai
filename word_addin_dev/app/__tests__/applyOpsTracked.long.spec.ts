@@ -11,7 +11,7 @@ vi.mock('../assets/pending.ts', async () => {
 
 vi.mock('../assets/annotate.ts', async () => {
   const actual = await vi.importActual('../assets/annotate.ts')
-  return { ...actual, COMMENT_PREFIX: '[CAI]', safeInsertComment: vi.fn() }
+  return { ...actual, COMMENT_PREFIX: '[CAI]', safeInsertComment: vi.fn().mockResolvedValue(true) }
 })
 
 const innerRange: any = {}

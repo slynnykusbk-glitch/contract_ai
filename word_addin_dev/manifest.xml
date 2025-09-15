@@ -33,6 +33,12 @@
     <SourceLocation DefaultValue="https://localhost:9443/panel/taskpane.html?v=dev&amp;b=build-20250911-102753"/>
   </DefaultSettings>
 
+  <Requirements>
+    <Sets DefaultMinVersion="1.1">
+      <Set Name="WordApi" MinVersion="1.4"/>
+    </Sets>
+  </Requirements>
+
   <Permissions>ReadWriteDocument</Permissions>
 
   <VersionOverrides xsi:type="ov:VersionOverridesV1_0">

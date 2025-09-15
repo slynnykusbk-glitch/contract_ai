@@ -8,17 +8,23 @@ export interface CommentItem {
   message: string;
 }
 
-export async function safeInsertComment(range: Word.Range, text: string) {
+export async function safeInsertComment(range: Word.Range, text: string): Promise<boolean> {
+  try {
+    if (!Office.context.requirements.isSetSupported('WordApi', '1.4')) return false;
+  } catch {
+    return false;
+  }
   const context: any = (range as any).context;
-  let lastErr: any = null;
   try {
     const anyDoc = (context?.document as any);
     if (anyDoc?.comments?.["add"]) {
       anyDoc.comments["add"](range, text);
       await context?.sync?.();
-      return;
+      return true;
     }
-  } catch (e) { lastErr = e; }
+  } catch (e: any) {
+    if (e?.code === 'NotImplemented') return false;
+  }
   try {
     (range as any)["insertComment"](text);
     await context?.sync?.();
@@ -38,6 +44,7 @@ export async function safeInsertComment(range: Word.Range, text: string) {
   g.logRichError?.(lastErr, "insertComment");
   g.notifyWarn?.("Failed to insert comment");
   throw lastErr;
+
 }
 
 /**
@@ -55,14 +62,14 @@ export async function insertComments(ctx: any, items: CommentItem[]): Promise<nu
     let r = it.range;
     const msg = it.message;
     try {
-      await safeInsertComment(r, msg);
-      inserted++;
+      const ok = await safeInsertComment(r, msg);
+      if (ok) inserted++;
     } catch (e: any) {
       if (String(e).includes("0xA7210002")) {
         try {
           r = r.expandTo ? r.expandTo(ctx.document.body) : r;
-          await safeInsertComment(r, msg);
-          inserted++;
+          const ok = await safeInsertComment(r, msg);
+          if (ok) inserted++;
         } catch (e2) {
           console.warn("annotate retry failed", e2);
         }
@@ -201,7 +208,8 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
         if (isDryRunAnnotateEnabled()) {
           try { target.select(); } catch {}
         } else if (op.msg) {
-          await safeInsertComment(target, op.msg);
+          const ok = await safeInsertComment(target, op.msg);
+          if (!ok) continue;
         }
         used.push({ start, end });
         inserted++;

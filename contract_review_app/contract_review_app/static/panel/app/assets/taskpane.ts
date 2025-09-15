@@ -1171,7 +1171,7 @@ async function onApplyTracked() {
   }
 }
 
-async function onAcceptAll() {
+export async function onAcceptAll() {
   try {
     const dst = $(Q.proposed);
     const proposed = (dst?.value || "").trim();

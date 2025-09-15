@@ -8,6 +8,12 @@ export interface CommentItem {
   message: string;
 }
 
+/**
+ * Insert a comment if Word API 1.4 is available.
+ *
+ * @returns true when a comment was inserted, false when the comments API is
+ *          unavailable or throws a NotImplemented error.
+ */
 export async function safeInsertComment(range: Word.Range, text: string): Promise<boolean> {
   try {
     if (!Office.context.requirements.isSetSupported('WordApi', '1.4')) return false;

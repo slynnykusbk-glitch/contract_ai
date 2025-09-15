@@ -115,6 +115,7 @@ describe('annotate scheduler', () => {
     const ranges = [
       { start: 0, end: 3, load: () => {}, insertComment: (msg: string) => inserted.push(msg) }
     ];
+    (globalThis as any).Office = { context: { requirements: { isSetSupported: () => true } } };
     (globalThis as any).Word = {
       run: async (cb: any) => {
         const ctx = { document: { body: { context: { sync: async () => {}, trackedObjects: { add: () => {} } }, search: () => ({ items: ranges, load: () => {} }) } }, sync: async () => {} };

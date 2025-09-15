@@ -12,6 +12,7 @@ describe('analyze request body', () => {
     const { headers, body: bodyStr } = fetchMock.mock.calls[0][1];
     const body = JSON.parse(bodyStr);
     expect(body).toMatchObject({ text: 'hi', mode: 'live', schema: '1.4' });
+    expect('payload' in body).toBe(false);
     expect(headers['x-schema-version']).toBe('1.4');
   });
 
@@ -23,6 +24,7 @@ describe('analyze request body', () => {
     const { headers, body: bodyStr } = fetchMock.mock.calls[0][1];
     const body = JSON.parse(bodyStr);
     expect(body).toMatchObject({ text: 'hi', mode: 'test', schema: '1.4' });
+    expect('payload' in body).toBe(false);
     expect(headers['x-schema-version']).toBe('1.4');
   });
 });

@@ -12,6 +12,7 @@ describe('analyze payload wrapper', () => {
     const [, opts] = fetchMock.mock.calls[0];
     const body = JSON.parse(opts.body);
     expect(body).toMatchObject({ mode: 'live', text: 'hello', schema: '1.4' });
+    expect('payload' in body).toBe(false);
     expect(opts.headers['x-schema-version']).toBe('1.4');
   });
 });

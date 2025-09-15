@@ -1849,8 +1849,13 @@ def api_admin_purge(dry: int = 1):
     response_model=AnalyzeResponse,
 )
 def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello"})):
+    data = body
+    if isinstance(body, dict):
+        payload = body.get("payload")
+        if isinstance(payload, dict):
+            data = payload
     try:
-        req = AnalyzeRequest.model_validate(body.get("payload", body))
+        req = AnalyzeRequest.model_validate(data)
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=e.errors())
     clause_type = request.query_params.get("clause_type")

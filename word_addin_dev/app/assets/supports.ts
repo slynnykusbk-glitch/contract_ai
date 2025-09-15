@@ -15,21 +15,8 @@ export function detectSupports(): FeatureSupport {
 
   const ls = (globalThis as any).localStorage;
   const override = ls?.getItem?.('cai.force.comments') === '1';
-  let comments = false;
-  let reason = 'unsupported';
-  if (override) {
-    comments = true;
-    reason = 'dev override';
-  } else if (w?.Comment) {
-    comments = true;
-    reason = 'Word.Comment available';
-  } else if (req) {
-    comments = true;
-    reason = 'WordApi 1.4';
-  } else {
-    comments = false;
-    reason = 'Word.Comment missing';
-  }
+  const comments = override || req;
+  const reason = override ? 'dev override' : req ? 'WordApi 1.4' : 'WordApi < 1.4';
 
   return { revisions: rev, comments, search: srch, contentControls: cc, commentsReason: reason };
 }

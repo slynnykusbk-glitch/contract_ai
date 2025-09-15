@@ -54,7 +54,8 @@ export async function insertDraftText(
       lines.push(rat);
     }
     lines.push('schema 1.4 | model gpt-4o-mini | provider azure');
-    try { await safeInsertComment(range, lines.join('\n')); } catch {}
+
+    try { (doc as any).comments["add"](range, lines.join('\n')); } catch {}
     await context.sync();
     doc.trackRevisions = prevTrack;
     await context.sync();

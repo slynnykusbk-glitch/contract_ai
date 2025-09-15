@@ -3,16 +3,18 @@ export type FeatureSupport = {
   comments: boolean;
   search: boolean;
   contentControls: boolean;
+  commentsReason: string;
 };
 
 export function detectSupports(): FeatureSupport {
-  const req = !!(globalThis as any).Office?.context?.requirements?.isSetSupported?.('WordApi','1.4');
+  const req = !!(globalThis as any).Office?.context?.requirements?.isSetSupported?.('WordApi', '1.4');
   const w: any = (globalThis as any).Word || {};
   const rev = req && !!w?.Revision;
-  const com = req && !!w?.Comment;
   const srch = req && !!w?.SearchOptions;
   const cc = req && !!w?.ContentControl;
-  return { revisions: rev, comments: com, search: srch, contentControls: cc };
+  const com = req;
+  const reason = req ? 'WordApi 1.4' : 'WordApi < 1.4';
+  return { revisions: rev, comments: com, search: srch, contentControls: cc, commentsReason: reason };
 }
 
 export const supports = {

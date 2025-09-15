@@ -1,7 +1,9 @@
 {
   "scripts": {
     "build:panel": "python tools/build_panel.py --run-tests",
-    "panel:dev:sync": "python tools/panel_dev_sync.py"
+    "panel:dev:sync": "python tools/panel_dev_sync.py",
+    "guard:no-raw-comments": "pwsh ./scripts/guard_no_raw_comments.ps1",
+    "test": "pwsh ./run_tests.ps1"
   },
   "devDependencies": {
     "ts-node": "^10.9.2"

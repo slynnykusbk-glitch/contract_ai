@@ -439,7 +439,12 @@ export async function applyOpsTracked(
           }
         }
         const comment = `${COMMENT_PREFIX} ${op.rationale || op.source || 'AI edit'}`;
-        const ok = await safeInsertComment(target, comment);
+        let ok = false;
+        try {
+          ok = await safeInsertComment(target, comment);
+        } catch (e) {
+          console.warn('[applyOpsTracked] safeInsertComment failed', e);
+        }
         if (!ok) { /* noop */ }
 
       } else {
@@ -1176,7 +1181,12 @@ export async function onAcceptAll() {
       const range = ctx.document.getSelection();
       (ctx.document as any).trackRevisions = true;
       range.insertText(proposed, Word.InsertLocation.replace);
-      const ok = await safeInsertComment(range, `${COMMENT_PREFIX} ${link}`);
+      let ok = false;
+      try {
+        ok = await safeInsertComment(range, `${COMMENT_PREFIX} ${link}`);
+      } catch (e) {
+        console.warn('[onAcceptAll] safeInsertComment failed', e);
+      }
       if (!ok) { /* noop */ }
       await ctx.sync();
     });
@@ -1354,7 +1364,11 @@ export function wireUI() {
   updateAnchorBadge();
 
   if (!s.revisions) { disable('btnApplyTracked', 'revisions'); disable('btnAcceptAll', 'revisions'); disable('btnRejectAll', 'revisions'); }
-  if (!s.comments) { disable('btnAcceptAll', s.commentsReason); }
+  if (!s.comments) {
+    disable('btnAnnotate', 'comments');
+    disable('btnAcceptAll', s.commentsReason);
+    notifyWarn('Comments API not available in this Word build');
+  }
   if (!s.search) { disable('btnPrevIssue', 'search'); disable('btnNextIssue', 'search'); disable('btnQARecheck', 'search'); }
   if (!s.contentControls) { disable('btnAnnotate', 'contentControls'); }
   if (!s.revisions || !s.comments || !s.search || !s.contentControls) {

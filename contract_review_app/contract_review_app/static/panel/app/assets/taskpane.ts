@@ -439,7 +439,12 @@ export async function applyOpsTracked(
           }
         }
         const comment = `${COMMENT_PREFIX} ${op.rationale || op.source || 'AI edit'}`;
-        const ok = await safeInsertComment(target, comment);
+        let ok = false;
+        try {
+          ok = await safeInsertComment(target, comment);
+        } catch (e) {
+          console.warn('[applyOpsTracked] safeInsertComment failed', e);
+        }
         if (!ok) { /* noop */ }
 
       } else {
@@ -1183,7 +1188,12 @@ async function onAcceptAll() {
       const range = ctx.document.getSelection();
       (ctx.document as any).trackRevisions = true;
       range.insertText(proposed, Word.InsertLocation.replace);
-      const ok = await safeInsertComment(range, `${COMMENT_PREFIX} ${link}`);
+      let ok = false;
+      try {
+        ok = await safeInsertComment(range, `${COMMENT_PREFIX} ${link}`);
+      } catch (e) {
+        console.warn('[onAcceptAll] safeInsertComment failed', e);
+      }
       if (!ok) { /* noop */ }
       await ctx.sync();
     });

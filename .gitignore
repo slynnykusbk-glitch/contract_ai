@@ -1,37 +1,82 @@
-﻿# OS/IDE
-.DS_Store
+﻿# ==== ОС/IDE мусор ====
 Thumbs.db
+Desktop.ini
+*.log
+*.tmp
+*.swp
 .vscode/
 .idea/
+*.code-workspace
 
-# Python
+# ==== Python ====
 .venv/
+env/
+venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.egg-info/
-*.sqlite3
+.python-version
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.pytest_cache/
 
-# Secrets & env
-.env
-.env.*
-dev/
-*.key
-*.crt
+# ==== Node/Frontend ====
+node_modules/
+.npm/
+.pnpm-store/
+yarn.lock
+pnpm-lock.yaml
+# артефакты сборки (оставим исходники, игнорим сборку в word_addin_dev/dist, если нужно хранить – удали эту строку)
+word_addin_dev/dist/
+
+# ==== Office/WebView2 кэши локального Word sideload ====
+AppData/
+**/Microsoft/Office/16.0/WEF/**
+
+# ==== Секреты, ключи, сертификаты, токены ====
 *.pem
+*.crt
+*.cer
 *.pfx
 *.p12
+*.key
+*.der
+*.jks
+*.p7b
+*.p7c
 
-# Node / front
-node_modules/
-dist/
-build/
-*.log
+# Часто встречающиеся .env/секреты
+.env
+.env.*
+*.secrets.json
+secrets.json
+secret*.json
+*.token
+*.apikey
+*.key.json
 
-# Office add-in build artifacts
-*.bundle.js.map
-*.map
+# ==== Локальные БД/кэши ====
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
 
-# Misc
-*.tmp
+# ==== Наши точечные пути с дев-сертификатами и т.п. ====
+dev/
+word_addin_dev/certs/
+tools/**/certs/
+**/.cert/
+**/certs/
+
+# ==== Артефакты тестов/отчётов ====
+junit.xml
+test-results/
+reports/
+
+# ==== Служебные ====
+.DS_Store
+.gitattributes.lock

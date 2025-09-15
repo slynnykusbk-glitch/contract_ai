@@ -1,33 +1,41 @@
 @echo off
 setlocal
-rem ===== ContractAI unified launcher =====
-pushd "%~dp0"
+title ContractAI — Start
 
-rem Free 9443 before start
-for /f %%P in ('powershell -NoProfile -Command ^
-  "(Get-NetTCPConnection -LocalPort 9443 -State Listen -ErrorAction SilentlyContinue).OwningProcess"') do set PID=%%P
-if defined PID powershell -NoProfile -Command "try{Stop-Process -Id %PID% -Force}catch{}"
-powershell -NoProfile -Command "Get-Process uvicorn -ErrorAction SilentlyContinue | Stop-Process -Force"
+rem ===== 0) Папка проекта
+cd /d C:\Users\Ludmila\contract_ai
 
-rem Import User environment variables
-for %%V in (LLM_PROVIDER AZURE_OPENAI_API_KEY AZURE_OPENAI_ENDPOINT AZURE_OPENAI_DEPLOYMENT AZURE_OPENAI_API_VERSION) do (
-  for /f "usebackq tokens=* delims=" %%A in (`powershell -NoProfile -Command ^
-    "[Environment]::GetEnvironmentVariable('%%V','User')"`) do set %%V=%%A
+rem ===== 1) Ключ/слот LLM — как просили, 84
+set "LLM_KEY_SLOT=84"
+set "AZURE_OPENAI_KEY_SLOT=84"
+rem сохраняем ещё и в постоянные переменные пользователя
+setx LLM_KEY_SLOT 84 >nul
+setx AZURE_OPENAI_KEY_SLOT 84 >nul
+
+rem ===== 2) Виртуалка и минимальные зависимости (если вдруг нет)
+if not exist ".venv\Scripts\python.exe" (
+  py -3 -m venv .venv
 )
+call .venv\Scripts\pip.exe -q install -U pip
+call .venv\Scripts\pip.exe -q install fastapi uvicorn jinja2 pydantic python-multipart ^
+  cryptography pyyaml requests httpx python-docx
 
-rem Auto-select provider when key exists
-if not "%AZURE_OPENAI_API_KEY%"=="" if "%LLM_PROVIDER%"=="" set LLM_PROVIDER=azure
+rem ===== 3) Обновить/гарантировать Shared Folder \\localhost\wef и доверенный каталог Office
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$p='C:\Users\Ludmila\contract_ai\word_addin_dev';" ^
+  "if(-not (Get-SmbShare -Name 'wef' -ea SilentlyContinue)) { New-SmbShare -Name 'wef' -Path $p -FullAccess $env:USERNAME | Out-Null }" ^
+  "; $base='HKCU:\Software\Microsoft\Office\16.0\WEF\TrustedCatalogs'; if(-not (Test-Path $base)) { New-Item $base -Force | Out-Null }" ^
+  "; $has=$false; Get-ItemProperty \"$base\*\" 2>$null | %%{ if($_.Url -eq '\\\\localhost\\wef'){ $has=$true } }" ^
+  "; if(-not $has){ $g=[guid]::NewGuid().ToString().ToUpper(); $k=Join-Path $base ('{'+$g+'}'); New-Item $k -Force|Out-Null; New-ItemProperty $k -Name Url -Value '\\\\localhost\\wef' -PropertyType String -Force|Out-Null; New-ItemProperty $k -Name Id -Value $g -PropertyType String -Force|Out-Null; New-ItemProperty $k -Name CatalogType -Value 2 -PropertyType DWord -Force|Out-Null; New-ItemProperty $k -Name ShowInCatalog -Value 1 -PropertyType DWord -Force|Out-Null }" ^
+  "; Remove-Item \"$env:LOCALAPPDATA\Microsoft\Office\16.0\WEF\Cache\*\" -Recurse -Force -ea SilentlyContinue"
 
-rem Show config and key length
-for /f %%K in ('powershell -NoProfile -Command ^
-  "$k=[Environment]::GetEnvironmentVariable('AZURE_OPENAI_API_KEY','User'); if($k){$k.Length}else{0}"') do set KEYLEN=%%K
-echo LLM_PROVIDER=%LLM_PROVIDER%  KEYLEN=%KEYLEN%
+rem ===== 4) Запускаем бэкенд (в отдельном окне)
+start "ContractAI API" cmd /k ".venv\Scripts\python.exe -m uvicorn contract_review_app.api.app:app --host 127.0.0.1 --port 9443 --ssl-certfile dev\localhost.crt --ssl-keyfile dev\localhost.key"
 
-rem Launch uvicorn
-set PY=%CD%\.venv\Scripts\python.exe
-"%PY%" -m uvicorn contract_review_app.api.app:app --host 127.0.0.1 --port 9443 ^
-  --ssl-certfile C:\certs\dev.crt --ssl-keyfile C:\certs\dev.key
-if errorlevel 1 (
-  echo Uvicorn exited with error %ERRORLEVEL% (port busy or other error).
-  pause
-)
+rem (необязательно) прогреем панель в браузере
+start "" "https://127.0.0.1:9443/panel/taskpane.html?v=dev"
+
+rem ===== 5) Откроем Word
+start "" winword.exe
+
+endlocal

@@ -13,12 +13,12 @@
   <DisplayName DefaultValue="Contract AI — Draft Assistant (Dev)"/>
   <Description DefaultValue="Review, QA and drafting assistant for Word contracts."/>
 
-  <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-80.png"/>
+  <IconUrl DefaultValue="https://127.0.0.1:9443/panel/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://127.0.0.1:9443/panel/assets/icon-80.png"/>
 
-  <SupportUrl DefaultValue="https://localhost:3000/help.html"/>
+  <SupportUrl DefaultValue="https://127.0.0.1:9443/panel/help.html"/>
   <AppDomains>
-    <AppDomain>https://localhost:3000</AppDomain>
+    <AppDomain>https://127.0.0.1:9443/panel</AppDomain>
     <AppDomain>https://127.0.0.1:3000</AppDomain>
     <AppDomain>https://localhost:9443</AppDomain>
     <AppDomain>https://127.0.0.1:9443</AppDomain>
@@ -73,13 +73,13 @@
 
     <ov:Resources>
       <bt:Images>
-        <bt:Image id="icon16" DefaultValue="https://localhost:3000/assets/icon-16.png"/>
-        <bt:Image id="icon32" DefaultValue="https://localhost:3000/assets/icon-32.png"/>
+        <bt:Image id="icon16" DefaultValue="https://127.0.0.1:9443/panel/assets/icon-16.png"/>
+        <bt:Image id="icon32" DefaultValue="https://127.0.0.1:9443/panel/assets/icon-32.png"/>
       </bt:Images>
 
       <bt:Urls>
-        <bt:Url id="residFunctionFile" DefaultValue="https://localhost:3000/commands.html"/>
-        <bt:Url id="residGetStartedLearnMoreUrl" DefaultValue="https://localhost:3000/help.html"/>
+        <bt:Url id="residFunctionFile" DefaultValue="https://127.0.0.1:9443/panel/commands.html"/>
+        <bt:Url id="residGetStartedLearnMoreUrl" DefaultValue="https://127.0.0.1:9443/panel/help.html"/>
       </bt:Urls>
 
       <bt:ShortStrings>

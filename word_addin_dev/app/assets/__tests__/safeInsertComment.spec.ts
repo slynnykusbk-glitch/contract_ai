@@ -7,23 +7,38 @@ describe('safeInsertComment', () => {
     vi.resetAllMocks();
   });
 
-  it('warns when comment insertion fails', async () => {
-    const sync = vi.fn().mockResolvedValue(undefined);
+  it('returns false when WordApi 1.4 not supported', async () => {
+    const isSetSupported = vi.fn().mockReturnValue(false);
+    vi.stubGlobal('Office', { context: { requirements: { isSetSupported } } });
+    const ok = await safeInsertComment({} as any, 'x');
+    expect(ok).toBe(false);
+    expect(isSetSupported).toHaveBeenCalledWith('WordApi', '1.4');
+  });
+
+  it('returns false on NotImplemented errors', async () => {
+    const isSetSupported = vi.fn().mockReturnValue(true);
+    vi.stubGlobal('Office', { context: { requirements: { isSetSupported } } });
+    const err: any = new Error('ni');
+    err.code = 'NotImplemented';
+    const sync = vi.fn();
     const range: any = {
-      context: { document: {}, sync },
-      insertComment: vi.fn(() => { throw new Error('fail'); }),
+      context: { document: { comments: { add: vi.fn(() => { throw err; }) } }, sync },
+      insertComment: vi.fn(() => { throw err; }),
     };
-    (range.context.document as any).comments = { add: vi.fn(() => { throw new Error('fail'); }) };
+    const ok = await safeInsertComment(range, 'hi');
+    expect(ok).toBe(false);
+  });
 
-    const notifyWarn = vi.fn();
-    const logRichError = vi.fn();
-    vi.stubGlobal('notifyWarn', notifyWarn);
-    vi.stubGlobal('logRichError', logRichError);
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    await expect(safeInsertComment(range, 'oops')).rejects.toThrow('fail');
-
-    expect(notifyWarn).toHaveBeenCalledWith('Failed to insert comment');
-    expect(logRichError).toHaveBeenCalled();
+  it('throws other errors', async () => {
+    const isSetSupported = vi.fn().mockReturnValue(true);
+    vi.stubGlobal('Office', { context: { requirements: { isSetSupported } } });
+    const err = new Error('fail');
+    const sync = vi.fn();
+    const range: any = {
+      context: { document: { comments: { add: vi.fn(() => { throw err; }) } }, sync },
+      insertComment: vi.fn(() => { throw err; })
+    };
+    await expect(safeInsertComment(range, 'oops')).rejects.toBe(err);
   });
 });
+

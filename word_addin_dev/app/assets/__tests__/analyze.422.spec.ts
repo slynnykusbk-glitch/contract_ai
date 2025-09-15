@@ -5,21 +5,19 @@ import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('../notifier', () => ({ notifyWarn: vi.fn(), notifyErr: vi.fn(), notifyOk: vi.fn() }));
 
-describe('analyze 422 diagnostics', () => {
-  it('logs detail and notifies', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 422,
-      headers: new Headers(),
-      json: async () => ({ detail: [{ loc: ['body','text'], msg: 'bad' }] })
+describe('analyze flat body', () => {
+  it('does not trigger 422 when body is flat', async () => {
+    const fetchMock = vi.fn(async (_url, opts: any) => {
+      const hasPayload = 'payload' in JSON.parse(opts.body);
+      return hasPayload
+        ? { ok: false, status: 422, headers: new Headers(), json: async () => ({}) }
+        : { ok: true, status: 200, headers: new Headers(), json: async () => ({}) };
     });
     (globalThis as any).fetch = fetchMock;
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { analyze } = await import('../api-client');
-    const { notifyWarn } = await import('../notifier');
-    await analyze({ text: 'x' });
-    expect(warnSpy).toHaveBeenCalledWith('[analyze] 422', [{ loc: ['body','text'], msg: 'bad' }]);
-    expect(notifyWarn).toHaveBeenCalledWith('Validation error: bad');
-    warnSpy.mockRestore();
+    const res = await analyze({ text: 'x' });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect('payload' in body).toBe(false);
+    expect(res.resp.status).toBe(200);
   });
 });

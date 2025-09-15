@@ -7,11 +7,23 @@ describe('safeInsertComment', () => {
     vi.resetAllMocks();
   });
 
-  it('warns when comment insertion fails', async () => {
-    const sync = vi.fn().mockResolvedValue(undefined);
+  it('returns false when WordApi 1.4 not supported', async () => {
+    const isSetSupported = vi.fn().mockReturnValue(false);
+    vi.stubGlobal('Office', { context: { requirements: { isSetSupported } } });
+    const ok = await safeInsertComment({} as any, 'x');
+    expect(ok).toBe(false);
+    expect(isSetSupported).toHaveBeenCalledWith('WordApi', '1.4');
+  });
+
+  it('returns false on NotImplemented errors', async () => {
+    const isSetSupported = vi.fn().mockReturnValue(true);
+    vi.stubGlobal('Office', { context: { requirements: { isSetSupported } } });
+    const err: any = new Error('ni');
+    err.code = 'NotImplemented';
+    const sync = vi.fn();
     const range: any = {
-      context: { document: {}, sync },
-      insertComment: vi.fn(() => { throw new Error('fail'); }),
+      context: { document: { comments: { add: vi.fn(() => { throw err; }) } }, sync },
+      insertComment: vi.fn(() => { throw err; }),
     };
     (range.context.document as any).comments = { add: vi.fn(() => { throw new Error('fail'); }) };
 
@@ -26,5 +38,7 @@ describe('safeInsertComment', () => {
     expect(res.ok).toBe(false);
     expect(notifyWarn).toHaveBeenCalledWith('Failed to insert comment');
     expect(logRichError).toHaveBeenCalled();
+
   });
 });
+

@@ -11,6 +11,7 @@ vi.mock('../assets/api-client.ts', () => ({
 const safeInsertMock = vi.fn()
   .mockResolvedValueOnce({ ok: false, err: new Error('fail') })
   .mockResolvedValue({ ok: true });
+
 vi.mock('../assets/annotate.ts', () => ({
   safeInsertComment: (...args: any[]) => safeInsertMock(...args),
   COMMENT_PREFIX: '[CAI]',

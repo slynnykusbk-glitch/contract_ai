@@ -31,7 +31,7 @@ describe('qa recheck navigation', () => {
 
   it('qa recheck replaces findings with api response', async () => {
     const qaResp = { analysis: { findings: [{ rule_id: 'r1', snippet: 'A', start: 0, end: 1 }] } };
-    const postJSON = vi.fn(async (_: string, body: any) => ({ json: qaResp }));
+    const postJSON = vi.fn(async () => ({ json: qaResp }));
     vi.doMock('../assets/api-client.ts', () => ({
       postJSON,
       applyMetaToBadges: () => {},

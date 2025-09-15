@@ -444,6 +444,7 @@ export async function applyOpsTracked(
           await fallbackAnnotateWithContentControl(target, comment.replace(COMMENT_PREFIX, "").trim());
         }
 
+
       } else {
         console.warn('[applyOpsTracked] match not found', { snippet, occIdx });
       }
@@ -1168,7 +1169,7 @@ async function onApplyTracked() {
   }
 }
 
-async function onAcceptAll() {
+export async function onAcceptAll() {
   try {
     const dst = $(Q.proposed);
     const proposed = (dst?.value || "").trim();
@@ -1189,6 +1190,7 @@ async function onAcceptAll() {
       if (!res.ok) {
         await fallbackAnnotateWithContentControl(range, link);
       }
+
       await ctx.sync();
     });
 
@@ -1363,7 +1365,11 @@ export function wireUI() {
   updateAnchorBadge();
 
   if (!s.revisions) { disable('btnApplyTracked', 'revisions'); disable('btnAcceptAll', 'revisions'); disable('btnRejectAll', 'revisions'); }
-  if (!s.comments) { disable('btnAcceptAll', s.commentsReason); }
+  if (!s.comments) {
+    disable('btnAnnotate', 'comments');
+    disable('btnAcceptAll', s.commentsReason);
+    notifyWarn('Comments API not available in this Word build');
+  }
   if (!s.search) { disable('btnPrevIssue', 'search'); disable('btnNextIssue', 'search'); disable('btnQARecheck', 'search'); }
   if (!s.contentControls) { disable('btnAnnotate', 'contentControls'); }
   if (!s.revisions || !s.comments || !s.search || !s.contentControls) {

@@ -8,27 +8,41 @@ export interface CommentItem {
   message: string;
 }
 
-export async function safeInsertComment(range: Word.Range, text: string): Promise<{ ok: boolean; err?: any }> {
+
+/**
+ * Insert a comment if Word API 1.4 is available.
+ *
+ * @returns true when a comment was inserted, false when the comments API is
+ *          unavailable or throws a NotImplemented error.
+ */
+export async function safeInsertComment(range: Word.Range, text: string): Promise<boolean> {
+  try {
+    if (!Office.context.requirements.isSetSupported('WordApi', '1.4')) return false;
+  } catch {
+    return false;
+  }
   const context: any = (range as any).context;
-  let lastErr: any = null;
   try {
     const anyDoc = (context?.document as any);
-    if (anyDoc?.comments?.add) {
-      anyDoc.comments.add(range, text);
+    if (anyDoc?.comments?.["add"]) {
+      anyDoc.comments["add"](range, text);
       await context?.sync?.();
       return { ok: true };
+
     }
-  } catch (e) { lastErr = e; }
+  } catch (e: any) {
+    if (e?.code === 'NotImplemented') return false;
+  }
   try {
-    range.insertComment(text);
+    (range as any)["insertComment"](text);
     await context?.sync?.();
     return { ok: true };
   } catch (e) { lastErr = e; }
   try {
     await context?.sync?.();
     const anyDoc = (context?.document as any);
-    if (anyDoc?.comments?.add) {
-      anyDoc.comments.add(range, text);
+    if (anyDoc?.comments?.["add"]) {
+      anyDoc.comments["add"](range, text);
       await context?.sync?.();
       return { ok: true };
     }
@@ -64,6 +78,7 @@ export async function fallbackAnnotateWithContentControl(range: Word.Range, text
     console.warn("fallbackAnnotateWithContentControl failed", e);
     return { ok: false };
   }
+
 }
 
 /**
@@ -88,6 +103,7 @@ export async function insertComments(ctx: any, items: CommentItem[]): Promise<nu
       } catch (e2) {
         res = { ok: false, err: e2 };
         console.warn("annotate retry failed", e2);
+
       }
     }
     if (res.ok) {
@@ -238,6 +254,7 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
         if (ok) {
           used.push({ start, end });
           inserted++;
+
         }
       } else {
         console.warn("[annotate] no match for snippet", { rid: op.rule_id, snippet: op.raw.slice(0, 120) });

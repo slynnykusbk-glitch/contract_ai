@@ -63,6 +63,7 @@ export async function fallbackAnnotateWithContentControl(range: Word.Range, text
   } catch (e) {
     console.warn("fallbackAnnotateWithContentControl failed", e);
     return { ok: false };
+
   }
 }
 
@@ -88,6 +89,7 @@ export async function insertComments(ctx: any, items: CommentItem[]): Promise<nu
       } catch (e2) {
         res = { ok: false, err: e2 };
         console.warn("annotate retry failed", e2);
+
       }
     }
     if (res.ok) {
@@ -256,6 +258,7 @@ export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number
         if (ok) {
           used.push({ start, end });
           inserted++;
+
         }
       } else {
         console.warn("[annotate] no match for snippet", { rid: op.rule_id, snippet: op.raw.slice(0, 120) });

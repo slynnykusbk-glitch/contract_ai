@@ -1,4 +1,4 @@
-import { COMMENT_PREFIX } from "./annotate.ts";
+import { COMMENT_PREFIX, safeInsertComment } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
 
 export async function insertDraftText(
@@ -52,7 +52,8 @@ export async function insertDraftText(
       lines.push(rat);
     }
     lines.push('schema 1.4 | model gpt-4o-mini | provider azure');
-    try { doc.comments.add(range, lines.join('\n')); } catch {}
+
+    try { (doc as any).comments["add"](range, lines.join('\n')); } catch {}
     await context.sync();
   }).catch((e: any) => {
     const g: any = globalThis as any;

@@ -35,6 +35,7 @@ export type PanelState = {
 export async function addCommentAtRange(range: Word.Range, text: string) {
   let res = await safeInsertComment(range, text);
   if (!res.ok) {
+
     try {
       const p = range.paragraphs.getFirst();
       res = await safeInsertComment(p as unknown as Word.Range, text);

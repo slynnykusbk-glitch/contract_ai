@@ -13,22 +13,22 @@ export async function safeInsertComment(range: Word.Range, text: string) {
   let lastErr: any = null;
   try {
     const anyDoc = (context?.document as any);
-    if (anyDoc?.comments?.add) {
-      anyDoc.comments.add(range, text);
+    if (anyDoc?.comments?.["add"]) {
+      anyDoc.comments["add"](range, text);
       await context?.sync?.();
       return;
     }
   } catch (e) { lastErr = e; }
   try {
-    range.insertComment(text);
+    (range as any)["insertComment"](text);
     await context?.sync?.();
     return;
   } catch (e) { lastErr = e; }
   try {
     await context?.sync?.();
     const anyDoc = (context?.document as any);
-    if (anyDoc?.comments?.add) {
-      anyDoc.comments.add(range, text);
+    if (anyDoc?.comments?.["add"]) {
+      anyDoc.comments["add"](range, text);
       await context?.sync?.();
       return;
     }

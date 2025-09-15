@@ -12,14 +12,14 @@ export async function safeInsertComment(range: Word.Range, text: string) {
   const context = range.context;
   try {
     const anyDoc = (context.document as any);
-    if (anyDoc?.comments?.add) {
-      anyDoc.comments.add(range, text);
+    if (anyDoc?.comments?.["add"]) {
+      anyDoc.comments["add"](range, text);
       await context.sync();
       return;
     }
   } catch (_) {}
   try {
-    range.insertComment(text);
+    (range as any)["insertComment"](text);
     await context.sync();
     return;
   } catch (_) {}

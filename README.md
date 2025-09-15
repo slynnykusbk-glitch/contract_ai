@@ -54,6 +54,8 @@ UI panel surfaces this status so missing coverage is visible during checks.
 
 Фронтенд-тесты запускаются Vitest; Jest не используется.
 
+В манифесте указан Requirement WordApi 1.4. Для Office 2021 возможен фолбэк, см. Задача B.
+
 On Windows build and test with:
 
 ```bash

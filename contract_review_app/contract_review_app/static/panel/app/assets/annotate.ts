@@ -17,8 +17,8 @@ export async function safeInsertComment(range: Word.Range, text: string): Promis
   const context = range.context as any;
   try {
     const anyDoc = (context.document as any);
-    if (anyDoc?.comments?.add) {
-      anyDoc.comments.add(range, text);
+    if (anyDoc?.comments?.["add"]) {
+      anyDoc.comments["add"](range, text);
       await context.sync();
       return true;
     }
@@ -26,7 +26,7 @@ export async function safeInsertComment(range: Word.Range, text: string): Promis
     if (e?.code === 'NotImplemented') return false;
   }
   try {
-    range.insertComment(text);
+    (range as any)["insertComment"](text);
     await context.sync();
     return true;
   } catch (e: any) {

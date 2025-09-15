@@ -1,7 +1,11 @@
 # patch_taskpane_apply.py
-import sys, re, time, pathlib
+import pathlib
+import re
+import sys
+import time
 
-NEW_FUNC = r'''
+NEW_FUNC = (
+    r"""
 function applyDraftTracked(){
   var t = val(els.draft);
   if (!t) { status("Nothing to apply."); return; }
@@ -21,8 +25,7 @@ function applyDraftTracked(){
       // 1) Якщо є виділення — вставляємо туди
       if (sel && typeof sel.text === "string" && sel.text.length > 0) {
         sel.insertText(t, Word.InsertLocation.replace);
-        try { sel.insertComment("Contract Assistant — applied draft"); } catch(_){}
-        return ctx.sync();
+        return safeInsertComment(sel, "Contract Assistant — applied draft").catch(function(){});
       }
 
       // 2) Беремо обрану клаузу з дропдауна
@@ -30,8 +33,7 @@ function applyDraftTracked(){
       var clauseId = dd && dd.value ? dd.value : null;
       if (!clauseId) {
         sel.insertText(t, Word.InsertLocation.replace);
-        try { sel.insertComment("Contract Assistant — applied draft"); } catch(_){}
-        return ctx.sync();
+        return safeInsertComment(sel, "Contract Assistant — applied draft").catch(function(){});
       }
 
       // 3) Контент-контрол за clauseId
@@ -44,8 +46,8 @@ function applyDraftTracked(){
         return ctx.sync().then(function(){
           var rng = (ccs.items && ccs.items.length) ? ccs.items[0].getRange() : sel;
           rng.insertText(t, Word.InsertLocation.replace);
-          try { rng.insertComment("Contract Assistant — applied draft"); } catch(_){}
-          return ctx.sync();
+          return safeInsertComment(rng, "Contract Assistant — applied draft").catch(function(){});
+
         });
       }
 
@@ -57,21 +59,24 @@ function applyDraftTracked(){
         return ctx.sync().then(function(){
           var rng = (found.items && found.items.length) ? found.items[0] : sel;
           rng.insertText(t, Word.InsertLocation.replace);
-          try { rng.insertComment("Contract Assistant — applied draft"); } catch(_){}
-          return ctx.sync();
+          return safeInsertComment(rng, "Contract Assistant — applied draft").catch(function(){});
+
         });
       }
 
       // 5) Фінальний fallback — у поточне місце курсора
       sel.insertText(t, Word.InsertLocation.replace);
-      try { sel.insertComment("Contract Assistant — applied draft"); } catch(_){}
-      return ctx.sync();
+      return safeInsertComment(sel, "Contract Assistant — applied draft").catch(function(){});
+
     });
   })
   .then(function(){ status("Applied as tracked changes."); enableApply(true); })
   .catch(function(err){ status("❌ Apply failed: " + (err && err.message ? err.message : err)); });
 }
-'''.strip() + "\n"
+""".strip()
+    + "\n"
+)
+
 
 def find_func_bounds(src: str, name: str):
     """Пошук початку 'function name(...) {' та відповідної закриваючої '}' з урахуванням рядків/коментарів."""
@@ -90,7 +95,7 @@ def find_func_bounds(src: str, name: str):
     in_ml_comment = False
     while i < n:
         ch = src[i]
-        ch2 = src[i:i+2]
+        ch2 = src[i : i + 2]
         # завершення коментарів
         if in_sl_comment:
             if ch == "\n":
@@ -138,6 +143,7 @@ def find_func_bounds(src: str, name: str):
         i += 1
     return None
 
+
 def patch_file(path: pathlib.Path):
     text = path.read_text(encoding="utf-8")
     bounds = find_func_bounds(text, "applyDraftTracked")
@@ -146,15 +152,16 @@ def patch_file(path: pathlib.Path):
         sys.exit(2)
     s, e = bounds
     before = text[:s]
-    after  = text[e:]
+    after = text[e:]
     # Вставляємо нову функцію з тим же відступом, що й оригінал
-    indent = re.match(r'[ \t]*', text[s:]).group(0)
-    new_block = ("\n" + indent + NEW_FUNC.replace("\n", "\n"+indent)).rstrip() + "\n"
+    indent = re.match(r"[ \t]*", text[s:]).group(0)
+    new_block = ("\n" + indent + NEW_FUNC.replace("\n", "\n" + indent)).rstrip() + "\n"
     out = before + new_block + after
     backup = path.with_suffix(path.suffix + f".bak-{int(time.time())}")
     backup.write_text(text, encoding="utf-8")
     path.write_text(out, encoding="utf-8")
     print(f"✅ Patched applyDraftTracked() in {path}\n📦 Backup: {backup}")
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

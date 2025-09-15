@@ -1,13 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Catalog xmlns="http://schemas.microsoft.com/office/appforoffice/1.1">
-  <App
-    Id="8f6f3c9e-8a7c-4d3e-9f6a-000000000001"
-    Version="1.0.0.0"
-    Type="TaskPaneApp"
-    DefaultLocale="en-US"
-    ProviderName="Contract-AI Dev"
-    DisplayName="Contract AI - Draft Assistant (Dev)"
-    Description="Local dev build"
-    IconUrl="https://localhost:3000/assets/icon-80.png"
-    Manifest="manifest.xml" />
-</Catalog>
+<OfficeAppCatalog xmlns="http://schemas.microsoft.com/office/appforoffice/1.1">
+  <Addin>
+    <SourceManifest>\\DESKTOP-PULD3PE\wef\manifest.xml</SourceManifest>
+  </Addin>
+</OfficeAppCatalog>

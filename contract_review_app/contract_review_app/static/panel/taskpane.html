@@ -210,6 +210,7 @@
     <div class="flex">
       <button id="btnUseWholeDoc">Use whole doc →</button>
       <button id="btnAnalyze" disabled>Analyze</button>
+      <button id="btnFixNumbering" class="btn-grey">Fix numbering</button>
     </div>
   </div>
 
@@ -231,6 +232,7 @@
       <button id="btnAnnotate" class="btn2 js-disable-while-busy" disabled>Annotate</button>
       <button id="btnPrevIssue" class="btn-grey js-disable-while-busy">Prev issue</button>
       <button id="btnNextIssue" class="btn-grey js-disable-while-busy">Next issue</button>
+      <span id="findingIndex" class="pill">0/0</span>
       <button id="btnQARecheck" class="btn-grey js-disable-while-busy">QA Recheck</button>
       <button id="btnClearAnnots" class="btn-grey js-disable-while-busy" title="Select text in Word before applying edits.">Clear Annotations</button>
       <span class="pill right" id="qaDeltaBadge" title="QA deltas">Δ: —</span>
@@ -327,10 +329,10 @@
       <ol class="list" id="findingsList" data-role="findings"></ol>
     </div>
 
-    <div class="row" id="recommendationsBlock">
-      <strong>Recommendations</strong>
-      <ol class="list" id="recsList" data-role="recommendations"></ol>
-    </div>
+      <div class="row" id="recommendationsBlock">
+        <strong>Recommendations</strong>
+        <ol class="list" id="recommendationsList" data-role="recommendations"></ol>
+      </div>
 
     <div class="row">
       <span class="toggle" id="toggleRaw" data-role="toggle-raw-json">Show raw JSON</span>

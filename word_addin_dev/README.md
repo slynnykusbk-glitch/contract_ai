@@ -19,3 +19,12 @@ These steps run the Vitest suite and build the add-in bundle without relying on 
 4. Click **Annotate** to insert comments.
 
 Both actions should work without `RichApi.Error 0xA7210002` errors.
+
+## WordApi Comments Gate & Tests
+
+The panel uses `safeInsertComment` to insert Word comments. The function returns
+`true` when a comment was inserted and `false` when the Word API is unsupported
+or throws a `NotImplemented` error. Unit tests mock the API surface to verify
+this behavior and a guard test scans the generated `taskpane.bundle.js` to
+ensure no direct `insertComment` or `comments.add` calls remain outside
+`safeInsertComment`.

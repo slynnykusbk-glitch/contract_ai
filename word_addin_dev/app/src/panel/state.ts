@@ -1,7 +1,7 @@
 
 import { safeBodySearch } from '../assets/safeBodySearch.ts';
 import { postJSON } from '../assets/api-client.ts';
-import { safeInsertComment } from '../assets/annotate.ts';
+import { safeInsertComment, COMMENT_PREFIX, fallbackAnnotateWithContentControl } from '../assets/annotate.ts';
 
 export interface Finding {
   id: string;
@@ -33,14 +33,17 @@ export type PanelState = {
  * directly fails, the comment is added to the first paragraph of the range.
  */
 export async function addCommentAtRange(range: Word.Range, text: string) {
-  try {
-
-    await safeInsertComment(range, text);
-  } catch { /* ignore */
+  let res = await safeInsertComment(range, text);
+  if (!res.ok) {
     try {
       const p = range.paragraphs.getFirst();
-      await safeInsertComment(p as unknown as Word.Range, text);
-    } catch { /* ignore */ }
+      res = await safeInsertComment(p as unknown as Word.Range, text);
+      if (!res.ok) {
+        await fallbackAnnotateWithContentControl(range, text.replace(COMMENT_PREFIX, "").trim());
+      }
+    } catch {
+      await fallbackAnnotateWithContentControl(range, text.replace(COMMENT_PREFIX, "").trim());
+    }
   }
 }
 

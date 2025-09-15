@@ -8,28 +8,62 @@ export interface CommentItem {
   message: string;
 }
 
-export async function safeInsertComment(range: Word.Range, text: string) {
-  const context = range.context;
+export async function safeInsertComment(range: Word.Range, text: string): Promise<{ ok: boolean; err?: any }> {
+  const context: any = (range as any).context;
+  let lastErr: any = null;
   try {
-    const anyDoc = (context.document as any);
+    const anyDoc = (context?.document as any);
     if (anyDoc?.comments?.add) {
       anyDoc.comments.add(range, text);
-      await context.sync();
-      return;
+      await context?.sync?.();
+      return { ok: true };
     }
-  } catch (_) {}
+  } catch (e) { lastErr = e; }
   try {
     range.insertComment(text);
-    await context.sync();
-    return;
-  } catch (_) {}
-  const cc = range.insertContentControl();
-  cc.tag = "CAI_COMMENT";
-  cc.title = "Contract AI — comment";
-  cc.color = "yellow";
-  cc.appearance = "BoundingBox";
-  cc.insertText(`COMMENT: ${text}`, Word.InsertLocation.replace);
-  await context.sync();
+    await context?.sync?.();
+    return { ok: true };
+  } catch (e) { lastErr = e; }
+  try {
+    await context?.sync?.();
+    const anyDoc = (context?.document as any);
+    if (anyDoc?.comments?.add) {
+      anyDoc.comments.add(range, text);
+      await context?.sync?.();
+      return { ok: true };
+    }
+  } catch (e) { lastErr = e; }
+  const g: any = globalThis as any;
+  console.warn("safeInsertComment failed", lastErr);
+  g.logRichError?.(lastErr, "insertComment");
+  g.notifyWarn?.("Failed to insert comment");
+  return { ok: false, err: lastErr };
+}
+
+export async function fallbackAnnotateWithContentControl(range: Word.Range, text: string): Promise<{ ok: boolean }> {
+  const ctx: any = (range as any).context;
+  try {
+    range.load?.("parentContentControl");
+    await ctx?.sync?.();
+  } catch {}
+  try {
+    const parent: any = (range as any).parentContentControl;
+    if (parent && parent.tag === "cai-note") {
+      return { ok: false };
+    }
+  } catch {}
+  try {
+    const cc: any = range.insertContentControl();
+    cc.tag = "cai-note";
+    cc.title = "ContractAI Note";
+    try { cc.color = "yellow" as any; } catch {}
+    cc.insertText(`CAI: ${text}`, Word.InsertLocation.end);
+    await ctx?.sync?.();
+    return { ok: true };
+  } catch (e) {
+    console.warn("fallbackAnnotateWithContentControl failed", e);
+    return { ok: false };
+  }
 }
 
 /**
@@ -46,21 +80,21 @@ export async function insertComments(ctx: any, items: CommentItem[]): Promise<nu
   for (const it of items) {
     let r = it.range;
     const msg = it.message;
-    try {
-      await safeInsertComment(r, msg);
-      inserted++;
-    } catch (e: any) {
-      if (String(e).includes("0xA7210002")) {
-        try {
-          r = r.expandTo ? r.expandTo(ctx.document.body) : r;
-          await safeInsertComment(r, msg);
-          inserted++;
-        } catch (e2) {
-          console.warn("annotate retry failed", e2);
-        }
-      } else {
-        console.warn("annotate error", e);
+    let res = await safeInsertComment(r, msg);
+    if (!res.ok && res.err && String(res.err).includes("0xA7210002")) {
+      try {
+        r = r.expandTo ? r.expandTo(ctx.document.body) : r;
+        res = await safeInsertComment(r, msg);
+      } catch (e2) {
+        res = { ok: false, err: e2 };
+        console.warn("annotate retry failed", e2);
       }
+    }
+    if (res.ok) {
+      inserted++;
+    } else {
+      const fb = await fallbackAnnotateWithContentControl(r, msg.replace(COMMENT_PREFIX, "").trim());
+      if (fb.ok) inserted++;
     }
   }
   return inserted;
@@ -208,13 +242,21 @@ export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number
           console.warn("[annotate] overlapping range", { rid: op.rule_id, start, end });
           continue;
         }
+        let ok = false;
         if (isDryRunAnnotateEnabled()) {
-          try { target.select(); } catch {}
+          try { target.select(); ok = true; } catch {}
         } else if (op.msg) {
-          await safeInsertComment(target, op.msg);
+          const res = await safeInsertComment(target, op.msg);
+          if (res.ok) ok = true;
+          else {
+            const fb = await fallbackAnnotateWithContentControl(target, op.msg.replace(COMMENT_PREFIX, "").trim());
+            ok = fb.ok;
+          }
         }
-        used.push({ start, end });
-        inserted++;
+        if (ok) {
+          used.push({ start, end });
+          inserted++;
+        }
       } else {
         console.warn("[annotate] no match for snippet", { rid: op.rule_id, snippet: op.raw.slice(0, 120) });
       }

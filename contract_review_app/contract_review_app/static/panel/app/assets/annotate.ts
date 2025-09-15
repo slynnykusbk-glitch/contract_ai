@@ -8,36 +8,62 @@ export interface CommentItem {
   message: string;
 }
 
-/**
- * Insert a comment if Word API 1.4 is available.
- *
- * @returns true when a comment was inserted, false when the comments API is
- *          unavailable or throws a NotImplemented error.
- */
-export async function safeInsertComment(range: Word.Range, text: string): Promise<boolean> {
+export async function safeInsertComment(range: Word.Range, text: string): Promise<{ ok: boolean; err?: any }> {
+  const context: any = (range as any).context;
+  let lastErr: any = null;
   try {
-    if (!Office.context.requirements.isSetSupported('WordApi', '1.4')) return false;
-  } catch {
-    return false;
-  }
-  const context = range.context as any;
-  try {
-    const anyDoc = (context.document as any);
-    if (anyDoc?.comments?.["add"]) {
-      anyDoc.comments["add"](range, text);
-      await context.sync();
-      return true;
+    const anyDoc = (context?.document as any);
+    if (anyDoc?.comments?.add) {
+      anyDoc.comments.add(range, text);
+      await context?.sync?.();
+      return { ok: true };
     }
-  } catch (e: any) {
-    if (e?.code === 'NotImplemented') return false;
-  }
+  } catch (e) { lastErr = e; }
   try {
-    (range as any)["insertComment"](text);
-    await context.sync();
-    return true;
-  } catch (e: any) {
-    if (e?.code === 'NotImplemented') return false;
-    throw e;
+    range.insertComment(text);
+    await context?.sync?.();
+    return { ok: true };
+  } catch (e) { lastErr = e; }
+  try {
+    await context?.sync?.();
+    const anyDoc = (context?.document as any);
+    if (anyDoc?.comments?.add) {
+      anyDoc.comments.add(range, text);
+      await context?.sync?.();
+      return { ok: true };
+    }
+  } catch (e) { lastErr = e; }
+  const g: any = globalThis as any;
+  console.warn("safeInsertComment failed", lastErr);
+  g.logRichError?.(lastErr, "insertComment");
+  g.notifyWarn?.("Failed to insert comment");
+  return { ok: false, err: lastErr };
+}
+
+export async function fallbackAnnotateWithContentControl(range: Word.Range, text: string): Promise<{ ok: boolean }> {
+  const ctx: any = (range as any).context;
+  try {
+    range.load?.("parentContentControl");
+    await ctx?.sync?.();
+  } catch {}
+  try {
+    const parent: any = (range as any).parentContentControl;
+    if (parent && parent.tag === "cai-note") {
+      return { ok: false };
+    }
+  } catch {}
+  try {
+    const cc: any = range.insertContentControl();
+    cc.tag = "cai-note";
+    cc.title = "ContractAI Note";
+    try { cc.color = "yellow" as any; } catch {}
+    cc.insertText(`CAI: ${text}`, Word.InsertLocation.end);
+    await ctx?.sync?.();
+    return { ok: true };
+  } catch (e) {
+    console.warn("fallbackAnnotateWithContentControl failed", e);
+    return { ok: false };
+
   }
 }
 
@@ -55,21 +81,22 @@ export async function insertComments(ctx: any, items: CommentItem[]): Promise<nu
   for (const it of items) {
     let r = it.range;
     const msg = it.message;
-    try {
-      const ok = await safeInsertComment(r, msg);
-      if (ok) inserted++;
-    } catch (e: any) {
-      if (String(e).includes("0xA7210002")) {
-        try {
-          r = r.expandTo ? r.expandTo(ctx.document.body) : r;
-          const ok = await safeInsertComment(r, msg);
-          if (ok) inserted++;
-        } catch (e2) {
-          console.warn("annotate retry failed", e2);
-        }
-      } else {
-        console.warn("annotate error", e);
+    let res = await safeInsertComment(r, msg);
+    if (!res.ok && res.err && String(res.err).includes("0xA7210002")) {
+      try {
+        r = r.expandTo ? r.expandTo(ctx.document.body) : r;
+        res = await safeInsertComment(r, msg);
+      } catch (e2) {
+        res = { ok: false, err: e2 };
+        console.warn("annotate retry failed", e2);
+
       }
+    }
+    if (res.ok) {
+      inserted++;
+    } else {
+      const fb = await fallbackAnnotateWithContentControl(r, msg.replace(COMMENT_PREFIX, "").trim());
+      if (fb.ok) inserted++;
     }
   }
   return inserted;
@@ -217,14 +244,22 @@ export async function findingsToWord(findings: AnalyzeFinding[]): Promise<number
           console.warn("[annotate] overlapping range", { rid: op.rule_id, start, end });
           continue;
         }
+        let ok = false;
         if (isDryRunAnnotateEnabled()) {
-          try { target.select(); } catch {}
+          try { target.select(); ok = true; } catch {}
         } else if (op.msg) {
-          const ok = await safeInsertComment(target, op.msg);
-          if (!ok) continue;
+          const res = await safeInsertComment(target, op.msg);
+          if (res.ok) ok = true;
+          else {
+            const fb = await fallbackAnnotateWithContentControl(target, op.msg.replace(COMMENT_PREFIX, "").trim());
+            ok = fb.ok;
+          }
         }
-        used.push({ start, end });
-        inserted++;
+        if (ok) {
+          used.push({ start, end });
+          inserted++;
+
+        }
       } else {
         console.warn("[annotate] no match for snippet", { rid: op.rule_id, snippet: op.raw.slice(0, 120) });
       }

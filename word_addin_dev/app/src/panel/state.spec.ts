@@ -9,10 +9,13 @@ vi.mock('../assets/api-client.ts', () => ({
   postJSON: vi.fn(async () => ({ plainText: '', ops: [] }))
 }));
 const safeInsertMock = vi.fn()
-  .mockRejectedValueOnce(new Error('fail'))
-  .mockResolvedValue(true);
+  .mockResolvedValueOnce({ ok: false, err: new Error('fail') })
+  .mockResolvedValue({ ok: true });
+
 vi.mock('../assets/annotate.ts', () => ({
-  safeInsertComment: (...args: any[]) => safeInsertMock(...args)
+  safeInsertComment: (...args: any[]) => safeInsertMock(...args),
+  COMMENT_PREFIX: '[CAI]',
+  fallbackAnnotateWithContentControl: vi.fn()
 }));
 
 describe('navigation', () => {

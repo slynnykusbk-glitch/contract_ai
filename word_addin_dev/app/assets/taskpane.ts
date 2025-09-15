@@ -2,7 +2,7 @@ import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, A
 import domSchema from "../panel_dom.schema.json";
 import { normalizeText, severityRank, dedupeFindings } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
-import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX, safeInsertComment } from "./annotate.ts";
+import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX, safeInsertComment, fallbackAnnotateWithContentControl } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
 import { safeBodySearch } from "./safeBodySearch.ts";
 import { insertDraftText } from "./insert.ts";
@@ -439,13 +439,11 @@ export async function applyOpsTracked(
           }
         }
         const comment = `${COMMENT_PREFIX} ${op.rationale || op.source || 'AI edit'}`;
-        let ok = false;
-        try {
-          ok = await safeInsertComment(target, comment);
-        } catch (e) {
-          console.warn('[applyOpsTracked] safeInsertComment failed', e);
+        const res = await safeInsertComment(target, comment);
+        if (!res.ok) {
+          await fallbackAnnotateWithContentControl(target, comment.replace(COMMENT_PREFIX, "").trim());
         }
-        if (!ok) { /* noop */ }
+
 
       } else {
         console.warn('[applyOpsTracked] match not found', { snippet, occIdx });
@@ -1181,13 +1179,11 @@ export async function onAcceptAll() {
       const range = ctx.document.getSelection();
       (ctx.document as any).trackRevisions = true;
       range.insertText(proposed, Word.InsertLocation.replace);
-      let ok = false;
-      try {
-        ok = await safeInsertComment(range, `${COMMENT_PREFIX} ${link}`);
-      } catch (e) {
-        console.warn('[onAcceptAll] safeInsertComment failed', e);
+      const res = await safeInsertComment(range, `${COMMENT_PREFIX} ${link}`);
+      if (!res.ok) {
+        await fallbackAnnotateWithContentControl(range, link);
       }
-      if (!ok) { /* noop */ }
+
       await ctx.sync();
     });
 

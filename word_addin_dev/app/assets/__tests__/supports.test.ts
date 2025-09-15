@@ -16,10 +16,10 @@ describe('comments support detection', () => {
     delete (globalThis as any).Office;
   });
 
-  it('uses Word.Comment when requirement set is unsupported', () => {
+  it('requires WordApi 1.4 regardless of Word.Comment', () => {
     (globalThis as any).Word = { Comment: function() {} };
     (globalThis as any).Office = { context: { requirements: { isSetSupported: () => false } } };
-    expect(detectSupports().comments).toBe(true);
+    expect(detectSupports().comments).toBe(false);
   });
 
   it('respects localStorage override', () => {

@@ -14,7 +14,7 @@ export function setStoredSchema(v: string) {
 export function ensureHeadersSet() {
   try {
     const host = (globalThis as any)?.location?.hostname ?? '';
-    const isDev = host === 'localhost' || host === '127.0.0.1';
+    const isDev = host === '127.0.0.1';
     if (isDev) {
       if (!localStorage.getItem(LS.API_KEY)) {
         localStorage.setItem(LS.API_KEY, 'local-test-key-123');

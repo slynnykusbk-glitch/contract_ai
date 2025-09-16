@@ -10,7 +10,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=["access", "export", "erasure"])
     parser.add_argument("identifier")
-    parser.add_argument("--base", default="http://localhost:8000")
+    parser.add_argument("--base", default="http://127.0.0.1:8000")
     parser.add_argument("--token", required=True)
     parser.add_argument("--api-key", dest="api_key", default=os.getenv("API_KEY", ""))
     args = parser.parse_args()

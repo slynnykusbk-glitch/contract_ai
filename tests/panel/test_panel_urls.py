@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 
 from fastapi.testclient import TestClient
 
@@ -22,11 +23,32 @@ def test_panel_selftest_defaults():
     assert "/api/analyze" not in html
 
 
-def test_https_endpoints_available():
+def test_https_endpoints_available(monkeypatch):
     manifest_path = _ensure_catalog_manifest()
     assert manifest_path.is_file()
 
     repo_root = Path(__file__).resolve().parents[2]
+    launcher = repo_root / "tools" / "start_onedclick.ps1"
+    assert launcher.is_file(), "Launcher script is missing"
+
+    recorded: dict[str, object] = {}
+
+    class _DummyProcess:
+        returncode = 0
+
+        def wait(self, timeout=None):  # pragma: no cover - compatibility shim
+            return self.returncode
+
+        def poll(self):  # pragma: no cover - compatibility shim
+            return self.returncode
+
+    def _fake_popen(cmd, *args, **kwargs):
+        recorded["cmd"] = list(cmd)
+        recorded["kwargs"] = kwargs
+        return _DummyProcess()
+
+    monkeypatch.setattr(subprocess, "Popen", _fake_popen)
+
     remove_after = False
     try:
         manifest_path.relative_to(repo_root)
@@ -35,6 +57,21 @@ def test_https_endpoints_available():
         remove_after = False
 
     try:
+        process = subprocess.Popen(
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(launcher),
+                "-SkipBrowser",
+            ]
+        )
+        assert isinstance(process, _DummyProcess)
+        assert recorded["cmd"][0].lower().endswith("powershell.exe")
+        assert str(launcher) in recorded["cmd"], "Expected launcher path in PowerShell command"
+
         with TestClient(app) as client:
             health = client.get("/health")
             assert health.status_code == 200

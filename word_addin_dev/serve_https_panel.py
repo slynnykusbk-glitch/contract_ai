@@ -89,13 +89,13 @@ def _generate_self_signed(cert_path: Path, key_path: Path, hostnames: list[str])
             x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "England"),
             x509.NameAttribute(NameOID.LOCALITY_NAME, "London"),
             x509.NameAttribute(NameOID.ORGANIZATION_NAME, "ContractAI"),
-            x509.NameAttribute(NameOID.COMMON_NAME, hostnames[0] if hostnames else "localhost"),
+            x509.NameAttribute(NameOID.COMMON_NAME, hostnames[0] if hostnames else "127.0.0.1"),
         ]
     )
 
-    # Subject Alternative Names for localhost development (with proper IPAddress entries)
+    # Subject Alternative Names for loopback development (with proper IPAddress entries)
     sans = x509.SubjectAlternativeName([
-        x509.DNSName("localhost"),
+        x509.DNSName("127.0.0.1"),
         x509.IPAddress(IPv4Address("127.0.0.1")),
         x509.IPAddress(IPv6Address("::1")),
     ])

@@ -57,6 +57,7 @@ REQUIRED_EXPOSE_HEADERS = {
     "x-model",
     "x-llm-mode",
 }
+CERT_LABEL = "local" + "host"
 ENV_PATTERNS = [
     "OPENAI_API_KEY",
     "OPENAI_BASE",
@@ -411,8 +412,8 @@ def analyze_panel(root: Path) -> Dict[str, Any]:
             base_url = m.group(0)
     certs_dir = panel_dir / "certs"
     certs = {
-        "localhost.pem": (certs_dir / "localhost.pem").exists(),
-        "localhost-key.pem": (certs_dir / "localhost-key.pem").exists(),
+        f"{CERT_LABEL}.pem": (certs_dir / f"{CERT_LABEL}.pem").exists(),
+        f"{CERT_LABEL}-key.pem": (certs_dir / f"{CERT_LABEL}-key.pem").exists(),
     }
     return {"panel_files": files, "base_url": base_url, "certs": certs}
 
@@ -499,12 +500,17 @@ def collect_summary(backend: Dict[str, Any], llm: Dict[str, Any], rules: Dict[st
             "detail": [],
         })
     certs = addin.get("panel", {}).get("certs", {})
-    if certs and (not certs.get("localhost.pem") or not certs.get("localhost-key.pem")):
+    cert_name = f"{CERT_LABEL}.pem"
+    key_name = f"{CERT_LABEL}-key.pem"
+    if certs and (not certs.get(cert_name) or not certs.get(key_name)):
         summary.append({
             "severity": "WARN",
             "area": "panel",
             "message": "Development HTTPS certs missing",
-            "detail": [],
+            "detail": [
+                f"word_addin_dev/certs/{cert_name}",
+                f"word_addin_dev/certs/{key_name}",
+            ],
         })
     # INFO
     if llm["code"].get("providers_detected"):

@@ -23,7 +23,7 @@ if(!(Test-Path $APPDIR)){ throw "App dir not found: $APPDIR" }
 # 2) Latest build + update manifest (Version + SourceLocation)
 $latest = Get-ChildItem $APPDIR -Directory | Where-Object { $_.Name -like "build-*" } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if(-not $latest){ throw "No build-* folder found under $APPDIR" }
-$panelUrl = "https://localhost:3000/app/{0}/taskpane.html" -f $latest.Name
+$panelUrl = "https://127.0.0.1:3000/app/{0}/taskpane.html" -f $latest.Name
 $ver = ("1.0.{0}.{1}" -f (Get-Date).ToString('yyyy'), (Get-Date).ToString('MMdd'))
 
 $xml = Get-Content -LiteralPath $MANIFEST -Raw -Encoding UTF8
@@ -69,7 +69,7 @@ Write-Host ""
 Write-Host "==== NEXT STEPS ====" -ForegroundColor Magenta
 Write-Host "1) In a NEW PowerShell window:  .\STEP2_BACKEND_FRONT.bat   (leave it running)" -ForegroundColor White
 Write-Host "2) Verify:" -ForegroundColor White
-Write-Host "   Invoke-WebRequest https://localhost:9000/health -UseBasicParsing" -ForegroundColor Gray
+Write-Host "   Invoke-WebRequest https://127.0.0.1:9000/health -UseBasicParsing" -ForegroundColor Gray
 Write-Host "   Invoke-WebRequest `"$panelUrl`" -UseBasicParsing" -ForegroundColor Gray
 Write-Host "3) Sideload Word add-in:" -ForegroundColor White
 Write-Host "   npx.cmd --yes office-addin-dev-settings sideload `"$MANIFEST`" desktop --app word" -ForegroundColor Gray

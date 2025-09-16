@@ -23,25 +23,25 @@ $BACK_ARGS = @("-m","uvicorn","contract_review_app.api.app:app",
 # 2) Front static (http-server over TLS) — serves word_addin_dev
 $FRONT_CMD  = "npx.cmd"
 $FRONT_ARGS = @("--yes","http-server", (Join-Path $ROOT "word_addin_dev"),
-                "-S","-C",$CERT,"-K",$KEY,"-p","3000","-a","localhost","--cors")
+                "-S","-C",$CERT,"-K",$KEY,"-p","3000","-a","127.0.0.1","--cors")
 
 # Start both
 $backP  = Start-Process -FilePath $BACK_CMD  -ArgumentList $BACK_ARGS  -PassThru
 $frontP = Start-Process -FilePath $FRONT_CMD -ArgumentList $FRONT_ARGS -PassThru
 
-Info "[WAIT] Backend -> https://localhost:9000/health"
+Info "[WAIT] Backend -> https://127.0.0.1:9000/health"
 # wait backend
 for($i=0;$i -lt 60;$i++){
-  try{ $r=Invoke-WebRequest "https://localhost:9000/health" -UseBasicParsing -TimeoutSec 3
+  try{ $r=Invoke-WebRequest "https://127.0.0.1:9000/health" -UseBasicParsing -TimeoutSec 3
        if($r.StatusCode -ge 200 -and $r.StatusCode -lt 300){ break } }catch{}
   Start-Sleep -Milliseconds 600
 }
-Ok   "[OK] Backend https://localhost:9000"
+Ok   "[OK] Backend https://127.0.0.1:9000"
 
 # Panel URL (best effort, uses newest build folder)
 $APPDIR = Join-Path $ROOT "word_addin_dev\app"
 $latest = Get-ChildItem $APPDIR -Directory | ? { $_.Name -like "build-*" } | sort LastWriteTime -desc | select -f 1
-$panel  = if($latest){ "https://localhost:3000/app/{0}/taskpane.html" -f $latest.Name } else { "https://localhost:3000/taskpane.html" }
+$panel  = if($latest){ "https://127.0.0.1:3000/app/{0}/taskpane.html" -f $latest.Name } else { "https://127.0.0.1:3000/taskpane.html" }
 
 Info "[WAIT] Front -> $panel"
 for($i=0;$i -lt 40;$i++){
@@ -49,7 +49,7 @@ for($i=0;$i -lt 40;$i++){
        if($r.StatusCode -ge 200 -and $r.StatusCode -lt 300){ break } }catch{}
   Start-Sleep -Milliseconds 500
 }
-Ok "[OK] Front (TLS) https://localhost:3000"
+Ok "[OK] Front (TLS) https://127.0.0.1:3000"
 
 Write-Host "`nPress Enter to stop servers..." -ForegroundColor Yellow
 [void][System.Console]::ReadLine()

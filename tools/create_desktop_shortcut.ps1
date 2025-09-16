@@ -67,9 +67,9 @@ if (Test-Path $shortcutPath) {
   Remove-Item -LiteralPath $shortcutPath -Force
 }
 
-$targetBat = Join-Path $Repo 'ContractAI-Start.bat'
-if (-not (Test-Path $targetBat)) {
-  throw "ContractAI-Start.bat not found at $targetBat"
+$startScript = Join-Path $Repo 'tools\start_onedclick.ps1'
+if (-not (Test-Path $startScript)) {
+  throw "start_onedclick.ps1 not found at $startScript"
 }
 
 $iconLocation = 'shell32.dll,167'
@@ -98,7 +98,8 @@ if (Test-Path $iconPng) {
 
 $ws = New-Object -ComObject WScript.Shell
 $shortcut = $ws.CreateShortcut($shortcutPath)
-$shortcut.TargetPath = $targetBat
+$shortcut.TargetPath = 'powershell.exe'
+$shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$startScript`""
 $shortcut.WorkingDirectory = $Repo
 $shortcut.WindowStyle = 1
 $shortcut.IconLocation = $iconLocation

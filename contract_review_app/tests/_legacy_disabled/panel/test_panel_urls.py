@@ -16,9 +16,9 @@ def test_panel_selftest_uses_unified_ls_key():
 
 def test_normbase_forces_https_for_9443():
     html = SELFTEST.read_text(encoding="utf-8")
-    # must contain the http->https replace for localhost:9443 like taskpane
+    # must contain the http->https replace for 127.0.0.1:9443 like taskpane
     assert (
-        "replace(/^http:\/\/(127\\.0\\.0\\.1|localhost)(:9443)" in html
+        "replace(/^http:\/\/127\\.0\\.0\\.1(:9443)" in html
     ), "normBase must force https for :9443"
 
 

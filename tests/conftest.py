@@ -27,8 +27,8 @@ def _no_network(monkeypatch):
         if (
             u.startswith("http://testserver")
             or u.startswith("https://testserver")
-            or u.startswith("http://localhost")
-            or u.startswith("https://localhost")
+            or u.startswith("http://127.0.0.1")
+            or u.startswith("https://127.0.0.1")
             or "api.company-information.service.gov.uk" in u
         ):
             return orig_req(self, method, url, *args, **kwargs)
@@ -39,8 +39,8 @@ def _no_network(monkeypatch):
         if (
             u.startswith("http://testserver")
             or u.startswith("https://testserver")
-            or u.startswith("http://localhost")
-            or u.startswith("https://localhost")
+            or u.startswith("http://127.0.0.1")
+            or u.startswith("https://127.0.0.1")
             or "api.company-information.service.gov.uk" in u
         ):
             return orig_httpx(self, method, url, *args, **kwargs)

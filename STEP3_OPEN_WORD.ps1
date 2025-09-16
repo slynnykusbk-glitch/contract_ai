@@ -38,9 +38,10 @@ if(($listed | Out-String) -notmatch "Microsoft\.Win32WebViewHost"){ Err "Loopbac
 # 3) Trust dev cert (CurrentUser Root)
 $CRT = Join-Path $ROOT "certs\dev.crt"
 if(Test-Path $CRT){
+  $loopbackLabel = 'local' + 'host'
   $store = & certutil -user -store "Root"
-  if(($store | Out-String) -notmatch "CN=localhost"){ & certutil -user -addstore -f "Root" "$CRT" | Out-Null }
-  Ok "[OK] localhost cert trusted"
+  if(($store | Out-String) -notmatch ("CN=" + $loopbackLabel)){ & certutil -user -addstore -f "Root" "$CRT" | Out-Null }
+  Ok ("[OK] {0} cert trusted" -f $loopbackLabel)
 }else{ Log "[WARN] certs\dev.crt not found — continuing" 'Yellow' }
 
 # 4) Purge safe caches

@@ -1,7 +1,7 @@
 Дивлюсь на логи/скріни — причина тиші проста і подвійна:
 
 1. **Uvicorn впав** через неправильний шлях до ключа
-   (`$KEY="..\word_addin_dev\certs\localhost-key.pem"` → такого файлу немає з поточного каталогу). Через це бекенд на 9443 не стартує стабільно (падає “FileNotFoundError” на SSL).
+   (`$KEY="..\word_addin_dev\certs\127.0.0.1-key.pem"` → такого файлу немає з поточного каталогу). Через це бекенд на 9443 не стартує стабільно (падає “FileNotFoundError” на SSL).
 2. **Сервер панелі на :3000 не запущений** (або закрито вікно). Тому `127.0.0.1:3000/...` дає *ERR\_CONNECTION\_REFUSED*. Ще й відкривали **http\://** замість **https\://**.
 
 Нижче — точні команди, які усувають усе (шляхи — **абсолютні**, без `..` та без плутанини з https).
@@ -16,11 +16,11 @@ cd C:\Users\Ludmila\contract_ai
 .\.venv\Scripts\Activate.ps1
 
 # Переконайся, що серти є
-Get-ChildItem C:\Users\Ludmila\contract_ai\word_addin_dev\certs\localhost*.pem,*.pfx
+Get-ChildItem C:\Users\Ludmila\contract_ai\word_addin_dev\certs\127.0.0.1*.pem,*.pfx
 
 # Шляхи до сертів (АБСОЛЮТНІ)
-$CERT = "C:\Users\Ludmila\contract_ai\word_addin_dev\certs\localhost.pem"
-$KEY  = "C:\Users\Ludmila\contract_ai\word_addin_dev\certs\localhost-key.pem"
+$CERT = "C:\Users\Ludmila\contract_ai\word_addin_dev\certs\127.0.0.1.pem"
+$KEY  = "C:\Users\Ludmila\contract_ai\word_addin_dev\certs\127.0.0.1-key.pem"
 
 # Запуск бекенда по HTTPS (без відносних шляхів!)
 uvicorn contract_review_app.api.app:app `
@@ -48,8 +48,8 @@ cd C:\Users\Ludmila\contract_ai
 .\.venv\Scripts\Activate.ps1
 
 python .\word_addin_dev\serve_https_panel.py `
-  --cert "C:\Users\Ludmila\contract_ai\word_addin_dev\certs\localhost.pem" `
-  --key  "C:\Users\Ludmila\contract_ai\word_addin_dev\certs\localhost-key.pem"
+  --cert "C:\Users\Ludmila\contract_ai\word_addin_dev\certs\127.0.0.1.pem" `
+  --key  "C:\Users\Ludmila\contract_ai\word_addin_dev\certs\127.0.0.1-key.pem"
 ```
 
 У консолі має бути: `PANEL HTTPS READY https://127.0.0.1:3000/`.

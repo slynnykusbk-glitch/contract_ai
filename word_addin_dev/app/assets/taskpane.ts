@@ -173,7 +173,7 @@ function ensureHeaders(): boolean {
   let schema = getSchemaFromStore();
   const warn = mustGetElementById<HTMLElement>('hdrWarn');
   const host = (globalThis as any)?.location?.hostname ?? '';
-  const isDev = host === 'localhost' || host === '127.0.0.1';
+  const isDev = host === '127.0.0.1';
 
   if (isDev) {
     if (!apiKey) {

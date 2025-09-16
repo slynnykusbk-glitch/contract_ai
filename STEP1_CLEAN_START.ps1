@@ -22,7 +22,7 @@ if(Test-Path (Join-Path $FRONT_DIR "patch.js")){
 
 # 2) Bump manifest: safe version and SourceLocation
 $officeVersion = "1.0.$((Get-Date).ToString('yyyy')).$((Get-Date).ToString('MMdd'))"
-$panelUrl = "https://localhost:3000/app/build-$build/taskpane.html"
+$panelUrl = "https://127.0.0.1:3000/app/build-$build/taskpane.html"
 
 $xml = Get-Content $MANIFEST -Raw -Encoding UTF8
 $xml = $xml -replace '<Version>.*?</Version>', "<Version>$officeVersion</Version>"

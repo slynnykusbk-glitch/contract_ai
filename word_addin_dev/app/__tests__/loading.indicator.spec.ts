@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
 
 function setupDom() {
-  const dom = new JSDOM('<div id="loading-book" class="cai-book hidden"></div>', { url: 'https://localhost' });
+  const dom = new JSDOM('<div id="loading-book" class="cai-book hidden"></div>', { url: 'https://127.0.0.1' });
   (globalThis as any).window = dom.window as any;
   (globalThis as any).document = dom.window.document as any;
   (globalThis as any).CustomEvent = dom.window.CustomEvent;

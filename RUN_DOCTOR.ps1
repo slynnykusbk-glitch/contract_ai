@@ -1,6 +1,6 @@
 Param(
-  [string]$BackendUrl   = "https://localhost:9000",
-  [string]$FrontUrl     = "https://localhost:3000",
+  [string]$BackendUrl   = "https://127.0.0.1:9000",
+  [string]$FrontUrl     = "https://127.0.0.1:3000",
   [string]$ManifestPath = "C:\Users\Ludmila\contract_ai\word_addin_dev\manifest.xml",
   # webroot: latest build under word_addin_dev\app\build-*
   [string]$WebrootPath  = "",

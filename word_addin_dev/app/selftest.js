@@ -62,7 +62,7 @@ function normBase(u){
   let s = String(u).trim();
   if (s.startsWith("//")) s = "https:" + s;
   if (!/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(s)) s = "https://" + s;
-  s = s.replace(/^http:\/\/(127\.0\.0\.1|localhost)(:9443)(\/|$)/, "https://$1$2$3");
+  s = s.replace(/^http:\/\/127\.0\.0\.1(:9443)(\/|$)/, "https://127.0.0.1$1$2");
   return s.replace(/\/+$/, "");
 }
 function joinUrl(base, path){

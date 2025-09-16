@@ -42,7 +42,7 @@ describe('dev bootstrap', () => {
       },
       querySelector: (sel: string) => (sel === '#btnAnalyze' ? analyzeBtn : null)
     }
-    ;(globalThis as any).location = { hostname: 'localhost' }
+    ;(globalThis as any).location = { hostname: '127.0.0.1' }
     ;(globalThis as any).fetch = async (url: string) => {
       if (url === 'https://base/health') {
         return {

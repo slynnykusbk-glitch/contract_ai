@@ -97,7 +97,7 @@ export async function logApiClientChecksum() {
   }
 }
 
-const DEFAULT_BASE = 'https://localhost:9443';
+const DEFAULT_BASE = 'https://127.0.0.1:9443';
 function base(): string {
   try { return (localStorage.getItem('backendUrl') || DEFAULT_BASE).replace(/\/+$/, ''); }
   catch { return DEFAULT_BASE; }

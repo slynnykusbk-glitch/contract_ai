@@ -72,9 +72,9 @@ function joinUrl(base, path){
 }
 function saveBase(){ try{ const v=document.getElementById("backendInput").value.trim(); localStorage.setItem(LS_KEY, v); localStorage.setItem("backendUrl", v); }catch{} }
 function loadBase(){
-  let v = localStorage.getItem(LS_KEY) || document.getElementById("backendInput").value || "https://localhost:9443";
+  let v = localStorage.getItem(LS_KEY) || document.getElementById("backendInput").value || "https://127.0.0.1:9443";
   v = normBase(v);
-  document.getElementById("backendInput").value = v || "https://localhost:9443";
+  document.getElementById("backendInput").value = v || "https://127.0.0.1:9443";
   try{ localStorage.setItem("backendUrl", v); }catch{}
   return v;
 }

@@ -11,7 +11,7 @@ describe('get draft', () => {
   let fetchMock: any;
   beforeEach(() => {
     vi.resetModules();
-    const dom = new JSDOM(html, { url: 'https://localhost:9443' });
+    const dom = new JSDOM(html, { url: 'https://127.0.0.1:9443' });
     (globalThis as any).window = dom.window as any;
     (globalThis as any).document = dom.window.document as any;
     (globalThis as any).Event = dom.window.Event;

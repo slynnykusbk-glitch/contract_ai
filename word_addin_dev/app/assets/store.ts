@@ -80,4 +80,4 @@ root.CAI.Store = root.CAI.Store || {};
 root.CAI.Store.setApiKey = setApiKey;
 root.CAI.Store.setSchemaVersion = setSchemaVersion;
 root.CAI.Store.get = () => ({ apiKey: getApiKeyFromStore(), schemaVersion: getSchemaFromStore() });
-root.CAI.Store.DEFAULT_BASE = root.CAI.Store.DEFAULT_BASE || "https://localhost:9443";
+root.CAI.Store.DEFAULT_BASE = root.CAI.Store.DEFAULT_BASE || "https://127.0.0.1:9443";

@@ -11,13 +11,13 @@ describe('ensure text for analyze', () => {
   let fetchMock: any;
   beforeEach(() => {
     vi.resetModules();
-    const dom = new JSDOM(html, { url: 'https://localhost:9443' });
+    const dom = new JSDOM(html, { url: 'https://127.0.0.1:9443' });
     (globalThis as any).window = dom.window as any;
     (globalThis as any).document = dom.window.document as any;
     (globalThis as any).Event = dom.window.Event;
     (globalThis as any).CustomEvent = dom.window.CustomEvent;
     (globalThis as any).localStorage = {
-      store: { api_key: 'k', schema_version: '1.4', backendUrl: 'https://localhost:9443' },
+      store: { api_key: 'k', schema_version: '1.4', backendUrl: 'https://127.0.0.1:9443' },
       getItem(key: string) { return (this.store as any)[key] || null; },
       setItem(key: string, value: string) { (this.store as any)[key] = value; }
     };

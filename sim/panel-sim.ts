@@ -40,14 +40,14 @@ function applyOpsToPlainText(text: string, ops: Op[]) {
   const stamp = Date.now();
   try {
     const original = fs.readFileSync('samples/nda_en.txt', 'utf8');
-    const resA = await fetch('https://localhost:9443/api/analyze', {
+    const resA = await fetch('https://127.0.0.1:9443/api/analyze', {
       method:'POST', headers: {'Content-Type':'application/json','X-Api-Key':'local-test-key-123','X-Schema-Version':'1.4'},
       body: JSON.stringify({ mode:'live', doc:{ text:original, locale:'en-GB', docType:'NDA' } })
     });
     const A: any = await resA.json();
     const ids = A.findings.map((f:any)=>f.id);
 
-    const resD = await fetch('https://localhost:9443/api/draft', {
+    const resD = await fetch('https://127.0.0.1:9443/api/draft', {
       method:'POST', headers: {'Content-Type':'application/json','X-Api-Key':'local-test-key-123','X-Schema-Version':'1.4'},
       body: JSON.stringify({ mode:'friendly', docFingerprint:A.docFingerprint, findingIds: ids })
     });

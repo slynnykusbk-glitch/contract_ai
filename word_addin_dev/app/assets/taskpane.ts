@@ -149,10 +149,10 @@ function getBackend(): string {
     return (
       localStorage.getItem('backend.url') ||
       localStorage.getItem('backendUrl') ||
-      'https://localhost:9443'
+      'https://127.0.0.1:9443'
     ).replace(/\/+$/, '');
   } catch {
-    return 'https://localhost:9443';
+    return 'https://127.0.0.1:9443';
   }
 }
 
@@ -1170,8 +1170,8 @@ export async function onAcceptAll() {
 
     const cid = (mustGetElementById<HTMLElement>("cid").textContent || "").trim();
     const base = (() => {
-      try { return (localStorage.getItem("backendUrl") || "https://localhost:9443").replace(/\/+$/, ""); }
-      catch { return "https://localhost:9443"; }
+      try { return (localStorage.getItem("backendUrl") || "https://127.0.0.1:9443").replace(/\/+$/, ""); }
+      catch { return "https://127.0.0.1:9443"; }
     })();
     const link = cid && cid !== "—" ? `${base}/api/trace/${cid}` : "AI draft";
 

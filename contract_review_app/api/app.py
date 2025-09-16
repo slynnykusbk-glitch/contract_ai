@@ -62,6 +62,7 @@ PANEL_DIR = (
     REPO_DIR / "contract_review_app" / "contract_review_app" / "static" / "panel"
 )
 PANEL_ASSETS_DIR = PANEL_DIR / "app" / "assets"
+CATALOG_DIR = Path(os.path.expandvars(r"%USERPROFILE%\contract_ai\_shared_catalog"))
 
 log.info("[PANEL] mount /panel -> %s", PANEL_DIR.resolve())
 token_path = PANEL_DIR / ".build-token"
@@ -735,6 +736,11 @@ else:
 
 app.mount("/panel", panel_app, name="panel")
 
+# Локальный каталог с манифестом
+if CATALOG_DIR.is_dir():
+    log.info("[CATALOG] mount /catalog -> %s", CATALOG_DIR.resolve())
+    app.mount("/catalog", StaticFiles(directory=str(CATALOG_DIR)), name="catalog")
+
 # instantiate LLM provider once
 PROVIDER = get_provider()
 LLM_PROVIDER = PROVIDER
@@ -1020,7 +1026,7 @@ def _env_truthy(name: str) -> bool:
 
 _ALLOWED_ORIGINS = [
     o.strip()
-    for o in (os.getenv("ALLOWED_ORIGINS") or "https://localhost:9443").split(",")
+    for o in (os.getenv("ALLOWED_ORIGINS") or "https://127.0.0.1:9443").split(",")
     if o.strip()
 ]
 

@@ -4,7 +4,7 @@ import { resolve } from "path";
 
 /**
  * Build goals:
- * - Dev: open http://localhost:3000/draft_panel/index.html (Vite serves TSX directly).
+ * - Dev: open http://127.0.0.1:3000/draft_panel/index.html (Vite serves TSX directly).
  * - Prod: emit ONE self-executing bundle `taskpane.react.js`
  *   into ../contract_review_app/static/panel (relative to this file).
  * - No code splitting; inline dynamic imports for Word add-in simplicity.

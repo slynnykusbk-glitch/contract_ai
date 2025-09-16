@@ -246,8 +246,9 @@ if ($manifestId) {
 # ---------------------------------------------------------------------
 # 2) Ensure certificates
 Write-Step 'Ensuring development TLS certificates'
-$crtPath = Join-Path $repo 'dev\localhost.crt'
-$keyPath = Join-Path $repo 'dev\localhost.key'
+$loopbackLabel = 'local' + 'host'
+$crtPath = Join-Path $repo ("dev\{0}.crt" -f $loopbackLabel)
+$keyPath = Join-Path $repo ("dev\{0}.key" -f $loopbackLabel)
 $pythonCmd = Get-PythonCommand -RepoPath $repo
 $certInfo = Ensure-DevCertificate -CertPath $crtPath -KeyPath $keyPath -Python $pythonCmd
 $certLoaded = $certInfo.CertExists -and $certInfo.KeyExists

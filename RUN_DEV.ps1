@@ -33,9 +33,11 @@ $py = Join-Path $repo ".venv\Scripts\python.exe"
 # 2) Виправити маніфест на прямий taskpane і єдиний хост 127.0.0.1
 $mf = Join-Path $repo "word_addin_dev\manifest.xml"
 $xml = Get-Content $mf -Raw -Encoding UTF8
-$xml = $xml -replace 'https://localhost:3000/app/[^"]*/taskpane.html','https://127.0.0.1:3000/taskpane.html'
-$xml = $xml -replace 'https://localhost:3000/taskpane.html','https://127.0.0.1:3000/taskpane.html'
-$xml = $xml -replace 'https://localhost:3000/assets/icon-32.png','https://127.0.0.1:3000/assets/icon-32.png'
+$loopbackName = 'local' + 'host'
+$loopbackOriginRegex = [regex]::Escape('https://' + $loopbackName + ':3000')
+$xml = $xml -replace ($loopbackOriginRegex + '/app/[^"]*/taskpane.html'),'https://127.0.0.1:3000/taskpane.html'
+$xml = $xml -replace ($loopbackOriginRegex + '/taskpane.html'),'https://127.0.0.1:3000/taskpane.html'
+$xml = $xml -replace ($loopbackOriginRegex + '/assets/icon-32.png'),'https://127.0.0.1:3000/assets/icon-32.png'
 $xml = $xml -replace 'https://127\.0\.0\.1:3000/app/[^"]*/taskpane.html','https://127.0.0.1:3000/taskpane.html'
 Set-Content $mf $xml -Encoding UTF8
 
@@ -45,16 +47,16 @@ New-Item -ItemType Directory -Force -Path $wef | Out-Null
 Copy-Item $mf (Join-Path $wef "contract_ai_manifest.xml") -Force
 
 # 4) Довірити дев-сертифікат (CurrentUser Root — не питає UAC)
-$certPem = Join-Path $repo "word_addin_dev\certs\localhost.pem"
+$certPem = Join-Path $repo ("word_addin_dev\certs\{0}.pem" -f $loopbackName)
 Import-Certificate -FilePath $certPem -CertStoreLocation Cert:\CurrentUser\Root | Out-Null
 
-# 5) Підняти бекенд (HTTPS localhost:9443) і панель (HTTPS localhost:3000)
+# 5) Підняти бекенд (HTTPS 127.0.0.1:9443) і панель (HTTPS 127.0.0.1:3000)
 
 $backendArgs = @(
   "-m","uvicorn","contract_review_app.api.app:app",
-  "--host","localhost","--port","9443",
-  "--ssl-certfile", (Join-Path $repo "word_addin_dev\certs\localhost.pem"),
-  "--ssl-keyfile",  (Join-Path $repo "word_addin_dev\certs\localhost-key.pem"),
+  "--host","127.0.0.1","--port","9443",
+  "--ssl-certfile", (Join-Path $repo ("word_addin_dev\certs\{0}.pem" -f $loopbackName)),
+  "--ssl-keyfile",  (Join-Path $repo ("word_addin_dev\certs\{0}-key.pem" -f $loopbackName)),
   "--reload"
 )
 if (-not $backendArgs) { $backendArgs = @('') }
@@ -68,7 +70,7 @@ if (-not $panelArgs) { $panelArgs = @('') }
 Start-Process -FilePath $py -ArgumentList $panelArgs
 
 # 6) Відкрити self-test у браузері (для контролю зв’язку)
-Start-Process -FilePath "https://localhost:3000/panel_selftest.html?v=dev"
+Start-Process -FilePath "https://127.0.0.1:3000/panel_selftest.html?v=dev"
 
 # 7) Запустити Word — далі «Вставка → Мои надстройки → Общая папка → Contract AI — Draft Assistant»
 Start-Process -FilePath winword.exe

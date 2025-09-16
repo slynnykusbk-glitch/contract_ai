@@ -192,9 +192,9 @@ server returns **400**.
 ```bash
 export FEATURE_REQUIRE_API_KEY=1
 export API_KEY=local-test-key-123
-  curl -i -X POST localhost:8000/api/analyze -H 'Content-Type: application/json' \
+  curl -i -X POST 127.0.0.1:8000/api/analyze -H 'Content-Type: application/json' \
     -H 'x-schema-version: 1.4' -d '{"text":"hi"}'
-curl -i -X POST localhost:8000/api/analyze -H 'Content-Type: application/json' \
+curl -i -X POST 127.0.0.1:8000/api/analyze -H 'Content-Type: application/json' \
   -H 'x-api-key: local-test-key-123' -d '{"text":"hi"}'
 ```
 
@@ -214,8 +214,8 @@ All endpoints now return a standard ProblemDetail JSON body for 4xx/5xx errors.
 ## How to verify
 
 ```bash
-curl -X POST localhost:8000/api/analyze -d '{"text":123}' -H 'Content-Type: application/json'
-curl -X POST localhost:8000/api/gpt/draft -d '{}' -H 'Content-Type: application/json'
+curl -X POST 127.0.0.1:8000/api/analyze -d '{"text":123}' -H 'Content-Type: application/json'
+curl -X POST 127.0.0.1:8000/api/gpt/draft -d '{}' -H 'Content-Type: application/json'
 ```
 
 Both calls return `{"type":"/errors/general","title":...,"status":422}`.
@@ -233,7 +233,7 @@ Every API response now includes three standard headers:
 ## How to verify
 
 ```bash
-curl -i -X POST localhost:8000/api/analyze \
+curl -i -X POST 127.0.0.1:8000/api/analyze \
   -H 'Content-Type: application/json' \
   -d '{"text":"hello"}'
 ```
@@ -297,7 +297,7 @@ The `/api/gpt-draft` endpoint resolves the provider lazily via `provider_from_en
 Example request:
 
 ```bash
-curl -s -X POST localhost:8000/api/analyze \
+curl -s -X POST 127.0.0.1:8000/api/analyze \
   -H 'Content-Type: application/json' \
   -d '{"text":"Hello world"}'
 ```
@@ -327,15 +327,15 @@ following matrix shows the accepted names:
 ### curl examples
 
 ```bash
-curl -s -X POST localhost:8000/api/gpt-draft \
+curl -s -X POST 127.0.0.1:8000/api/gpt-draft \
   -H 'Content-Type: application/json' \
   -d '{"prompt":"Example clause.","profile":"smart"}'
 
-curl -s -X POST localhost:8000/api/suggest_edits \
+curl -s -X POST 127.0.0.1:8000/api/suggest_edits \
   -H 'Content-Type: application/json' \
   -d '{"text":"Confidential info"}'
 
-curl -s -X POST localhost:8000/api/qa-recheck \
+curl -s -X POST 127.0.0.1:8000/api/qa-recheck \
   -H 'Content-Type: application/json' \
   -d '{"text":"Hello"}'
 ```

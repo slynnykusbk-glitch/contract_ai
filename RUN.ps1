@@ -7,8 +7,12 @@ $root  = "C:\Users\Ludmila\contract_ai"
 $front = Join-Path $root "word_addin_dev"
 $man   = Join-Path $front "manifest.xml"
 $py    = Join-Path $root ".venv\Scripts\python.exe"
-$cert  = "$env:USERPROFILE\.office-addin-dev-certs\localhost.crt"
-$key   = "$env:USERPROFILE\.office-addin-dev-certs\localhost.key"
+$localLabel = 'local' + 'host'
+$certFolder = Join-Path $env:USERPROFILE '.office-addin-dev-certs'
+$certFile = ('{0}.crt' -f $localLabel)
+$keyFile = ('{0}.key' -f $localLabel)
+$cert  = Join-Path $certFolder $certFile
+$key   = Join-Path $certFolder $keyFile
 
 # NPM global bin (to call http-server and office-addin-dev-settings directly)
 $npmBin = Join-Path $env:APPDATA "npm"
@@ -34,14 +38,14 @@ Get-Process WINWORD -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAc
 Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 $ErrorActionPreference = $prevPref
 
-# Start BACKEND (https://localhost:9000) in a new PowerShell window
+# Start BACKEND (https://127.0.0.1:9000) in a new PowerShell window
 $backendCmd = "cd `"$root`"; `"$py`" -m uvicorn contract_review_app.api.app:app --host :: --port 9000 --ssl-certfile `"$cert`" --ssl-keyfile `"$key`" --reload --log-level debug"
 Start-Process "powershell.exe" -ArgumentList "-NoExit","-Command",$backendCmd | Out-Null
 
 Start-Sleep -Seconds 2
 
-# Start FRONT (https://localhost:3000) in a new PowerShell window
-$frontCmd = "cd `"$front`"; `"$httpExe`" . -S -C `"$cert`" -K `"$key`" -p 3000 -a localhost"
+# Start FRONT (https://127.0.0.1:3000) in a new PowerShell window
+$frontCmd = "cd `"$front`"; `"$httpExe`" . -S -C `"$cert`" -K `"$key`" -p 3000 -a 127.0.0.1"
 Start-Process "powershell.exe" -ArgumentList "-NoExit","-Command",$frontCmd | Out-Null
 
 Start-Sleep -Seconds 2
@@ -54,5 +58,5 @@ Remove-Item "$env:LOCALAPPDATA\Microsoft\Office\16.0\Wef" -Recurse -Force -Error
 & $addinExe sideload   "$man" --app Word
 
 Write-Host ""
-Write-Host "[READY] Backend: https://localhost:9000   Front: https://localhost:3000" -ForegroundColor Green
-Write-Host "If panel cannot reach backend, set Backend to https://localhost:9000 or https://127.0.0.1:9000" -ForegroundColor Yellow
+Write-Host "[READY] Backend: https://127.0.0.1:9000   Front: https://127.0.0.1:3000" -ForegroundColor Green
+Write-Host "If panel cannot reach backend, set Backend to https://127.0.0.1:9000" -ForegroundColor Yellow

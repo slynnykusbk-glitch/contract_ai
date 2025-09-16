@@ -145,7 +145,7 @@ def check_taskpane_files(webroot: Path) -> Dict[str, Any]:
     try:
         j = js.read_text(encoding="utf-8", errors="ignore")
         # Very rough fetch/URL sniff
-        m = re.search(r'https?://localhost:\d{3,5}', j)
+        m = re.search(r'https?://127\.0\.0\.1:\d{3,5}', j)
         res["backend_hint"] = m.group(0) if m else None
         res["has_render_fn"] = ("renderAnalysis" in j)
     except Exception:
@@ -212,8 +212,8 @@ def pipeline_sanity(text: str) -> Tuple[bool, Dict[str, Any], str]:
 # --------------------------- Doctor main -------------------------------------
 def main():
     ap = argparse.ArgumentParser(description="Contract AI — Doctor v2")
-    ap.add_argument("--backend", help="Backend base URL, e.g. https://localhost:9000")
-    ap.add_argument("--front", help="Frontend root URL, e.g. https://localhost:3000")
+    ap.add_argument("--backend", help="Backend base URL, e.g. https://127.0.0.1:9000")
+    ap.add_argument("--front", help="Frontend root URL, e.g. https://127.0.0.1:3000")
     ap.add_argument("--manifest", help="Path to manifest.xml")
     ap.add_argument("--webroot", help="Path to folder with taskpane.html/taskpane.bundle.js")
     ap.add_argument("--app", help="Path to backend app.py (for CORS scan)")
@@ -260,10 +260,10 @@ def main():
         # TLS cert info
         try:
             m = re.match(r'^https?://([^/:]+):?(\d+)?', args.backend.strip())
-            host = m.group(1) if m else "localhost"
+            host = m.group(1) if m else "127.0.0.1"
             port = int(m.group(2)) if (m and m.group(2)) else (443 if args.backend.startswith("https") else 80)
         except Exception:
-            host, port = "localhost", 443
+            host, port = "127.0.0.1", 443
         okc, cert, msg = inspect_cert(host, port)
         add(report, "NET", OK if okc else WARN, "TLS certificate", msg, cert)
 
@@ -390,7 +390,7 @@ def main():
     md.append("")
     md.append("## Hints")
     md.append("- If **NET/Health** fails → backend is not listening or TLS mismatch.")
-    md.append("- If **NET/CORS** warns → check CORSMiddleware allow_origins for http/https localhost:3000.")
+    md.append("- If **NET/CORS** warns → check CORSMiddleware allow_origins for http/https 127.0.0.1:3000.")
     md.append("- If **API invariants** fail → shape mismatch: ensure /api/analyze returns findings/recommendations.")
     md.append("- If **RULES run** fails for a rule → examine that module's `analyze()` and return dict/Pydantic with `.model_dump()`.")
     md.append(

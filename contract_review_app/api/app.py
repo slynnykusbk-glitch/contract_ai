@@ -62,7 +62,49 @@ PANEL_DIR = (
     REPO_DIR / "contract_review_app" / "contract_review_app" / "static" / "panel"
 )
 PANEL_ASSETS_DIR = PANEL_DIR / "app" / "assets"
-CATALOG_DIR = Path(os.path.expandvars(r"%USERPROFILE%\contract_ai\_shared_catalog"))
+
+
+def _resolve_catalog_dir() -> Path:
+    """Resolve the shared catalog directory used for the sideload manifest."""
+
+    user_candidates: list[Path] = []
+
+    raw_user = os.getenv("USERPROFILE")
+    if raw_user:
+        user_candidates.append(Path(os.path.expandvars(raw_user)))
+
+    home_drive = os.getenv("HOMEDRIVE")
+    home_path = os.getenv("HOMEPATH")
+    if home_drive and home_path:
+        user_candidates.append(Path(home_drive) / home_path.lstrip("\\/"))
+
+    user_candidates.append(Path.home())
+
+    catalog_candidates: list[Path] = []
+    seen: set[Path] = set()
+
+    for base in user_candidates:
+        candidate = base / "contract_ai" / "_shared_catalog"
+        if candidate not in seen:
+            catalog_candidates.append(candidate)
+            seen.add(candidate)
+
+    repo_fallback = REPO_DIR / "_shared_catalog"
+    if repo_fallback not in seen:
+        catalog_candidates.append(repo_fallback)
+        seen.add(repo_fallback)
+
+    for candidate in catalog_candidates:
+        try:
+            if candidate.is_dir():
+                return candidate
+        except OSError:
+            continue
+
+    return catalog_candidates[0]
+
+
+CATALOG_DIR = _resolve_catalog_dir()
 
 log.info("[PANEL] mount /panel -> %s", PANEL_DIR.resolve())
 token_path = PANEL_DIR / ".build-token"

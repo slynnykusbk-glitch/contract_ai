@@ -72,6 +72,10 @@ tools/**/certs/
 **/.cert/
 **/certs/
 
+# dev launcher artifacts
+word_addin_dev/app/assets/icon-32.ico
+_shared_catalog/manifest.xml
+
 # ==== Артефакты тестов/отчётов ====
 junit.xml
 test-results/

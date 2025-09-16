@@ -6,7 +6,7 @@ SELFTEST = ROOT / "word_addin_dev" / "panel_selftest.html"
 
 def test_panel_selftest_default_backend_is_https9443():
     html = SELFTEST.read_text(encoding="utf-8")
-    assert "https://localhost:9443" in html
+    assert "https://127.0.0.1:9443" in html
 
 
 def test_panel_selftest_uses_unified_ls_key():

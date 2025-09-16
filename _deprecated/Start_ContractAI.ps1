@@ -56,7 +56,7 @@ try {
 $mf = Join-Path $root "manifest.xml"
 (Get-Content $mf) -replace '127\.0\.0\.1','localhost' | Set-Content $mf -Encoding UTF8
 
-# 4) старт бекенда (https://localhost:9443) і панелі (https://127.0.0.1:3000)
+# 4) старт бекенда (https://127.0.0.1:9443) і панелі (https://127.0.0.1:3000)
 $py = Join-Path $repo ".venv\Scripts\python.exe"
 $env:LLM_PROVIDER = "mock"
 

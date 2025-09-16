@@ -1,6 +1,6 @@
 /* eslint-disable */
 (function (root) {
-  const DEFAULT_BASE = "https://localhost:9443";
+  const DEFAULT_BASE = "https://127.0.0.1:9443";
   const S = {
     baseUrl: localStorage.getItem("backendUrl") || DEFAULT_BASE,
     risk:    localStorage.getItem("risk") || "medium",

@@ -78,7 +78,7 @@ export async function logApiClientChecksum() {
         console.log(`[selftest] api-client.js fail ${url}`);
     }
 }
-const DEFAULT_BASE = 'https://localhost:9443';
+const DEFAULT_BASE = 'https://127.0.0.1:9443';
 function base() {
     try {
         return (localStorage.getItem('backendUrl') || DEFAULT_BASE).replace(/\/+$/, '');

@@ -43,18 +43,18 @@ REM --- Force UTF-8 to avoid cp1251 issues on Windows ---
 set PYTHONUTF8=1
 
 REM --- Start API server in a new window ---
-echo [INFO] Starting API (https://localhost:9443) ...
+echo [INFO] Starting API (https://127.0.0.1:9443) ...
 start "ContractAI-API" cmd /k ^
   ".venv\Scripts\activate && python -m uvicorn contract_review_app.api.app:app --host 0.0.0.0 --port 9443 --ssl-certfile dev_certs\cert.pem --ssl-keyfile dev_certs\key.pem"
 
 REM --- Start Panel (Word add-in local HTTPS) in a new window ---
-echo [INFO] Starting Panel (https://localhost:9443/panel/...) ...
+echo [INFO] Starting Panel (https://127.0.0.1:9443/panel/...) ...
 start "ContractAI-Panel" cmd /k ^
   ".venv\Scripts\activate && python tools\serve_https_panel.py"
 
 REM --- Open self-test page in default browser ---
 timeout /t 2 >nul
-start "" https://localhost:9443/panel/panel_selftest.html?v=dev
+start "" https://127.0.0.1:9443/panel/panel_selftest.html?v=dev
 
 echo.
 echo [OK] Contract AI is starting in two windows:

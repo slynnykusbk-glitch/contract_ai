@@ -1,0 +1,28 @@
+# секреты
+.env
+.env.*
+*.env
+*.env.*
+**/secrets/**
+dev/localhost.key
+**/private_key/**
+**/*.pfx
+**/*.pem
+**/*.key
+
+# мусор и кэш
+.venv/**
+venv/**
+**/__pycache__/**
+**/.pytest_cache/**
+**/.mypy_cache/**
+**/.DS_Store
+**/node_modules/**
+
+# внутренности git/ci
+.git/**
+.github/workflows/*-secrets*.yml
+
+# внутренние артефакты бэкапа
+_backups/**
+reports/backups/**

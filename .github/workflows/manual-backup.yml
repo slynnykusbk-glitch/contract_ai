@@ -1,0 +1,53 @@
+name: Manual backup
+
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: 'Optional label to append to the backup archive name'
+        required: false
+        default: ''
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scan for secrets
+        shell: pwsh
+        run: pwsh -File tools/backup/scan_secrets.ps1
+
+      - name: Create backup
+        shell: pwsh
+        run: |
+          $label = '${{ inputs.label }}'
+          if ([string]::IsNullOrWhiteSpace($label)) {
+            pwsh -File tools/backup/backup.ps1
+          } else {
+            pwsh -File tools/backup/backup.ps1 -Label $label
+          }
+
+      - name: Collect backup artifacts
+        shell: pwsh
+        run: |
+          $manifest = Get-ChildItem -Path "reports/backups" -Filter "backup_*.manifest.json" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $manifest) {
+            throw "Manifest file was not generated."
+          }
+          $zipPattern = "$($manifest.BaseName)*.zip"
+          $archive = Get-ChildItem -Path "_backups" -Filter $zipPattern | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $archive) {
+            throw "Backup archive matching $zipPattern was not found."
+          }
+          Add-Content -Path $env:GITHUB_ENV -Value "archive=$($archive.FullName)"
+          Add-Content -Path $env:GITHUB_ENV -Value "manifest=$($manifest.FullName)"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-backup
+          path: |
+            ${{ env.archive }}
+            ${{ env.manifest }}

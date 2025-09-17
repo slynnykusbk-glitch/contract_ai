@@ -16,31 +16,68 @@ $patterns = @(
     'connection\s*string.*(password|pwd)\s*='
 )
 
-$allFiles = @()
-Push-Location -Path $repoRoot
-try {
-    $tracked = git ls-files 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to list tracked files via git."
-    }
-    $untracked = git ls-files --others --exclude-standard 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to list untracked files via git."
-    }
-    if ($tracked) { $allFiles += $tracked }
-    if ($untracked) { $allFiles += $untracked }
-} finally {
-    Pop-Location
+$excludeFile = Join-Path $scriptDir '.backup-exclude.txt'
+if (-not (Test-Path -LiteralPath $excludeFile)) {
+    throw "Exclude file not found at $excludeFile"
 }
 
-$allFiles = $allFiles | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique
+function Convert-PatternToRegex {
+    param(
+        [string]$Pattern
+    )
+    $normalized = $Pattern.Trim()
+    $normalized = $normalized -replace '\\', '/'
+    $normalized = $normalized.TrimStart('/')
+    if ($normalized.Length -eq 0) {
+        return '^$'
+    }
+    $escaped = [regex]::Escape($normalized)
+    $escaped = $escaped -replace '\\\*\\\*', '.*'
+    $escaped = $escaped -replace '\\\*', '[^/]*'
+    $escaped = $escaped -replace '\\\?', '[^/]'
+    return '^' + $escaped + '$'
+}
 
-$findings = @()
-foreach ($relativePath in $allFiles) {
-    $fullPath = Join-Path $repoRoot $relativePath
-    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+$excludePatterns = @()
+Get-Content -LiteralPath $excludeFile | ForEach-Object {
+    $line = $_.Trim()
+    if (-not $line -or $line.StartsWith('#')) { return }
+    $regexPattern = Convert-PatternToRegex -Pattern $line
+    $excludePatterns += [pscustomobject]@{
+        Pattern = $line
+        Regex   = [regex]::new($regexPattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    }
+}
+
+$repoRootWithSep = [System.IO.Path]::TrimEndingDirectorySeparator($repoRoot)
+
+$discoveredFiles = Get-ChildItem -Path $repoRoot -File -Recurse
+$allFiles = @()
+
+foreach ($file in $discoveredFiles) {
+    $relative = $file.FullName.Substring($repoRootWithSep.Length)
+    $relative = $relative.TrimStart([char]'\', [char]'/' )
+    $relativeNormalized = $relative -replace '\\', '/'
+    $shouldExclude = $false
+    foreach ($entry in $excludePatterns) {
+        if ($entry.Regex.IsMatch($relativeNormalized)) {
+            $shouldExclude = $true
+            break
+        }
+    }
+    if ($shouldExclude) {
         continue
     }
+    $allFiles += [pscustomobject]@{
+        Relative = $relativeNormalized
+        FullName = $file.FullName
+    }
+}
+
+$findings = @()
+foreach ($file in $allFiles) {
+    $relativePath = $file.Relative
+    $fullPath = $file.FullName
     try {
         $matches = Select-String -Path $fullPath -Pattern $patterns -AllMatches -CaseSensitive:$false
     } catch {

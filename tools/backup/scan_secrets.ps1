@@ -35,7 +35,12 @@ function Convert-PatternToRegex {
     $escaped = $escaped -replace '\\\*\\\*', '.*'
     $escaped = $escaped -replace '\\\*', '[^/]*'
     $escaped = $escaped -replace '\\\?', '[^/]'
-    return '^' + $escaped + '$'
+
+    if ($normalized.Contains('/')) {
+        return '^' + $escaped + '$'
+    }
+
+    return '(^|.*/)' + $escaped + '$'
 }
 
 $excludePatterns = @()

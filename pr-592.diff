@@ -1,0 +1,59 @@
+diff --git a/contract_review_app/api/app.py b/contract_review_app/api/app.py
+index 957558d..7b10fc4 100644
+--- a/contract_review_app/api/app.py
++++ b/contract_review_app/api/app.py
+@@ -730,6 +730,45 @@ async def lifespan(app: FastAPI):
+ )
+ register_error_handlers(app)
+ 
++# --- begin minimal patch for /catalog ---
++from pathlib import Path
++from fastapi.staticfiles import StaticFiles
++
++
++def _resolve_catalog_dir() -> Path:
++    """
++    Robust resolver for the catalog folder used by Word shared catalog.
++    Creates the folder if missing and returns its path.
++    Tries repo-root\_shared_catalog first; falls back to %USERPROFILE%\contract_ai\_shared_catalog.
++    """
++
++    here = Path(__file__).resolve()
++    candidates = [
++        here.parents[2] / "_shared_catalog",  # <repo>\_shared_catalog
++        Path.home() / "contract_ai" / "_shared_catalog",  # %USERPROFILE%\contract_ai\_shared_catalog
++    ]
++    for p in candidates:
++        try:
++            p.mkdir(parents=True, exist_ok=True)
++            return p
++        except Exception:
++            continue
++    # last resort: use a folder next to this file
++    fallback = here.parent / "_shared_catalog"
++    fallback.mkdir(parents=True, exist_ok=True)
++    return fallback
++
++
++CATALOG_DIR = _resolve_catalog_dir()
++_CATALOG_MOUNTED = False
++try:
++    app.mount("/catalog", StaticFiles(directory=str(CATALOG_DIR)), name="catalog")
++    print(f"[catalog] mounted at /catalog -> {CATALOG_DIR}")
++    _CATALOG_MOUNTED = True
++except Exception as e:
++    print(f"[catalog] failed to mount: {e}")
++# --- end minimal patch ---
++
+ # ---------------------------- Panel sub-app ----------------------------
+ if PANEL_READY:
+     panel_app = FastAPI()
+@@ -779,7 +818,7 @@ async def panel_app(scope, receive, send):  # type: ignore[override]
+ app.mount("/panel", panel_app, name="panel")
+ 
+ # Локальный каталог с манифестом
+-if CATALOG_DIR.is_dir():
++if CATALOG_DIR.is_dir() and not _CATALOG_MOUNTED:
+     log.info("[CATALOG] mount /catalog -> %s", CATALOG_DIR.resolve())
+     app.mount("/catalog", StaticFiles(directory=str(CATALOG_DIR)), name="catalog")
+ 

@@ -27,7 +27,7 @@
 
   <DefaultSettings>
     <!-- dev panel served by serve_https_panel.py -->
-    <SourceLocation DefaultValue="https://127.0.0.1:9443/panel/taskpane.html?v=dev&amp;b=build-20250915-174338"/>
+    <SourceLocation DefaultValue="https://127.0.0.1:9443/panel/taskpane.html?timeout_analyze=30000" />
   </DefaultSettings>
 
   <Requirements>

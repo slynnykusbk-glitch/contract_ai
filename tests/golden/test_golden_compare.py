@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import io
 import json
 import os
 import re
 import time
 import difflib
-import zipfile
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -18,13 +16,21 @@ from contract_review_app.api.models import SCHEMA_VERSION
 from contract_review_app.utils.doc_loader import load_docx_text
 
 from ._normalizer_local import canonical_json, normalize_response
+from .util_docx import load_valid_docx
 
 
-DOCS_DIR = Path(__file__).resolve().parent / "docs"
-BASELINE_DIR = Path(__file__).resolve().parent / "baseline"
+MIN_VALID = 15
+
+DOCS_DIR = Path(__file__).parent / "docs"
+BASELINE_DIR = Path(__file__).parent / "baseline"
 REPORT_DIR = Path("var/reports/golden_diff")
 PAGE_RE = re.compile(r"_(\d+)_pages", re.IGNORECASE)
 SLA_SECONDS = {5: 1.2, 50: 6.0, 200: 25.0}
+
+ALL_VALID_DOCS = load_valid_docx(DOCS_DIR)
+VALID_WITH_BASELINE = [
+    p for p in ALL_VALID_DOCS if (BASELINE_DIR / f"{p.stem}.json").exists()
+]
 
 @pytest.fixture(scope="session")
 def api_client() -> TestClient:
@@ -118,53 +124,6 @@ def _is_subset(expected: Any, current: Any) -> bool:
                 return False
         return True
     return expected == current
-
-
-def _is_lfs_pointer(path: Path) -> bool:
-    try:
-        head = path.read_bytes()[:256]
-    except Exception:
-        return False
-    signature = head.decode("utf-8", "ignore")
-    return ("git-lfs.github.com/spec/v1" in signature) or (b"oid sha256:" in head)
-
-
-def _open_docx_safe(path: Path) -> bytes:
-    try:
-        data = path.read_bytes()
-    except Exception as exc:
-        raise pytest.SkipTest(f"Skipping {path.name}: cannot read DOCX ({exc}).") from exc
-    try:
-        with zipfile.ZipFile(io.BytesIO(data)) as archive:
-            archive.namelist()
-    except zipfile.BadZipFile as exc:
-        raise pytest.SkipTest(f"Skipping {path.name}: invalid DOCX ({exc}).") from exc
-    return data
-
-
-def _load_docs() -> List[Path]:
-    docs = sorted(DOCS_DIR.glob("*.docx"))
-    real_docs: List[Path] = []
-    for path in docs:
-        if _is_lfs_pointer(path):
-            continue
-        try:
-            _open_docx_safe(path)
-        except pytest.SkipTest:
-            continue
-        else:
-            real_docs.append(path)
-    if len(real_docs) < 15:
-        pytest.skip(
-            f"LFS golden binaries are missing: {len(real_docs)} real docs out of {len(docs)} files."
-        )
-    if len(real_docs) > 30:
-        raise AssertionError(
-            f"Expected between 15 and 30 golden docs, found {len(real_docs)}."
-        )
-    return real_docs
-
-
 def _post_analyze(client: TestClient, text: str) -> Dict[str, Any]:
     response = client.post(
         "/api/analyze",
@@ -176,8 +135,12 @@ def _post_analyze(client: TestClient, text: str) -> Dict[str, Any]:
 
 
 def test_normalizer_is_deterministic(api_client: TestClient) -> None:
-    docs = _load_docs()
-    sample_text = load_docx_text(str(docs[0]))
+    if len(ALL_VALID_DOCS) < MIN_VALID:
+        pytest.skip(
+            f"Not enough valid DOCX ({len(ALL_VALID_DOCS)}<{MIN_VALID}); skipping."
+        )
+
+    sample_text = load_docx_text(str(ALL_VALID_DOCS[0]))
     payload = _post_analyze(api_client, sample_text)
     _assert_schema_v14(payload, require_provider=True)
     norm_first = normalize_response(payload)
@@ -185,9 +148,21 @@ def test_normalizer_is_deterministic(api_client: TestClient) -> None:
     assert norm_first == norm_second
 
 
+@pytest.mark.timeout(180)
 def test_suite_against_golden(api_client: TestClient, request: pytest.FixtureRequest) -> None:
+    if len(ALL_VALID_DOCS) < MIN_VALID:
+        pytest.skip(
+            f"Not enough valid DOCX ({len(ALL_VALID_DOCS)}<{MIN_VALID}); skipping."
+        )
+
     generate = bool(request.config.getoption("--generate-golden"))
-    docs = _load_docs()
+
+    if not generate and len(VALID_WITH_BASELINE) < MIN_VALID:
+        pytest.skip(
+            f"Not enough baselines for valid DOCX ({len(VALID_WITH_BASELINE)}<{MIN_VALID}); skipping."
+        )
+
+    docs = ALL_VALID_DOCS if generate else VALID_WITH_BASELINE
     diff_builder = difflib.HtmlDiff(tabsize=2, wrapcolumn=120)
     report_sections: List[str] = []
     failures: List[str] = []

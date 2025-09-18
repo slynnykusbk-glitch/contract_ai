@@ -1,0 +1,314 @@
+{
+  "analysis": {
+    "findings": [
+      {
+        "advice": "Include carve-out for disclosures required by law or by a regulator.",
+        "citations": [
+          {
+            "evidence": null,
+            "evidence_text": null,
+            "instrument": "POCA 2002",
+            "link": null,
+            "score": null,
+            "section": "s.333A",
+            "source": "UK legislation",
+            "system": "UK",
+            "title": "Proceeds of Crime Act 2002",
+            "url": null
+          }
+        ],
+        "clause_type": "confidentiality",
+        "conflict_with": [],
+        "end": 142,
+        "law_refs": [
+          "POCA 2002 s.333A"
+        ],
+        "normalized_snippet": "Confidential Information shall not include information independently developed without use of the Disclosing Party's Confidential Information.",
+        "occurrences": 1,
+        "ops": [],
+        "rule_id": "uk_poca_tipping_off",
+        "scope": {
+          "nth": 1,
+          "unit": "sentence"
+        },
+        "severity": "high",
+        "snippet": "Confidential Information shall not include information independently developed without use of the Disclosing Party's Confidential Information.",
+        "start": 0,
+        "suggestion": null
+      }
+    ],
+    "status": "ok"
+  },
+  "clauses": [
+    {
+      "advice": "Include carve-out for disclosures required by law or by a regulator.",
+      "citations": [
+        {
+          "evidence": null,
+          "evidence_text": null,
+          "instrument": "POCA 2002",
+          "link": null,
+          "score": null,
+          "section": "s.333A",
+          "source": "UK legislation",
+          "system": "UK",
+          "title": "Proceeds of Crime Act 2002",
+          "url": null
+        }
+      ],
+      "clause_type": "confidentiality",
+      "conflict_with": [],
+      "end": 142,
+      "law_refs": [
+        "POCA 2002 s.333A"
+      ],
+      "normalized_snippet": "Confidential Information shall not include information independently developed without use of the Disclosing Party's Confidential Information.",
+      "occurrences": 1,
+      "ops": [],
+      "rule_id": "uk_poca_tipping_off",
+      "scope": {
+        "nth": 1,
+        "unit": "sentence"
+      },
+      "severity": "high",
+      "snippet": "Confidential Information shall not include information independently developed without use of the Disclosing Party's Confidential Information.",
+      "start": 0,
+      "suggestion": null
+    }
+  ],
+  "document": {},
+  "findings": [
+    {
+      "advice": "Include carve-out for disclosures required by law or by a regulator.",
+      "citations": [
+        {
+          "evidence": null,
+          "evidence_text": null,
+          "instrument": "POCA 2002",
+          "link": null,
+          "score": null,
+          "section": "s.333A",
+          "source": "UK legislation",
+          "system": "UK",
+          "title": "Proceeds of Crime Act 2002",
+          "url": null
+        }
+      ],
+      "clause_type": "confidentiality",
+      "conflict_with": [],
+      "end": 142,
+      "law_refs": [
+        "POCA 2002 s.333A"
+      ],
+      "normalized_snippet": "Confidential Information shall not include information independently developed without use of the Disclosing Party's Confidential Information.",
+      "occurrences": 1,
+      "ops": [],
+      "rule_id": "uk_poca_tipping_off",
+      "scope": {
+        "nth": 1,
+        "unit": "sentence"
+      },
+      "severity": "high",
+      "snippet": "Confidential Information shall not include information independently developed without use of the Disclosing Party's Confidential Information.",
+      "start": 0,
+      "suggestion": null
+    }
+  ],
+  "meta": {
+    "active_packs": [],
+    "document_type": "NDA",
+    "fired_rules": [],
+    "language": "en-GB",
+    "model": "mock-static",
+    "provider": "mock",
+    "rules_evaluated": 0,
+    "rules_fired_count": 0,
+    "rules_loaded_count": 0,
+    "text_bytes": 26760,
+    "valid_config": true
+  },
+  "recommendations": [],
+  "results": {
+    "summary": {
+      "carveouts": {
+        "carveouts": [
+          "shall not include information independently developed without use of the Disclosing Party's Confidential Information"
+        ],
+        "has_carveouts": true,
+        "list": [
+          "shall not include information independently developed without use of the Disclosing Party's Confidential Information"
+        ]
+      },
+      "conditions_vs_warranties": {
+        "explicit_conditions": [],
+        "explicit_warranties": [],
+        "has_conditions": false,
+        "has_warranties": false
+      },
+      "currency": null,
+      "dates": {
+        "commencement": null,
+        "dated": null,
+        "effective": null
+      },
+      "debug": {
+        "doctype_top": [
+          {
+            "score": 1.0,
+            "type": "NDA"
+          },
+          {
+            "score": 0.5,
+            "type": "Guarantee"
+          },
+          {
+            "score": 0.0,
+            "type": "MSA (Services)"
+          },
+          {
+            "score": 0.0,
+            "type": "Supply of Goods"
+          },
+          {
+            "score": 0.0,
+            "type": "DPA"
+          }
+        ]
+      },
+      "doc_type": {
+        "candidates": [
+          {
+            "score": 1.0,
+            "type": "NDA"
+          }
+        ],
+        "confidence": 1.0,
+        "source": "keywords",
+        "top": {
+          "score": 1.0,
+          "type": "NDA"
+        }
+      },
+      "exclusivity": null,
+      "governing_law": null,
+      "hints": [
+        "confidential information",
+        "disclosing party",
+        "shall not include information independently developed without use of the Disclosing Party's Confidential Information"
+      ],
+      "jurisdiction": null,
+      "liability": {
+        "cap_currency": null,
+        "cap_value": null,
+        "has_cap": false,
+        "notes": null
+      },
+      "rules_count": 176,
+      "signatures": [],
+      "term": {
+        "end": null,
+        "mode": "unknown",
+        "renew_notice": null,
+        "start": null
+      },
+      "type": "NDA",
+      "type_confidence": 1.0,
+      "type_source": "keywords"
+    }
+  },
+  "rules_coverage": {
+    "doc_type": {
+      "source": "keywords",
+      "value": "NDA"
+    },
+    "rules": []
+  },
+  "schema_version": "1.4",
+  "status": "ok",
+  "summary": {
+    "carveouts": {
+      "carveouts": [
+        "shall not include information independently developed without use of the Disclosing Party's Confidential Information"
+      ],
+      "has_carveouts": true,
+      "list": [
+        "shall not include information independently developed without use of the Disclosing Party's Confidential Information"
+      ]
+    },
+    "conditions_vs_warranties": {
+      "explicit_conditions": [],
+      "explicit_warranties": [],
+      "has_conditions": false,
+      "has_warranties": false
+    },
+    "currency": null,
+    "dates": {
+      "commencement": null,
+      "dated": null,
+      "effective": null
+    },
+    "debug": {
+      "doctype_top": [
+        {
+          "score": 1.0,
+          "type": "NDA"
+        },
+        {
+          "score": 0.5,
+          "type": "Guarantee"
+        },
+        {
+          "score": 0.0,
+          "type": "MSA (Services)"
+        },
+        {
+          "score": 0.0,
+          "type": "Supply of Goods"
+        },
+        {
+          "score": 0.0,
+          "type": "DPA"
+        }
+      ]
+    },
+    "doc_type": {
+      "candidates": [
+        {
+          "score": 1.0,
+          "type": "NDA"
+        }
+      ],
+      "confidence": 1.0,
+      "source": "keywords",
+      "top": {
+        "score": 1.0,
+        "type": "NDA"
+      }
+    },
+    "exclusivity": null,
+    "governing_law": null,
+    "hints": [
+      "confidential information",
+      "disclosing party",
+      "shall not include information independently developed without use of the Disclosing Party's Confidential Information"
+    ],
+    "jurisdiction": null,
+    "liability": {
+      "cap_currency": null,
+      "cap_value": null,
+      "has_cap": false,
+      "notes": null
+    },
+    "rules_count": 176,
+    "signatures": [],
+    "term": {
+      "end": null,
+      "mode": "unknown",
+      "renew_notice": null,
+      "start": null
+    },
+    "type": "NDA",
+    "type_confidence": 1.0,
+    "type_source": "keywords"
+  }
+}

@@ -1,0 +1,198 @@
+{
+  "analysis": {
+    "findings": [],
+    "status": "ok"
+  },
+  "clauses": [],
+  "document": {},
+  "findings": [],
+  "meta": {
+    "active_packs": [],
+    "document_type": "SaaS Subscription",
+    "fired_rules": [],
+    "language": "en-GB",
+    "model": "mock-static",
+    "provider": "mock",
+    "rules_evaluated": 0,
+    "rules_fired_count": 0,
+    "rules_loaded_count": 0,
+    "text_bytes": 1437,
+    "valid_config": true
+  },
+  "recommendations": [],
+  "results": {
+    "summary": {
+      "carveouts": {
+        "carveouts": [],
+        "has_carveouts": false,
+        "list": []
+      },
+      "conditions_vs_warranties": {
+        "explicit_conditions": [],
+        "explicit_warranties": [],
+        "has_conditions": false,
+        "has_warranties": false
+      },
+      "currency": null,
+      "dates": {
+        "commencement": null,
+        "dated": null,
+        "effective": null
+      },
+      "debug": {
+        "doctype_top": [
+          {
+            "score": 1.0,
+            "type": "SaaS Subscription"
+          },
+          {
+            "score": 0.909,
+            "type": "Distribution"
+          },
+          {
+            "score": 0.455,
+            "type": "Loan"
+          },
+          {
+            "score": 0.455,
+            "type": "Lease"
+          },
+          {
+            "score": 0.455,
+            "type": "Guarantee"
+          }
+        ]
+      },
+      "doc_type": {
+        "candidates": [
+          {
+            "score": 1.0,
+            "type": "SaaS Subscription"
+          }
+        ],
+        "confidence": 1.0,
+        "source": "title",
+        "top": {
+          "score": 1.0,
+          "type": "SaaS Subscription"
+        }
+      },
+      "exclusivity": null,
+      "governing_law": null,
+      "hints": [
+        "saas",
+        "subscription",
+        "subscription"
+      ],
+      "jurisdiction": null,
+      "liability": {
+        "cap_currency": null,
+        "cap_value": null,
+        "has_cap": false,
+        "notes": null
+      },
+      "rules_count": 176,
+      "signatures": [],
+      "term": {
+        "end": null,
+        "mode": "unknown",
+        "renew_notice": null,
+        "start": null
+      },
+      "type": "SaaS Subscription",
+      "type_confidence": 1.0,
+      "type_source": "title"
+    }
+  },
+  "rules_coverage": {
+    "doc_type": {
+      "source": "title",
+      "value": "SaaS Subscription"
+    },
+    "rules": []
+  },
+  "schema_version": "1.4",
+  "status": "ok",
+  "summary": {
+    "carveouts": {
+      "carveouts": [],
+      "has_carveouts": false,
+      "list": []
+    },
+    "conditions_vs_warranties": {
+      "explicit_conditions": [],
+      "explicit_warranties": [],
+      "has_conditions": false,
+      "has_warranties": false
+    },
+    "currency": null,
+    "dates": {
+      "commencement": null,
+      "dated": null,
+      "effective": null
+    },
+    "debug": {
+      "doctype_top": [
+        {
+          "score": 1.0,
+          "type": "SaaS Subscription"
+        },
+        {
+          "score": 0.909,
+          "type": "Distribution"
+        },
+        {
+          "score": 0.455,
+          "type": "Loan"
+        },
+        {
+          "score": 0.455,
+          "type": "Lease"
+        },
+        {
+          "score": 0.455,
+          "type": "Guarantee"
+        }
+      ]
+    },
+    "doc_type": {
+      "candidates": [
+        {
+          "score": 1.0,
+          "type": "SaaS Subscription"
+        }
+      ],
+      "confidence": 1.0,
+      "source": "title",
+      "top": {
+        "score": 1.0,
+        "type": "SaaS Subscription"
+      }
+    },
+    "exclusivity": null,
+    "governing_law": null,
+    "hints": [
+      "saas",
+      "subscription",
+      "subscription"
+    ],
+    "jurisdiction": null,
+    "liability": {
+      "cap_currency": null,
+      "cap_value": null,
+      "has_cap": false,
+      "notes": null
+    },
+    "rules_count": 176,
+    "signatures": [],
+    "term": {
+      "end": null,
+      "mode": "unknown",
+      "renew_notice": null,
+      "start": null
+    },
+    "type": "SaaS Subscription",
+    "type_confidence": 1.0,
+    "type_source": "title"
+  }
+}

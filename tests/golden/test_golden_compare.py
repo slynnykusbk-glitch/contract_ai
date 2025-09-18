@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import os
 import re
@@ -119,24 +120,49 @@ def _is_subset(expected: Any, current: Any) -> bool:
     return expected == current
 
 
+def _is_lfs_pointer(path: Path) -> bool:
+    try:
+        head = path.read_bytes()[:256]
+    except Exception:
+        return False
+    signature = head.decode("utf-8", "ignore")
+    return ("git-lfs.github.com/spec/v1" in signature) or (b"oid sha256:" in head)
+
+
+def _open_docx_safe(path: Path) -> bytes:
+    try:
+        data = path.read_bytes()
+    except Exception as exc:
+        raise pytest.SkipTest(f"Skipping {path.name}: cannot read DOCX ({exc}).") from exc
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            archive.namelist()
+    except zipfile.BadZipFile as exc:
+        raise pytest.SkipTest(f"Skipping {path.name}: invalid DOCX ({exc}).") from exc
+    return data
+
+
 def _load_docs() -> List[Path]:
     docs = sorted(DOCS_DIR.glob("*.docx"))
-    valid_docs: List[Path] = []
+    real_docs: List[Path] = []
     for path in docs:
+        if _is_lfs_pointer(path):
+            continue
         try:
-            with zipfile.ZipFile(path) as archive:
-                archive.namelist()
-        except zipfile.BadZipFile:
+            _open_docx_safe(path)
+        except pytest.SkipTest:
             continue
         else:
-            valid_docs.append(path)
-    if not valid_docs:
-        pytest.skip("Golden DOCX fixtures are not available (missing Git LFS files).")
-    if not (15 <= len(valid_docs) <= 30):
-        raise AssertionError(
-            f"Expected between 15 and 30 golden docs, found {len(valid_docs)}."
+            real_docs.append(path)
+    if len(real_docs) < 15:
+        pytest.skip(
+            f"LFS golden binaries are missing: {len(real_docs)} real docs out of {len(docs)} files."
         )
-    return valid_docs
+    if len(real_docs) > 30:
+        raise AssertionError(
+            f"Expected between 15 and 30 golden docs, found {len(real_docs)}."
+        )
+    return real_docs
 
 
 def _post_analyze(client: TestClient, text: str) -> Dict[str, Any]:

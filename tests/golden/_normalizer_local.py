@@ -2,11 +2,33 @@ from __future__ import annotations
 
 from copy import deepcopy
 import json
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Sequence, Tuple
 
 
-_IGNORED_TOP_LEVEL_KEYS = {"cid"}
-_IGNORED_META_KEYS = {"pipeline_id", "timings_ms", "debug", "companies_meta"}
+_SEVERITY_ORDER = {
+    "critical": 4,
+    "major": 3,
+    "high": 3,
+    "medium": 2,
+    "minor": 1,
+    "low": 1,
+    "info": 0,
+}
+
+_DROP_PATHS: Sequence[Tuple[str, ...]] = (
+    ("cid",),
+    ("meta", "pipeline_id"),
+    ("meta", "timings_ms"),
+    ("meta", "debug"),
+    ("meta", "companies_meta"),
+    ("meta", "api_version"),
+    ("meta", "deployment"),
+    ("meta", "dep"),
+    ("meta", "provider"),
+    ("meta", "model"),
+    ("meta", "provider_meta"),
+    ("meta", "llm"),
+)
 
 
 def _sort_findings(items: Iterable[Mapping[str, Any]]) -> List[Dict[str, Any]]:
@@ -24,12 +46,7 @@ def _sort_findings(items: Iterable[Mapping[str, Any]]) -> List[Dict[str, Any]]:
             for citation in citations:
                 if isinstance(citation, Mapping):
                     ordered.append(dict(citation))
-            ordered.sort(key=lambda c: (
-                str(c.get("system", "")),
-                str(c.get("instrument", "")),
-                str(c.get("section", "")),
-                str(c.get("title", "")),
-            ))
+            ordered.sort(key=_citation_sort_key)
             item["citations"] = ordered
         conflicts = item.get("conflict_with")
         if isinstance(conflicts, list):
@@ -38,14 +55,7 @@ def _sort_findings(items: Iterable[Mapping[str, Any]]) -> List[Dict[str, Any]]:
         if isinstance(ops, list):
             item["ops"] = sorted(ops, key=lambda op: json.dumps(op, sort_keys=True))
         normalized.append(item)
-    normalized.sort(
-        key=lambda it: (
-            str(it.get("rule_id", "")),
-            str(it.get("clause_type", "")),
-            int(it.get("start", 0) or 0),
-            str(it.get("snippet", ""))[:64],
-        )
-    )
+    normalized.sort(key=_finding_sort_key)
     return normalized
 
 
@@ -83,7 +93,7 @@ def _sort_fired_rules(items: Iterable[Mapping[str, Any]]) -> List[Dict[str, Any]
             item["positions"] = ordered_pos
             item.pop("trigger_positions", None)
         out.append(item)
-    out.sort(key=lambda it: (str(it.get("rule_id", "")), str(it.get("pack", ""))))
+    out.sort(key=_fired_rule_sort_key)
     return out
 
 
@@ -97,6 +107,101 @@ def _clean_summary_block(block: MutableMapping[str, Any]) -> None:
             carveouts["list"] = sorted(set(str(item) for item in listed))
 
 
+def _drop_path(data: MutableMapping[str, Any], path: Sequence[str]) -> None:
+    if not path or not isinstance(data, MutableMapping):
+        return
+    key = path[0]
+    if len(path) == 1:
+        data.pop(key, None)
+        return
+    next_value = data.get(key)
+    if isinstance(next_value, MutableMapping):
+        _drop_path(next_value, path[1:])
+        if not next_value:
+            data.pop(key, None)
+    elif isinstance(next_value, list):
+        for item in next_value:
+            if isinstance(item, MutableMapping):
+                _drop_path(item, path[1:])
+
+
+def _finding_sort_key(item: Mapping[str, Any]) -> Tuple[Any, ...]:
+    if not isinstance(item, Mapping):
+        return ("", 0, 0, "", "")
+    clause = str(item.get("clause_id") or "")
+    start = _coerce_int(item.get("start"))
+    span = item.get("span")
+    if start == 0 and isinstance(span, Mapping):
+        start = _coerce_int(span.get("start"))
+    severity = -_SEVERITY_ORDER.get(str(item.get("severity", "")).lower(), 0)
+    rule_id = str(item.get("rule_id") or "")
+    snippet = str(
+        item.get("normalized_snippet")
+        or item.get("snippet")
+        or item.get("text_hash")
+        or ""
+    )
+    return (clause, start, severity, rule_id, snippet)
+
+
+def _clause_sort_key(item: Mapping[str, Any]) -> Tuple[Any, ...]:
+    if not isinstance(item, Mapping):
+        return ("", 0)
+    clause_id = str(item.get("id") or item.get("clause_id") or "")
+    start = _coerce_int(item.get("start"))
+    span = item.get("span")
+    if start == 0 and isinstance(span, Mapping):
+        start = _coerce_int(span.get("start"))
+    return (clause_id, start)
+
+
+def _sort_clauses(items: Iterable[Mapping[str, Any]]) -> List[Dict[str, Any]]:
+    ordered: List[Dict[str, Any]] = []
+    for raw in items or []:
+        if isinstance(raw, Mapping):
+            ordered.append(dict(raw))
+    ordered.sort(key=_clause_sort_key)
+    return ordered
+
+
+def _fired_rule_sort_key(item: Mapping[str, Any]) -> Tuple[str, str]:
+    if not isinstance(item, Mapping):
+        return ("", "")
+    name = str(item.get("name") or item.get("rule_id") or "")
+    pack = str(item.get("pack") or "")
+    return (name, pack)
+
+
+def _citation_sort_key(item: Mapping[str, Any]) -> Tuple[str, str, str, str, str]:
+    if not isinstance(item, Mapping):
+        return ("", "", "", "", "")
+    return (
+        str(item.get("system") or ""),
+        str(item.get("instrument") or ""),
+        str(item.get("section") or ""),
+        str(item.get("title") or ""),
+        str(item.get("source") or ""),
+    )
+
+
+def _name_key(item: Any) -> str:
+    if isinstance(item, Mapping):
+        candidate = item.get("name") or item.get("rule_id") or item.get("id") or item.get("pack")
+        if candidate is None:
+            return ""
+        return str(candidate)
+    if item is None:
+        return ""
+    return str(item)
+
+
+def _coerce_int(value: Any) -> int:
+    try:
+        return int(value)
+    except Exception:
+        return 0
+
+
 def _canonicalize(obj: Any) -> Any:
     if isinstance(obj, Mapping):
         return {str(k): _canonicalize(v) for k, v in sorted(obj.items(), key=lambda kv: str(kv[0]))}
@@ -108,8 +213,8 @@ def _canonicalize(obj: Any) -> Any:
 def normalize_response(payload: Mapping[str, Any]) -> Dict[str, Any]:
     data = deepcopy(dict(payload or {}))
 
-    for key in _IGNORED_TOP_LEVEL_KEYS:
-        data.pop(key, None)
+    for path in _DROP_PATHS:
+        _drop_path(data, path)
 
     analysis = data.get("analysis")
     if isinstance(analysis, MutableMapping):
@@ -127,7 +232,7 @@ def normalize_response(payload: Mapping[str, Any]) -> Dict[str, Any]:
 
     clauses = data.get("clauses")
     if isinstance(clauses, list):
-        data["clauses"] = _sort_findings(clauses)
+        data["clauses"] = _sort_clauses(clauses)
 
     findings_top = data.get("findings")
     if isinstance(findings_top, list):
@@ -135,11 +240,15 @@ def normalize_response(payload: Mapping[str, Any]) -> Dict[str, Any]:
 
     meta = data.get("meta")
     if isinstance(meta, MutableMapping):
-        for key in _IGNORED_META_KEYS:
-            meta.pop(key, None)
         packs = meta.get("active_packs")
         if isinstance(packs, list):
-            meta["active_packs"] = sorted(str(p) for p in packs)
+            normalized_packs: List[Any] = []
+            for pack in packs:
+                if isinstance(pack, Mapping):
+                    normalized_packs.append(dict(pack))
+                else:
+                    normalized_packs.append(pack)
+            meta["active_packs"] = sorted(normalized_packs, key=_name_key)
         fired = meta.get("fired_rules")
         if isinstance(fired, list):
             meta["fired_rules"] = _sort_fired_rules(fired)

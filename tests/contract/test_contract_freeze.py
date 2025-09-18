@@ -45,7 +45,8 @@ def _load_text(name: str) -> str:
 
 
 def _load_expected(name: str) -> dict:
-    return json.loads((EXPECTED_DIR / f"{name}.json").read_text())
+    data = json.loads((EXPECTED_DIR / f"{name}.json").read_text())
+    return normalize_for_diff(data)
 
 
 @pytest.mark.parametrize("fixture_name", TEST_CASES)

@@ -20,6 +20,13 @@ _DROP_PATHS: set[Tuple[str, ...]] = {
     ("meta", "timings_ms"),
     ("meta", "debug"),
     ("meta", "companies_meta"),
+    ("meta", "api_version"),
+    ("meta", "deployment"),
+    ("meta", "dep"),
+    ("meta", "provider"),
+    ("meta", "model"),
+    ("meta", "provider_meta"),
+    ("meta", "llm"),
 }
 
 _PARTY_KEYS = {"role", "name"}

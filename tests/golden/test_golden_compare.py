@@ -5,6 +5,7 @@ import os
 import re
 import time
 import difflib
+import zipfile
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -41,7 +42,7 @@ def _pages_for(path: Path) -> int:
     raise AssertionError(f"Unable to determine page count from file name: {path.name}")
 
 
-def _assert_schema_v14(payload: Dict[str, Any]) -> None:
+def _assert_schema_v14(payload: Dict[str, Any], *, require_provider: bool = False) -> None:
     assert payload.get("schema_version") == SCHEMA_VERSION
     assert isinstance(payload.get("status"), str)
 
@@ -70,8 +71,16 @@ def _assert_schema_v14(payload: Dict[str, Any]) -> None:
 
     meta = payload.get("meta")
     assert isinstance(meta, dict)
-    assert isinstance(meta.get("provider"), str)
-    assert isinstance(meta.get("model"), str)
+    provider = meta.get("provider")
+    model = meta.get("model")
+    if require_provider:
+        assert isinstance(provider, str)
+        assert isinstance(model, str)
+    else:
+        if provider is not None:
+            assert isinstance(provider, str)
+        if model is not None:
+            assert isinstance(model, str)
     assert isinstance(meta.get("language"), str)
 
     coverage = payload.get("rules_coverage")
@@ -112,11 +121,22 @@ def _is_subset(expected: Any, current: Any) -> bool:
 
 def _load_docs() -> List[Path]:
     docs = sorted(DOCS_DIR.glob("*.docx"))
-    if not (15 <= len(docs) <= 30):
+    valid_docs: List[Path] = []
+    for path in docs:
+        try:
+            with zipfile.ZipFile(path) as archive:
+                archive.namelist()
+        except zipfile.BadZipFile:
+            continue
+        else:
+            valid_docs.append(path)
+    if not valid_docs:
+        pytest.skip("Golden DOCX fixtures are not available (missing Git LFS files).")
+    if not (15 <= len(valid_docs) <= 30):
         raise AssertionError(
-            f"Expected between 15 and 30 golden docs, found {len(docs)}."
+            f"Expected between 15 and 30 golden docs, found {len(valid_docs)}."
         )
-    return docs
+    return valid_docs
 
 
 def _post_analyze(client: TestClient, text: str) -> Dict[str, Any]:
@@ -133,6 +153,7 @@ def test_normalizer_is_deterministic(api_client: TestClient) -> None:
     docs = _load_docs()
     sample_text = load_docx_text(str(docs[0]))
     payload = _post_analyze(api_client, sample_text)
+    _assert_schema_v14(payload, require_provider=True)
     norm_first = normalize_response(payload)
     norm_second = normalize_response(norm_first)
     assert norm_first == norm_second
@@ -161,8 +182,8 @@ def test_suite_against_golden(api_client: TestClient, request: pytest.FixtureReq
             sla_note = f" (SLA {limit:.2f}s breached)"
         print(f"[golden] {doc_path.name}: {duration:.2f}s for {pages} pages{sla_note}")
 
+        _assert_schema_v14(payload, require_provider=True)
         normalized = normalize_response(payload)
-        _assert_schema_v14(normalized)
         assert normalize_response(normalized) == normalized
         current_json = canonical_json(normalized)
 

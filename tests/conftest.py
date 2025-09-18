@@ -1,3 +1,5 @@
+import os
+
 import pytest
 import requests
 
@@ -5,6 +7,13 @@ try:
     import httpx
 except Exception:  # pragma: no cover
     httpx = None
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _stable_env():
+    os.environ.setdefault("FEATURE_COMPANIES_HOUSE", "0")
+    os.environ.setdefault("FEATURE_LLM_ANALYZE", "0")
+    os.environ.setdefault("PYTHONHASHSEED", "0")
 
 
 @pytest.fixture(autouse=True)

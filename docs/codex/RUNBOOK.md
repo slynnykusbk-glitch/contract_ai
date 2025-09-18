@@ -5,7 +5,7 @@
 Install dependencies and confirm **PyYAML** is installed so `/api/analyze` can parse rule packs:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 python -c "import yaml"
 ```
 

@@ -5,7 +5,7 @@
 Install required packages and verify that **PyYAML** is available for rule pack parsing by `/api/analyze`:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
 python -c "import yaml"
 ```
 
@@ -125,7 +125,7 @@ The generated `i18n_inventory.txt` should be empty in a clean repository.
 
 ## Live test watch (improved)
 
-Установка: pip install -r requirements-dev.txt
+Установка: pip install -r requirements.txt -r requirements-dev.txt
 
 Запуск: .\ContractAI-Watch-Tests.local.ps1 (откроется окно ptw; редактируешь код — тесты идут автоматически)
 

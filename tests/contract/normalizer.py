@@ -16,18 +16,23 @@ _SEVERITY_ORDER = {
 
 _DROP_PATHS: set[Tuple[str, ...]] = {
     ("cid",),
-    ("meta", "pipeline_id"),
-    ("meta", "timings_ms"),
-    ("meta", "debug"),
-    ("meta", "companies_meta"),
     ("meta", "api_version"),
-    ("meta", "deployment"),
+    ("meta", "companies_meta"),
+    ("meta", "debug"),
     ("meta", "dep"),
-    ("meta", "provider"),
-    ("meta", "model"),
-    ("meta", "provider_meta"),
+    ("meta", "deployment"),
+    ("meta", "document_type"),
+    ("meta", "endpoint"),
+    ("meta", "ep"),
     ("meta", "llm"),
+    ("meta", "model"),
+    ("meta", "pipeline_id"),
+    ("meta", "provider"),
+    ("meta", "provider_meta"),
+    ("meta", "timings_ms"),
 }
+
+_META_ALLOWED_KEYS = {"active_packs", "fired_rules", "rule_count", "rules_coverage"}
 
 _PARTY_KEYS = {"role", "name"}
 
@@ -51,6 +56,8 @@ def _normalize_dict(data: dict[str, Any], path: Tuple[str, ...]) -> dict[str, An
     for key in sorted(data.keys()):
         next_path = path + (key,)
         if next_path in _DROP_PATHS:
+            continue
+        if path == ("meta",) and key not in _META_ALLOWED_KEYS:
             continue
         value = _normalize(data[key], next_path)
         if key == "parties" and path and path[-1] == "summary":
@@ -90,7 +97,7 @@ def _normalize_list(items: Iterable[Any], path: Tuple[str, ...]) -> list[Any]:
         normalized = sorted(normalized)
     elif path == ("meta", "fired_rules"):
         normalized.sort(key=_fired_rule_key)
-    elif path == ("rules_coverage", "rules"):
+    elif len(path) >= 2 and path[-2:] == ("rules_coverage", "rules"):
         normalized.sort(key=_coverage_rule_key)
     elif key == "citations":
         normalized.sort(key=_citation_sort_key)

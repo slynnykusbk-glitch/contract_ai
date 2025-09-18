@@ -17,18 +17,23 @@ _SEVERITY_ORDER = {
 
 _DROP_PATHS: Sequence[Tuple[str, ...]] = (
     ("cid",),
-    ("meta", "pipeline_id"),
-    ("meta", "timings_ms"),
-    ("meta", "debug"),
-    ("meta", "companies_meta"),
     ("meta", "api_version"),
-    ("meta", "deployment"),
+    ("meta", "companies_meta"),
+    ("meta", "debug"),
     ("meta", "dep"),
-    ("meta", "provider"),
-    ("meta", "model"),
-    ("meta", "provider_meta"),
+    ("meta", "deployment"),
+    ("meta", "document_type"),
+    ("meta", "endpoint"),
+    ("meta", "ep"),
     ("meta", "llm"),
+    ("meta", "model"),
+    ("meta", "pipeline_id"),
+    ("meta", "provider"),
+    ("meta", "provider_meta"),
+    ("meta", "timings_ms"),
 )
+
+_META_ALLOWED_KEYS = {"active_packs", "fired_rules", "rule_count", "rules_coverage"}
 
 
 def _sort_findings(items: Iterable[Mapping[str, Any]]) -> List[Dict[str, Any]]:
@@ -64,7 +69,7 @@ def _sort_rules(items: Iterable[Mapping[str, Any]]) -> List[Dict[str, Any]]:
     for raw in items or []:
         if isinstance(raw, Mapping):
             out.append(dict(raw))
-    out.sort(key=lambda it: (str(it.get("rule_id", "")), str(it.get("status", ""))))
+    out.sort(key=_coverage_rule_key)
     return out
 
 
@@ -105,6 +110,12 @@ def _clean_summary_block(block: MutableMapping[str, Any]) -> None:
         listed = carveouts.get("list")
         if isinstance(listed, list):
             carveouts["list"] = sorted(set(str(item) for item in listed))
+
+
+def _filter_meta(meta: MutableMapping[str, Any]) -> None:
+    for key in list(meta.keys()):
+        if key not in _META_ALLOWED_KEYS:
+            meta.pop(key, None)
 
 
 def _drop_path(data: MutableMapping[str, Any], path: Sequence[str]) -> None:
@@ -164,12 +175,29 @@ def _sort_clauses(items: Iterable[Mapping[str, Any]]) -> List[Dict[str, Any]]:
     return ordered
 
 
+def _sort_citations(items: Iterable[Mapping[str, Any]]) -> List[Dict[str, Any]]:
+    ordered: List[Dict[str, Any]] = []
+    for raw in items or []:
+        if isinstance(raw, Mapping):
+            ordered.append(dict(raw))
+    ordered.sort(key=_citation_sort_key)
+    return ordered
+
+
 def _fired_rule_sort_key(item: Mapping[str, Any]) -> Tuple[str, str]:
     if not isinstance(item, Mapping):
         return ("", "")
     name = str(item.get("name") or item.get("rule_id") or "")
     pack = str(item.get("pack") or "")
     return (name, pack)
+
+
+def _coverage_rule_key(item: Mapping[str, Any]) -> Tuple[str, str]:
+    if not isinstance(item, Mapping):
+        return ("", "")
+    rid = str(item.get("rule_id") or "")
+    status = str(item.get("status") or "")
+    return (rid, status)
 
 
 def _citation_sort_key(item: Mapping[str, Any]) -> Tuple[str, str, str, str, str]:
@@ -240,6 +268,7 @@ def normalize_response(payload: Mapping[str, Any]) -> Dict[str, Any]:
 
     meta = data.get("meta")
     if isinstance(meta, MutableMapping):
+        _filter_meta(meta)
         packs = meta.get("active_packs")
         if isinstance(packs, list):
             normalized_packs: List[Any] = []
@@ -252,6 +281,11 @@ def normalize_response(payload: Mapping[str, Any]) -> Dict[str, Any]:
         fired = meta.get("fired_rules")
         if isinstance(fired, list):
             meta["fired_rules"] = _sort_fired_rules(fired)
+        coverage_meta = meta.get("rules_coverage")
+        if isinstance(coverage_meta, MutableMapping):
+            rules_meta = coverage_meta.get("rules")
+            if isinstance(rules_meta, list):
+                coverage_meta["rules"] = _sort_rules(rules_meta)
 
     summary = data.get("summary")
     if isinstance(summary, MutableMapping):
@@ -284,6 +318,10 @@ def normalize_response(payload: Mapping[str, Any]) -> Dict[str, Any]:
             normalized_recs,
             key=lambda rec: json.dumps(rec, sort_keys=True),
         )
+
+    citations = data.get("citations")
+    if isinstance(citations, list):
+        data["citations"] = _sort_citations(citations)
 
     return _canonicalize(data)
 

@@ -1,0 +1,204 @@
+{
+  "analysis": {
+    "findings": [],
+    "status": "ok"
+  },
+  "clauses": [],
+  "document": {},
+  "findings": [],
+  "meta": {
+    "active_packs": [],
+    "document_type": "Distribution",
+    "fired_rules": [],
+    "language": "en-GB",
+    "model": "mock-static",
+    "provider": "mock",
+    "rules_evaluated": 0,
+    "rules_fired_count": 0,
+    "rules_loaded_count": 0,
+    "text_bytes": 154,
+    "valid_config": true
+  },
+  "recommendations": [],
+  "results": {
+    "summary": {
+      "carveouts": {
+        "carveouts": [],
+        "has_carveouts": false,
+        "list": []
+      },
+      "clause_type": "governing_law",
+      "conditions_vs_warranties": {
+        "explicit_conditions": [],
+        "explicit_warranties": [],
+        "has_conditions": false,
+        "has_warranties": false
+      },
+      "currency": null,
+      "dates": {
+        "commencement": null,
+        "dated": null,
+        "effective": null
+      },
+      "debug": {
+        "doctype_top": [
+          {
+            "score": 1.0,
+            "type": "Distribution"
+          },
+          {
+            "score": 0.0,
+            "type": "NDA"
+          },
+          {
+            "score": 0.0,
+            "type": "MSA (Services)"
+          },
+          {
+            "score": 0.0,
+            "type": "Supply of Goods"
+          },
+          {
+            "score": 0.0,
+            "type": "DPA"
+          }
+        ]
+      },
+      "doc_type": {
+        "candidates": [
+          {
+            "score": 1.0,
+            "type": "Distribution"
+          }
+        ],
+        "confidence": 1.0,
+        "source": "keywords",
+        "top": {
+          "score": 1.0,
+          "type": "Distribution"
+        }
+      },
+      "exclusivity": true,
+      "governing_law": "England and Wales and the parties submit to the exclusive jurisdiction of the courts of England and Wales",
+      "hints": [
+        "exclusive",
+        "governed by the laws of England and Wales and the parties submit to the exclusive jurisdiction of the courts of England and Wales",
+        "jurisdiction of the courts of England and Wales.",
+        "exclusive jurisdiction"
+      ],
+      "jurisdiction": "England and Wales",
+      "liability": {
+        "cap_currency": null,
+        "cap_value": null,
+        "has_cap": false,
+        "notes": null
+      },
+      "parties": [],
+      "rules_count": 176,
+      "signatures": [],
+      "term": {
+        "end": null,
+        "mode": "unknown",
+        "renew_notice": null,
+        "start": null
+      },
+      "type": "Distribution",
+      "type_confidence": 1.0,
+      "type_source": "keywords"
+    }
+  },
+  "rules_coverage": {
+    "doc_type": {
+      "source": "keywords",
+      "value": "Distribution"
+    },
+    "rules": []
+  },
+  "schema_version": "1.4",
+  "status": "ok",
+  "summary": {
+    "carveouts": {
+      "carveouts": [],
+      "has_carveouts": false,
+      "list": []
+    },
+    "clause_type": "governing_law",
+    "conditions_vs_warranties": {
+      "explicit_conditions": [],
+      "explicit_warranties": [],
+      "has_conditions": false,
+      "has_warranties": false
+    },
+    "currency": null,
+    "dates": {
+      "commencement": null,
+      "dated": null,
+      "effective": null
+    },
+    "debug": {
+      "doctype_top": [
+        {
+          "score": 1.0,
+          "type": "Distribution"
+        },
+        {
+          "score": 0.0,
+          "type": "NDA"
+        },
+        {
+          "score": 0.0,
+          "type": "MSA (Services)"
+        },
+        {
+          "score": 0.0,
+          "type": "Supply of Goods"
+        },
+        {
+          "score": 0.0,
+          "type": "DPA"
+        }
+      ]
+    },
+    "doc_type": {
+      "candidates": [
+        {
+          "score": 1.0,
+          "type": "Distribution"
+        }
+      ],
+      "confidence": 1.0,
+      "source": "keywords",
+      "top": {
+        "score": 1.0,
+        "type": "Distribution"
+      }
+    },
+    "exclusivity": true,
+    "governing_law": "England and Wales and the parties submit to the exclusive jurisdiction of the courts of England and Wales",
+    "hints": [
+      "exclusive",
+      "governed by the laws of England and Wales and the parties submit to the exclusive jurisdiction of the courts of England and Wales",
+      "jurisdiction of the courts of England and Wales.",
+      "exclusive jurisdiction"
+    ],
+    "jurisdiction": "England and Wales",
+    "liability": {
+      "cap_currency": null,
+      "cap_value": null,
+      "has_cap": false,
+      "notes": null
+    },
+    "parties": [],
+    "rules_count": 176,
+    "signatures": [],
+    "term": {
+      "end": null,
+      "mode": "unknown",
+      "renew_notice": null,
+      "start": null
+    },
+    "type": "Distribution",
+    "type_confidence": 1.0,
+    "type_source": "keywords"
+  }
+}

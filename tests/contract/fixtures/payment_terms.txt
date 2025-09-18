@@ -1,0 +1,1 @@
+Supplier shall invoice Customer monthly in arrears. Customer shall pay all undisputed amounts within thirty (30) days of receipt of a valid invoice.

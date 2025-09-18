@@ -159,7 +159,25 @@ def _sort_clauses(items: Iterable[Mapping[str, Any]]) -> List[Dict[str, Any]]:
     ordered: List[Dict[str, Any]] = []
     for raw in items or []:
         if isinstance(raw, Mapping):
-            ordered.append(dict(raw))
+            item = dict(raw)
+            law_refs = item.get("law_refs")
+            if isinstance(law_refs, list):
+                item["law_refs"] = sorted(str(ref) for ref in law_refs)
+            citations = item.get("citations")
+            if isinstance(citations, list):
+                ordered_citations: List[Dict[str, Any]] = []
+                for citation in citations:
+                    if isinstance(citation, Mapping):
+                        ordered_citations.append(dict(citation))
+                ordered_citations.sort(key=_citation_sort_key)
+                item["citations"] = ordered_citations
+            conflicts = item.get("conflict_with")
+            if isinstance(conflicts, list):
+                item["conflict_with"] = sorted(str(c) for c in conflicts)
+            ops = item.get("ops")
+            if isinstance(ops, list):
+                item["ops"] = sorted(ops, key=lambda op: json.dumps(op, sort_keys=True))
+            ordered.append(item)
     ordered.sort(key=_clause_sort_key)
     return ordered
 

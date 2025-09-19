@@ -1,0 +1,6 @@
+
+# local diagnostics with secrets
+reports/
+# dev token (panel)
+contract_review_app/static/panel/.build-token
+

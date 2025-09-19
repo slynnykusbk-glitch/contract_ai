@@ -1,7 +1,7 @@
 # contract_review_app/analysis/lx_features.py
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Any
 import re
 
 from contract_review_app.core.lx_types import LxDocFeatures, LxFeatureSet

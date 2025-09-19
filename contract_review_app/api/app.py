@@ -885,6 +885,7 @@ cid_index = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
 gpt_cache = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
 
 FEATURE_METRICS = os.getenv("FEATURE_METRICS", "1") == "1"
+FEATURE_LX_ENGINE = os.getenv("FEATURE_LX_ENGINE", "0") == "1"
 METRICS_EXPORT_DIR = Path(os.getenv("METRICS_EXPORT_DIR", "var/metrics"))
 DISABLE_PII_IN_METRICS = os.getenv("DISABLE_PII_IN_METRICS", "1") == "1"
 
@@ -2023,6 +2024,28 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     t0 = time.perf_counter()
     parsed = analysis_parser.parse_text(txt)
     t1 = time.perf_counter()
+
+    lx_features = None  # noqa: F841  # reserved for future L0 integration
+    if FEATURE_LX_ENGINE:
+        try:
+            from contract_review_app.analysis import lx_features as _lx_features
+        except ImportError:
+            lx_features = None
+        else:
+            try:
+                lx_features = _lx_features.extract_l0_features(txt, parsed.segments)
+            except Exception:
+                lx_features = None
+            segments = getattr(parsed, "segments", None) or []
+            try:
+                segment_count = len(segments)
+            except Exception:
+                segment_count = 0
+            TRACE.add(
+                request.state.cid,
+                "l0_features",
+                {"status": "enabled", "count": segment_count},
+            )
     analysis_classifier.classify_segments(parsed.segments)
     t2 = time.perf_counter()
 
@@ -2756,6 +2779,15 @@ async def gpt_draft(inp: DraftRequest):
     # In this simplified version we just echo back a draft based on the clause.
     draft_text = f"Draft: {inp.clause.strip()}"
     return DraftResponse(draft=draft_text)
+
+
+@router.post(
+    "/api/gpt-draft",
+    response_model=DraftResponse,
+    responses={422: {"model": ProblemDetail}},
+)
+async def gpt_draft_alias(req: DraftRequest):
+    return await gpt_draft(req)
 
 
 @router.post(

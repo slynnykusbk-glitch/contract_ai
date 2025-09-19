@@ -1,11 +1,11 @@
-"""Lightweight feature extraction for LX pipeline."""
+# contract_review_app/analysis/lx_features.py
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Set
+from typing import Dict, List, Optional, Any
 import re
 
-from .parser import ParsedDoc
+from contract_review_app.core.lx_types import LxDocFeatures, LxFeatureSet
+# Переиспользуем существующие регексы из текущего кода (ничего не меняем в них)
 from .extract import (
     _COMP_NO_RE,
     _DURATION_RE,
@@ -14,57 +14,7 @@ from .extract import (
     _MONEY_RE,
 )
 
-
-@dataclass
-class LxSegmentFeatures:
-    """Features extracted for a single document segment."""
-
-    segment_id: int
-    text: str
-    labels: Set[str] = field(default_factory=set)
-    durations: Dict[str, List[int]] = field(default_factory=dict)
-    amounts: List[Dict[str, Optional[float]]] = field(default_factory=list)
-    company_numbers: List[str] = field(default_factory=list)
-    governing_law: List[str] = field(default_factory=list)
-    jurisdictions: List[str] = field(default_factory=list)
-
-    def add_duration(self, unit: str, value: int) -> None:
-        values = self.durations.setdefault(unit, [])
-        values.append(value)
-
-    def add_amount(self, currency: str, value: Optional[float]) -> None:
-        self.amounts.append({"currency": currency, "value": value})
-
-    def finalize(self) -> None:
-        self.durations = _finalize_numeric_map(self.durations)
-
-
-@dataclass
-class LxDocFeatures:
-    """Aggregated features for an entire document."""
-
-    segments: Dict[int, LxSegmentFeatures]
-    labels: Set[str]
-    durations: Dict[str, Iterable[int] | int]
-    amounts: List[Dict[str, Optional[float]]]
-    company_numbers: List[str]
-    governing_law: List[str]
-    jurisdictions: List[str]
-
-
-def _finalize_numeric_map(raw: Dict[str, List[int]]) -> Dict[str, Iterable[int] | int]:
-    result: Dict[str, Iterable[int] | int] = {}
-    for unit, values in raw.items():
-        if not values:
-            continue
-        unique_sorted = sorted(set(values))
-        if len(unique_sorted) == 1:
-            result[unit] = unique_sorted[0]
-        else:
-            result[unit] = unique_sorted
-    return result
-
-
+# Лёгкие паттерны для многометочной классификации клауз
 _LABEL_PATTERNS: Dict[str, re.Pattern[str]] = {
     "Payment": re.compile(r"\b(payment|remuneration|invoice)\b", re.I),
     "Term": re.compile(r"\bterm\b|\bremain in force\b", re.I),
@@ -87,107 +37,79 @@ _LABEL_PATTERNS: Dict[str, re.Pattern[str]] = {
 }
 
 
-def _detect_labels(text: str) -> Set[str]:
-    labels: Set[str] = set()
-    for label, pattern in _LABEL_PATTERNS.items():
-        if pattern.search(text):
-            labels.add(label)
+def _detect_labels(text: str) -> List[str]:
+    labels: List[str] = []
+    for name, pat in _LABEL_PATTERNS.items():
+        if pat.search(text):
+            labels.append(name)
     return labels
 
 
-def _normalise_parenthetical_numbers(text: str) -> str:
+def _norm_parenthetical_numbers(text: str) -> str:
+    # "sixty (60) days" -> "sixty  60  days" (чтобы _DURATION_RE увидел число)
     return re.sub(r"\((\d+)\)", r" \1 ", text)
 
 
-def _extract_durations(text: str, segment: LxSegmentFeatures) -> None:
-    seen: Set[tuple[str, int]] = set()
-    for source in (text, _normalise_parenthetical_numbers(text)):
-        for match in _DURATION_RE.finditer(source):
-            value = int(match.group(1))
-            unit = match.group(2).lower()
-            if unit.endswith("s"):
-                unit = unit[:-1]
-            key = (unit, value)
-            if key in seen:
-                continue
-            seen.add(key)
-            segment.add_duration(f"{unit}s" if not unit.endswith("s") else unit, value)
+def extract_l0_features(doc_text: str, segments: Any) -> LxDocFeatures:
+    """
+    Лёгкий L0-экстрактор:
+    - НЕ меняет публичный ответ /api/analyze (результат уходит только во внутренние структуры/TRACE)
+    - Использует существующие сегменты (list[dict|obj] с полями id/text).
+    - Возвращает LxDocFeatures(by_segment=...).
+    """
+    by_segment: Dict[int, LxFeatureSet] = {}
 
+    for seg in segments or []:
+        # безопасно читаем id/text из dict или объекта
+        if isinstance(seg, dict):
+            seg_id = int(seg.get("id", 0))
+            text = str(seg.get("text", "") or "")
+        else:
+            seg_id = int(getattr(seg, "id", 0) or 0)
+            text = str(getattr(seg, "text", "") or "")
 
-def _extract_amounts(text: str, segment: LxSegmentFeatures) -> None:
-    for match in _MONEY_RE.finditer(text):
-        currency = match.group(1)
-        raw_value = match.group(2)
-        try:
-            value = float(raw_value.replace(",", ""))
-        except Exception:
-            value = None
-        segment.add_amount(currency, value)
+        fs = LxFeatureSet()  # из core.lx_types с дефолтами
 
+        # 1) Метки (multi-label)
+        fs.labels = _detect_labels(text)
 
-def _extract_company_numbers(text: str) -> List[str]:
-    return [m.group(1) for m in _COMP_NO_RE.finditer(text)]
+        # 2) Сроки (durations) — берём первый встреченный per unit (days/weeks/months/years)
+        durations: Dict[str, int] = {}
+        for source in (text, _norm_parenthetical_numbers(text)):
+            for m in _DURATION_RE.finditer(source):
+                try:
+                    val = int(m.group(1))
+                except Exception:
+                    continue
+                unit = (m.group(2) or "").lower()
+                if unit.endswith("s"):
+                    unit = unit[:-1]
+                key = f"{unit}s"  # нормализуем к множественному числу
+                if key not in durations:
+                    durations[key] = val
+        fs.durations = durations  # Dict[str, int]
 
+        # 3) Компании (UK company numbers)
+        fs.company_numbers = [m.group(1) for m in _COMP_NO_RE.finditer(text)]
 
-def _extract_law(text: str) -> List[str]:
-    if m := _LAW_RE.search(text):
-        return [m.group(1).strip()]
-    return []
+        # 4) Суммы — оставляем строковым представлением (без изменения извлекателей)
+        amounts: List[str] = []
+        for m in _MONEY_RE.finditer(text):
+            cur = m.group(1) or ""
+            raw = (m.group(2) or "").replace(",", "")
+            amounts.append(f"{cur}{raw}")
+        fs.amounts = amounts
 
+        # 5) Нормы права / юрисдикция (первое попадание)
+        law_m = _LAW_RE.search(text)
+        if law_m:
+            fs.law_signals = [law_m.group(1).strip()]
+        juris_m = _JURIS_RE.search(text)
+        if juris_m:
+            fs.jurisdiction = juris_m.group(1).strip()
 
-def _extract_jurisdiction(text: str) -> List[str]:
-    if m := _JURIS_RE.search(text):
-        return [m.group(1).strip()]
-    return []
+        # Остальные поля LxFeatureSet (parties/liability_caps/carveouts) остаются дефолтными
 
+        by_segment[seg_id] = fs
 
-def extract_l0_features(parsed: ParsedDoc) -> LxDocFeatures:
-    segments: Dict[int, LxSegmentFeatures] = {}
-    aggregate_labels: Set[str] = set()
-    aggregate_durations: Dict[str, List[int]] = {}
-    aggregate_amounts: List[Dict[str, Optional[float]]] = []
-    aggregate_company_numbers: Set[str] = set()
-    aggregate_law: List[str] = []
-    aggregate_jurisdiction: List[str] = []
-
-    for seg in parsed.segments:
-        seg_id = int(seg.get("id", 0))
-        text = str(seg.get("text", ""))
-        features = LxSegmentFeatures(segment_id=seg_id, text=text)
-
-        features.labels = _detect_labels(text)
-        aggregate_labels.update(features.labels)
-
-        _extract_durations(text, features)
-        for unit, values in features.durations.items():
-            aggregate_durations.setdefault(unit, []).extend(values)
-
-        _extract_amounts(text, features)
-        aggregate_amounts.extend(features.amounts)
-
-        company_numbers = _extract_company_numbers(text)
-        features.company_numbers.extend(company_numbers)
-        aggregate_company_numbers.update(company_numbers)
-
-        laws = _extract_law(text)
-        jurisdictions = _extract_jurisdiction(text)
-        features.governing_law.extend(laws)
-        features.jurisdictions.extend(jurisdictions)
-        aggregate_law.extend(laws)
-        aggregate_jurisdiction.extend(jurisdictions)
-
-        features.finalize()
-        segments[seg_id] = features
-
-    finalized_durations = _finalize_numeric_map(aggregate_durations)
-    aggregate_company_numbers_sorted = sorted(aggregate_company_numbers)
-
-    return LxDocFeatures(
-        segments=segments,
-        labels=aggregate_labels,
-        durations=finalized_durations,
-        amounts=aggregate_amounts,
-        company_numbers=aggregate_company_numbers_sorted,
-        governing_law=aggregate_law,
-        jurisdictions=aggregate_jurisdiction,
-    )
+    return LxDocFeatures(by_segment=by_segment)

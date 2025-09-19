@@ -17,13 +17,42 @@ class TraceStore:
 
     def put(self, cid: str, item: Dict[str, Any]) -> None:
         """Insert *item* under *cid* keeping only the latest *maxlen* items."""
-        if not cid:
+        if not cid or not isinstance(item, dict):
             return
         if cid in self._data:
-            self._data.move_to_end(cid)
-        self._data[cid] = item
+            existing = self._data[cid]
+            merged = dict(existing)
+            merged.update(item)
+            body_existing = existing.get("body") if isinstance(existing.get("body"), dict) else None
+            body_new = item.get("body") if isinstance(item.get("body"), dict) else None
+            if body_existing or body_new:
+                merged_body: Dict[str, Any] = {}
+                if isinstance(body_existing, dict):
+                    merged_body.update(body_existing)
+                if isinstance(body_new, dict):
+                    merged_body.update(body_new)
+                merged["body"] = merged_body
+            self._data[cid] = merged
+        else:
+            self._data[cid] = dict(item)
+        self._data.move_to_end(cid)
         while len(self._data) > self.maxlen:
             self._data.popitem(last=False)
+
+    def add(self, cid: str, key: str, value: Any) -> None:
+        """Attach a ``key``/``value`` pair to the trace body for ``cid``."""
+        if not cid or not key:
+            return
+        entry = self._data.get(cid)
+        if entry is None:
+            self.put(cid, {"body": {key: value}})
+            return
+        body = entry.get("body")
+        if not isinstance(body, dict):
+            body = {}
+        body[key] = value
+        entry["body"] = body
+        self._data.move_to_end(cid)
 
     def get(self, cid: str) -> Dict[str, Any] | None:
         return self._data.get(cid)

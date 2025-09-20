@@ -2050,10 +2050,13 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     analysis_classifier.classify_segments(parsed.segments)
     t2 = time.perf_counter()
 
+    snap = extract_document_snapshot(txt)
+
     seg_findings: List[Dict[str, Any]] = []
     clause_types_set: set[str] = set()
     dispatch_segments: List[Dict[str, Any]] = []
-    candidate_rule_union: Set[str] = set()
+    segments_for_yaml: List[Tuple[int, str]] = []
+    candidate_rules_by_segment: Dict[int, Set[str]] = {}
     dispatcher_mod = None
     features_by_segment: Dict[int, LxFeatureSet] = {}
     if FEATURE_LX_ENGINE and lx_features is not None:
@@ -2067,6 +2070,8 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
 
     for seg in parsed.segments:
         seg_id = int(seg.get("id", 0) or 0)
+        seg_text = str(seg.get("text") or "")
+        segments_for_yaml.append((seg_id, seg_text))
         if dispatcher_mod and seg_id in features_by_segment:
             feats = features_by_segment.get(seg_id)
             if feats is not None:
@@ -2082,7 +2087,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                     refs = []
                 if refs:
                     candidate_ids = [ref.rule_id for ref in refs]
-                    candidate_rule_union.update(candidate_ids)
+                    candidate_rules_by_segment[seg_id] = set(candidate_ids)
                     if hasattr(feats, "model_dump"):
                         feat_payload = feats.model_dump()
                     else:  # pragma: no cover
@@ -2117,7 +2122,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         try:
             legal_runner.run_rule_for_clause(
                 clause_type,
-                seg.get("text", ""),
+                seg_text,
                 int(seg.get("start", 0)),
             )
         except Exception:
@@ -2133,11 +2138,6 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         except Exception:
             pass
 
-    candidate_rule_ids: Optional[Set[str]] = (
-        set(candidate_rule_union) if candidate_rule_union else None
-    )
-
-    snap = extract_document_snapshot(txt)
     jurisdiction = getattr(snap, "jurisdiction", "") or ""
 
     # resolve citations for each finding after final list is determined
@@ -2171,98 +2171,113 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         from contract_review_app.legal_rules import loader as yaml_loader, engine as yaml_engine
 
         # --- YAML rule engine integration (HF-0 + L1 merged) ---
-        load_duration = 0.0
-        run_duration = 0.0
-
-        # 1) Pack discovery (HF-0) with proper timing
-        load_start = time.perf_counter()
-        load_fn = getattr(yaml_loader, "load_packs", None)
-        if callable(load_fn):
-            load_fn()
-        else:  # pragma: no cover - legacy fallback
-            yaml_loader.load_rule_packs()
-        load_end = time.perf_counter()
-        load_duration = max(load_end - load_start, 0.0)
-
-        # 2) Candidate narrowing (L1) — set contextvar ONLY if non-empty candidates exist
-        token = None
+        need_load = False
         try:
-            # candidate_rule_ids: Optional[Set[str]] — должен быть определён выше по коду на основе L0 для ТЕКУЩЕГО сегмента
-            if candidate_rule_ids:  # non-empty set -> narrow by candidates for THIS segment only
-                token = yaml_loader.CANDIDATES_VAR.set(set(candidate_rule_ids))
+            need_load = yaml_loader.rules_count() == 0
+        except Exception:
+            need_load = False
 
-            # 3) Single filtering pass (HF-0 soft-gates remain in loader)
-            filtered_rules = yaml_loader.filter_rules(
-                txt or "",  # нормализованный текст сегмента/блока
-                doc_type=(
-                    getattr(snap, "doc_type", None)
-                    or getattr(snap, "type", "")
-                    or ""
-                ),  # soft-gate в loader (пустое не режет)
-                clause_types=clause_types_set,  # множество типов клауз для сегмента
-                jurisdiction=jurisdiction,  # soft-gate в loader
+        if need_load:
+            load_start = time.perf_counter()
+            load_fn = getattr(yaml_loader, "load_packs", None)
+            if callable(load_fn):
+                load_fn()
+            else:  # pragma: no cover - legacy fallback
+                yaml_loader.load_rule_packs()
+            load_duration = max(time.perf_counter() - load_start, 0.0)
+
+        # 2) Candidate narrowing and per-segment evaluation
+        doc_type_val = (
+            getattr(snap, "doc_type", None)
+            or getattr(snap, "type", "")
+            or ""
+        )
+
+        for seg_id, seg_text in segments_for_yaml:
+            if not seg_text or not seg_text.strip():
+                continue
+
+            token = None
+            try:
+                candidate_ids = candidate_rules_by_segment.get(seg_id)
+                if candidate_ids:
+                    token = yaml_loader.CANDIDATES_VAR.set(set(candidate_ids))
+
+                filtered_result = yaml_loader.filter_rules(
+                    seg_text,
+                    doc_type=doc_type_val,
+                    clause_types=clause_types_set,
+                    jurisdiction=jurisdiction,
+                )
+            finally:
+                if token is not None:
+                    yaml_loader.CANDIDATES_VAR.reset(token)
+
+            if isinstance(filtered_result, tuple):
+                filtered_rules = list(filtered_result[0] or [])
+            else:
+                filtered_rules = list(filtered_result or [])
+
+            rules_payload = [item.get("rule") for item in filtered_rules]
+
+            if filtered_rules:
+                matched_rules.extend(filtered_rules)
+                coverage_rules.extend(
+                    [
+                        {
+                            "rule_id": item.get("rule", {}).get("id", ""),
+                            "status": item.get("status", "matched"),
+                        }
+                        for item in filtered_rules
+                    ]
+                )
+
+            run_start = time.perf_counter()
+            findings_for_segment = yaml_engine.analyze(
+                seg_text,
+                [r for r in rules_payload if r is not None],
             )
-        finally:
-            if token is not None:
-                yaml_loader.CANDIDATES_VAR.reset(token)
+            seg_run = max(time.perf_counter() - run_start, 0.0)
+            engine_run_ms = (
+                yaml_engine.meta.get("timings_ms", {}).get("run_rules_ms")
+                if hasattr(yaml_engine, "meta")
+                else None
+            )
+            if isinstance(engine_run_ms, (int, float)):
+                seg_run = max(seg_run, float(engine_run_ms) / 1000.0)
+            run_duration += seg_run
 
-        if isinstance(filtered_rules, tuple):
-            filtered_rules = filtered_rules[0]
+            if findings_for_segment:
+                yaml_findings.extend(findings_for_segment)
 
-        matched_rules = list(filtered_rules)
+            for item in filtered_rules:
+                rule = item.get("rule", {})
+                matched: Dict[str, List[str]] = {}
+                positions: List[Dict[str, int]] = []
+                for kind, pats in (rule.get("triggers") or {}).items():
+                    for pat in pats:
+                        matches = list(pat.finditer(seg_text))
+                        if matches:
+                            matched.setdefault(kind, []).append(pat.pattern)
+                            for m in matches:
+                                positions.append({"start": m.start(), "end": m.end()})
+                if matched:
+                    fired_rules_meta.append(
+                        {
+                            "rule_id": rule.get("id"),
+                            "pack": rule.get("pack"),
+                            "matched_triggers": {
+                                k: sorted(set(v)) for k, v in matched.items()
+                            },
+                            "requires_clause_hit": rule.get(
+                                "requires_clause_hit", False
+                            ),
+                            "positions": positions,
+                        }
+                    )
 
-        # 4) Run engine on filtered set (HF-0 timing)
-        run_start = time.perf_counter()
-        yaml_findings = yaml_engine.analyze(
-            txt or "",
-            [item["rule"] for item in matched_rules],
-        )
-        run_end = time.perf_counter()
-        run_duration = max(run_end - run_start, 0.0)
-
-        engine_run_ms = (
-            yaml_engine.meta.get("timings_ms", {}).get("run_rules_ms")
-            if hasattr(yaml_engine, "meta")
-            else None
-        )
-        if isinstance(engine_run_ms, (int, float)):
-            run_duration = max(run_duration, float(engine_run_ms) / 1000.0)
-
-        # 5) Meta (HF-0): packs, rule counts, coverage projection
         active_packs = [p.get("path") for p in yaml_loader.loaded_packs()]
         rules_loaded = yaml_loader.rules_count()
-        coverage_rules = [
-            {
-                "rule_id": item.get("rule", {}).get("id", ""),
-                "status": item.get("status", "matched"),
-            }
-            for item in matched_rules
-        ]
-        # --- end HF-0 + L1 merged ---
-
-        for item in matched_rules:
-            rule = item["rule"]
-            matched: Dict[str, List[str]] = {}
-            positions: List[Dict[str, int]] = []
-            for kind, pats in (rule.get("triggers") or {}).items():
-                for pat in pats:
-                    matches = list(pat.finditer(txt))
-                    if matches:
-                        matched.setdefault(kind, []).append(pat.pattern)
-                        for m in matches:
-                            positions.append({"start": m.start(), "end": m.end()})
-            if matched:
-                fired_rules_meta.append(
-                    {
-                        "rule_id": rule.get("id"),
-                        "pack": rule.get("pack"),
-                        "matched_triggers": {
-                            k: sorted(set(v)) for k, v in matched.items()
-                        },
-                        "requires_clause_hit": rule.get("requires_clause_hit", False),
-                        "positions": positions,
-                    }
-                )
 
         meta_map = {m["rule_id"]: m for m in fired_rules_meta}
         for f in yaml_findings:

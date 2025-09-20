@@ -1,8 +1,10 @@
 from pathlib import Path
 from fastapi.testclient import TestClient
 from contract_review_app.api.app import app
+from contract_review_app.api.models import SCHEMA_VERSION
 
 client = TestClient(app)
+client.headers.update({"x-api-key": "test", "x-schema-version": SCHEMA_VERSION})
 
 TEXT = Path('tests/fixtures/quality_clause13.txt').read_text()
 

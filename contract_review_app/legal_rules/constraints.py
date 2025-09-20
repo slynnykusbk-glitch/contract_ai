@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from dataclasses import dataclass
+import json
 import re
 from types import SimpleNamespace
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
@@ -36,6 +37,7 @@ __all__ = [
     "InternalFinding",
     "load_constraints",
     "eval_constraints",
+    "to_trace",
 ]
 
 
@@ -1663,3 +1665,34 @@ def eval_constraints(pg: ParamGraph, findings_in: List[InternalFinding]) -> List
             )
         )
     return findings
+
+
+def _model_to_dict(model: Any) -> Dict[str, Any]:
+    if hasattr(model, "model_dump_json"):
+        try:
+            return json.loads(model.model_dump_json(exclude_none=True))
+        except Exception:
+            pass
+    if hasattr(model, "model_dump"):
+        try:
+            data = model.model_dump(exclude_none=True)
+        except Exception:
+            data = model.model_dump()
+        if isinstance(data, dict):
+            return {k: v for k, v in data.items() if v is not None}
+    if isinstance(model, dict):
+        return {k: v for k, v in model.items() if v is not None}
+    return {}
+
+
+def to_trace(pg: ParamGraph, findings: Iterable[Any]) -> Dict[str, Any]:
+    """Serialize constraint evaluation artefacts for trace storage."""
+
+    payload = {
+        "param_graph": _model_to_dict(pg),
+        "findings": [],
+    }
+    for item in findings or []:
+        if isinstance(item, InternalFinding):
+            payload["findings"].append(_model_to_dict(item))
+    return payload

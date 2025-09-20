@@ -1,7 +1,9 @@
 from fastapi.testclient import TestClient
 from contract_review_app.api.app import app
+from contract_review_app.api.models import SCHEMA_VERSION
 
 client = TestClient(app)
+client.headers.update({"x-api-key": "test", "x-schema-version": SCHEMA_VERSION})
 
 def test_ipr_fields_propagation_minimal():
     body = {"text": "Title to the Agreement Documentation shall vest in Company."}

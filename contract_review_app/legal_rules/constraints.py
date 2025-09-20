@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import json
 import re
 from types import SimpleNamespace
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, FrozenSet, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
 from contract_review_app.analysis.extract_summary import (
     _extract_cure_days,
@@ -1291,6 +1291,9 @@ class InternalFinding(BaseModel):
     anchors: List[SourceRef] = Field(default_factory=list)
 
 
+_AST_CACHE: Dict[str, Tuple["ExprNode", FrozenSet[str]]] = {}
+
+
 class Constraint(BaseModel):
     id: str
     expr: str
@@ -1304,10 +1307,15 @@ class Constraint(BaseModel):
     _ast: ExprNode = PrivateAttr()
 
     def model_post_init(self, __context: Any) -> None:
-        self._ast = _parse_expression(self.expr)
-        identifiers: set[str] = set()
-        _collect_identifiers(self._ast, identifiers)
-        missing = [name for name in identifiers if name not in _IDENTIFIER_ACCESSORS]
+        cached = _AST_CACHE.get(self.id)
+        if cached is None:
+            ast = _parse_expression(self.expr)
+            identifiers: set[str] = set()
+            _collect_identifiers(ast, identifiers)
+            cached = (ast, frozenset(identifiers))
+            _AST_CACHE[self.id] = cached
+        self._ast = cached[0]
+        missing = [name for name in cached[1] if name not in _IDENTIFIER_ACCESSORS]
         if missing:
             raise ConstraintSyntaxError(
                 f"Unknown identifiers in constraint '{self.id}': {', '.join(sorted(missing))}"
@@ -1649,7 +1657,9 @@ def eval_constraints(pg: ParamGraph, findings_in: List[InternalFinding]) -> List
             result, details = constraint.evaluate(pg)
         except ConstraintEvaluationError:
             continue
-        if result is None or result:
+        if result is None:
+            break
+        if result:
             continue
         detail_text = _format_details(details)
         message = constraint.message_tmpl

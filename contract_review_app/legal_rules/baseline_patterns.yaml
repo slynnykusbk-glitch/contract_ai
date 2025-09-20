@@ -1,0 +1,91 @@
+rules:
+  - id: BASELINE_PAYMENT_TERM
+    title: "Payment timeline reference"
+    severity: low
+    patterns:
+      - "(?:within|no later than|not later than)\s+(?:\d+|[a-z\-\s]+)\s+(?:days|business days)"
+    advice: "Confirm the stated payment timeline aligns with expectations."
+  - id: BASELINE_PAYMENT_METHOD
+    title: "Payment method mention"
+    severity: low
+    patterns:
+      - "payment\s+(?:shall|will|must)\s+be\s+(?:made|effected|remitted)"
+    advice: "Verify the described payment method and obligations."
+  - id: BASELINE_TERM_DURATION
+    title: "Term duration reference"
+    severity: low
+    patterns:
+      - "for\s+(?:a\s+)?period\s+of\s+(?:\d+|[a-z\-\s]+)\s+(?:months|years|days)"
+    advice: "Review the stated contract term length."
+  - id: BASELINE_RENEWAL_NOTICE
+    title: "Renewal or extension notice"
+    severity: low
+    patterns:
+      - "(?:renew|extend)(?:ed|ing)?\s+(?:automatically\s+)?(?:upon|for)"
+    advice: "Check renewal mechanics and notice requirements."
+  - id: BASELINE_TERMINATION_FOR_CAUSE
+    title: "Termination for cause"
+    severity: low
+    patterns:
+      - "terminate\s+(?:this\s+)?agreement\s+for\s+cause"
+    advice: "Ensure termination rights are acceptable."
+  - id: BASELINE_CONFIDENTIALITY
+    title: "Confidentiality obligation"
+    severity: low
+    patterns:
+      - "confidential\s+information\s+shall\s+(?:not|never)\s+be\s+(?:disclosed|used)"
+    advice: "Confirm confidentiality protections meet requirements."
+  - id: BASELINE_NON_DISCLOSURE_PERIOD
+    title: "Confidentiality duration"
+    severity: low
+    patterns:
+      - "obligation\s+of\s+confidentiality\s+shall\s+survive\s+(?:for\s+)?(?:\d+|[a-z\-\s]+)\s+(?:years|months)"
+    advice: "Review how long confidentiality obligations last."
+  - id: BASELINE_INDEMNITY
+    title: "Indemnification clause"
+    severity: low
+    patterns:
+      - "indemnif(?:y|ies)\s+and\s+hold\s+harmless"
+    advice: "Assess indemnification scope and responsibilities."
+  - id: BASELINE_LIMITATION_OF_LIABILITY
+    title: "Limitation of liability"
+    severity: low
+    patterns:
+      - "liabilit(?:y|ies)\s+(?:shall\s+be\s+)?(?:limited|capped)\s+to"
+    advice: "Validate liability caps and carve-outs."
+  - id: BASELINE_GOVERNING_LAW
+    title: "Governing law statement"
+    severity: low
+    patterns:
+      - "governed\s+by\s+the\s+laws\s+of\s+[A-Za-z\s]+"
+    advice: "Record the stated governing law jurisdiction."
+  - id: BASELINE_JURISDICTION
+    title: "Jurisdiction or venue"
+    severity: low
+    patterns:
+      - "exclusive\s+jurisdiction\s+of\s+the\s+courts\s+of\s+[A-Za-z\s]+"
+    advice: "Note the jurisdiction clause for dispute resolution."
+  - id: BASELINE_NOTICE_ADDRESS
+    title: "Notice delivery instructions"
+    severity: low
+    patterns:
+      - "notice\s+shall\s+be\s+(?:given|delivered|sent)\s+(?:in\s+writing\s+)?to"
+    advice: "Check notice delivery procedures and addresses."
+  - id: BASELINE_ASSIGNMENT
+    title: "Assignment restrictions"
+    severity: low
+    patterns:
+      - "may\s+not\s+assign\s+(?:this\s+)?agreement\s+without"
+    advice: "Review assignment limitations and consent requirements."
+  - id: BASELINE_FORCE_MAJEURE
+    title: "Force majeure reference"
+    severity: low
+    patterns:
+      - "force\s+majeure\s+event"
+    advice: "Identify force majeure provisions and scope."
+  - id: BASELINE_DISPUTE_RESOLUTION
+    title: "Dispute resolution procedure"
+    severity: low
+    patterns:
+      - "(?:dispute|controversy)\s+(?:shall|will)\s+be\s+(?:resolved|settled)\s+by"
+    advice: "Capture key dispute resolution mechanics."

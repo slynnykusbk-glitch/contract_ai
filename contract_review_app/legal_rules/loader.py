@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import contextvars
 import hashlib
 import logging
 import os
@@ -60,6 +61,9 @@ def _resolve_root(p: str | Path) -> Path:
 
 _RULES: List[Dict[str, Any]] = []
 _PACKS: List[Dict[str, Any]] = []
+CANDIDATES_VAR: contextvars.ContextVar[Optional[Set[str]]] = contextvars.ContextVar(
+    "candidate_rule_ids", default=None
+)
 
 
 @dataclass
@@ -426,7 +430,14 @@ def filter_rules(
     filtered: List[Dict[str, Any]] = []
     coverage: List[Dict[str, Any]] = []
 
+    candidate_ids = CANDIDATES_VAR.get()
+    candidate_active = bool(candidate_ids)
+    candidate_set: Set[str] = set(candidate_ids or [])
+
     for rule in _RULES:
+        rule_id = str(rule.get("id") or rule.get("rule_id") or "")
+        if candidate_active and rule_id not in candidate_set:
+            continue
         rule_flags = flags_norm
         matches: List[str] = []
         spans: List[Dict[str, int]] = []
@@ -504,7 +515,7 @@ def filter_rules(
                 "doc_type": doc_type_lc,
                 "jurisdiction": juris_lc,
                 "pack_id": rule.get("pack"),
-                "rule_id": rule.get("id"),
+                "rule_id": rule_id,
                 "severity": rule.get("severity"),
                 "evidence": matches,
                 "spans": spans,

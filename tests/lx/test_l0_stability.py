@@ -21,11 +21,27 @@ def test_segment_label_mapping_is_stable():
     )
     parsed = parse_text(text)
 
-    original_features: LxDocFeatures = extract_l0_features(parsed)
+    original_features: LxDocFeatures = extract_l0_features(text, parsed.segments)
     reordered_doc = _reorder_segments(parsed)
-    reordered_features: LxDocFeatures = extract_l0_features(reordered_doc)
+    reordered_features: LxDocFeatures = extract_l0_features(
+        text, reordered_doc.segments
+    )
 
-    assert original_features.labels == reordered_features.labels
+    def _collect_labels(doc_features: LxDocFeatures) -> dict[int, list[str]]:
+        return {sid: list(fs.labels) for sid, fs in doc_features.by_segment.items()}
 
-    for seg_id, features in original_features.segments.items():
-        assert features.labels == reordered_features.segments[seg_id].labels
+    def _collect_doc_labels(doc_features: LxDocFeatures) -> set[str]:
+        return {
+            label
+            for fs in doc_features.by_segment.values()
+            for label in fs.labels
+        }
+
+    assert _collect_doc_labels(original_features) == _collect_doc_labels(
+        reordered_features
+    )
+
+    original_map = _collect_labels(original_features)
+    reordered_map = _collect_labels(reordered_features)
+    for seg_id, labels in original_map.items():
+        assert labels == reordered_map[seg_id]

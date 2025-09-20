@@ -15,7 +15,7 @@ describe('analyze flow', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [, opts] = fetchMock.mock.calls[0];
     const body = JSON.parse(opts.body);
-    expect(body).toMatchObject({ text: 'hello', mode: 'live', schema: '1.4' });
+    expect(body).toMatchObject({ text: 'hello', mode: 'live', schema: '1.4', risk: 'medium' });
     expect(opts.headers['x-schema-version']).toBe('1.4');
   });
 });

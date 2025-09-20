@@ -270,6 +270,7 @@ export async function analyze(opts: any = {}) {
   const body = {
     text:  opts?.text ?? opts?.content,
     mode:  opts?.mode ?? 'live',
+    risk:  opts?.risk ?? 'medium',
   };
   const { resp, json } = await postJSON('/api/analyze', body);
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });

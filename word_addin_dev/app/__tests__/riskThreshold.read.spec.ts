@@ -13,6 +13,16 @@ describe('risk threshold read', () => {
     expect(mod.getRiskThreshold()).toBe('high');
   });
 
+  it('passes through critical risk option', async () => {
+    (globalThis as any).window = { addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => {} };
+    (globalThis as any).__CAI_TESTING__ = true;
+    (globalThis as any).document = {
+      getElementById: (id: string) => id === 'selectRiskThreshold' ? { value: 'critical' } : null,
+    } as any;
+    const mod = await import('../assets/taskpane.ts');
+    expect(mod.getRiskThreshold()).toBe('critical');
+  });
+
   it('defaults to medium when missing', async () => {
     (globalThis as any).window = { addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => {} };
     (globalThis as any).__CAI_TESTING__ = true;

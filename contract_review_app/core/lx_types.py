@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 
 from typing import Literal
 
@@ -92,3 +92,4 @@ class ParamGraph(BaseModel):
     order_of_precedence: Optional[bool] = None
     undefined_terms: List[str] = Field(default_factory=list)
     numbering_gaps: List[int] = Field(default_factory=list)
+    doc_flags: Dict[str, Any] = Field(default_factory=dict)

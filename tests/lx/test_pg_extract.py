@@ -1,4 +1,5 @@
 from decimal import Decimal
+from types import SimpleNamespace
 
 from contract_review_app.analysis.extract_summary import extract_document_snapshot
 from contract_review_app.analysis.lx_features import extract_l0_features
@@ -128,3 +129,35 @@ def test_param_graph_stable_under_reordering():
     assert pg_original.annex_refs == pg_reordered.annex_refs
     assert pg_original.undefined_terms == pg_reordered.undefined_terms
     assert pg_original.numbering_gaps == pg_reordered.numbering_gaps
+
+
+def test_param_graph_threads_doc_flags_from_snapshot():
+    snapshot = SimpleNamespace(
+        parties=[],
+        signatures=[],
+        liability=None,
+        governing_law=None,
+        jurisdiction=None,
+        currency=None,
+        doc_flags={"flag_a": True, "flag_b": False},
+    )
+
+    pg = build_param_graph(snapshot, [], None)
+
+    assert pg.doc_flags == {"flag_a": True, "flag_b": False}
+
+
+def test_param_graph_threads_doc_flags_from_debug():
+    snapshot = SimpleNamespace(
+        parties=[],
+        signatures=[],
+        liability=None,
+        governing_law=None,
+        jurisdiction=None,
+        currency=None,
+        debug={"doc_flags": {"flag_c": True}},
+    )
+
+    pg = build_param_graph(snapshot, [], None)
+
+    assert pg.doc_flags == {"flag_c": True}

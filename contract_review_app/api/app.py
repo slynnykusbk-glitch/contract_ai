@@ -2055,7 +2055,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     seg_findings: List[Dict[str, Any]] = []
     clause_types_set: set[str] = set()
     dispatch_segments: List[Dict[str, Any]] = []
-    segments_for_yaml: List[Tuple[int, str]] = []
+    segments_for_yaml: List[Tuple[int, str, int]] = []
     candidate_rules_by_segment: Dict[int, Set[str]] = {}
     dispatcher_mod = None
     features_by_segment: Dict[int, LxFeatureSet] = {}
@@ -2071,7 +2071,8 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     for seg in parsed.segments:
         seg_id = int(seg.get("id", 0) or 0)
         seg_text = str(seg.get("text") or "")
-        segments_for_yaml.append((seg_id, seg_text))
+        seg_start = int(seg.get("start") or 0)
+        segments_for_yaml.append((seg_id, seg_text, seg_start))
         if dispatcher_mod and seg_id in features_by_segment:
             feats = features_by_segment.get(seg_id)
             if feats is not None:
@@ -2193,7 +2194,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             or ""
         )
 
-        for seg_id, seg_text in segments_for_yaml:
+        for seg_id, seg_text, seg_start in segments_for_yaml:
             if not seg_text or not seg_text.strip():
                 continue
 
@@ -2247,6 +2248,17 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                 seg_run = max(seg_run, float(engine_run_ms) / 1000.0)
             run_duration += seg_run
 
+            if findings_for_segment and seg_start:
+                for finding in findings_for_segment:
+                    if not isinstance(finding, dict):
+                        continue
+                    start_val = finding.get("start")
+                    if isinstance(start_val, (int, float)):
+                        finding["start"] = seg_start + int(start_val)
+                    end_val = finding.get("end")
+                    if isinstance(end_val, (int, float)):
+                        finding["end"] = seg_start + int(end_val)
+
             if findings_for_segment:
                 yaml_findings.extend(findings_for_segment)
 
@@ -2260,7 +2272,12 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                         if matches:
                             matched.setdefault(kind, []).append(pat.pattern)
                             for m in matches:
-                                positions.append({"start": m.start(), "end": m.end()})
+                                positions.append(
+                                    {
+                                        "start": seg_start + m.start(),
+                                        "end": seg_start + m.end(),
+                                    }
+                                )
                 if matched:
                     fired_rules_meta.append(
                         {

@@ -2133,7 +2133,12 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         except Exception:
             pass
 
+    candidate_rule_ids: Optional[Set[str]] = (
+        set(candidate_rule_union) if candidate_rule_union else None
+    )
+
     snap = extract_document_snapshot(txt)
+    jurisdiction = getattr(snap, "jurisdiction", "") or ""
 
     # resolve citations for each finding after final list is determined
     def _add_citations(lst: List[Dict[str, Any]]):
@@ -2163,34 +2168,77 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     load_duration = 0.0
     run_duration = 0.0
     try:
-        from contract_review_app.legal_rules import (
-            loader as _yaml_loader,
-            engine as _yaml_engine,
-        )
+        from contract_review_app.legal_rules import loader as yaml_loader, engine as yaml_engine
 
+        # --- YAML rule engine integration (HF-0 + L1 merged) ---
+        load_duration = 0.0
+        run_duration = 0.0
+
+        # 1) Pack discovery (HF-0) with proper timing
         load_start = time.perf_counter()
-        _yaml_loader.load_rule_packs()
-
+        load_fn = getattr(yaml_loader, "load_packs", None)
+        if callable(load_fn):
+            load_fn()
+        else:  # pragma: no cover - legacy fallback
+            yaml_loader.load_rule_packs()
         load_end = time.perf_counter()
         load_duration = max(load_end - load_start, 0.0)
 
-        run_start = time.perf_counter()
-        matched_rules, coverage_rules = _yaml_loader.filter_rules(
-            txt or "",
-            doc_type=snap.type,
-            clause_types=clause_types_set,
-            jurisdiction=snap.jurisdiction,
-        )
-        yaml_findings = _yaml_engine.analyze(
-            txt or "", [item["rule"] for item in matched_rules]
-        )
-        active_packs = [p.get("path") for p in _yaml_loader.loaded_packs()]
-        rules_loaded = _yaml_loader.rules_count()
+        # 2) Candidate narrowing (L1) — set contextvar ONLY if non-empty candidates exist
+        token = None
+        try:
+            # candidate_rule_ids: Optional[Set[str]] — должен быть определён выше по коду на основе L0 для ТЕКУЩЕГО сегмента
+            if candidate_rule_ids:  # non-empty set -> narrow by candidates for THIS segment only
+                token = yaml_loader.CANDIDATES_VAR.set(set(candidate_rule_ids))
 
+            # 3) Single filtering pass (HF-0 soft-gates remain in loader)
+            filtered_rules = yaml_loader.filter_rules(
+                txt or "",  # нормализованный текст сегмента/блока
+                doc_type=(
+                    getattr(snap, "doc_type", None)
+                    or getattr(snap, "type", "")
+                    or ""
+                ),  # soft-gate в loader (пустое не режет)
+                clause_types=clause_types_set,  # множество типов клауз для сегмента
+                jurisdiction=jurisdiction,  # soft-gate в loader
+            )
+        finally:
+            if token is not None:
+                yaml_loader.CANDIDATES_VAR.reset(token)
+
+        if isinstance(filtered_rules, tuple):
+            filtered_rules = filtered_rules[0]
+
+        matched_rules = list(filtered_rules)
+
+        # 4) Run engine on filtered set (HF-0 timing)
+        run_start = time.perf_counter()
+        yaml_findings = yaml_engine.analyze(
+            txt or "",
+            [item["rule"] for item in matched_rules],
+        )
+        run_end = time.perf_counter()
+        run_duration = max(run_end - run_start, 0.0)
+
+        engine_run_ms = (
+            yaml_engine.meta.get("timings_ms", {}).get("run_rules_ms")
+            if hasattr(yaml_engine, "meta")
+            else None
+        )
+        if isinstance(engine_run_ms, (int, float)):
+            run_duration = max(run_duration, float(engine_run_ms) / 1000.0)
+
+        # 5) Meta (HF-0): packs, rule counts, coverage projection
+        active_packs = [p.get("path") for p in yaml_loader.loaded_packs()]
+        rules_loaded = yaml_loader.rules_count()
         coverage_rules = [
-            {"rule_id": item["rule"].get("id"), "status": item.get("status", "matched")}
+            {
+                "rule_id": item.get("rule", {}).get("id", ""),
+                "status": item.get("status", "matched"),
+            }
             for item in matched_rules
         ]
+        # --- end HF-0 + L1 merged ---
 
         for item in matched_rules:
             rule = item["rule"]
@@ -2222,15 +2270,6 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             if meta:
                 f["matched_triggers"] = meta.get("matched_triggers", {})
                 f["trigger_positions"] = meta.get("positions", [])
-        run_end = time.perf_counter()
-        run_duration = max(run_end - run_start, 0.0)
-        engine_run_ms = (
-            _yaml_engine.meta.get("timings_ms", {}).get("run_rules_ms")
-            if hasattr(_yaml_engine, "meta")
-            else None
-        )
-        if isinstance(engine_run_ms, (int, float)):
-            run_duration = max(run_duration, float(engine_run_ms) / 1000.0)
     except Exception:
         yaml_findings = []
         active_packs = []

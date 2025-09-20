@@ -72,6 +72,7 @@ if($listen){
 } else {
   $args = @('-m','uvicorn','contract_review_app.api.app:app','--host',$hostip,'--port',$port,'--ssl-certfile',$crt,'--ssl-keyfile',$keyf)
   INF ("Start: {0} {1}" -f $py, ($args -join ' '))
+  .\.venv\Scripts\python.exe -m pip install -r requirements.txt | Out-Null
   $proc = Start-Process -FilePath $py -ArgumentList $args -WorkingDirectory $Root -PassThru
   OK  ("Uvicorn PID={0}" -f $proc.Id)
 

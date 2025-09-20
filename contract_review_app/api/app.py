@@ -49,6 +49,7 @@ from contract_review_app.core.lx_types import LxFeatureSet, LxSegment
 from contract_review_app.config import CH_ENABLED, CH_API_KEY
 from contract_review_app.utils.logging import logger as cai_logger
 from contract_review_app.legal_rules import constraints
+from contract_review_app.legal_rules.aggregate import apply_merge_policy
 from contract_review_app.legal_rules.constraints import InternalFinding
 
 
@@ -2189,7 +2190,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             )
             seen_ids.add(str(rule_id))
 
-        return merged
+        return apply_merge_policy(merged)
 
     # resolve citations for each finding after final list is determined
     def _add_citations(lst: List[Dict[str, Any]]):

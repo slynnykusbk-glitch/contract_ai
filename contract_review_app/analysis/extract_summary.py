@@ -61,6 +61,12 @@ _WARR_RE = re.compile(r"[^.]*warrant[^.]*", re.I)
 _CURRENCY_MAP = {"£": "GBP", "$": "USD", "€": "EUR"}
 
 
+_SUBJECT_SECTIONS = ("purpose", "scope", "services", "background", "recitals")
+_SUBJECT_PATTERNS: Tuple[Tuple[str, re.Pattern[str]], ...] = tuple(
+    (sec, re.compile(rf"^\s*{sec}\b[\s:]*\n(.{{0,400}})", re.I | re.M)) for sec in _SUBJECT_SECTIONS
+)
+
+
 def _iter_segments(segments: Iterable[Any]) -> Iterable[Tuple[int, str, Optional[str], Optional[int], Optional[int], Optional[str]]]:
     """Yield normalized segment information from dicts/objects."""
 
@@ -339,9 +345,7 @@ def _extract_cw(text: str, hints: List[str]) -> ConditionsVsWarranties:
 
 
 def _extract_subject(text: str) -> Optional[dict]:
-    sections = ["purpose", "scope", "services", "background", "recitals"]
-    for sec in sections:
-        pattern = re.compile(rf"^\s*{sec}\b[\s:]*\n(.{{0,400}})", re.I | re.M)
+    for sec, pattern in _SUBJECT_PATTERNS:
         m = pattern.search(text)
         if m:
             content = m.group(1).strip()

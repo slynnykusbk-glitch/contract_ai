@@ -1,7 +1,9 @@
 from fastapi.testclient import TestClient
 from contract_review_app.api.app import app
+from contract_review_app.api.models import SCHEMA_VERSION
 
 client = TestClient(app)
+client.headers.update({"x-api-key": "test", "x-schema-version": SCHEMA_VERSION})
 
 TEXT = "Contractor shall produce an inspection and test plan (ITP). The ITP will list inspections only."
 

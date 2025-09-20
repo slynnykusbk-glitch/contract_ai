@@ -21,7 +21,7 @@ import logging
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from collections import OrderedDict
 import secrets
@@ -48,6 +48,8 @@ from contract_review_app.core.trace import TraceStore, compute_cid
 from contract_review_app.core.lx_types import LxFeatureSet, LxSegment
 from contract_review_app.config import CH_ENABLED, CH_API_KEY
 from contract_review_app.utils.logging import logger as cai_logger
+from contract_review_app.legal_rules import constraints
+from contract_review_app.legal_rules.constraints import InternalFinding
 
 
 log = logging.getLogger("contract_ai")
@@ -887,6 +889,7 @@ gpt_cache = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
 
 FEATURE_METRICS = os.getenv("FEATURE_METRICS", "1") == "1"
 FEATURE_LX_ENGINE = os.getenv("FEATURE_LX_ENGINE", "0") == "1"
+LX_L2_CONSTRAINTS = os.getenv("LX_L2_CONSTRAINTS", "0") == "1"
 METRICS_EXPORT_DIR = Path(os.getenv("METRICS_EXPORT_DIR", "var/metrics"))
 DISABLE_PII_IN_METRICS = os.getenv("DISABLE_PII_IN_METRICS", "1") == "1"
 
@@ -1451,19 +1454,19 @@ def _normalize_analyze_response(payload: dict) -> dict:
     out = dict(payload or {})
     findings = []
     if isinstance(payload, dict):
-        if (
-            isinstance(payload.get("results"), dict)
-            and isinstance(payload["results"].get("analysis"), dict)
-            and "findings" in payload["results"]["analysis"]
-        ):
-            findings = payload["results"]["analysis"]["findings"]
+        if "findings" in payload:
+            findings = payload["findings"]
         elif (
             isinstance(payload.get("results"), dict)
             and "findings" in payload["results"]
         ):
             findings = payload["results"]["findings"]
-        elif "findings" in payload:
-            findings = payload["findings"]
+        elif (
+            isinstance(payload.get("results"), dict)
+            and isinstance(payload["results"].get("analysis"), dict)
+            and "findings" in payload["results"]["analysis"]
+        ):
+            findings = payload["results"]["analysis"]["findings"]
     out.setdefault("results", {})
     out["results"].setdefault("analysis", {})
     out["results"]["analysis"]["findings"] = findings
@@ -2141,6 +2144,53 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
 
     jurisdiction = getattr(snap, "jurisdiction", "") or ""
 
+    def merge_findings(
+        existing: List[Dict[str, Any]], new_items: Iterable[Any]
+    ) -> List[Dict[str, Any]]:
+        """Merge serialized findings with L2 constraint results."""
+
+        merged: List[Dict[str, Any]] = list(existing or [])
+        seen_ids: Set[str] = set()
+        for item in merged:
+            rule_id = item.get("rule_id") if isinstance(item, dict) else None
+            if rule_id:
+                seen_ids.add(str(rule_id))
+
+        for item in new_items or []:
+            if isinstance(item, InternalFinding):
+                try:
+                    payload = json.loads(item.model_dump_json(exclude_none=True))
+                except Exception:
+                    payload = item.model_dump(exclude_none=True)
+            else:
+                continue
+
+            rule_id = payload.get("rule_id")
+            if not rule_id or str(rule_id) in seen_ids:
+                continue
+
+            anchors = payload.get("anchors") or []
+            merged.append(
+                {
+                    "rule_id": rule_id,
+                    "severity": payload.get("severity"),
+                    "message": payload.get("message", ""),
+                    "snippet": payload.get("message", ""),
+                    "advice": payload.get("message", ""),
+                    "scope": {"unit": payload.get("scope", "doc")},
+                    "law_refs": [],
+                    "conflict_with": [],
+                    "ops": [],
+                    "occurrences": 1,
+                    "anchors": anchors,
+                    "citations": [],
+                    "source": "constraints",
+                }
+            )
+            seen_ids.add(str(rule_id))
+
+        return merged
+
     # resolve citations for each finding after final list is determined
     def _add_citations(lst: List[Dict[str, Any]]):
         for f in lst:
@@ -2346,6 +2396,18 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             findings = [f0]
         else:
             findings = []
+
+    if FEATURE_LX_ENGINE and LX_L2_CONSTRAINTS:
+        try:
+            pg = constraints.build_param_graph(snap, parsed.segments, lx_features)
+            l2_results = constraints.eval_constraints(pg, findings)
+            findings = merge_findings(findings, l2_results)
+            try:
+                TRACE.add(request.state.cid, "constraints", constraints.to_trace(pg, l2_results))
+            except Exception:
+                pass
+        except Exception:
+            pass
 
     _add_citations(findings)
     for f in findings:

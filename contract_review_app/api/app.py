@@ -2099,37 +2099,39 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     rules_loaded = 0
     fired_rules_meta: List[Dict[str, Any]] = []
     coverage_rules: List[Dict[str, Any]] = []
-    filtered_rules: List[Dict[str, Any]] = []
-    t3 = t2
-    t4 = t2
+    matched_rules: List[Dict[str, Any]] = []
+    load_duration = 0.0
+    run_duration = 0.0
     try:
         from contract_review_app.legal_rules import (
             loader as _yaml_loader,
             engine as _yaml_engine,
         )
 
+        load_start = time.perf_counter()
         _yaml_loader.load_rule_packs()
-        filtered_rules = _yaml_loader.filter_rules(
+        load_end = time.perf_counter()
+        load_duration = max(load_end - load_start, 0.0)
+
+        run_start = time.perf_counter()
+        matched_rules, coverage_rules = _yaml_loader.filter_rules(
             txt or "",
             doc_type=snap.type,
             clause_types=clause_types_set,
             jurisdiction=snap.jurisdiction,
         )
-        t3 = time.perf_counter()
         yaml_findings = _yaml_engine.analyze(
-            txt or "", [r["rule"] for r in filtered_rules if not r.get("status")]
+            txt or "", [item["rule"] for item in matched_rules]
         )
-        t4 = time.perf_counter()
         active_packs = [p.get("path") for p in _yaml_loader.loaded_packs()]
         rules_loaded = _yaml_loader.rules_count()
 
-        coverage_rules = []
-        for item in filtered_rules:
-            rid = item["rule"].get("id")
-            st = item.get("status", "matched")
-            coverage_rules.append({"rule_id": rid, "status": st})
+        coverage_rules = [
+            {"rule_id": item["rule"].get("id"), "status": item.get("status", "matched")}
+            for item in matched_rules
+        ]
 
-        for item in filtered_rules:
+        for item in matched_rules:
             rule = item["rule"]
             matched: Dict[str, List[str]] = {}
             positions: List[Dict[str, int]] = []
@@ -2159,13 +2161,24 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             if meta:
                 f["matched_triggers"] = meta.get("matched_triggers", {})
                 f["trigger_positions"] = meta.get("positions", [])
+        run_end = time.perf_counter()
+        run_duration = max(run_end - run_start, 0.0)
+        engine_run_ms = (
+            _yaml_engine.meta.get("timings_ms", {}).get("run_rules_ms")
+            if hasattr(_yaml_engine, "meta")
+            else None
+        )
+        if isinstance(engine_run_ms, (int, float)):
+            run_duration = max(run_duration, float(engine_run_ms) / 1000.0)
     except Exception:
         yaml_findings = []
         active_packs = []
         rules_loaded = 0
         fired_rules_meta = []
         coverage_rules = []
-        filtered_rules = []
+        matched_rules = []
+        load_duration = 0.0
+        run_duration = 0.0
 
     if yaml_findings:
         filtered_yaml = [
@@ -2239,15 +2252,15 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     timings = {
         "parse_ms": round((t1 - t0) * 1000, 2),
         "classify_ms": round((t2 - t1) * 1000, 2),
-        "load_rules_ms": round((t3 - t2) * 1000, 2),
-        "run_rules_ms": round((t4 - t3) * 1000, 2),
+        "load_rules_ms": round(load_duration * 1000, 2),
+        "run_rules_ms": round(run_duration * 1000, 2),
     }
 
     debug_meta = {
         "pipeline": pipeline_id,
         "packs": active_packs,
         "rules_loaded": rules_loaded,
-        "rules_evaluated": len(filtered_rules),
+        "rules_evaluated": len(matched_rules),
         "rules_triggered": len(fired_rules_meta),
     }
 
@@ -2259,7 +2272,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         "active_packs": active_packs,
         "rules_loaded_count": rules_loaded,
         "rules_fired_count": len(fired_rules_meta),
-        "rules_evaluated": len(filtered_rules),
+        "rules_evaluated": len(matched_rules),
         "fired_rules": fired_rules_meta,
         "pipeline_id": pipeline_id,
         "timings_ms": timings,

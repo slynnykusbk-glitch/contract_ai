@@ -9,6 +9,7 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from functools import lru_cache
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import yaml
@@ -26,6 +27,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 # ---------------------------------------------------------------------------
 
 RULE_ROOTS = [
+    "contract_review_app/legal_rules",
     "core/rules",
 ]
 ALLOWED_RULE_EXTS = {".yml", ".yaml"}
@@ -35,6 +37,7 @@ meta: Dict[str, Any] = {"debug": {}}
 
 # Priority mapping for packs defined in core/rules/registry.yml
 REGISTRY_FILE = ROOT_DIR / "core/rules" / "registry.yml"
+BASELINE_FILE = Path(__file__).resolve().with_name("baseline_patterns.yaml")
 PACK_PRIORITIES: Dict[str, int] = {}
 if REGISTRY_FILE.exists():
     try:
@@ -131,11 +134,15 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
 
         paths = sorted(p for p in base.rglob("*") if p.is_file())
         for path in paths:
+            if any(part == ".venv" for part in path.parts):
+                continue
             if "_legacy_disabled" in path.parts:
                 continue
             if path.suffix.lower() not in ALLOWED_RULE_EXTS:
                 continue
             if path.resolve() == REGISTRY_FILE.resolve():
+                continue
+            if path.resolve() == BASELINE_FILE.resolve():
                 continue
             try:
                 docs = list(yaml.safe_load_all(path.read_text(encoding="utf-8")))
@@ -433,15 +440,17 @@ def filter_rules(
 
         # Gate: doc_type
         rule_doc_types = [d.lower() for d in rule.get("doc_types", [])]
-        if rule_doc_types and "any" not in rule_doc_types:
-            if not doc_type_lc or doc_type_lc not in rule_doc_types:
-                rule_flags |= DOC_TYPE_MISMATCH
+        if doc_type_lc:
+            if rule_doc_types and "any" not in rule_doc_types:
+                if doc_type_lc not in rule_doc_types:
+                    rule_flags |= DOC_TYPE_MISMATCH
 
         # Gate: jurisdiction
         rule_juris = [j.lower() for j in rule.get("jurisdiction", [])]
-        if rule_juris and "any" not in rule_juris:
-            if not juris_lc or juris_lc not in rule_juris:
-                rule_flags |= JURISDICTION_MISMATCH
+        if juris_lc:
+            if rule_juris and "any" not in rule_juris:
+                if juris_lc not in rule_juris:
+                    rule_flags |= JURISDICTION_MISMATCH
 
         # Gate: requires_clause
         req_clauses = {c.lower() for c in rule.get("requires_clause", [])}
@@ -512,7 +521,90 @@ def filter_rules(
             }
         )
 
+    if not filtered:
+        baseline_rules = _get_baseline_rules()
+        if baseline_rules:
+            for rule in baseline_rules:
+                filtered.append({"rule": rule, "matches": []})
+                coverage.append(
+                    {
+                        "doc_type": doc_type_lc,
+                        "jurisdiction": juris_lc,
+                        "pack_id": rule.get("pack"),
+                        "rule_id": rule.get("id"),
+                        "severity": rule.get("severity"),
+                        "evidence": [],
+                        "spans": [],
+                        "flags": 0,
+                    }
+                )
+
     return filtered, coverage
+
+
+@lru_cache(maxsize=1)
+def _get_baseline_rules() -> List[Dict[str, Any]]:
+    """Load baseline pattern rules used as a fallback when filtering yields none."""
+
+    if not BASELINE_FILE.exists():
+        return []
+
+    try:
+        raw_docs = list(yaml.safe_load_all(BASELINE_FILE.read_text(encoding="utf-8")))
+    except Exception as exc:  # pragma: no cover
+        log.error("Failed to load baseline patterns: %s", exc)
+        return []
+
+    specs: List[Dict[str, Any]] = []
+    try:
+        pack_id = str(BASELINE_FILE.relative_to(ROOT_DIR))
+    except ValueError:  # pragma: no cover
+        pack_id = str(BASELINE_FILE)
+
+    def _flatten(doc: Any) -> Iterable[Dict[str, Any]]:
+        if not doc:
+            return []
+        if isinstance(doc, dict) and doc.get("rules"):
+            return list(doc.get("rules") or [])
+        if isinstance(doc, dict) and doc.get("rule"):
+            return [doc.get("rule")]
+        if isinstance(doc, dict):
+            return [doc]
+        if isinstance(doc, list):
+            return list(doc)
+        return []
+
+    for doc in raw_docs:
+        for idx, raw in enumerate(_flatten(doc)):
+            if not isinstance(raw, dict):
+                continue
+            rid = str(raw.get("id") or raw.get("rule_id") or f"baseline-{idx}")
+            compiled = _compile(raw.get("patterns", []) or [])
+            specs.append(
+                {
+                    "id": rid,
+                    "rule_id": rid,
+                    "Title": raw.get("Title"),
+                    "title": raw.get("title"),
+                    "clause_type": raw.get("clause_type"),
+                    "severity": str(raw.get("severity") or "low").lower(),
+                    "patterns": compiled,
+                    "advice": raw.get("advice") or "",
+                    "law_refs": list(raw.get("law_refs") or []),
+                    "suggestion": raw.get("suggestion"),
+                    "conflict_with": list(raw.get("conflict_with") or []),
+                    "ops": raw.get("ops") or [],
+                    "pack": pack_id,
+                    "triggers": {},
+                    "requires_clause_hit": False,
+                    "doc_types": [],
+                    "jurisdiction": [],
+                    "requires_clause": [],
+                    "deprecated": False,
+                }
+            )
+
+    return specs
 
 
 def match_text(text: str) -> List[Dict[str, Any]]:

@@ -1,9 +1,10 @@
 """Rule matching engine with sentence/subclause anchoring and aggregation."""
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
-from typing import List, Dict, Any
+from dataclasses import dataclass
+from time import perf_counter
+from typing import Any, Dict, List
 
 # deterministic ordering for severities
 _SEV_ORD = {
@@ -76,12 +77,19 @@ def split_into_blocks(text: str) -> List[Block]:
 # Matching & aggregation
 # ---------------------------------------------------------------------------
 
+# public diagnostics container used by pipeline tests
+meta: Dict[str, Dict[str, float]] = {"timings_ms": {}}
+
 
 def analyze(text: str, rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Match ``text`` against ``rules`` and return aggregated findings."""
 
+    start = perf_counter()
     findings: List[Dict[str, Any]] = []
     if not text:
+        meta.setdefault("timings_ms", {})["run_rules_ms"] = round(
+            (perf_counter() - start) * 1000, 4
+        )
         return findings
 
     blocks = split_into_blocks(text)
@@ -164,5 +172,7 @@ def analyze(text: str, rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             break
         if keep:
             result.append(f)
+    elapsed_ms = (perf_counter() - start) * 1000
+    meta.setdefault("timings_ms", {})["run_rules_ms"] = round(max(elapsed_ms, 0.0), 4)
     return result
 

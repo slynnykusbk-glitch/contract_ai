@@ -241,8 +241,27 @@ function isDryRunAnnotateEnabled(): boolean {
   return !!cb.checked;
 }
 
-function filterByThreshold(list: AnalyzeFinding[], _thr: "low" | "medium" | "high" | "critical"): AnalyzeFinding[] {
-  return Array.isArray(list) ? list : [];
+const RISK_ORDER: readonly ["low", "medium", "high", "critical"] = ["low", "medium", "high", "critical"];
+
+function normalizeSeverity(val: unknown): "low" | "medium" | "high" | "critical" | null {
+  if (typeof val !== "string") return null;
+  const v = val.trim().toLowerCase();
+  return (v === "low" || v === "medium" || v === "high" || v === "critical") ? v : null;
+}
+
+function severityRank(val: unknown): number {
+  const sev = normalizeSeverity(val);
+  if (!sev) return RISK_ORDER.indexOf("medium");
+  return RISK_ORDER.indexOf(sev);
+}
+
+function filterByThreshold(list: AnalyzeFinding[], thr: "low" | "medium" | "high" | "critical"): AnalyzeFinding[] {
+  if (!Array.isArray(list)) return [];
+  const minRank = RISK_ORDER.indexOf(thr);
+  return list.filter(item => {
+    if (!item) return false;
+    return severityRank((item as any).severity) >= minRank;
+  });
 }
 
 function buildLegalComment(f: AnalyzeFinding): string {

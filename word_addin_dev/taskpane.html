@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Contract AI Panel (Dev Fixture)</title>
+  <link rel="stylesheet" href="./app/assets/taskpane.css" />
+  <script type="module" src="taskpane.bundle.js?b=__BUILD_TS__"></script>
+  <script nomodule>
+    document.body.innerHTML = '<div style="padding:12px;color:#f66">Your runtime is too old for ES modules. Please update your browser.</div>';
+  </script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="row flex">
+      <button id="btnTest" class="btn-grey" type="button">Test</button>
+      <button id="btnAnalyze" class="btn" type="button">Analyze</button>
+      <span id="busyBar" class="js-busy-indicator" style="display:none"></span>
+    </div>
+    <div class="row">
+      <label for="selectRiskThreshold">Risk threshold</label>
+      <select id="selectRiskThreshold">
+        <option value="low">Low</option>
+        <option value="medium" selected>Medium</option>
+        <option value="high">High</option>
+        <option value="critical">Critical</option>
+      </select>
+    </div>
+  </div>
+</body>
+</html>

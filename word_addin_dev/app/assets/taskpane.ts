@@ -1,6 +1,6 @@
 import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, analyze, apiQaRecheck } from "./api-client.ts";
 import domSchema from "../panel_dom.schema.json";
-import { normalizeText, severityRank, dedupeFindings } from "./dedupe.ts";
+import { normalizeText, dedupeFindings } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX, safeInsertComment, fallbackAnnotateWithContentControl } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
@@ -208,10 +208,14 @@ function slot(id: string, role: string): HTMLElement {
   return mustGetElementById<HTMLElement>(id);
 }
 
-export function getRiskThreshold(): "low" | "medium" | "high" {
-  const sel = mustGetElementById<HTMLSelectElement>("selectRiskThreshold");
-  const v = sel.value.toLowerCase();
-  return (v === "low" || v === "medium" || v === "high") ? v : "medium";
+export function getRiskThreshold(): "low" | "medium" | "high" | "critical" {
+  try {
+    const sel = mustGetElementById<HTMLSelectElement>("selectRiskThreshold");
+    const v = sel.value.toLowerCase();
+    return (v === "low" || v === "medium" || v === "high" || v === "critical") ? v : "medium";
+  } catch {
+    return "medium";
+  }
 }
 
 export function isAddCommentsOnAnalyzeEnabled(): boolean {
@@ -237,12 +241,8 @@ function isDryRunAnnotateEnabled(): boolean {
   return !!cb.checked;
 }
 
-function filterByThreshold(list: AnalyzeFinding[], thr: "low" | "medium" | "high"): AnalyzeFinding[] {
-  const min = severityRank(thr);
-  return (list || [])
-    .filter(f => f && f.rule_id && f.snippet)
-    .map(f => ({ ...f, clause_type: f.clause_type || 'Unknown' }))
-    .filter(f => severityRank(f.severity) >= min);
+function filterByThreshold(list: AnalyzeFinding[], _thr: "low" | "medium" | "high" | "critical"): AnalyzeFinding[] {
+  return Array.isArray(list) ? list : [];
 }
 
 function buildLegalComment(f: AnalyzeFinding): string {
@@ -997,7 +997,7 @@ async function doAnalyze() {
 
       ensureHeaders();
 
-      const { resp, json } = await analyze({ text: base, mode: currentMode });
+      const { resp, json } = await analyze({ text: base, mode: currentMode, risk: getRiskThreshold() });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const respSchema = resp.headers.get('x-schema-version');
       if (respSchema) setSchemaVersion(respSchema);
@@ -1224,7 +1224,7 @@ async function onRejectAll() {
 export function wireUI() {
   console.log('[PANEL] wireUI start');
   if ((globalThis as any).__CAI_TESTING__) {
-    console.log('[PANEL] wireUI skipped (__CAI_TESTING__)');
+    console.log('[PANEL] wireUI (__CAI_TESTING__ mode)');
     return;
   }
   const missing = REQUIRED_IDS.filter(id => {

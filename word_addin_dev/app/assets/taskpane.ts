@@ -18,6 +18,7 @@ import { supports, logSupportMatrix } from './supports.ts';
 import { registerUnloadHandlers, wasUnloaded, resetUnloadFlag, withBusy, pendingFetches } from './pending.ts';
 import { checkHealth } from './health.ts';
 import { runStartupSelftest } from './startup.selftest.ts';
+import { PartyRegistry, CompaniesMetaItem } from './types.ts';
 import DiffMatchPatch from 'diff-match-patch';
 
 declare const Violins: { initAudio: () => void };
@@ -119,6 +120,239 @@ export function mustGetElementById<T extends HTMLElement>(id: string): T {
     throw new Error(`missing element #${id}`);
   }
   return el as T;
+}
+
+const CH_BLOCK_ID = 'companiesHouseBlock';
+const CH_COMPANY_BASE_URL = 'https://find-and-update.company-information.service.gov.uk/company/';
+
+const CH_VERDICT_STYLES: Record<CompaniesMetaItem['verdict'], { label: string; bg: string; color: string }> = {
+  match: { label: 'Match', bg: '#e6f4ea', color: '#1b5e20' },
+  mismatch: { label: 'Mismatch', bg: '#fdecea', color: '#b71c1c' },
+  ambiguous: { label: 'Ambiguous', bg: '#fff4e5', color: '#e65100' },
+  not_found: { label: 'Not found', bg: '#f5f5f5', color: '#424242' },
+  ok: { label: 'OK', bg: '#e3f2fd', color: '#0d47a1' },
+};
+
+function createVerdictBadge(verdict: CompaniesMetaItem['verdict']) {
+  const badge = document.createElement('span');
+  const style = CH_VERDICT_STYLES[verdict];
+  const label = style?.label || verdict.toUpperCase();
+  badge.textContent = label;
+  badge.style.display = 'inline-block';
+  badge.style.padding = '2px 6px';
+  badge.style.marginRight = '8px';
+  badge.style.borderRadius = '4px';
+  badge.style.fontSize = '12px';
+  badge.style.fontWeight = 'bold';
+  if (style) {
+    badge.style.backgroundColor = style.bg;
+    badge.style.color = style.color;
+  }
+  return badge;
+}
+
+function appendListItem(list: HTMLElement, label: string, value?: string | null) {
+  const text = value?.trim();
+  if (!text) return;
+  const li = document.createElement('li');
+  li.textContent = `${label}: ${text}`;
+  list.appendChild(li);
+}
+
+function appendSic(list: HTMLElement, label: string, sic?: string[] | null) {
+  if (!Array.isArray(sic) || !sic.length) return;
+  appendListItem(list, label, sic.join(', '));
+}
+
+function appendLinks(list: HTMLElement, label: string, links: { label: string; href: string }[]) {
+  const usable = links.filter(link => link.href);
+  if (!usable.length) return;
+  const li = document.createElement('li');
+  const span = document.createElement('span');
+  span.textContent = `${label}: `;
+  li.appendChild(span);
+  usable.forEach((link, idx) => {
+    if (idx > 0) {
+      const sep = document.createElement('span');
+      sep.textContent = ' | ';
+      li.appendChild(sep);
+    }
+    const a = document.createElement('a');
+    a.href = link.href;
+    a.textContent = link.label;
+    a.target = '_blank';
+    li.appendChild(a);
+  });
+  list.appendChild(li);
+}
+
+function normalizeValue(value?: string | null) {
+  return (value || '').trim();
+}
+
+function findMatchingMeta(
+  registry: PartyRegistry,
+  metaItems: CompaniesMetaItem[],
+  usedMeta: Set<CompaniesMetaItem>,
+): CompaniesMetaItem | undefined {
+  const normalizedNumber = normalizeValue(registry.number_or_duns).toLowerCase();
+  if (normalizedNumber) {
+    const numberMatch = metaItems.find(item => {
+      if (usedMeta.has(item)) return false;
+      const docNumber = normalizeValue(item.from_document?.number).toLowerCase();
+      const matchedNumber = normalizeValue(item.matched?.company_number).toLowerCase();
+      return docNumber === normalizedNumber || matchedNumber === normalizedNumber;
+    });
+    if (numberMatch) {
+      return numberMatch;
+    }
+  }
+
+  const normalizedName = normalizeValue(registry.name).toLowerCase();
+  if (normalizedName) {
+    return metaItems.find(item => {
+      if (usedMeta.has(item)) return false;
+      const docName = normalizeValue(item.from_document?.name).toLowerCase();
+      const matchedName = normalizeValue(item.matched?.company_name).toLowerCase();
+      return (docName && docName === normalizedName) || (matchedName && matchedName === normalizedName);
+    });
+  }
+
+  return undefined;
+}
+
+function ensureContainer(parent: HTMLElement) {
+  let container = document.getElementById(CH_BLOCK_ID) as HTMLElement | null;
+  if (!container) {
+    if (typeof (parent as any).appendChild !== 'function') {
+      return null;
+    }
+    container = document.createElement('div');
+    container.id = CH_BLOCK_ID;
+    parent.appendChild(container);
+  }
+  return container;
+}
+
+export function renderCompaniesHouse(
+  registries: PartyRegistry[] | undefined,
+  metaItems: CompaniesMetaItem[] | undefined,
+) {
+  const parties = Array.isArray(registries) ? registries.filter(Boolean) : [];
+  const companiesMeta = Array.isArray(metaItems) ? metaItems.filter(Boolean) : [];
+
+  const containerExisting = document.getElementById(CH_BLOCK_ID) as HTMLElement | null;
+  if (!parties.length && !companiesMeta.length) {
+    if (containerExisting) {
+      if (containerExisting.parentElement && typeof containerExisting.parentElement.removeChild === 'function') {
+        containerExisting.parentElement.removeChild(containerExisting);
+      } else if (typeof (containerExisting as any).remove === 'function') {
+        (containerExisting as any).remove();
+      }
+    }
+    return;
+  }
+
+  const parent = mustGetElementById<HTMLElement>('resultsBlock');
+  const container = ensureContainer(parent);
+  if (!container) {
+    return;
+  }
+  container.innerHTML = '';
+
+  const heading = document.createElement('h3');
+  heading.textContent = 'Companies House';
+  container.appendChild(heading);
+
+  const usedMeta = new Set<CompaniesMetaItem>();
+  const entries: { registry?: PartyRegistry; meta?: CompaniesMetaItem }[] = [];
+
+  parties.forEach(registry => {
+    const match = findMatchingMeta(registry, companiesMeta, usedMeta);
+    if (match) {
+      usedMeta.add(match);
+    }
+    entries.push({ registry, meta: match });
+  });
+
+  companiesMeta.forEach(item => {
+    if (!usedMeta.has(item)) {
+      entries.push({ meta: item });
+    }
+  });
+
+  if (!entries.length) {
+    const empty = document.createElement('p');
+    empty.textContent = 'No Companies House data available.';
+    container.appendChild(empty);
+    return;
+  }
+
+  entries.forEach(({ registry, meta }) => {
+    const entry = document.createElement('div');
+    container.appendChild(entry);
+
+    const header = document.createElement('div');
+    if (meta?.verdict) {
+      header.appendChild(createVerdictBadge(meta.verdict));
+    }
+    const title = document.createElement('strong');
+    title.textContent = normalizeValue(
+      registry?.name || meta?.from_document?.name || meta?.matched?.company_name || 'Company',
+    );
+    header.appendChild(title);
+    entry.appendChild(header);
+
+    const documentInfoExists =
+      registry?.number_or_duns ||
+      registry?.status ||
+      registry?.address ||
+      registry?.sic_codes?.length ||
+      registry?.incorp_date ||
+      meta?.from_document?.number;
+
+    if (documentInfoExists) {
+      const docTitle = document.createElement('div');
+      docTitle.textContent = 'Document';
+      entry.appendChild(docTitle);
+      const docList = document.createElement('ul');
+      appendListItem(docList, 'Number', registry?.number_or_duns || meta?.from_document?.number);
+      appendListItem(docList, 'Status', registry?.status);
+      appendListItem(docList, 'Address', registry?.address);
+      appendListItem(docList, 'Incorporated', registry?.incorp_date);
+      appendSic(docList, 'SIC', registry?.sic_codes);
+      entry.appendChild(docList);
+    }
+
+    if (meta) {
+      const chTitle = document.createElement('div');
+      chTitle.textContent = 'Companies House';
+      entry.appendChild(chTitle);
+      const chList = document.createElement('ul');
+      const companyNumber = meta.matched?.company_number || meta.from_document?.number;
+      appendListItem(chList, 'Company number', companyNumber);
+      appendListItem(chList, 'Status', meta.matched?.company_status);
+      appendListItem(chList, 'Address', meta.matched?.address_snippet);
+      appendSic(chList, 'SIC', meta.matched?.sic_codes);
+
+      const linkItems: { label: string; href: string }[] = [];
+      if (companyNumber) {
+        linkItems.push({ label: 'Profile', href: `${CH_COMPANY_BASE_URL}${companyNumber}` });
+      }
+      if (meta.matched?.links?.self) {
+        linkItems.push({ label: 'Self', href: meta.matched.links.self });
+      }
+      if (meta.matched?.links?.officers) {
+        linkItems.push({ label: 'Officers', href: meta.matched.links.officers });
+      }
+      if (meta.matched?.links?.filing_history) {
+        linkItems.push({ label: 'Filings', href: meta.matched.links.filing_history });
+      }
+      appendLinks(chList, 'Links', linkItems);
+
+      entry.appendChild(chList);
+    }
+  });
 }
 
 function updateStatusChip(schema?: string | null, cid?: string | null) {
@@ -571,6 +805,15 @@ export function renderAnalysisSummary(json: any) {
   const findings = Array.isArray(json?.findings) ? json.findings : [];
   const recs = Array.isArray(json?.recommendations) ? json.recommendations : [];
 
+  const registries: PartyRegistry[] = Array.isArray(json?.summary?.parties)
+    ? json.summary.parties
+        .map((p: any) => p?.registry)
+        .filter((reg: any): reg is PartyRegistry => Boolean(reg))
+    : [];
+  const companiesMeta: CompaniesMetaItem[] = Array.isArray(json?.meta?.companies_meta)
+    ? json.meta.companies_meta.filter((item: any): item is CompaniesMetaItem => Boolean(item))
+    : [];
+
   const thr = getRiskThreshold();
   const visibleFindings = filterByThreshold(findings, thr);
   const visible = visibleFindings.length;
@@ -645,6 +888,8 @@ export function renderAnalysisSummary(json: any) {
   // Показать блок результатов (если был скрыт стилями)
   const rb = mustGetElementById<HTMLElement>("resultsBlock");
   rb.style.removeProperty("display");
+
+  renderCompaniesHouse(registries, companiesMeta);
 }
 
 function renderResults(res: any) {

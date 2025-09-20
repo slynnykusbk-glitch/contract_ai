@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, List, Optional
+from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
 from .summary_schemas import (
     DocumentSnapshot,
@@ -12,6 +12,7 @@ from .summary_schemas import (
 )
 
 from contract_review_app.engine.doc_type import guess_doc_type, slug_to_display
+from contract_review_app.core.lx_types import Duration
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -58,6 +59,170 @@ _WARR_RE = re.compile(r"[^.]*warrant[^.]*", re.I)
 
 
 _CURRENCY_MAP = {"£": "GBP", "$": "USD", "€": "EUR"}
+
+
+def _iter_segments(segments: Iterable[Any]) -> Iterable[Tuple[int, str, Optional[str], Optional[int], Optional[int], Optional[str]]]:
+    """Yield normalized segment information from dicts/objects."""
+
+    for seg in segments or []:  # type: ignore[truthy-bool]
+        if isinstance(seg, dict):
+            seg_id = int(seg.get("id", 0) or 0)
+            text = str(seg.get("text", "") or "")
+            heading = seg.get("heading") or None
+            start = seg.get("start") if isinstance(seg.get("start"), int) else None
+            end = seg.get("end") if isinstance(seg.get("end"), int) else None
+            number = seg.get("number") or None
+        else:
+            seg_id = int(getattr(seg, "id", 0) or 0)
+            text = str(getattr(seg, "text", "") or "")
+            heading = getattr(seg, "heading", None)
+            start = getattr(seg, "start", None)
+            end = getattr(seg, "end", None)
+            number = getattr(seg, "number", None)
+        yield seg_id, text, heading, start, end, number if isinstance(number, str) else None
+
+
+_DURATION_IN_DAYS_RE = re.compile(
+    r"(?P<num>\d{1,4})(?:\s*\)\s*)?(?P<kind>\s*(?:business|calendar))?\s*days?",
+    re.IGNORECASE,
+)
+_NET_TERM_RE = re.compile(r"\bnet\s+(?P<num>\d{1,4})\b", re.IGNORECASE)
+_NOTICE_KEYWORDS = re.compile(r"notice", re.IGNORECASE)
+_CURE_KEYWORDS = re.compile(r"\b(cure|remedy)\b", re.IGNORECASE)
+_PAYMENT_KEYWORDS = re.compile(r"\b(payment|invoice|fee|remit)\b", re.IGNORECASE)
+_ORDER_OF_PRECEDENCE_RE = re.compile(
+    r"order of precedence|precedence of documents|priority of documents",
+    re.IGNORECASE,
+)
+_CLAUSE_REF_RE = re.compile(r"\b(?:clause|section)\s+(\d+(?:\.\d+)*)", re.IGNORECASE)
+_TERM_IN_QUOTES_RE = re.compile(r"[\"“”']([A-Z][A-Za-z0-9\s-]{1,50})[\"”']")
+_DEFINED_TERM_RE = re.compile(
+    r"[\"“”']([A-Z][A-Za-z0-9\s-]{1,50})[\"”']\s+(?:shall\s+mean|means|refers\s+to)",
+    re.IGNORECASE,
+)
+
+
+def _combine_heading_text(heading: Optional[str], text: str) -> str:
+    heading = heading or ""
+    if heading:
+        return f"{heading}\n{text}" if text else heading
+    return text
+
+
+def _make_duration(value: int, kind: str) -> Duration:
+    kind_norm = "business" if kind.lower().strip() == "business" else "calendar"
+    if kind_norm == "business":
+        approx = max(1, round(value * 7 / 5))
+        return Duration(days=int(approx), kind="business")
+    return Duration(days=int(value), kind="calendar")
+
+
+def _extract_duration_from_text(text: str) -> Optional[Duration]:
+    for m in _DURATION_IN_DAYS_RE.finditer(text):
+        try:
+            value = int(m.group("num"))
+        except Exception:
+            continue
+        kind = m.group("kind") or "calendar"
+        return _make_duration(value, kind)
+    return None
+
+
+def _extract_payment_term_days(parsed: Any, segments: Sequence[Any]) -> Optional[Duration]:
+    text = getattr(parsed, "normalized_text", "") or ""
+    if m := _NET_TERM_RE.search(text):
+        try:
+            return Duration(days=int(m.group("num")), kind="calendar")
+        except Exception:
+            pass
+    for _, seg_text, heading, _, _, _ in _iter_segments(segments):
+        combined = _combine_heading_text(heading, seg_text)
+        if not combined or not _PAYMENT_KEYWORDS.search(combined):
+            continue
+        if duration := _extract_duration_from_text(combined):
+            return duration
+    return None
+
+
+def _extract_notice_days(parsed: Any, segments: Sequence[Any]) -> Optional[Duration]:
+    for _, seg_text, heading, _, _, _ in _iter_segments(segments):
+        combined = _combine_heading_text(heading, seg_text)
+        if not combined or not _NOTICE_KEYWORDS.search(combined):
+            continue
+        if duration := _extract_duration_from_text(combined):
+            return duration
+    return None
+
+
+def _extract_cure_days(parsed: Any, segments: Sequence[Any]) -> Optional[Duration]:
+    for _, seg_text, heading, _, _, _ in _iter_segments(segments):
+        combined = _combine_heading_text(heading, seg_text)
+        if not combined or not _CURE_KEYWORDS.search(combined):
+            continue
+        if duration := _extract_duration_from_text(combined):
+            return duration
+    return None
+
+
+def _extract_cross_refs(parsed: Any, segments: Sequence[Any]) -> List[Tuple[str, str]]:
+    refs: List[Tuple[str, str]] = []
+    seen: set[Tuple[str, str]] = set()
+    last_number: Optional[str] = None
+    for seg_id, seg_text, heading, _, _, number in _iter_segments(segments):
+        combined = _combine_heading_text(heading, seg_text)
+        if not combined:
+            continue
+        if number:
+            last_number = number
+        source = number or last_number or str(seg_id)
+        for match in _CLAUSE_REF_RE.finditer(combined):
+            target = match.group(1)
+            pair = (str(source), target)
+            if pair not in seen:
+                refs.append(pair)
+                seen.add(pair)
+    return refs
+
+
+def _detect_order_of_precedence(parsed: Any, segments: Sequence[Any]) -> bool:
+    text = getattr(parsed, "normalized_text", "") or ""
+    if _ORDER_OF_PRECEDENCE_RE.search(text):
+        return True
+    for _, seg_text, heading, _, _, _ in _iter_segments(segments):
+        combined = _combine_heading_text(heading, seg_text)
+        if combined and _ORDER_OF_PRECEDENCE_RE.search(combined):
+            return True
+    return False
+
+
+def _detect_undefined_terms(parsed: Any, segments: Sequence[Any]) -> List[str]:
+    text = getattr(parsed, "normalized_text", "") or ""
+    all_terms = {m.strip() for m in _TERM_IN_QUOTES_RE.findall(text)}
+    defined_terms = {m.strip() for m in _DEFINED_TERM_RE.findall(text)}
+    undefined = sorted(term for term in all_terms if term and term not in defined_terms)
+    return undefined
+
+
+def _detect_numbering_gaps(parsed: Any, segments: Sequence[Any]) -> List[int]:
+    top_numbers: set[int] = set()
+    for _, _, _, _, _, number in _iter_segments(segments):
+        if not number:
+            continue
+        m = re.match(r"(\d+)", number)
+        if not m:
+            continue
+        try:
+            top_numbers.add(int(m.group(1)))
+        except Exception:
+            continue
+    if not top_numbers:
+        return []
+    ordered = sorted(top_numbers)
+    start = ordered[0]
+    end = ordered[-1]
+    gaps = [n for n in range(start, end + 1) if n not in top_numbers]
+    return gaps
+
 def _extract_parties(text: str, hints: List[str]) -> List[Party]:
     parties: List[Party] = []
     m = _BETWEEN_RE.search(text)

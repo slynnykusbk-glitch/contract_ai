@@ -88,3 +88,7 @@ class ParamGraph(BaseModel):
     parties: List[Dict] = Field(default_factory=list)
     signatures: List[Dict] = Field(default_factory=list)
     sources: Dict[str, SourceRef] = Field(default_factory=dict)
+    annex_refs: List[str] = Field(default_factory=list)
+    order_of_precedence: Optional[bool] = None
+    undefined_terms: List[str] = Field(default_factory=list)
+    numbering_gaps: List[int] = Field(default_factory=list)

@@ -21,7 +21,7 @@ import logging
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from collections import OrderedDict
 import secrets
@@ -45,6 +45,7 @@ from contract_review_app.core.privacy import redact_pii, scrub_llm_output  # noq
 from contract_review_app.core.audit import audit
 from contract_review_app.security.secure_store import secure_write
 from contract_review_app.core.trace import TraceStore, compute_cid
+from contract_review_app.core.lx_types import LxFeatureSet, LxSegment
 from contract_review_app.config import CH_ENABLED, CH_API_KEY
 from contract_review_app.utils.logging import logger as cai_logger
 
@@ -2051,7 +2052,56 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
 
     seg_findings: List[Dict[str, Any]] = []
     clause_types_set: set[str] = set()
+    dispatch_segments: List[Dict[str, Any]] = []
+    candidate_rule_union: Set[str] = set()
+    dispatcher_mod = None
+    features_by_segment: Dict[int, LxFeatureSet] = {}
+    if FEATURE_LX_ENGINE and lx_features is not None:
+        try:
+            from contract_review_app.legal_rules import dispatcher as _dispatcher_mod
+        except Exception:
+            dispatcher_mod = None
+        else:
+            dispatcher_mod = _dispatcher_mod
+            features_by_segment = getattr(lx_features, "by_segment", {}) or {}
+
     for seg in parsed.segments:
+        seg_id = int(seg.get("id", 0) or 0)
+        if dispatcher_mod and seg_id in features_by_segment:
+            feats = features_by_segment.get(seg_id)
+            if feats is not None:
+                try:
+                    segment_obj = LxSegment(
+                        segment_id=seg_id,
+                        heading=str(seg.get("heading") or "") or None,
+                        text=str(seg.get("text") or ""),
+                        clause_type=str(seg.get("clause_type") or "") or None,
+                    )
+                    refs = dispatcher_mod.select_candidate_rules(segment_obj, feats)
+                except Exception:
+                    refs = []
+                if refs:
+                    candidate_ids = [ref.rule_id for ref in refs]
+                    candidate_rule_union.update(candidate_ids)
+                    if hasattr(feats, "model_dump"):
+                        feat_payload = feats.model_dump()
+                    else:  # pragma: no cover
+                        feat_payload = feats.dict()  # type: ignore[call-arg]
+                    dispatch_segments.append(
+                        {
+                            "segment_id": seg_id,
+                            "labels": list(feats.labels or []),
+                            "features": feat_payload,
+                            "candidates": [
+                                {
+                                    "rule_id": ref.rule_id,
+                                    "reasons": list(ref.reasons),
+                                }
+                                for ref in refs
+                            ],
+                        }
+                    )
+
         clause_type = seg.get("clause_type")
         if not clause_type:
             continue
@@ -2069,6 +2119,16 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                 clause_type,
                 seg.get("text", ""),
                 int(seg.get("start", 0)),
+            )
+        except Exception:
+            pass
+
+    if dispatch_segments:
+        try:
+            TRACE.add(
+                request.state.cid,
+                "dispatch",
+                {"segments": dispatch_segments},
             )
         except Exception:
             pass
@@ -2110,6 +2170,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
 
         load_start = time.perf_counter()
         _yaml_loader.load_rule_packs()
+
         load_end = time.perf_counter()
         load_duration = max(load_end - load_start, 0.0)
 

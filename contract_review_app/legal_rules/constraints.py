@@ -6,7 +6,7 @@ from decimal import Decimal
 from dataclasses import dataclass
 import re
 from types import SimpleNamespace
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
 
 from contract_review_app.analysis.extract_summary import (
     _extract_cure_days,
@@ -234,6 +234,44 @@ def _collect_survival_items(segments: Sequence[Any]) -> set[str]:
     return items
 
 
+def _normalize_doc_flags(value: Any) -> Dict[str, Any]:
+    if value is None:
+        return {}
+    if hasattr(value, "model_dump"):
+        try:
+            value = value.model_dump(exclude_none=True)
+        except TypeError:
+            value = value.model_dump()
+        except Exception:
+            return {}
+    if isinstance(value, dict):
+        return {k: v for k, v in value.items() if v is not None}
+    if isinstance(value, Mapping):
+        return {str(k): v for k, v in value.items() if v is not None}
+    return {}
+
+
+def _extract_doc_flags(snapshot: Any) -> Dict[str, Any]:
+    if snapshot is None:
+        return {}
+
+    for attr in ("doc_flags", "document_flags", "flags"):
+        if not hasattr(snapshot, attr):
+            continue
+        raw = getattr(snapshot, attr, None)
+        flags = _normalize_doc_flags(raw)
+        if flags:
+            return flags
+
+    debug = getattr(snapshot, "debug", None)
+    if isinstance(debug, Mapping):
+        flags = _normalize_doc_flags(debug.get("doc_flags"))
+        if flags:
+            return flags
+
+    return {}
+
+
 def build_param_graph(
     snapshot: Any,
     segments: Sequence[Any],
@@ -291,6 +329,8 @@ def build_param_graph(
 
     contract_currency = _normalize_currency(getattr(snapshot, "currency", None))
 
+    doc_flags = _extract_doc_flags(snapshot)
+
     pg = ParamGraph(
         payment_term=payment_term,
         contract_term=contract_term,
@@ -309,6 +349,7 @@ def build_param_graph(
         order_of_precedence=order_of_precedence,
         undefined_terms=undefined_terms,
         numbering_gaps=numbering_gaps,
+        doc_flags=doc_flags,
     )
 
     sources: Dict[str, SourceRef] = {}

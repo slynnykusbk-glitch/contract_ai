@@ -50,6 +50,74 @@ _CURE_PATTERN = re.compile(r"\b(cure|remedy)\b", re.IGNORECASE)
 _PAYMENT_PATTERN = re.compile(r"\b(payment|invoice|fee|remit)\b", re.IGNORECASE)
 _GRACE_PATTERN = re.compile(r"grace\s+period", re.IGNORECASE)
 _CROSS_PATTERN = re.compile(r"\b(?:clause|section)\s+\d", re.IGNORECASE)
+_PLACEHOLDER_PATTERN = re.compile(r"\bTBD\b|\?\?\?|\[.+?\]|<<.+?>>", re.IGNORECASE)
+
+_COMPANY_EQUIVALENTS = {
+    "LTD": "LIMITED",
+    "LIMITED": "LIMITED",
+    "PLC": "PLC",
+    "CO": "COMPANY",
+    "COMPANY": "COMPANY",
+    "INC": "INCORPORATED",
+    "INCORPORATED": "INCORPORATED",
+    "LLC": "LIMITED LIABILITY COMPANY",
+    "LLP": "LIMITED LIABILITY PARTNERSHIP",
+}
+
+
+def _normalize_company_name(name: Optional[str]) -> str:
+    if not name or not isinstance(name, str):
+        return ""
+    tokens = re.findall(r"[A-Z0-9]+", name.upper())
+    normalized: List[str] = []
+    for token in tokens:
+        if token == "THE":
+            continue
+        normalized.append(_COMPANY_EQUIVALENTS.get(token, token))
+    return " ".join(normalized)
+
+
+def _iter_addresses(party: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
+    address = party.get("address")
+    if isinstance(address, dict):
+        yield address
+    addresses = party.get("addresses")
+    if isinstance(addresses, list):
+        for item in addresses:
+            if isinstance(item, dict):
+                yield item
+
+
+def _is_address_complete(address: Dict[str, Any]) -> bool:
+    if not isinstance(address, dict):
+        return False
+    line = address.get("line1") or address.get("street") or address.get("address1")
+    city = address.get("city") or address.get("town")
+    country = address.get("country")
+    postal = address.get("postal_code") or address.get("postcode")
+    components = [bool(line), bool(city or postal), bool(country)]
+    return sum(1 for comp in components if comp) >= 2 and bool(country)
+
+
+def _normalize_region(value: Optional[str]) -> Optional[str]:
+    if not value or not isinstance(value, str):
+        return None
+    lowered = value.lower()
+    if "england" in lowered and "wales" in lowered:
+        return "england and wales"
+    if "scotland" in lowered:
+        return "scotland"
+    if "northern ireland" in lowered:
+        return "northern ireland"
+    if "united kingdom" in lowered or "uk" in lowered:
+        return "united kingdom"
+    return lowered.strip() or None
+
+
+def _has_placeholder_text(value: Optional[str]) -> bool:
+    if not value or not isinstance(value, str):
+        return False
+    return bool(_PLACEHOLDER_PATTERN.search(value))
 
 
 def _iter_segments(segments: Iterable[Any]) -> Iterable[Any]:
@@ -736,6 +804,160 @@ class _Evaluator:
     def __init__(self, pg: ParamGraph):
         self.pg = pg
 
+    def _get_party(self, index: int) -> Dict[str, Any]:
+        parties = self.pg.parties or []
+        if 0 <= index < len(parties):
+            party = parties[index]
+            if isinstance(party, dict):
+                return party
+        return {}
+
+    def _party_ch_consistent(self, index: int) -> bool:
+        party = self._get_party(index)
+        if not party:
+            return True
+        name = party.get("name")
+        ch_number = party.get("ch_number") or party.get("company_number")
+        registry_name = (
+            party.get("ch_name")
+            or party.get("registered_name")
+            or party.get("company_name")
+        )
+        if not name or not ch_number:
+            return True
+        if not registry_name:
+            return True
+        return _normalize_company_name(name) == _normalize_company_name(registry_name)
+
+    def _addresses_coherent(self) -> bool:
+        for party in self.pg.parties or []:
+            if not isinstance(party, dict):
+                continue
+            addresses = list(_iter_addresses(party))
+            if not addresses:
+                continue
+            if not any(_is_address_complete(addr) for addr in addresses):
+                return False
+        return True
+
+    def _signatures_match_parties(self) -> bool:
+        if not self.pg.signatures:
+            return True
+        normalized_parties = {
+            _normalize_company_name(party.get("name"))
+            for party in self.pg.parties or []
+            if isinstance(party, dict) and party.get("name")
+        }
+        normalized_parties.discard("")
+        if not normalized_parties:
+            return True
+        for signature in self.pg.signatures:
+            if not isinstance(signature, dict):
+                continue
+            entity = signature.get("entity") or signature.get("for") or signature.get("on_behalf_of")
+            if not entity:
+                continue
+            if _normalize_company_name(entity) not in normalized_parties:
+                return False
+        return True
+
+    def _signatures_dated(self) -> bool:
+        for signature in self.pg.signatures or []:
+            if not isinstance(signature, dict):
+                continue
+            date = signature.get("date") or signature.get("signed_date")
+            if not date:
+                return False
+        return True
+
+    def _get_flag(self, name: str) -> bool:
+        value = self.pg.doc_flags.get(name)
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {"yes", "true", "1"}:
+                return True
+            if lowered in {"no", "false", "0"}:
+                return False
+        return bool(value)
+
+    def _flag_absent(self, name: str) -> bool:
+        return not self._get_flag(name)
+
+    def _flag_present(self, name: str) -> bool:
+        return self._get_flag(name)
+
+    def _governing_law_matches_jurisdiction(self) -> bool:
+        law_region = _normalize_region(self.pg.governing_law)
+        jur_region = _normalize_region(self.pg.jurisdiction)
+        if not law_region or not jur_region:
+            return True
+        if law_region == jur_region:
+            return True
+        if law_region == "england and wales" and ("england" in jur_region or "wales" in jur_region or "london" in jur_region):
+            return True
+        return False
+
+    def _no_mixed_exclusivity(self) -> bool:
+        jurisdiction = self.pg.jurisdiction or ""
+        lowered = jurisdiction.lower()
+        return not ("exclusive" in lowered and "non-exclusive" in lowered)
+
+    def _jurisdiction_requires_governing_law(self) -> bool:
+        if not self.pg.jurisdiction:
+            return True
+        return bool(self.pg.governing_law)
+
+    def _jurisdiction_has_no_placeholder(self) -> bool:
+        return not _has_placeholder_text(self.pg.jurisdiction)
+
+    def _no_mixed_day_kinds(self) -> bool:
+        kinds: set[str] = set()
+        for duration in [
+            self.pg.payment_term,
+            self.pg.contract_term,
+            self.pg.grace_period,
+            self.pg.notice_period,
+            self.pg.cure_period,
+        ]:
+            if isinstance(duration, Duration):
+                kinds.add(duration.kind)
+        return len(kinds) <= 1
+
+    def _annexes_have_order_of_precedence(self) -> bool:
+        annexes = self.pg.annex_refs or []
+        if not annexes:
+            return True
+        return bool(self.pg.order_of_precedence)
+
+    def _no_undefined_terms(self) -> bool:
+        return not (self.pg.undefined_terms or self._get_flag("undefined_terms_present"))
+
+    def _numbering_coherent(self) -> bool:
+        if self.pg.numbering_gaps:
+            return False
+        return not self._get_flag("dangling_or")
+
+    def _survival_baseline_complete(self) -> bool:
+        items = {item.lower() for item in (self.pg.survival_items or set())}
+        if not items:
+            return False
+        baseline = {"confidentiality", "intellectual property", "liability"}
+        return baseline.issubset(items)
+
+    def _arg_to_int(self, arg: Optional[EvalValue]) -> Optional[int]:
+        if arg is None:
+            return None
+        if arg.kind == "decimal":
+            try:
+                return int(arg.value)
+            except Exception as exc:  # pragma: no cover - defensive
+                raise ConstraintEvaluationError("Invalid integer argument") from exc
+        raise ConstraintEvaluationError("Expected numeric argument")
+
     def evaluate(self, node: ExprNode) -> Tuple[Optional[bool], EvaluationDetails]:
         if isinstance(node, CompareNode):
             result, left_val, right_val = self._evaluate_compare(node)
@@ -900,6 +1122,12 @@ class _Evaluator:
             if arg is None:
                 return _MISSING
             return EvalValue("bool", self._is_non_negative(arg))
+        if lname == "all_present":
+            if not args:
+                raise ConstraintEvaluationError("all_present() expects at least one argument")
+            if any(arg is None for arg in args):
+                return EvalValue("bool", False)
+            return EvalValue("bool", all(self._is_present(arg) for arg in args))
         if lname == "implies":
             if len(args) != 2:
                 raise ConstraintEvaluationError("implies() expects exactly two arguments")
@@ -909,6 +1137,79 @@ class _Evaluator:
             if left.kind != "bool" or right.kind != "bool":
                 raise ConstraintEvaluationError("implies() arguments must be boolean expressions")
             return EvalValue("bool", (not bool(left.value)) or bool(right.value))
+        if lname == "party_ch_consistent":
+            if len(args) != 1:
+                raise ConstraintEvaluationError("party_ch_consistent() expects one argument")
+            index = self._arg_to_int(args[0])
+            if index is None:
+                return EvalValue("bool", True)
+            return EvalValue("bool", self._party_ch_consistent(index))
+        if lname == "addresses_coherent":
+            if args:
+                raise ConstraintEvaluationError("addresses_coherent() expects no arguments")
+            return EvalValue("bool", self._addresses_coherent())
+        if lname == "signatures_match_parties":
+            if args:
+                raise ConstraintEvaluationError("signatures_match_parties() expects no arguments")
+            return EvalValue("bool", self._signatures_match_parties())
+        if lname == "signatures_dated":
+            if args:
+                raise ConstraintEvaluationError("signatures_dated() expects no arguments")
+            return EvalValue("bool", self._signatures_dated())
+        if lname == "flag_absent":
+            if len(args) != 1:
+                raise ConstraintEvaluationError("flag_absent() expects one argument")
+            flag_name = args[0]
+            if flag_name is None:
+                return EvalValue("bool", True)
+            if flag_name.kind != "string":
+                raise ConstraintEvaluationError("flag_absent() expects a string argument")
+            return EvalValue("bool", self._flag_absent(flag_name.value))
+        if lname == "flag_present":
+            if len(args) != 1:
+                raise ConstraintEvaluationError("flag_present() expects one argument")
+            flag_name = args[0]
+            if flag_name is None:
+                return EvalValue("bool", False)
+            if flag_name.kind != "string":
+                raise ConstraintEvaluationError("flag_present() expects a string argument")
+            return EvalValue("bool", self._flag_present(flag_name.value))
+        if lname == "governing_law_coherent":
+            if args:
+                raise ConstraintEvaluationError("governing_law_coherent() expects no arguments")
+            return EvalValue("bool", self._governing_law_matches_jurisdiction())
+        if lname == "no_mixed_exclusivity":
+            if args:
+                raise ConstraintEvaluationError("no_mixed_exclusivity() expects no arguments")
+            return EvalValue("bool", self._no_mixed_exclusivity())
+        if lname == "jurisdiction_requires_law":
+            if args:
+                raise ConstraintEvaluationError("jurisdiction_requires_law() expects no arguments")
+            return EvalValue("bool", self._jurisdiction_requires_governing_law())
+        if lname == "jurisdiction_has_no_placeholder":
+            if args:
+                raise ConstraintEvaluationError("jurisdiction_has_no_placeholder() expects no arguments")
+            return EvalValue("bool", self._jurisdiction_has_no_placeholder())
+        if lname == "no_mixed_day_kinds":
+            if args:
+                raise ConstraintEvaluationError("no_mixed_day_kinds() expects no arguments")
+            return EvalValue("bool", self._no_mixed_day_kinds())
+        if lname == "annexes_have_order":
+            if args:
+                raise ConstraintEvaluationError("annexes_have_order() expects no arguments")
+            return EvalValue("bool", self._annexes_have_order_of_precedence())
+        if lname == "no_undefined_terms":
+            if args:
+                raise ConstraintEvaluationError("no_undefined_terms() expects no arguments")
+            return EvalValue("bool", self._no_undefined_terms())
+        if lname == "numbering_coherent":
+            if args:
+                raise ConstraintEvaluationError("numbering_coherent() expects no arguments")
+            return EvalValue("bool", self._numbering_coherent())
+        if lname == "survival_baseline_complete":
+            if args:
+                raise ConstraintEvaluationError("survival_baseline_complete() expects no arguments")
+            return EvalValue("bool", self._survival_baseline_complete())
         raise ConstraintEvaluationError(f"Unknown function '{name}' in constraint expression")
 
     def _is_present(self, value: EvalValue) -> bool:
@@ -981,51 +1282,310 @@ def load_constraints() -> List[Constraint]:
     global _CONSTRAINTS_CACHE
     if _CONSTRAINTS_CACHE is not None:
         return _CONSTRAINTS_CACHE
-    specs = [
-        Constraint(
-            id="payment_term_vs_term",
-            expr="PaymentTermDays <= ContractTermDays + GraceDays",
-            severity="medium",
-            message_tmpl="Payment term should not exceed the contract term plus any grace period.",
-            scope="doc",
-            anchors=["payment_term", "contract_term", "grace_period"],
-        ),
-        Constraint(
-            id="governing_law_jurisdiction_alignment",
-            expr=(
-                "implies(GoverningLaw == \"England and Wales\", "
-                "Jurisdiction ∈ {\"England and Wales courts\", \"LCIA London\"})"
-            ),
-            severity="medium",
-            message_tmpl="When governing law is England and Wales, jurisdiction should be aligned.",
-            scope="doc",
-            anchors=["governing_law", "jurisdiction"],
-        ),
-        Constraint(
-            id="cap_non_negative",
-            expr="non_negative(CapAmount)",
-            severity="high",
-            message_tmpl="Liability cap amount must be non-negative.",
-            scope="doc",
-            anchors=["cap"],
-        ),
-        Constraint(
-            id="cap_currency_alignment",
-            expr="same_currency(Cap, ContractCurrency)",
-            severity="medium",
-            message_tmpl="Liability cap currency should match the contract currency.",
-            scope="doc",
-            anchors=["cap", "contract_currency"],
-        ),
-        Constraint(
-            id="notice_vs_cure",
-            expr="NoticeDays <= CureDays",
-            severity="medium",
-            message_tmpl="Notice period should not exceed the cure period.",
-            scope="doc",
-            anchors=["notice_period", "cure_period"],
-        ),
+    specs_data = [
+        {
+            "id": "L2-001",
+            "expr": "party_ch_consistent(0)",
+            "severity": "high",
+            "message_tmpl": "Party A name / company number mismatch.",
+            "anchors": ["parties"],
+        },
+        {
+            "id": "L2-002",
+            "expr": "addresses_coherent()",
+            "severity": "medium",
+            "message_tmpl": "Party address information is inconsistent.",
+            "anchors": ["parties", "parties/addrs"],
+        },
+        {
+            "id": "L2-003",
+            "expr": "signatures_match_parties()",
+            "severity": "high",
+            "message_tmpl": "Signature entity does not match the preamble parties.",
+            "anchors": ["signatures", "preamble"],
+        },
+        {
+            "id": "L2-004",
+            "expr": "signatures_dated()",
+            "severity": "medium",
+            "message_tmpl": "Execution block lacks signing dates.",
+            "anchors": ["signatures"],
+        },
+        {
+            "id": "L2-005",
+            "expr": "party_ch_consistent(1)",
+            "severity": "high",
+            "message_tmpl": "Party B name / company number mismatch.",
+            "anchors": ["parties"],
+        },
+        {
+            "id": "L2-010",
+            "expr": "governing_law_coherent()",
+            "severity": "high",
+            "message_tmpl": "Governing law and jurisdiction are inconsistent.",
+            "anchors": ["governing_law", "jurisdiction"],
+        },
+        {
+            "id": "L2-011",
+            "expr": "no_mixed_exclusivity()",
+            "severity": "medium",
+            "message_tmpl": "Jurisdiction clause mixes exclusive and non-exclusive language.",
+            "anchors": ["dispute"],
+        },
+        {
+            "id": "L2-012",
+            "expr": "jurisdiction_requires_law()",
+            "severity": "medium",
+            "message_tmpl": "Jurisdiction provided without governing law reference.",
+            "anchors": ["governing_law", "jurisdiction"],
+        },
+        {
+            "id": "L2-013",
+            "expr": "jurisdiction_has_no_placeholder()",
+            "severity": "medium",
+            "message_tmpl": "Jurisdiction clause contains placeholder text.",
+            "anchors": ["jurisdiction"],
+        },
+        {
+            "id": "L2-020",
+            "expr": "PaymentTermDays <= ContractTermDays + GraceDays",
+            "severity": "high",
+            "message_tmpl": "Payment term exceeds the contract term plus grace period.",
+            "anchors": ["payment_term", "contract_term", "grace_period"],
+        },
+        {
+            "id": "L2-021",
+            "expr": "implies(all_present(NoticeDays, CureDays), NoticeDays <= CureDays)",
+            "severity": "medium",
+            "message_tmpl": "Notice period should not exceed the cure period when both are defined.",
+            "anchors": ["notice_period", "cure_period"],
+        },
+        {
+            "id": "L2-022",
+            "expr": "no_mixed_day_kinds()",
+            "severity": "low",
+            "message_tmpl": "Mixed calendar and business day concepts detected in related periods.",
+            "anchors": ["durations"],
+        },
+        {
+            "id": "L2-023",
+            "expr": "implies(present(PaymentTermDays), present(ContractTermDays))",
+            "severity": "medium",
+            "message_tmpl": "Payment terms defined but contract term missing.",
+            "anchors": ["payment_term", "contract_term"],
+        },
+        {
+            "id": "L2-024",
+            "expr": "implies(present(NoticeDays), present(CureDays))",
+            "severity": "medium",
+            "message_tmpl": "Notice period referenced without a corresponding cure period.",
+            "anchors": ["notice_period", "cure_period"],
+        },
+        {
+            "id": "L2-030",
+            "expr": "non_negative(CapAmount)",
+            "severity": "high",
+            "message_tmpl": "Liability cap amount must be non-negative.",
+            "anchors": ["cap"],
+        },
+        {
+            "id": "L2-031",
+            "expr": "same_currency(Cap, ContractCurrency)",
+            "severity": "medium",
+            "message_tmpl": "Liability cap currency should match the contract currency.",
+            "anchors": ["cap", "contract_currency"],
+        },
+        {
+            "id": "L2-032",
+            "expr": "flag_absent(\"indemnity_unlimited_no_carveout\")",
+            "severity": "high",
+            "message_tmpl": "Unlimited indemnity without carve-outs detected.",
+            "anchors": ["indemnity"],
+        },
+        {
+            "id": "L2-033",
+            "expr": "flag_absent(\"fraud_exclusion_detected\")",
+            "severity": "critical",
+            "message_tmpl": "Liability carve-outs improperly exclude fraud.",
+            "anchors": ["liability"],
+        },
+        {
+            "id": "L2-034",
+            "expr": "flag_absent(\"cap_amount_missing\")",
+            "severity": "medium",
+            "message_tmpl": "Liability cap referenced without a stated amount.",
+            "anchors": ["cap"],
+        },
+        {
+            "id": "L2-040",
+            "expr": "flag_absent(\"public_domain_by_recipient\")",
+            "severity": "medium",
+            "message_tmpl": "Confidentiality exception allows disclosures caused by the recipient.",
+            "anchors": ["confidentiality"],
+        },
+        {
+            "id": "L2-041",
+            "expr": "flag_absent(\"illegal_possession_exception\")",
+            "severity": "medium",
+            "message_tmpl": "Exception for information illegally in the recipient's possession is present.",
+            "anchors": ["confidentiality"],
+        },
+        {
+            "id": "L2-042",
+            "expr": "flag_absent(\"purpose_overbreadth\")",
+            "severity": "medium",
+            "message_tmpl": "Purpose clause allows \"any other purpose whatsoever\".",
+            "anchors": ["confidentiality"],
+        },
+        {
+            "id": "L2-043",
+            "expr": "flag_absent(\"return_delete_broken_ref\")",
+            "severity": "medium",
+            "message_tmpl": "Return/delete obligations reference missing or broken cross-references.",
+            "anchors": ["confidentiality"],
+        },
+        {
+            "id": "L2-044",
+            "expr": "flag_absent(\"missing_return_timeline\")",
+            "severity": "medium",
+            "message_tmpl": "Confidential information return or destruction lacks a defined timeline.",
+            "anchors": ["confidentiality"],
+        },
+        {
+            "id": "L2-050",
+            "expr": "flag_absent(\"notify_notwithstanding_law\")",
+            "severity": "critical",
+            "message_tmpl": "Obligation to notify regulators applies even when prohibited by law.",
+            "anchors": ["regulatory"],
+        },
+        {
+            "id": "L2-051",
+            "expr": "flag_absent(\"overbroad_regulator_disclosure\")",
+            "severity": "high",
+            "message_tmpl": "Regulator disclosure not limited to the minimum necessary information.",
+            "anchors": ["regulatory"],
+        },
+        {
+            "id": "L2-052",
+            "expr": "flag_absent(\"regulator_notice_requires_consent\")",
+            "severity": "medium",
+            "message_tmpl": "Regulatory disclosures require prior consent, impeding compliance.",
+            "anchors": ["regulatory"],
+        },
+        {
+            "id": "L2-053",
+            "expr": "flag_absent(\"aml_obligations_missing\")",
+            "severity": "medium",
+            "message_tmpl": "AML obligations missing despite regulatory triggers.",
+            "anchors": ["aml"],
+        },
+        {
+            "id": "L2-060",
+            "expr": "flag_absent(\"fm_no_payment_carveout\")",
+            "severity": "medium",
+            "message_tmpl": "Force majeure clause lacks a payment obligation carve-out.",
+            "anchors": ["force_majeure"],
+        },
+        {
+            "id": "L2-061",
+            "expr": "flag_absent(\"fm_financial_hardship\")",
+            "severity": "medium",
+            "message_tmpl": "Force majeure excuses performance for financial hardship or internal failures.",
+            "anchors": ["force_majeure"],
+        },
+        {
+            "id": "L2-070",
+            "expr": "flag_absent(\"pd_without_dp_obligations\")",
+            "severity": "high",
+            "message_tmpl": "Personal data processing mentioned without UK GDPR obligations.",
+            "anchors": ["data_protection"],
+        },
+        {
+            "id": "L2-071",
+            "expr": "flag_absent(\"data_transfer_without_safeguards\")",
+            "severity": "high",
+            "message_tmpl": "International data transfers lack safeguard obligations.",
+            "anchors": ["data_protection"],
+        },
+        {
+            "id": "L2-080",
+            "expr": "no_undefined_terms()",
+            "severity": "medium",
+            "message_tmpl": "Undefined capitalised terms are used in the contract.",
+            "anchors": ["definitions"],
+        },
+        {
+            "id": "L2-081",
+            "expr": "numbering_coherent()",
+            "severity": "low",
+            "message_tmpl": "Numbering gaps or dangling '; or' detected.",
+            "anchors": ["definitions"],
+        },
+        {
+            "id": "L2-082",
+            "expr": "annexes_have_order()",
+            "severity": "medium",
+            "message_tmpl": "Annexes referenced without an order of precedence clause.",
+            "anchors": ["annexes"],
+        },
+        {
+            "id": "L2-083",
+            "expr": "flag_absent(\"annex_reference_unresolved\")",
+            "severity": "medium",
+            "message_tmpl": "Schedule or annex references cannot be resolved.",
+            "anchors": ["annexes"],
+        },
+        {
+            "id": "L2-084",
+            "expr": "flag_absent(\"broken_cross_references\")",
+            "severity": "high",
+            "message_tmpl": "Broken internal cross-references detected.",
+            "anchors": ["cross_refs"],
+        },
+        {
+            "id": "L2-090",
+            "expr": "flag_absent(\"companies_act_1985_reference\")",
+            "severity": "medium",
+            "message_tmpl": "Contract cites the Companies Act 1985 instead of the 2006 Act.",
+            "anchors": ["statutes"],
+        },
+        {
+            "id": "L2-091",
+            "expr": "flag_absent(\"outdated_ico_reference\")",
+            "severity": "low",
+            "message_tmpl": "Outdated UK data protection authority name detected.",
+            "anchors": ["statutes"],
+        },
+        {
+            "id": "L2-092",
+            "expr": "flag_absent(\"outdated_fsa_reference\")",
+            "severity": "medium",
+            "message_tmpl": "Outdated UK regulator name (e.g., FSA) referenced.",
+            "anchors": ["statutes"],
+        },
+        {
+            "id": "L2-100",
+            "expr": "flag_absent(\"fee_for_nda\")",
+            "severity": "medium",
+            "message_tmpl": "Fee-for-NDA commercial anomaly detected.",
+            "anchors": ["commercial"],
+        },
+        {
+            "id": "L2-101",
+            "expr": "flag_absent(\"shall_be_avoided_wording\")",
+            "severity": "low",
+            "message_tmpl": "Clause uses 'shall be avoided' where 'void' or 'invalid' is expected.",
+            "anchors": ["commercial"],
+        },
+        {
+            "id": "L2-102",
+            "expr": "survival_baseline_complete()",
+            "severity": "medium",
+            "message_tmpl": "Survival clause missing confidentiality/IP/liability baseline.",
+            "anchors": ["survival"],
+        },
     ]
+    specs = [Constraint(**data) for data in specs_data]
     _CONSTRAINTS_CACHE = specs
     return specs
 

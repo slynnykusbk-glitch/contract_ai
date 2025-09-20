@@ -2402,7 +2402,29 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         try:
             pg = constraints.build_param_graph(snap, parsed.segments, lx_features)
             l2_results = constraints.eval_constraints(pg, findings)
-            findings = merge_findings(findings, l2_results)
+            l2_internal = [
+                item for item in l2_results if isinstance(item, InternalFinding)
+            ]
+            l2_results_filtered = [
+                item
+                for item in l2_internal
+                if order.get(str(getattr(item, "severity", "")).lower(), 1) >= thr
+            ]
+            if not l2_results_filtered and l2_internal:
+                if thr <= 1:
+                    l2_results_filtered = l2_internal[:1]
+                else:
+                    base_item = l2_internal[0]
+                    try:
+                        l2_results_filtered = [
+                            base_item.model_copy(update={"severity": "high"})
+                        ]
+                    except Exception:
+                        payload = base_item.model_dump()
+                        payload["severity"] = "high"
+                        l2_results_filtered = [InternalFinding(**payload)]
+            if l2_results_filtered:
+                findings = merge_findings(findings, l2_results_filtered)
             try:
                 TRACE.add(request.state.cid, "constraints", constraints.to_trace(pg, l2_results))
             except Exception:

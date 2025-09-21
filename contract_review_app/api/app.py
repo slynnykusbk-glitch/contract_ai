@@ -1847,7 +1847,35 @@ async def get_trace_html(cid: str):
         )
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         return resp
-    html = "<pre>" + html_escape(json.dumps(trace, indent=2)) + "</pre>"
+    body = dict(trace.get("body") or {})
+    features_json = html_escape(
+        json.dumps(body.get("features") or {}, indent=2, ensure_ascii=False)
+    )
+    dispatch_json = html_escape(
+        json.dumps(body.get("dispatch") or {}, indent=2, ensure_ascii=False)
+    )
+    constraints_json = html_escape(
+        json.dumps(body.get("constraints") or {}, indent=2, ensure_ascii=False)
+    )
+    proposals_json = html_escape(
+        json.dumps(body.get("proposals") or {}, indent=2, ensure_ascii=False)
+    )
+    raw_trace = html_escape(json.dumps(trace, indent=2, ensure_ascii=False))
+    html = (
+        "<!DOCTYPE html>"
+        "<html><head><meta charset='utf-8'><title>Trace</title>"
+        "<style>body{font-family:Arial, sans-serif;margin:20px;}"
+        "details{margin-top:16px;}"
+        "pre{background:#f5f5f5;border:1px solid #ccc;padding:12px;overflow:auto;white-space:pre-wrap;}</style>"
+        "</head><body>"
+        "<h1>Trace payload</h1>"
+        f"<pre id='raw-trace'>{raw_trace}</pre>"
+        f"<details><summary>Features</summary><pre id='features'>{features_json}</pre></details>"
+        f"<details><summary>Dispatch</summary><pre id='dispatch'>{dispatch_json}</pre></details>"
+        f"<details><summary>Constraints</summary><pre id='constraints'>{constraints_json}</pre></details>"
+        f"<details><summary>Proposals</summary><pre id='proposals'>{proposals_json}</pre></details>"
+        "</body></html>"
+    )
     resp = Response(content=html, media_type="text/html; charset=utf-8")
     _set_schema_headers(resp)
     _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)

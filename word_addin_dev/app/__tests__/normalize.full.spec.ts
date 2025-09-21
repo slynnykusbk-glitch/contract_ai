@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 
-let normalizeTextFull: (typeof import('../assets/normalize_intake'))['normalizeTextFull'];
+let normalizeTextFull: (typeof import('../assets/normalize_full'))['normalizeTextFull'];
 let normalizeIntakeText: (typeof import('../assets/normalize_intake'))['normalizeIntakeText'];
 
 beforeAll(async () => {
-  const mod = await import('../assets/normalize_intake');
-  normalizeTextFull = mod.normalizeTextFull;
-  normalizeIntakeText = mod.normalizeIntakeText;
+  const fullMod = await import('../assets/normalize_full');
+  normalizeTextFull = fullMod.normalizeTextFull;
+  const intakeMod = await import('../assets/normalize_intake');
+  normalizeIntakeText = intakeMod.normalizeIntakeText;
 });
 
 describe('normalizeTextFull', () => {

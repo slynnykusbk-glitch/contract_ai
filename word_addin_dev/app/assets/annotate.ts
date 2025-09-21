@@ -2,7 +2,8 @@ import { AnalyzeFinding } from "./api-client.ts";
 import { dedupeFindings, normalizeText } from "./dedupe.ts";
 import { anchorByOffsets, findAnchors, pickLongToken } from "./anchors.ts";
 import type { AnchorMethod as AnchorCascadeMethod } from "./anchors.ts";
-import { normalizeIntakeText, normalizeTextFull, type NormalizeTextFullResult } from "./normalize_intake.ts";
+import { normalizeTextFull, type NormalizeTextFullResult } from "./normalize_full.ts";
+import { normalizeIntakeText } from "./normalize_intake.ts";
 import type { AnalyzeFindingEx, AnnotationPlanEx } from "./types.ts";
 
 /** Utilities for inserting comments into Word with batching and retries. */

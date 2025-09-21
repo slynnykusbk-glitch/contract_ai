@@ -1,3 +1,5 @@
+import type { AnalyzeFinding } from "./api-client.ts";
+
 export interface PartyRegistry {
   name: string
   number_or_duns?: string
@@ -25,4 +27,15 @@ export interface CompaniesMetaItem {
       filing_history?: string
     }
   }
+}
+
+export interface AnalyzeFindingEx extends AnalyzeFinding {
+  start?: number
+  end?: number
+}
+
+export interface AnnotationPlanEx {
+  start?: number
+  end?: number
+  nth?: number | null
 }

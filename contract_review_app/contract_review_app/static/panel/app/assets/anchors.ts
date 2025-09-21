@@ -21,7 +21,7 @@ interface BodyLike {
  * keeping the longest (or first if equal). All returned ranges are added to
  * ``context.trackedObjects``.
  */
-export async function findAnchors(body: BodyLike, snippetRaw: string): Promise<RangeLike[]> {
+export async function findAnchors(body: BodyLike, snippetRaw: string, opts?: { nth?: number | null }): Promise<RangeLike[]> {
   const ctx = body.context;
   const opt = { matchCase: false, matchWholeWord: false };
 
@@ -61,6 +61,17 @@ export async function findAnchors(body: BodyLike, snippetRaw: string): Promise<R
       continue;
     }
     result.push(r);
+  }
+
+  const nth = opts?.nth;
+  if (typeof nth === 'number' && Number.isFinite(nth) && nth >= 0 && result.length) {
+    const idx = Math.min(Math.floor(nth), result.length - 1);
+    const preferred = result[idx];
+    if (preferred) {
+      const reordered = [preferred, ...result.slice(0, idx), ...result.slice(idx + 1)];
+      result.length = 0;
+      result.push(...reordered);
+    }
   }
 
   for (const r of result) {

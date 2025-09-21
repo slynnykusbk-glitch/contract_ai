@@ -1,4 +1,6 @@
-import { applyMetaToBadges, parseFindings as apiParseFindings, AnalyzeFinding, AnalyzeResponse, postRedlines, analyze, apiQaRecheck } from "./api-client.ts";
+import { applyMetaToBadges, AnalyzeFinding, AnalyzeResponse, postRedlines, analyze, apiQaRecheck } from "./api-client.ts";
+import type { AnalyzeFindingEx } from "./types.ts";
+import { parseFindings } from "./findings.ts";
 import domSchema from "../panel_dom.schema.json";
 import { normalizeText, dedupeFindings } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
@@ -78,13 +80,7 @@ export function logRichError(e: any, tag = "Word") {
   } catch {}
 }
 
-function parseFindings(resp: AnalyzeResponse | AnalyzeFinding[]): AnalyzeFinding[] {
-  const arr = apiParseFindings(resp as any) || [];
-  return arr
-    .filter(f => f && f.rule_id && f.snippet)
-    .map(f => ({ ...f, clause_type: f.clause_type || 'Unknown' }))
-    .filter(f => f.clause_type);
-}
+export { parseFindings };
 
 const g: any = globalThis as any;
 g.parseFindings = g.parseFindings || parseFindings;

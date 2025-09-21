@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, Sequence
 
 from contract_review_app.intake.parser import ParsedDocument
 
@@ -90,9 +90,105 @@ def build_features(doc_norm: ParsedDocument, segments: Iterable[Mapping[str, Any
         "segments": segment_entries,
     }
 
+def _coerce_match_entry(item: Any) -> Mapping[str, Any]:
+    start = None
+    end = None
+    text = None
 
-def build_dispatch(*args: Any, **kwargs: Any) -> TDispatch:
-    return {}
+    if isinstance(item, Mapping):
+        start = item.get("start")
+        end = item.get("end")
+        text = item.get("text")
+    else:
+        start = getattr(item, "start", None)
+        end = getattr(item, "end", None)
+        text = getattr(item, "text", None)
+
+    payload: dict[str, Any] = {}
+    if isinstance(start, (int, float)):
+        payload["start"] = int(start)
+    if isinstance(end, (int, float)):
+        payload["end"] = int(end)
+    if text is not None:
+        payload["text"] = str(text)
+    return payload
+
+
+def _extract_gate_value(gates: Any, key: str) -> Any:
+    if isinstance(gates, Mapping):
+        return gates.get(key)
+    return getattr(gates, key, None)
+
+
+def build_dispatch(
+    rules_loaded: int,
+    evaluated: int,
+    triggered: int,
+    candidates_iter: Iterable[Any],
+) -> TDispatch:
+    candidates_payload: list[dict[str, Any]] = []
+
+    for candidate in candidates_iter or []:
+        if isinstance(candidate, Mapping):
+            rule_id = candidate.get("rule_id")
+            gates = candidate.get("gates")
+            gates_passed = candidate.get("gates_passed")
+            expected_any = candidate.get("expected_any")
+            matched_entries = candidate.get("matched") or []
+            reason = candidate.get("reason_not_triggered")
+        else:
+            rule_id = getattr(candidate, "rule_id", None)
+            gates = getattr(candidate, "gates", None)
+            gates_passed = getattr(candidate, "gates_passed", None)
+            expected_any = getattr(candidate, "expected_any", None)
+            matched_entries = getattr(candidate, "matched", [])
+            reason = getattr(candidate, "reason", None)
+
+        gates_payload = {
+            "packs": _extract_gate_value(gates, "packs"),
+            "lang": _extract_gate_value(gates, "lang"),
+            "doctype": (
+                _extract_gate_value(gates, "doctype")
+                if _extract_gate_value(gates, "doctype") is not None
+                else _extract_gate_value(gates, "doctypes")
+            ),
+        }
+
+        matches: Sequence[Any]
+        if isinstance(matched_entries, Sequence) and not isinstance(
+            matched_entries, (str, bytes, bytearray)
+        ):
+            matches = matched_entries
+        else:
+            matches = []
+
+        candidates_payload.append(
+            {
+                "rule_id": str(rule_id) if rule_id is not None else "",
+                "gates": gates_payload,
+                "gates_passed": bool(gates_passed),
+                "triggers": {
+                    "expected_any": list(expected_any or []),
+                    "matched": [
+                        _coerce_match_entry(entry)
+                        for entry in matches
+                        if entry is not None
+                    ],
+                },
+                "reason_not_triggered": str(reason)
+                if reason is not None
+                else None,
+            }
+        )
+
+    return {
+        "ruleset": {
+            "loaded": int(rules_loaded),
+            "evaluated": int(evaluated),
+            "triggered": int(triggered),
+        },
+        "candidates": candidates_payload,
+    }
 
 
 def build_constraints(*args: Any, **kwargs: Any) -> TConstraints:

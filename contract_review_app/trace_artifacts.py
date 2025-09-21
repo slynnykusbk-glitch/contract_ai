@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Iterable, Mapping, Sequence, TYPE_CHECKING
 
 from contract_review_app.intake.parser import ParsedDocument
 
 from .types_trace import TConstraints, TDispatch, TFeatures, TProposals
+
+if TYPE_CHECKING:  # pragma: no cover - imported for typing only
+    from contract_review_app.core.lx_types import LxDocFeatures, LxFeatureSet
 
 def _coerce_labels(raw: Any) -> list[str]:
     if raw is None:
@@ -32,11 +35,123 @@ def _resolve_language(doc_norm: ParsedDocument) -> str:
     return "und"
 
 
-def build_features(doc_norm: ParsedDocument, segments: Iterable[Mapping[str, Any]], hints: Any) -> TFeatures:
+def serialize_features(
+    doc_norm: ParsedDocument,
+    segments: Iterable[Mapping[str, Any]],
+    l0_features: "LxDocFeatures | None" = None,
+) -> TFeatures:
     norm_text = getattr(doc_norm, "normalized_text", "") or ""
     doc_hash = getattr(doc_norm, "checksum", None)
     if doc_hash is None:
         doc_hash = getattr(doc_norm, "checksum_sha256", None)
+
+    doc_payload: dict[str, Any] = {
+        "language": _resolve_language(doc_norm),
+        "length": len(norm_text),
+    }
+    if doc_hash:
+        doc_payload["hash"] = doc_hash
+
+    features_by_segment: Mapping[int, "LxFeatureSet"] = {}
+    if l0_features is not None:
+        features_by_segment = getattr(l0_features, "by_segment", {}) or {}
+
+    segment_entries = []
+    for seg in segments or []:
+        if isinstance(seg, Mapping):
+            seg_id = seg.get("id")
+            start_raw = seg.get("start", 0)
+            end_raw = seg.get("end", 0)
+            clause_type = seg.get("clause_type")
+            labels_raw = seg.get("labels")
+            entities_raw = seg.get("entities") or {}
+            seg_text = seg.get("text") or ""
+        else:
+            seg_id = getattr(seg, "id", None)
+            start_raw = getattr(seg, "start", 0)
+            end_raw = getattr(seg, "end", 0)
+            clause_type = getattr(seg, "clause_type", None)
+            labels_raw = getattr(seg, "labels", None)
+            entities_raw = getattr(seg, "entities", {}) or {}
+            seg_text = getattr(seg, "text", "") or ""
+
+        try:
+            seg_id_int = int(seg_id) if seg_id is not None else None
+        except (TypeError, ValueError):  # pragma: no cover - defensive
+            seg_id_int = None
+
+        try:
+            start = int(start_raw)
+        except (TypeError, ValueError):
+            start = 0
+        try:
+            end = int(end_raw)
+        except (TypeError, ValueError):
+            end = 0
+
+        labels = _coerce_labels(clause_type)
+        if not labels:
+            labels = _coerce_labels(labels_raw)
+
+        if (
+            seg_id_int is not None
+            and isinstance(features_by_segment, Mapping)
+            and seg_id_int in features_by_segment
+        ):
+            feat_obj = features_by_segment.get(seg_id_int)
+            if feat_obj is not None:
+                extra_labels = _coerce_labels(getattr(feat_obj, "labels", None))
+                if extra_labels:
+                    labels = list(dict.fromkeys(labels + extra_labels))
+                if hasattr(feat_obj, "model_dump"):
+                    l0_payload = feat_obj.model_dump(exclude_none=True)
+                else:  # pragma: no cover - fallback for BaseModel-like
+                    l0_payload = feat_obj.dict(exclude_none=True)  # type: ignore[call-arg]
+                l0_payload = {
+                    k: v
+                    for k, v in l0_payload.items()
+                    if v not in (None, [], {}, "")
+                }
+            else:
+                l0_payload = {}
+        else:
+            l0_payload = {}
+
+        entities: dict[str, Any]
+        if isinstance(entities_raw, Mapping):
+            entities = {
+                k: v
+                for k, v in entities_raw.items()
+                if v is not None
+            }
+        else:
+            entities = {}
+        if l0_payload:
+            entities.setdefault("l0", {}).update(l0_payload)
+
+        segment_entries.append(
+            {
+                "id": seg_id_int if seg_id_int is not None else seg_id,
+                "range": {"start": start, "end": end},
+                "labels": labels,
+                "entities": entities,
+                "tokens": {"len": len(seg_text)},
+            }
+        )
+
+    return {
+        "doc": doc_payload,
+        "segments": segment_entries,
+    }
+
+
+def build_features(
+    doc_norm: ParsedDocument,
+    segments: Iterable[Mapping[str, Any]],
+    hints: Any,
+    l0_features: "LxDocFeatures | None" = None,
+) -> TFeatures:
+    payload = serialize_features(doc_norm, segments, l0_features)
 
     if isinstance(hints, str):
         hints_list: list[Any] = [hints]
@@ -48,47 +163,9 @@ def build_features(doc_norm: ParsedDocument, segments: Iterable[Mapping[str, Any
         except TypeError:
             hints_list = [hints]
 
-    doc_payload: dict[str, Any] = {
-        "language": _resolve_language(doc_norm),
-        "length": len(norm_text),
-        "hints": hints_list,
-    }
-    if doc_hash:
-        doc_payload["hash"] = doc_hash
-
-    segment_entries = []
-    for seg in segments or []:
-        seg_id = seg.get("id") if isinstance(seg, Mapping) else None
-        start = int(seg.get("start", 0)) if isinstance(seg, Mapping) else 0
-        end = int(seg.get("end", 0)) if isinstance(seg, Mapping) else 0
-        clause_type = None
-        labels_raw = None
-        entities = {}
-        text = ""
-        if isinstance(seg, Mapping):
-            clause_type = seg.get("clause_type")
-            labels_raw = seg.get("labels")
-            entities = seg.get("entities") or {}
-            text = seg.get("text") or ""
-
-        labels = _coerce_labels(clause_type)
-        if not labels:
-            labels = _coerce_labels(labels_raw)
-
-        segment_entries.append(
-            {
-                "id": seg_id,
-                "range": {"start": start, "end": end},
-                "labels": labels,
-                "entities": entities if isinstance(entities, Mapping) else {},
-                "tokens": {"len": len(text)},
-            }
-        )
-
-    return {
-        "doc": doc_payload,
-        "segments": segment_entries,
-    }
+    doc_payload = payload.setdefault("doc", {})
+    doc_payload["hints"] = hints_list
+    return payload
 
 def _coerce_match_entry(item: Any) -> Mapping[str, Any]:
     start = None

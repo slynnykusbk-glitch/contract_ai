@@ -31,6 +31,20 @@ interface BodyLike {
   search: (txt: string, opts: any) => any;
 }
 
+export type AnchorMethod = 'offset' | 'nth' | 'normalized' | 'token';
+
+export interface AnchorByOffsetsOptions {
+  body: BodyLike;
+  snippet: string;
+  start?: number | null;
+  end?: number | null;
+  nth?: number | null;
+  searchOptions?: Word.SearchOptions;
+  normalizedCandidates?: Array<string | null | undefined>;
+  token?: string | null;
+  onMethod?: (method: AnchorMethod) => void;
+}
+
 /**
  * Find non-overlapping anchors in the document body for a raw snippet.
  *
@@ -130,4 +144,106 @@ export async function searchNth(body: BodyLike, snippetRaw: string, nth: number,
     body.context?.trackedObjects?.add?.(picked);
   } catch {}
   return picked;
+}
+
+function pushNormalizedVariant(target: Set<string>, cand: string | null | undefined, skip?: string): void {
+  if (!cand) return;
+  const normalized = normalizeSnippetForSearch(cand);
+  if (!normalized) return;
+  if (skip && normalized === skip) return;
+  target.add(normalized);
+}
+
+function trackRange(body: BodyLike, range: RangeLike | null | undefined): void {
+  if (!range) return;
+  try {
+    body.context?.trackedObjects?.add?.(range);
+  } catch {}
+}
+
+export async function anchorByOffsets(opts: AnchorByOffsetsOptions): Promise<RangeLike | null> {
+  if (!opts?.body || !opts.snippet) return null;
+  const { body, snippet } = opts;
+  const searchOptions = opts.searchOptions || { matchCase: false, matchWholeWord: false };
+  const nth = typeof opts.nth === 'number' && Number.isFinite(opts.nth) && opts.nth >= 0 ? Math.floor(opts.nth) : 0;
+  const logMethod = (method: AnchorMethod) => {
+    try {
+      opts.onMethod?.(method);
+    } catch {}
+  };
+
+  const g: any = globalThis as any;
+  const allowOffsets = g?.__cfg_anchorOffsets !== 0;
+
+  if (allowOffsets && typeof opts.start === 'number' && Number.isFinite(opts.start) && opts.start >= 0) {
+    const expectedStart = Math.floor(opts.start);
+    const expectedEnd =
+      typeof opts.end === 'number' && Number.isFinite(opts.end) && opts.end >= opts.start
+        ? Math.floor(opts.end)
+        : expectedStart + normalizeSnippetForSearch(snippet).length;
+    const expectedLength = Math.max(1, expectedEnd - expectedStart);
+
+    const needles = new Set<string>();
+    if (snippet) needles.add(snippet);
+    pushNormalizedVariant(needles, snippet);
+    for (const cand of opts.normalizedCandidates || []) {
+      pushNormalizedVariant(needles, cand);
+    }
+
+    let bestRange: RangeLike | null = null;
+    let bestDelta = Number.POSITIVE_INFINITY;
+
+    for (const needle of needles) {
+      if (!needle) continue;
+      const res = await safeBodySearch(body as any, needle, searchOptions);
+      const items: RangeLike[] = res?.items || [];
+      for (const item of items) {
+        const start = typeof item.start === 'number' ? item.start : 0;
+        const delta = Math.abs(start - expectedStart);
+        if (delta < bestDelta) {
+          bestDelta = delta;
+          bestRange = item;
+          if (delta === 0) break;
+        }
+      }
+      if (bestDelta === 0) break;
+    }
+
+    if (bestRange && bestDelta <= Math.max(5, expectedLength)) {
+      trackRange(body, bestRange);
+      logMethod('offset');
+      return bestRange;
+    }
+  }
+
+  let range = await searchNth(body, snippet, nth, searchOptions);
+  if (range) {
+    logMethod('nth');
+    return range;
+  }
+
+  const variants = new Set<string>();
+  pushNormalizedVariant(variants, snippet, snippet);
+  for (const cand of opts.normalizedCandidates || []) {
+    pushNormalizedVariant(variants, cand, snippet);
+  }
+
+  for (const variant of variants) {
+    range = await searchNth(body, variant, nth, searchOptions);
+    if (range) {
+      logMethod('normalized');
+      return range;
+    }
+  }
+
+  const token = opts.token ?? pickLongToken(snippet);
+  if (token) {
+    const tokenRange = await searchNth(body, token, 0, searchOptions);
+    if (tokenRange) {
+      logMethod('token');
+      return tokenRange;
+    }
+  }
+
+  return null;
 }

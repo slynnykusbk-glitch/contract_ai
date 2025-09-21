@@ -1,6 +1,7 @@
 import { AnalyzeFinding } from "./api-client.ts";
 import { dedupeFindings, normalizeText } from "./dedupe.ts";
-import { findAnchors, normalizeSnippetForSearch, pickLongToken, searchNth } from "./anchors.ts";
+import { anchorByOffsets, findAnchors, pickLongToken } from "./anchors.ts";
+import type { AnchorMethod as AnchorCascadeMethod } from "./anchors.ts";
 import { normalizeIntakeText } from "./normalize_intake.ts";
 import type { AnalyzeFindingEx, AnnotationPlanEx } from "./types.ts";
 
@@ -145,64 +146,7 @@ export function computeNthFromOffsets(text: string, snippet: string, start?: num
   return count;
 }
 
-export type AnchorMethod = 'nth' | 'normalized' | 'token' | 'cc';
-
-export interface AnchorOpts {
-  body: Word.Body;
-  searchOptions?: Word.SearchOptions;
-  normalizedCandidates?: Array<string | null | undefined>;
-  token?: string | null;
-  onMethod?: (method: AnchorMethod) => void;
-}
-
-export async function anchorByOffsets(snippet: string, nth: number, opts: AnchorOpts): Promise<Word.Range | null> {
-  if (!opts?.body || !snippet) return null;
-  const safeNth = typeof nth === 'number' && Number.isFinite(nth) && nth >= 0 ? Math.floor(nth) : 0;
-  const searchOptions = opts.searchOptions || { matchCase: false, matchWholeWord: false };
-  const logMethod = (method: AnchorMethod) => {
-    try {
-      opts.onMethod?.(method);
-    } catch {}
-  };
-
-  let range = await searchNth(opts.body as any, snippet, safeNth, searchOptions);
-  if (range) {
-    logMethod('nth');
-    return range as Word.Range;
-  }
-
-  const variants = new Set<string>();
-  const pushVariant = (cand: string | null | undefined) => {
-    if (!cand) return;
-    const normalized = normalizeSnippetForSearch(cand);
-    if (!normalized || normalized === snippet) return;
-    variants.add(normalized);
-  };
-
-  pushVariant(normalizeSnippetForSearch(snippet));
-  for (const cand of opts.normalizedCandidates || []) {
-    pushVariant(cand || undefined);
-  }
-
-  for (const variant of variants) {
-    range = await searchNth(opts.body as any, variant, safeNth, searchOptions);
-    if (range) {
-      logMethod('normalized');
-      return range as Word.Range;
-    }
-  }
-
-  const token = opts.token ?? pickLongToken(snippet);
-  if (token) {
-    const tokenRange = await searchNth(opts.body as any, token, 0, searchOptions);
-    if (tokenRange) {
-      logMethod('token');
-      return tokenRange as Word.Range;
-    }
-  }
-
-  return null;
-}
+type AnchorMethod = AnchorCascadeMethod | 'cc';
 
 function isDryRunAnnotateEnabled(): boolean {
   try {
@@ -315,15 +259,19 @@ export async function findingsToWord(findings: AnalyzeFindingEx[]): Promise<numb
           op.norm && op.norm !== op.raw ? op.norm : null,
         ];
         try {
-          target = await anchorByOffsets(op.raw, desired, {
+          target = await anchorByOffsets({
             body,
+            snippet: op.raw,
+            start: op.start,
+            end: op.end,
+            nth: desired,
             searchOptions: searchOpts,
             normalizedCandidates,
             token: pickLongToken(op.raw),
             onMethod: m => {
               anchorMethod = m;
             }
-          });
+          }) as Word.Range | null;
         } catch (err) {
           console.warn("anchorByOffsets failed", err);
         }

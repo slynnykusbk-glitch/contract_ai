@@ -451,6 +451,7 @@ from contract_review_app.analysis import (
     parser as analysis_parser,
     classifier as analysis_classifier,
 )
+from contract_review_app.intake.parser import ParsedDocument
 from contract_review_app.legal_rules import runner as legal_runner
 
 # SSOT DTO imports
@@ -1962,7 +1963,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     if clause_type:
         req.clause_type = clause_type
     if FEATURE_TRACE_ARTIFACTS:
-        TRACE.add(request.state.cid, "features", build_features())
+        TRACE.add(request.state.cid, "features", {})
         TRACE.add(request.state.cid, "dispatch", build_dispatch())
         TRACE.add(request.state.cid, "constraints", build_constraints())
         TRACE.add(request.state.cid, "proposals", build_proposals())
@@ -2039,6 +2040,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     # full parsing/classification/rule pipeline with timings
     pipeline_id = uuid.uuid4().hex
     t0 = time.perf_counter()
+    parsed_doc = ParsedDocument.from_text(txt)
     parsed = analysis_parser.parse_text(txt)
     t1 = time.perf_counter()
 
@@ -2067,6 +2069,14 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     t2 = time.perf_counter()
 
     snap = extract_document_snapshot(txt)
+
+    if FEATURE_TRACE_ARTIFACTS:
+        hints = getattr(snap, "hints", None) if snap else []
+        TRACE.add(
+            request.state.cid,
+            "features",
+            build_features(parsed_doc, parsed.segments, hints),
+        )
 
     seg_findings: List[Dict[str, Any]] = []
     clause_types_set: set[str] = set()

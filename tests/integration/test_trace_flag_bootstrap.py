@@ -85,6 +85,10 @@ def test_trace_flag_enabled():
         payload = trace.json()
         for key in _TRACE_KEYS:
             assert key in payload
+        assert isinstance(payload["features"], dict)
+        assert "doc" in payload["features"]
+        assert "segments" in payload["features"]
+        for key in ("dispatch", "constraints", "proposals"):
             assert payload[key] == {}
     finally:
         _cleanup(client, modules)

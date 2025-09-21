@@ -25,6 +25,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 from collections import OrderedDict
+from collections.abc import Mapping as MappingABC
 import secrets
 from starlette.middleware.base import BaseHTTPMiddleware
 import mimetypes
@@ -1847,7 +1848,8 @@ async def get_trace_html(cid: str):
         )
         _set_std_headers(resp, cid=cid, xcache="miss", schema=SCHEMA_VERSION)
         return resp
-    body = dict(trace.get("body") or {})
+    raw_body = trace.get("body")
+    body = dict(raw_body) if isinstance(raw_body, MappingABC) else {}
     features_json = html_escape(
         json.dumps(body.get("features") or {}, indent=2, ensure_ascii=False)
     )

@@ -25,6 +25,7 @@ export async function safeInsertComment(range: Word.Range, text: string): Promis
     return false;
   }
   const context: any = (range as any).context;
+  let lastErr: any = null;
   try {
     const anyDoc = (context?.document as any);
     if (anyDoc?.comments?.["add"]) {
@@ -286,28 +287,27 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFindingEx[]): Pr
       let target: any = null;
       let anchorMethod: AnchorMethod | undefined;
 
-      if (typeof desired === "number" && Number.isFinite(desired) && desired >= 0) {
-        const normalizedCandidates = [
-          op.normalized_fallback && op.normalized_fallback !== op.raw ? op.normalized_fallback : null,
-          op.norm && op.norm !== op.raw ? op.norm : null,
-        ];
-        try {
-          target = await anchorByOffsets({
-            body,
-            snippet: op.raw,
-            start: op.start,
-            end: op.end,
-            nth: desired,
-            searchOptions,
-            normalizedCandidates,
-            token: pickLongToken(op.raw),
-            onMethod: m => {
-              anchorMethod = m;
-            }
-          }) as Word.Range | null;
-        } catch (err) {
-          console.warn("anchorByOffsets failed", err);
-        }
+      const normalizedCandidates = [
+        op.normalized_fallback && op.normalized_fallback !== op.raw ? op.normalized_fallback : null,
+        op.norm && op.norm !== op.raw ? op.norm : null,
+      ];
+
+      try {
+        target = await anchorByOffsets({
+          body,
+          snippet: op.raw,
+          start: op.start,
+          end: op.end,
+          nth: typeof desired === "number" ? desired : undefined,
+          searchOptions,
+          normalizedCandidates,
+          token: pickLongToken(op.raw),
+          onMethod: m => {
+            anchorMethod = m;
+          }
+        }) as Word.Range | null;
+      } catch (err) {
+        console.warn("anchorByOffsets failed", err);
       }
 
       if (!target) {

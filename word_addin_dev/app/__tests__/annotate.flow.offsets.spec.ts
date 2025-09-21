@@ -175,4 +175,24 @@ describe('annotate flow offsets', () => {
     expect(preferredRange.load).toHaveBeenCalledWith(['start', 'end']);
     expect(anchorsMock).toHaveBeenCalledWith(expect.anything(), snippet, { nth: 2 });
   });
+
+  it('keeps findings ordered by offsets and skips overlaps while preserving offsets', async () => {
+    const baseText = 'alpha beta gamma delta epsilon zeta';
+    (globalThis as any).__lastAnalyzed = baseText;
+
+    const annotateMod = await import('../assets/annotate');
+    const { planAnnotations } = annotateMod;
+
+    const findings = [
+      { rule_id: 'r1', snippet: 'alpha', start: 0, end: 5, nth: 0 },
+      { rule_id: 'r2', snippet: 'beta', start: 4, end: 8 },
+      { rule_id: 'r3', snippet: 'delta', start: baseText.indexOf('delta'), end: baseText.indexOf('delta') + 'delta'.length }
+    ];
+
+    const plan = planAnnotations(findings as any);
+
+    expect(plan.map(p => p.rule_id)).toEqual(['r1', 'r3']);
+    expect(plan[0]).toMatchObject({ start: 0, end: 5, nth: 0 });
+    expect(plan[1]).toMatchObject({ start: findings[2].start, end: findings[2].end });
+  });
 });

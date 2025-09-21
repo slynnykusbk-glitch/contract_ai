@@ -1,6 +1,7 @@
 import { AnalyzeFinding } from "./api-client.ts";
 import { dedupeFindings, normalizeText } from "./dedupe.ts";
 import { findAnchors } from "./anchors.ts";
+import type { AnalyzeFindingEx, AnnotationPlanEx } from "./types.ts";
 
 /** Utilities for inserting comments into Word with batching and retries. */
 export interface CommentItem {
@@ -123,6 +124,40 @@ function nthOccurrenceIndex(hay: string, needle: string, startPos?: number): num
   return n;
 }
 
+const normalizedCache = new Map<string, string>();
+
+function normalizeCached(text: string): string {
+  let cached = normalizedCache.get(text);
+  if (cached == null) {
+    cached = normalizeText(text);
+    normalizedCache.set(text, cached);
+  }
+  return cached;
+}
+
+export function computeNthFromOffsets(text: string, snippet: string, start?: number): number | null {
+  if (!text || !snippet) return null;
+  if (typeof start !== 'number' || !Number.isFinite(start) || start < 0) return null;
+  const normSnippet = normalizeText(snippet);
+  if (!normSnippet) return null;
+
+  const normText = normalizeCached(text);
+  const prefix = text.slice(0, Math.max(0, Math.min(text.length, Math.floor(start))));
+  const normPrefix = normalizeText(prefix);
+
+  if (!normText) return null;
+
+  let count = 0;
+  let searchIdx = 0;
+  while (true) {
+    const foundIdx = normText.indexOf(normSnippet, searchIdx);
+    if (foundIdx === -1 || foundIdx >= normPrefix.length) break;
+    count++;
+    searchIdx = foundIdx + Math.max(normSnippet.length, 1);
+  }
+  return count;
+}
+
 function isDryRunAnnotateEnabled(): boolean {
   try {
     return !!(document.getElementById("cai-dry-run-annotate") as HTMLInputElement | null)?.checked;
@@ -150,7 +185,7 @@ function buildLegalComment(f: AnalyzeFinding): string {
   return `${COMMENT_PREFIX} ${parts.join("\n")}`;
 }
 
-export interface AnnotationPlan {
+export interface AnnotationPlan extends AnnotationPlanEx {
   raw: string;
   norm: string;
   occIdx: number;
@@ -165,10 +200,11 @@ export const MAX_ANNOTATE_OPS = 200;
 /**
  * Prepare annotate operations from analysis findings without touching Word objects.
  */
-export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
-  const base = normalizeText((globalThis as any).__lastAnalyzed || "");
+export function planAnnotations(findings: AnalyzeFindingEx[]): AnnotationPlan[] {
+  const baseText = String((globalThis as any).__lastAnalyzed || "");
+  const baseNorm = normalizeText(baseText);
   const list = Array.isArray(findings) ? findings : [];
-  const deduped = dedupeFindings(list);
+  const deduped = dedupeFindings(list as AnalyzeFinding[]);
   const sorted = deduped
     .slice()
     .sort((a, b) => (a.start ?? Number.POSITIVE_INFINITY) - (b.start ?? Number.POSITIVE_INFINITY));
@@ -191,7 +227,8 @@ export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
       continue;
     }
     const norm = normalizeText(snippet);
-    const occIdx = nthOccurrenceIndex(base, norm, start);
+    const nth = computeNthFromOffsets(baseText, snippet, start);
+    const occIdx = typeof nth === "number" ? nth : nthOccurrenceIndex(baseNorm, norm, start);
     ops.push({
       raw: snippet,
       norm,
@@ -199,7 +236,10 @@ export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
       msg: buildLegalComment(f),
       rule_id: f.rule_id,
       code: (f as any).code,
-      normalized_fallback: normalizeText((f as any).normalized_snippet || "")
+      normalized_fallback: normalizeText((f as any).normalized_snippet || ""),
+      start,
+      end,
+      nth: nth ?? undefined
     });
 
     lastEnd = end;
@@ -216,7 +256,7 @@ export function planAnnotations(findings: AnalyzeFinding[]): AnnotationPlan[] {
  * Insert comments for provided findings. Builds an annotation plan and anchors
  * each snippet to Word ranges using ``findAnchors``.
  */
-export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Promise<number> {
+export async function annotateFindingsIntoWord(findings: AnalyzeFindingEx[]): Promise<number> {
   const ops = planAnnotations(findings);
   if (!ops.length) return 0;
   const g: any = globalThis as any;
@@ -225,11 +265,18 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFinding[]): Prom
     const used: { start: number; end: number }[] = [];
     let inserted = 0;
     for (const op of ops) {
-      let anchors = await findAnchors(body, op.raw);
-      let target: any = anchors[Math.min(op.occIdx, anchors.length - 1)] || null;
+      const anchorIdx = (anchors: any[]) => {
+        if (!anchors.length) return null;
+        const desired = typeof op.nth === "number" ? op.nth : op.occIdx;
+        const clamped = Math.min(Math.max(desired, 0), anchors.length - 1);
+        return anchors[clamped] || null;
+      };
+      const opts = typeof op.nth === "number" ? { nth: op.nth } : undefined;
+      let anchors = await findAnchors(body, op.raw, opts);
+      let target: any = anchorIdx(anchors);
       if (!target && op.normalized_fallback && op.normalized_fallback !== op.norm) {
-        anchors = await findAnchors(body, op.normalized_fallback);
-        target = anchors[Math.min(op.occIdx, anchors.length - 1)] || null;
+        anchors = await findAnchors(body, op.normalized_fallback, opts);
+        target = anchorIdx(anchors);
       }
       if (target) {
         target.load?.(["start", "end"]);

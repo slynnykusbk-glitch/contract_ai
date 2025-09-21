@@ -51,6 +51,12 @@ from contract_review_app.utils.logging import logger as cai_logger
 from contract_review_app.legal_rules import constraints
 from contract_review_app.legal_rules.aggregate import apply_merge_policy
 from contract_review_app.legal_rules.constraints import InternalFinding
+from contract_review_app.trace_artifacts import (
+    build_constraints,
+    build_dispatch,
+    build_features,
+    build_proposals,
+)
 
 
 log = logging.getLogger("contract_ai")
@@ -890,6 +896,7 @@ gpt_cache = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
 
 FEATURE_METRICS = os.getenv("FEATURE_METRICS", "1") == "1"
 FEATURE_LX_ENGINE = os.getenv("FEATURE_LX_ENGINE", "0") == "1"
+FEATURE_TRACE_ARTIFACTS = os.getenv("FEATURE_TRACE_ARTIFACTS", "0") == "1"
 LX_L2_CONSTRAINTS = os.getenv("LX_L2_CONSTRAINTS", "0") == "1"
 METRICS_EXPORT_DIR = Path(os.getenv("METRICS_EXPORT_DIR", "var/metrics"))
 DISABLE_PII_IN_METRICS = os.getenv("DISABLE_PII_IN_METRICS", "1") == "1"
@@ -1954,6 +1961,11 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     clause_type = request.query_params.get("clause_type")
     if clause_type:
         req.clause_type = clause_type
+    if FEATURE_TRACE_ARTIFACTS:
+        TRACE.add(request.state.cid, "features", build_features())
+        TRACE.add(request.state.cid, "dispatch", build_dispatch())
+        TRACE.add(request.state.cid, "constraints", build_constraints())
+        TRACE.add(request.state.cid, "proposals", build_proposals())
     txt = req.text
     debug = request.query_params.get("debug")  # noqa: F841
     risk_param = (

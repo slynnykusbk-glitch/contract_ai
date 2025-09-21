@@ -68,10 +68,12 @@ describe('qa recheck navigation', () => {
       li.scrollIntoView = () => {};
       fl.appendChild(li);
     });
-    await postJSON('/api/qa-recheck', { document_id: 'doc1', rules: {} });
+    const select = document.getElementById('selectRiskThreshold') as HTMLSelectElement;
+    const expectedRisk = select?.value?.toLowerCase?.() || 'medium';
+    await postJSON('/api/qa-recheck', { document_id: 'doc1', rules: {}, risk: expectedRisk });
     resultsEl.dispatchEvent(new CustomEvent('ca.qa', { detail: qaResp }));
 
-    expect(postJSON).toHaveBeenCalledWith('/api/qa-recheck', { document_id: 'doc1', rules: {} });
+    expect(postJSON).toHaveBeenCalledWith('/api/qa-recheck', { document_id: 'doc1', rules: {}, risk: expectedRisk });
 
     const items = (window as any).__findings;
     expect(items).toEqual(qaResp.analysis.findings);

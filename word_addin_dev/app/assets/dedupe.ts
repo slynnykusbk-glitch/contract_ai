@@ -1,5 +1,8 @@
 import { AnalyzeFinding } from "./api-client.ts";
 
+export const RISK_LEVELS = ["low", "medium", "high", "critical"] as const;
+export type RiskLevel = typeof RISK_LEVELS[number];
+
 export function normalizeText(s: string | undefined | null): string {
   if (!s) return "";
   return s
@@ -10,9 +13,19 @@ export function normalizeText(s: string | undefined | null): string {
     .trim();
 }
 
-export function severityRank(s?: string): number {
-  const m = (s || "").toLowerCase();
-  return m === "high" ? 3 : m === "medium" ? 2 : 1;
+export function normalizeSeverity(val: unknown): RiskLevel | null {
+  if (typeof val !== "string") return null;
+  const v = val.trim().toLowerCase();
+  if (v === "low" || v === "medium" || v === "high" || v === "critical") {
+    return v;
+  }
+  return null;
+}
+
+export function severityRank(val: unknown): number {
+  const sev = normalizeSeverity(val);
+  if (!sev) return RISK_LEVELS.indexOf("medium");
+  return RISK_LEVELS.indexOf(sev);
 }
 
 export function dedupeFindings(findings: AnalyzeFinding[]): AnalyzeFinding[] {

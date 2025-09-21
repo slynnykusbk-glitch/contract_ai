@@ -303,18 +303,22 @@ export async function apiSummaryGet() {
 
 
 export async function apiQaRecheck(
-  input: { document_id?: string; text?: string; rules?: any } | string,
+  input: { document_id?: string; text?: string; rules?: any; risk?: string } | string,
   rules: any = {},
 ) {
   let payload: any;
+  let risk: string | undefined;
   if (typeof input === 'string') {
     payload = { text: input };
   } else {
     payload = input.document_id ? { document_id: input.document_id } : { text: input.text };
     rules = input.rules ?? {};
+    risk = input.risk ?? risk;
   }
   const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
-  const { resp, json } = await postJSON('/api/qa-recheck', { ...payload, rules: dict });
+  const body = { ...payload, rules: dict };
+  if (risk) body.risk = risk;
+  const { resp, json } = await postJSON('/api/qa-recheck', body);
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
   try { applyMetaToBadges(meta); } catch {}
   return { ok: resp.ok, json, resp, meta };

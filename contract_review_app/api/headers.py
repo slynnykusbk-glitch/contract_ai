@@ -15,3 +15,4 @@ def apply_std_headers(response: Response, request: Request, started_at: float) -
     response.headers["x-schema-version"] = schema
     response.headers["x-latency-ms"] = str(latency_ms)
     response.headers["x-cid"] = cid
+    response.headers["X-Cid"] = cid

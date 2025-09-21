@@ -54,7 +54,6 @@ from contract_review_app.legal_rules import constraints
 from contract_review_app.legal_rules.aggregate import apply_merge_policy
 from contract_review_app.legal_rules.constraints import InternalFinding
 from contract_review_app.trace_artifacts import (
-    build_constraints,
     build_dispatch,
     build_features,
     build_proposals,
@@ -139,9 +138,10 @@ log.info("[PANEL] build token: %s", PANEL_BUILD_TOKEN)
 
 
 TRACE_MAX = int(os.getenv("TRACE_MAX", "200"))
+TRACE_MAX_SIZE_BYTES = int(os.getenv("TRACE_MAX_SIZE_BYTES", "0"))
 
 
-TRACE = TraceStore(TRACE_MAX)
+TRACE = TraceStore(TRACE_MAX, TRACE_MAX_SIZE_BYTES)
 
 # flag indicating whether rule engine is usable
 _RULE_ENGINE_OK = True
@@ -1340,10 +1340,34 @@ async def timeout_mw(request: Request, call_next):
     try:
         return await asyncio.wait_for(call_next(request), timeout=API_TIMEOUT_S)
     except asyncio.TimeoutError:
+        if request.url.path == "/api/analyze":
+            payload = {
+                "status": 504,
+                "status_text": "timeout",
+                "reason": "analyze_timeout",
+            }
+            resp = JSONResponse(
+                payload, status_code=504, media_type="application/problem+json"
+            )
+            apply_std_headers(resp, request, started_at)
+            return resp
         problem = ProblemDetail(type="timeout", title="Request timeout", status=504)
         resp = JSONResponse(problem.model_dump(), status_code=504)
         apply_std_headers(resp, request, started_at)
         return resp
+    except asyncio.CancelledError:
+        if request.url.path == "/api/analyze":
+            payload = {
+                "status": 504,
+                "status_text": "timeout",
+                "reason": "analyze_timeout",
+            }
+            resp = JSONResponse(
+                payload, status_code=504, media_type="application/problem+json"
+            )
+            apply_std_headers(resp, request, started_at)
+            return resp
+        raise
 
 
 @app.middleware("http")
@@ -2021,6 +2045,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             data = payload
 
     trace_proposals_drafts: list[dict[str, Any]] | None = None
+    trace_proposals_merged: list[dict[str, Any]] | None = None
 
     def _proposal_snapshot(items: Iterable[Any] | None) -> list[dict[str, Any]]:
         snapshot: list[dict[str, Any]] = []
@@ -2057,7 +2082,11 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             "dispatch",
             build_dispatch(0, 0, 0, []),
         )
-        TRACE.add(request.state.cid, "constraints", build_constraints([]))
+        TRACE.add(
+            request.state.cid,
+            "constraints",
+            {"graph": {}, "checks": [], "findings": []},
+        )
         TRACE.add(request.state.cid, "proposals", build_proposals())
     txt = req.text
     debug = request.query_params.get("debug")  # noqa: F841
@@ -2727,10 +2756,13 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             TRACE.add(
                 request.state.cid,
                 "constraints",
-                build_constraints(constraint_checks_iter),
+                constraints.to_trace(pg, constraint_checks_iter, l2_results),
             )
         except Exception:
             pass
+
+    if FEATURE_TRACE_ARTIFACTS:
+        trace_proposals_merged = _proposal_snapshot(findings)
 
     _add_citations(findings)
     for f in findings:
@@ -2745,7 +2777,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                 "proposals",
                 build_proposals(
                     trace_proposals_drafts,
-                    _proposal_snapshot(findings),
+                    trace_proposals_merged,
                 ),
             )
         except Exception:

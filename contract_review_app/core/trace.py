@@ -11,9 +11,46 @@ from fastapi import Request
 class TraceStore:
     """Simple in-memory LRU store for trace snapshots."""
 
-    def __init__(self, maxlen: int = 200) -> None:
+    def __init__(self, maxlen: int = 200, max_size_bytes: int = 0) -> None:
         self.maxlen = maxlen
+        self.max_size_bytes = max(0, int(max_size_bytes))
         self._data: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+        self._weights: Dict[str, int] = {}
+        self._total_weight = 0
+
+    def _estimate_weight(self, value: Any) -> int:
+        try:
+            return len(json.dumps(value))
+        except TypeError:
+            try:
+                return len(json.dumps(value, default=str))
+            except Exception:
+                return len(str(value))
+
+    def _drop_lru(self) -> None:
+        try:
+            cid, _ = self._data.popitem(last=False)
+        except KeyError:
+            return
+        weight = self._weights.pop(cid, 0)
+        self._total_weight = max(0, self._total_weight - weight)
+
+    def _record_weight(self, cid: str) -> None:
+        entry = self._data.get(cid)
+        if entry is None:
+            return
+        new_weight = self._estimate_weight(entry)
+        old_weight = self._weights.get(cid, 0)
+        self._weights[cid] = new_weight
+        self._total_weight += new_weight - old_weight
+
+    def _enforce_limits(self) -> None:
+        while len(self._data) > self.maxlen:
+            self._drop_lru()
+        if self.max_size_bytes <= 0:
+            return
+        while self._total_weight > self.max_size_bytes and self._data:
+            self._drop_lru()
 
     def put(self, cid: str, item: Dict[str, Any]) -> None:
         """Insert *item* under *cid* keeping only the latest *maxlen* items."""
@@ -36,8 +73,8 @@ class TraceStore:
         else:
             self._data[cid] = dict(item)
         self._data.move_to_end(cid)
-        while len(self._data) > self.maxlen:
-            self._data.popitem(last=False)
+        self._record_weight(cid)
+        self._enforce_limits()
 
     def add(self, cid: str, key: str, value: Any) -> None:
         """Attach a ``key``/``value`` pair to the trace body for ``cid``."""
@@ -53,6 +90,8 @@ class TraceStore:
         body[key] = value
         entry["body"] = body
         self._data.move_to_end(cid)
+        self._record_weight(cid)
+        self._enforce_limits()
 
     def get(self, cid: str) -> Dict[str, Any] | None:
         return self._data.get(cid)

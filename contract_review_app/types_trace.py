@@ -51,7 +51,9 @@ class TConstraintCheck(TypedDict, total=False):
 
 
 class TConstraints(TypedDict, total=False):
+    graph: Dict[str, Any]
     checks: List[TConstraintCheck]
+    findings: List[Dict[str, Any]]
 
 
 class TProposals(TypedDict, total=False):

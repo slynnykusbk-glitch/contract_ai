@@ -1813,14 +1813,72 @@ def _model_to_dict(model: Any) -> Dict[str, Any]:
     return {}
 
 
-def to_trace(pg: ParamGraph, findings: Iterable[Any]) -> Dict[str, Any]:
+def _coerce_check_entry(entry: Any) -> Dict[str, Any]:
+    if isinstance(entry, ConstraintCheckResult):
+        raw = {
+            "id": entry.id,
+            "scope": entry.scope,
+            "result": entry.result,
+            "details": entry.details,
+        }
+    elif isinstance(entry, Mapping):
+        raw = {
+            "id": entry.get("id"),
+            "scope": entry.get("scope"),
+            "result": entry.get("result"),
+            "details": entry.get("details"),
+        }
+    else:
+        raw = {
+            "id": getattr(entry, "id", None),
+            "scope": getattr(entry, "scope", None),
+            "result": getattr(entry, "result", None),
+            "details": getattr(entry, "details", None),
+        }
+
+    check_id = str(raw.get("id") or "")
+    scope = str(raw.get("scope") or "")
+    result = str(raw.get("result") or "").lower()
+    if result not in {"pass", "fail", "skip"}:
+        result = "skip"
+
+    details = raw.get("details")
+    if isinstance(details, Mapping):
+        coerced_details = dict(details)
+    elif details is None:
+        coerced_details = {}
+    else:
+        coerced_details = {"value": details}
+
+    return {
+        "id": check_id,
+        "scope": scope,
+        "result": result,
+        "details": coerced_details,
+    }
+
+
+def to_trace(
+    pg: ParamGraph,
+    checks: Iterable[Any],
+    findings: Iterable[Any] | None = None,
+) -> Dict[str, Any]:
     """Serialize constraint evaluation artefacts for trace storage."""
 
-    payload = {
-        "param_graph": _model_to_dict(pg),
+    payload: Dict[str, Any] = {
+        "graph": _model_to_dict(pg),
+        "checks": [],
         "findings": [],
     }
+
+    for entry in checks or []:
+        payload["checks"].append(_coerce_check_entry(entry))
+
     for item in findings or []:
         if isinstance(item, InternalFinding):
             payload["findings"].append(_model_to_dict(item))
+
+    if not payload["findings"]:
+        payload["findings"] = []
+
     return payload

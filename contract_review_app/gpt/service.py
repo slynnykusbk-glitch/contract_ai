@@ -3,6 +3,8 @@ from __future__ import annotations
 from string import Formatter
 from typing import Any, Dict, Optional, Set
 
+from contract_review_app.api.limits import LLM_TIMEOUT_S
+
 from .config import LLMConfig, load_llm_config
 from .interfaces import (
     ProviderError,
@@ -77,7 +79,7 @@ class LLMService:
         )
         max_t = max_tokens or self.cfg.max_tokens
         temp = temperature if temperature is not None else self.cfg.temperature
-        to = timeout or self.cfg.timeout_s
+        to = timeout or self.cfg.timeout_s or LLM_TIMEOUT_S
         return self.client.draft(prompt, max_t, temp, to)
 
     def suggest(
@@ -85,7 +87,7 @@ class LLMService:
     ) -> SuggestResult:
         prompt_tpl = self._read_prompt("suggest")
         prompt = prompt_tpl.format(text=text, risk=risk_level)
-        to = timeout or self.cfg.timeout_s
+        to = timeout or self.cfg.timeout_s or LLM_TIMEOUT_S
         return self.client.suggest_edits(prompt, to)
 
     def _safe_format_prompt(self, tpl: str, **kw: Any) -> str:
@@ -121,7 +123,7 @@ class LLMService:
             )
         rules_ctx = {"rules": safe_rules}
         prompt = self._safe_format_prompt(prompt_tpl, text=text, rules=rules_ctx)
-        to = timeout_s or self.cfg.timeout_s
+        to = timeout_s or self.cfg.timeout_s or LLM_TIMEOUT_S
         result = self.client.qa_recheck(prompt, to)
         result.meta["profile"] = profile
         return result

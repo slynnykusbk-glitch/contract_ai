@@ -398,7 +398,11 @@ from contract_review_app.intake.normalization import (
 
 # --- LLM provider & limits (final resolution) ---
 from contract_review_app.llm.provider import get_provider
-from contract_review_app.api.limits import API_TIMEOUT_S, API_RATE_LIMIT_PER_MIN
+from contract_review_app.api.limits import (
+    API_TIMEOUT_S,
+    REQUEST_TIMEOUT_S,
+    API_RATE_LIMIT_PER_MIN,
+)
 
 from .middlewares import RequireHeadersMiddleware
 
@@ -561,9 +565,6 @@ def run_gpt_draft(payload: dict | None = None, *args, **kwargs) -> dict:
 # --------------------------------------------------------------------
 # Config
 # --------------------------------------------------------------------
-ANALYZE_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_ANALYZE_TIMEOUT_SEC", "25"))
-QA_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_QA_TIMEOUT_SEC", "20"))
-DRAFT_TIMEOUT_SEC = int(os.getenv("CONTRACT_AI_DRAFT_TIMEOUT_SEC", "25"))
 MAX_CONCURRENCY = int(os.getenv("CONTRACT_AI_MAX_CONCURRENCY", "4"))
 MAX_BODY_BYTES = int(os.getenv("CONTRACT_AI_MAX_BODY_BYTES", str(2_500_000)))
 
@@ -1172,7 +1173,7 @@ app.add_middleware(RequireHeadersMiddleware)
 app.add_middleware(NormalizeAndTraceMiddleware)
 app.add_middleware(
     TimeoutMiddleware,
-    timeout=float(os.getenv("REQUEST_TIMEOUT_S", "60")),
+    timeout=float(REQUEST_TIMEOUT_S),
 )
 app.add_middleware(
     CORSMiddleware,

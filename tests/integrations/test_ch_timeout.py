@@ -1,0 +1,36 @@
+import importlib
+import time
+
+import httpx
+import pytest
+
+
+def test_companies_house_timeout(monkeypatch):
+    monkeypatch.setenv("CONTRACTAI_API_TIMEOUT_S", "3")
+    monkeypatch.setenv("CH_TIMEOUT_S", "1")
+
+    from contract_review_app.api import limits as limits_module
+
+    importlib.reload(limits_module)
+    from contract_review_app.integrations.companies_house import client as ch_client
+
+    importlib.reload(ch_client)
+
+    recorded_timeouts = []
+
+    def fake_get(url, headers=None, auth=None, timeout=None):
+        recorded_timeouts.append(timeout)
+        time.sleep(timeout + 0.1)
+        raise httpx.TimeoutException("timeout")
+
+    monkeypatch.setattr(ch_client.httpx, "get", fake_get)
+
+    start = time.perf_counter()
+    with pytest.raises(ch_client.CHTimeout):
+        ch_client.search_companies("acme")
+    duration = time.perf_counter() - start
+
+    assert recorded_timeouts
+    assert recorded_timeouts[0] == float(limits_module.CH_TIMEOUT_S)
+    assert duration >= limits_module.CH_TIMEOUT_S
+    assert duration < limits_module.API_TIMEOUT_S

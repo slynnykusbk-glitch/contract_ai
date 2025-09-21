@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 import logging
 
+from contract_review_app.api.limits import LLM_TIMEOUT_S
+
 try:  # pragma: no cover - best effort
     from dotenv import load_dotenv
 
@@ -52,7 +54,7 @@ def load_llm_config() -> LLMConfig:
     cfg = LLMConfig(provider=provider)
 
     # generic defaults
-    cfg.timeout_s = int(os.getenv("LLM_TIMEOUT_S", "30"))
+    cfg.timeout_s = LLM_TIMEOUT_S
     cfg.max_tokens = int(os.getenv("LLM_MAX_TOKENS", "800"))
     cfg.temperature = float(os.getenv("LLM_TEMPERATURE", "0.2"))
 

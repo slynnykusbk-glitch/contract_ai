@@ -36,7 +36,10 @@ def test_l2_constraints_toggle(monkeypatch):
 
     baseline_trace = TRACE.get(baseline_cid)
     assert baseline_trace is not None
-    assert "constraints" not in (baseline_trace.get("body") or {})
+    baseline_constraints = (baseline_trace.get("body") or {}).get("constraints")
+    if baseline_constraints is not None:
+        assert isinstance(baseline_constraints, dict)
+        assert baseline_constraints.get("checks") == []
 
     app_module.an_cache._data.clear()
     app_module.IDEMPOTENCY_CACHE._data.clear()
@@ -65,7 +68,16 @@ def test_l2_constraints_toggle(monkeypatch):
     trace_entry = TRACE.get(enhanced_cid)
     assert trace_entry is not None
     constraints_payload = (trace_entry.get("body") or {}).get("constraints")
-    assert constraints_payload is not None
-    assert isinstance(constraints_payload.get("param_graph"), dict)
-    trace_findings = constraints_payload.get("findings") or []
-    assert any(item.get("rule_id") == "L2::L2-010" for item in trace_findings)
+    assert isinstance(constraints_payload, dict)
+    checks = constraints_payload.get("checks") or []
+    assert checks, "expected constraint checks in trace payload"
+    assert all(
+        (check.get("result") in {"pass", "fail", "skip"}) for check in checks if isinstance(check, dict)
+    )
+    assert any(
+        isinstance(check, dict)
+        and check.get("result") == "fail"
+        and isinstance(check.get("details"), dict)
+        and check["details"].get("rule_id") == "L2::L2-010"
+        for check in checks
+    )

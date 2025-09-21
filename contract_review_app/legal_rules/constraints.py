@@ -34,6 +34,7 @@ from typing import Literal
 __all__ = [
     "build_param_graph",
     "Constraint",
+    "ConstraintCheckResult",
     "InternalFinding",
     "load_constraints",
     "eval_constraints",
@@ -843,6 +844,70 @@ def _format_details(details: EvaluationDetails) -> str:
     return ""
 
 
+def _eval_value_to_payload(value: EvalValue) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {"kind": value.kind, "display": _format_eval_value(value)}
+    raw = value.value
+    if value.kind == "duration" and isinstance(raw, Duration):
+        payload["value"] = {"days": getattr(raw, "days", None), "kind": getattr(raw, "kind", None)}
+    elif value.kind == "money" and isinstance(raw, Money):
+        payload["value"] = {
+            "amount": str(getattr(raw, "amount", "")),
+            "currency": getattr(raw, "currency", None),
+        }
+    elif value.kind == "decimal":
+        payload["value"] = str(raw)
+    elif value.kind == "string_set":
+        payload["value"] = sorted(raw)
+    else:
+        payload["value"] = raw
+    return payload
+
+
+def _details_to_payload(details: Optional[EvaluationDetails]) -> Dict[str, Any]:
+    if details is None:
+        return {}
+    payload: Dict[str, Any] = {}
+    if details.op:
+        payload["op"] = details.op
+        if details.left is not None:
+            payload["left"] = _eval_value_to_payload(details.left)
+        if details.right is not None:
+            payload["right"] = _eval_value_to_payload(details.right)
+    if details.function:
+        payload["function"] = details.function
+        args_payload: List[Optional[Dict[str, Any]]] = []
+        for arg in details.args or []:
+            if arg is None:
+                args_payload.append(None)
+            else:
+                args_payload.append(_eval_value_to_payload(arg))
+        if args_payload:
+            payload["args"] = args_payload
+    return payload
+
+
+def _build_check_details(
+    constraint: "Constraint",
+    details: Optional[EvaluationDetails],
+    *,
+    detail_text: Optional[str] = None,
+    message: Optional[str] = None,
+    error: Optional[str] = None,
+) -> Dict[str, Any]:
+    payload = _details_to_payload(details)
+    if detail_text:
+        payload["detail_text"] = detail_text
+    payload["rule_id"] = f"L2::{constraint.id}"
+    payload["severity"] = constraint.severity
+    if constraint.anchors:
+        payload["anchors"] = list(constraint.anchors)
+    if message:
+        payload["message"] = message
+    if error:
+        payload["error"] = error
+    return payload
+
+
 class _Evaluator:
     def __init__(self, pg: ParamGraph):
         self.pg = pg
@@ -1291,6 +1356,14 @@ class InternalFinding(BaseModel):
     anchors: List[SourceRef] = Field(default_factory=list)
 
 
+@dataclass
+class ConstraintCheckResult:
+    id: str
+    scope: Literal["doc", "clause"]
+    result: Literal["pass", "fail", "skip"]
+    details: Optional[Dict[str, Any]] = None
+
+
 _AST_CACHE: Dict[str, Tuple["ExprNode", FrozenSet[str]]] = {}
 
 
@@ -1650,31 +1723,76 @@ def _anchors_for(constraint: Constraint, pg: ParamGraph) -> List[SourceRef]:
     return anchors
 
 
-def eval_constraints(pg: ParamGraph, findings_in: List[InternalFinding]) -> List[InternalFinding]:
+def eval_constraints(
+    pg: ParamGraph, findings_in: List[InternalFinding]
+) -> Tuple[List[InternalFinding], List[ConstraintCheckResult]]:
     findings = list(findings_in)
+    checks: List[ConstraintCheckResult] = []
     for constraint in load_constraints():
         try:
             result, details = constraint.evaluate(pg)
         except ConstraintEvaluationError:
-            continue
-        if result is None:
-            break
-        if result:
+            checks.append(
+                ConstraintCheckResult(
+                    id=constraint.id,
+                    scope=constraint.scope,
+                    result="skip",
+                    details=_build_check_details(
+                        constraint,
+                        None,
+                        error="evaluation_error",
+                    ),
+                )
+            )
             continue
         detail_text = _format_details(details)
         message = constraint.message_tmpl
         if detail_text:
             message = f"{message} ({detail_text})"
-        findings.append(
-            InternalFinding(
-                rule_id=f"L2::{constraint.id}",
-                message=message,
-                severity=constraint.severity,
+        base_details = _build_check_details(
+            constraint,
+            details,
+            detail_text=detail_text or None,
+        )
+        if result is None:
+            checks.append(
+                ConstraintCheckResult(
+                    id=constraint.id,
+                    scope=constraint.scope,
+                    result="skip",
+                    details=base_details or None,
+                )
+            )
+            break
+        if result:
+            checks.append(
+                ConstraintCheckResult(
+                    id=constraint.id,
+                    scope=constraint.scope,
+                    result="pass",
+                    details=base_details or None,
+                )
+            )
+            continue
+        finding = InternalFinding(
+            rule_id=f"L2::{constraint.id}",
+            message=message,
+            severity=constraint.severity,
+            scope=constraint.scope,
+            anchors=_anchors_for(constraint, pg),
+        )
+        findings.append(finding)
+        fail_details = dict(base_details)
+        fail_details["message"] = message
+        checks.append(
+            ConstraintCheckResult(
+                id=constraint.id,
                 scope=constraint.scope,
-                anchors=_anchors_for(constraint, pg),
+                result="fail",
+                details=fail_details,
             )
         )
-    return findings
+    return findings, checks
 
 
 def _model_to_dict(model: Any) -> Dict[str, Any]:

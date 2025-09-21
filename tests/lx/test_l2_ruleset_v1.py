@@ -232,7 +232,7 @@ CONSTRAINT_MAP = {constraint.id: constraint for constraint in load_constraints()
 def test_l2_ruleset_detects_violation(rule_id: str) -> None:
     constraint = CONSTRAINT_MAP[rule_id]
     pg = VIOLATION_FACTORIES[rule_id]()
-    findings = eval_constraints(pg, [])
+    findings, _ = eval_constraints(pg, [])
     matches = [finding for finding in findings if finding.rule_id == f"L2::{rule_id}"]
     assert matches, f"Expected finding for {rule_id}"
     finding = matches[0]
@@ -243,5 +243,5 @@ def test_l2_ruleset_detects_violation(rule_id: str) -> None:
 @pytest.mark.parametrize("rule_id", sorted(COMPLIANT_FACTORIES))
 def test_l2_ruleset_allows_compliant_case(rule_id: str) -> None:
     pg = COMPLIANT_FACTORIES[rule_id]()
-    findings = eval_constraints(pg, [])
+    findings, _ = eval_constraints(pg, [])
     assert all(finding.rule_id != f"L2::{rule_id}" for finding in findings)

@@ -2167,7 +2167,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         TRACE.add(
             request.state.cid,
             "features",
-            build_features(parsed_doc, parsed.segments, hints),
+            build_features(parsed_doc, parsed.segments, hints, lx_features),
         )
 
     seg_findings: List[Dict[str, Any]] = []

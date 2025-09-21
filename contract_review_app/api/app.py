@@ -10,6 +10,7 @@ except Exception:  # pragma: no cover - best effort only
     pass
 
 import asyncio
+import copy
 import hashlib
 import json
 import os
@@ -218,6 +219,38 @@ class NormalizeAndTraceMiddleware(BaseHTTPMiddleware):
                 "language": language,
             }
 
+        trace_payload: Any = payload
+        if isinstance(payload, dict):
+            trace_payload = copy.deepcopy(payload)
+            analysis = trace_payload.get("analysis")
+            if isinstance(analysis, dict):
+                findings = analysis.get("findings")
+                if isinstance(findings, list):
+                    for finding in findings:
+                        if not isinstance(finding, dict):
+                            continue
+                        scope = finding.get("scope")
+                        method = "text"
+                        anchor_nth: int | None = None
+                        if isinstance(scope, Mapping):
+                            unit = scope.get("unit")
+                            unit_lower = unit.lower() if isinstance(unit, str) else ""
+                            nth_value = scope.get("nth")
+                            if unit_lower == "sentence" and nth_value is not None:
+                                method = "nth"
+                                if isinstance(nth_value, (int, float)) and not isinstance(
+                                    nth_value, bool
+                                ):
+                                    anchor_nth = int(nth_value)
+                                else:
+                                    try:
+                                        anchor_nth = int(str(nth_value))
+                                    except (TypeError, ValueError):
+                                        anchor_nth = None
+                            elif "token" in unit_lower:
+                                method = "token"
+                        finding["anchor"] = {"method": method, "nth": anchor_nth}
+
         TRACE.put(
             cid,
             {
@@ -225,7 +258,7 @@ class NormalizeAndTraceMiddleware(BaseHTTPMiddleware):
                 "path": request.url.path,
                 "status": response.status_code,
                 "headers": dict(new_resp.headers),
-                "body": payload,
+                "body": trace_payload,
                 **({"classifiers": classifiers} if classifiers else {}),
             },
         )
@@ -2261,6 +2294,11 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
 
     order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
     thr = order.get(str(risk_param).lower(), 1)
+    risk_value = next((level for level, val in order.items() if val == thr), "medium")
+    if FEATURE_TRACE_ARTIFACTS:
+        trace_meta = TRACE.get(request.state.cid) or {}
+        (trace_meta.setdefault("meta", {}))["risk_threshold"] = risk_value
+        TRACE.put(request.state.cid, trace_meta)
     # derive findings from YAML rule engine
     yaml_findings: List[Dict[str, Any]] = []
     active_packs: List[str] = []

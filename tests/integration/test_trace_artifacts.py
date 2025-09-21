@@ -51,3 +51,48 @@ def test_features_block_present():
         assert isinstance(tokens.get("len"), int)
     finally:
         _cleanup(client, modules)
+
+
+def test_proposals_block_present():
+    client, modules = _build_client("1")
+    try:
+        payload = {
+            "text": (
+                "This payment clause applies to a contracting authority and must comply with Regulation 113.\n"
+                "Payment notice and pay-less notice under the Construction Act applies."
+            )
+        }
+        response = client.post("/api/analyze", headers=_headers(), json=payload)
+        assert response.status_code == 200
+        body = response.json()
+        cid = response.headers.get("x-cid") or body.get("cid")
+        assert cid
+
+        trace_response = client.get(f"/api/trace/{cid}")
+        assert trace_response.status_code == 200
+        trace_body = trace_response.json()
+
+        proposals = trace_body.get("proposals")
+        assert isinstance(proposals, dict)
+
+        drafts = proposals.get("drafts")
+        assert isinstance(drafts, list)
+        assert drafts
+
+        merged = proposals.get("merged")
+        assert isinstance(merged, list)
+        assert merged
+
+        first_draft = drafts[0]
+        assert isinstance(first_draft.get("rule_id"), str) and first_draft["rule_id"]
+        assert isinstance(first_draft.get("ops"), list)
+        assert first_draft["ops"]
+
+        first_merged = merged[0]
+        assert isinstance(first_merged.get("rule_id"), str) and first_merged["rule_id"]
+        assert isinstance(first_merged.get("ops"), list)
+        assert first_merged["ops"]
+
+        assert first_draft["rule_id"] == first_merged["rule_id"]
+    finally:
+        _cleanup(client, modules)

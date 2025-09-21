@@ -1,4 +1,5 @@
-import { normalizeIntakeText, normalizeTextFull } from "./normalize_intake.ts";
+import { normalizeTextFull } from "./normalize_full.ts";
+import { normalizeIntakeText } from "./normalize_intake.ts";
 import { safeBodySearch } from "./safeBodySearch.ts";
 
 export function normalizeSnippetForSearch(snippet: string | null | undefined): string {

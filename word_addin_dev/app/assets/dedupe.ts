@@ -1,16 +1,11 @@
 import { AnalyzeFinding } from "./api-client.ts";
+import { normalizeIntakeText } from "./normalize_intake.ts";
 
 export const RISK_LEVELS = ["low", "medium", "high", "critical"] as const;
 export type RiskLevel = typeof RISK_LEVELS[number];
 
 export function normalizeText(s: string | undefined | null): string {
-  if (!s) return "";
-  return s
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .replace(/\u00A0/g, " ")
-    .replace(/[ \t]+/g, " ")
-    .trim();
+  return normalizeIntakeText(s ?? "");
 }
 
 export function normalizeSeverity(val: unknown): RiskLevel | null {

@@ -21,7 +21,7 @@ import logging
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Set, Tuple
 
 from collections import OrderedDict
 import secrets
@@ -1964,7 +1964,11 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         req.clause_type = clause_type
     if FEATURE_TRACE_ARTIFACTS:
         TRACE.add(request.state.cid, "features", {})
-        TRACE.add(request.state.cid, "dispatch", build_dispatch())
+        TRACE.add(
+            request.state.cid,
+            "dispatch",
+            build_dispatch(0, 0, 0, []),
+        )
         TRACE.add(request.state.cid, "constraints", build_constraints())
         TRACE.add(request.state.cid, "proposals", build_proposals())
     txt = req.text
@@ -2042,6 +2046,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     t0 = time.perf_counter()
     parsed_doc = ParsedDocument.from_text(txt)
     parsed = analysis_parser.parse_text(txt)
+    doc_language = str(getattr(parsed_doc, "language", "") or "").lower()
     t1 = time.perf_counter()
 
     lx_features = None  # noqa: F841  # reserved for future L0 integration
@@ -2081,6 +2086,10 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     seg_findings: List[Dict[str, Any]] = []
     clause_types_set: set[str] = set()
     dispatch_segments: List[Dict[str, Any]] = []
+    dispatch_candidates: List[Dict[str, Any]] = []
+    evaluated_rule_ids: Set[str] = set()
+    triggered_rule_ids: Set[str] = set()
+    active_pack_set: Set[str] = set()
     segments_for_yaml: List[Tuple[int, str, int]] = []
     candidate_rules_by_segment: Dict[int, Set[str]] = {}
     dispatcher_mod = None
@@ -2151,16 +2160,6 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                 clause_type,
                 seg_text,
                 int(seg.get("start", 0)),
-            )
-        except Exception:
-            pass
-
-    if dispatch_segments:
-        try:
-            TRACE.add(
-                request.state.cid,
-                "dispatch",
-                {"segments": dispatch_segments},
             )
         except Exception:
             pass
@@ -2260,6 +2259,31 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                 yaml_loader.load_rule_packs()
             load_duration = max(time.perf_counter() - load_start, 0.0)
 
+        # Build lookup helpers for dispatch artefact
+        try:
+            rule_lookup: Dict[str, Dict[str, Any]] = {
+                str((spec.get("id") or spec.get("rule_id") or "")): spec
+                for spec in getattr(yaml_loader, "_RULES", [])
+                if spec.get("id") or spec.get("rule_id")
+            }
+        except Exception:
+            rule_lookup = {}
+
+        try:
+            active_pack_records = yaml_loader.loaded_packs()
+        except Exception:
+            active_pack_records = []
+        active_pack_set = {
+            str(rec.get("path"))
+            for rec in active_pack_records
+            if isinstance(rec, dict) and rec.get("path")
+        }
+        active_packs = [
+            rec.get("path")
+            for rec in active_pack_records
+            if isinstance(rec, dict) and rec.get("path")
+        ]
+
         # 2) Candidate narrowing and per-segment evaluation
         doc_type_val = (
             getattr(snap, "doc_type", None)
@@ -2289,8 +2313,10 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
 
             if isinstance(filtered_result, tuple):
                 filtered_rules = list(filtered_result[0] or [])
+                coverage_entries = list(filtered_result[1] or [])
             else:
                 filtered_rules = list(filtered_result or [])
+                coverage_entries = []
 
             rules_payload = [item.get("rule") for item in filtered_rules]
 
@@ -2306,6 +2332,107 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                     ]
                 )
 
+            if coverage_entries:
+                for cov in coverage_entries:
+                    rule_id = str(
+                        cov.get("rule_id")
+                        or cov.get("id")
+                        or cov.get("rule", {}).get("id")
+                        or ""
+                    )
+                    if not rule_id:
+                        continue
+                    evaluated_rule_ids.add(rule_id)
+                    flags = 0
+                    try:
+                        flags = int(cov.get("flags") or 0)
+                    except Exception:
+                        flags = 0
+                    if flags & getattr(yaml_loader, "FIRED", 0):
+                        triggered_rule_ids.add(rule_id)
+
+                    rule_spec = rule_lookup.get(rule_id, {})
+                    triggers_spec = rule_spec.get("triggers") or {}
+                    expected_any = [
+                        getattr(pat, "pattern", str(pat))
+                        for pat in triggers_spec.get("any", [])
+                        if pat is not None
+                    ]
+
+                    evidence = cov.get("evidence") or []
+                    spans = cov.get("spans") or []
+                    matches: List[Dict[str, Any]] = []
+                    for idx, span in enumerate(spans):
+                        if not isinstance(span, Mapping):
+                            continue
+                        match_payload: Dict[str, Any] = {}
+                        start_val = span.get("start")
+                        end_val = span.get("end")
+                        if isinstance(start_val, (int, float)):
+                            match_payload["start"] = seg_start + int(start_val)
+                        if isinstance(end_val, (int, float)):
+                            match_payload["end"] = seg_start + int(end_val)
+                        if idx < len(evidence) and evidence[idx] is not None:
+                            match_payload["text"] = str(evidence[idx])
+                        if match_payload:
+                            matches.append(match_payload)
+
+                    reason = None
+                    if not (flags & getattr(yaml_loader, "FIRED", 0)):
+                        reasons: List[str] = []
+                        if flags & getattr(yaml_loader, "DOC_TYPE_MISMATCH", 0):
+                            reasons.append("doc_type_mismatch")
+                        if flags & getattr(yaml_loader, "JURISDICTION_MISMATCH", 0):
+                            reasons.append("jurisdiction_mismatch")
+                        if flags & getattr(yaml_loader, "NO_CLAUSE", 0):
+                            reasons.append("requires_clause_missing")
+                        if flags & getattr(yaml_loader, "REGEX_MISS", 0):
+                            reasons.append("trigger_miss")
+                        if flags & getattr(yaml_loader, "WHEN_FALSE", 0):
+                            reasons.append("when_clause_false")
+                        if flags & getattr(yaml_loader, "TEXT_NORMALIZATION_ISSUE", 0):
+                            reasons.append("normalization_issue")
+                        reason = ",".join(reasons) if reasons else None
+
+                    pack_id = cov.get("pack_id") or rule_spec.get("pack")
+                    packs_gate = True
+                    if pack_id and active_pack_set:
+                        packs_gate = str(pack_id) in active_pack_set
+
+                    lang_gate = True
+                    rule_langs_raw = rule_spec.get("language") or rule_spec.get(
+                        "languages"
+                    )
+                    rule_langs: Set[str] = set()
+                    if isinstance(rule_langs_raw, str):
+                        rule_langs = {rule_langs_raw.lower()}
+                    elif isinstance(rule_langs_raw, Iterable):
+                        rule_langs = {
+                            str(item).lower()
+                            for item in rule_langs_raw
+                            if item is not None and str(item).strip()
+                        }
+                    if rule_langs:
+                        lang_gate = bool(doc_language) and doc_language in rule_langs
+
+                    doctypes_gate = not bool(
+                        flags & getattr(yaml_loader, "DOC_TYPE_MISMATCH", 0)
+                    )
+
+                    dispatch_candidates.append(
+                        {
+                            "rule_id": rule_id,
+                            "gates": {
+                                "packs": packs_gate,
+                                "lang": lang_gate,
+                                "doctypes": doctypes_gate,
+                            },
+                            "gates_passed": bool(packs_gate and lang_gate and doctypes_gate),
+                            "expected_any": expected_any,
+                            "matched": matches,
+                            "reason_not_triggered": reason,
+                        }
+                    )
             run_start = time.perf_counter()
             findings_for_segment = yaml_engine.analyze(
                 seg_text,
@@ -2366,7 +2493,17 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                         }
                     )
 
-        active_packs = [p.get("path") for p in yaml_loader.loaded_packs()]
+        active_pack_records = yaml_loader.loaded_packs()
+        active_packs = [
+            rec.get("path")
+            for rec in active_pack_records
+            if isinstance(rec, dict) and rec.get("path")
+        ]
+        active_pack_set = {
+            str(rec.get("path"))
+            for rec in active_pack_records
+            if isinstance(rec, dict) and rec.get("path")
+        }
         rules_loaded = yaml_loader.rules_count()
 
         meta_map = {m["rule_id"]: m for m in fired_rules_meta}
@@ -2376,14 +2513,31 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                 f["matched_triggers"] = meta.get("matched_triggers", {})
                 f["trigger_positions"] = meta.get("positions", [])
     except Exception:
+        log.exception("YAML dispatch pipeline failed")
         yaml_findings = []
         active_packs = []
+        active_pack_set = set()
         rules_loaded = 0
         fired_rules_meta = []
         coverage_rules = []
         matched_rules = []
         load_duration = 0.0
         run_duration = 0.0
+
+    if FEATURE_TRACE_ARTIFACTS:
+        try:
+            TRACE.add(
+                request.state.cid,
+                "dispatch",
+                build_dispatch(
+                    rules_loaded,
+                    len(evaluated_rule_ids),
+                    len(triggered_rule_ids),
+                    dispatch_candidates,
+                ),
+            )
+        except Exception:
+            pass
 
     if yaml_findings:
         filtered_yaml = [

@@ -5,7 +5,8 @@
   "scripts": {
     "build": "vite build && node tools/copy-bundle.cjs",
     "test": "vitest run",
-    "lint": "eslint app --ext .ts --max-warnings=0"
+    "lint": "eslint app --ext .ts --max-warnings=0",
+    "test:ci": "vitest run -c vitest.config.ci.ts"
   },
   "devDependencies": {
     "vitest": "^0.34.6",

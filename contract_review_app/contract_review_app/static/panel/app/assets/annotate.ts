@@ -1,6 +1,7 @@
 import { AnalyzeFinding } from "./api-client.ts";
 import { dedupeFindings, normalizeText } from "./dedupe.ts";
 import { findAnchors, normalizeSnippetForSearch, pickLongToken, searchNth } from "./anchors.ts";
+import { normalizeIntakeText } from "./normalize_intake.ts";
 import type { AnalyzeFindingEx, AnnotationPlanEx } from "./types.ts";
 
 /** Utilities for inserting comments into Word with batching and retries. */
@@ -115,7 +116,7 @@ const normalizedCache = new Map<string, string>();
 function normalizeCached(text: string): string {
   let cached = normalizedCache.get(text);
   if (cached == null) {
-    cached = normalizeText(text);
+    cached = normalizeIntakeText(text).trim();
     normalizedCache.set(text, cached);
   }
   return cached;
@@ -124,12 +125,12 @@ function normalizeCached(text: string): string {
 export function computeNthFromOffsets(text: string, snippet: string, start?: number): number | null {
   if (!text || !snippet) return null;
   if (typeof start !== 'number' || !Number.isFinite(start) || start < 0) return null;
-  const normSnippet = normalizeText(snippet);
+  const normSnippet = normalizeIntakeText(snippet).trim();
   if (!normSnippet) return null;
 
   const normText = normalizeCached(text);
   const prefix = text.slice(0, Math.max(0, Math.min(text.length, Math.floor(start))));
-  const normPrefix = normalizeText(prefix);
+  const normPrefix = normalizeIntakeText(prefix).trim();
 
   if (!normText) return null;
 
@@ -240,7 +241,7 @@ export const MAX_ANNOTATE_OPS = 200;
  */
 export function planAnnotations(findings: AnalyzeFindingEx[]): AnnotationPlan[] {
   const baseText = String((globalThis as any).__lastAnalyzed || "");
-  const baseNorm = normalizeText(baseText);
+  const baseNorm = normalizeIntakeText(baseText).trim();
   const list = Array.isArray(findings) ? findings : [];
   const deduped = dedupeFindings(list as AnalyzeFinding[]);
   const sorted = deduped
@@ -264,7 +265,7 @@ export function planAnnotations(findings: AnalyzeFindingEx[]): AnnotationPlan[] 
       skipped++;
       continue;
     }
-    const norm = normalizeText(snippet);
+    const norm = normalizeIntakeText(snippet).trim();
     const nthSource = typeof f.nth === "number" ? f.nth : computeNthFromOffsets(baseText, snippet, start);
     const nth = typeof nthSource === "number" && nthSource >= 0 ? Math.floor(nthSource) : undefined;
     const occIdx = typeof nth === "number" ? nth : nthOccurrenceIndex(baseNorm, norm, start);
@@ -274,7 +275,7 @@ export function planAnnotations(findings: AnalyzeFindingEx[]): AnnotationPlan[] 
       occIdx,
       msg: buildLegalComment(f),
       rule_id: f.rule_id,
-      normalized_fallback: normalizeText((f as any).normalized_snippet || ""),
+      normalized_fallback: normalizeIntakeText((f as any).normalized_snippet || "").trim(),
       start,
       end,
       nth

@@ -1,47 +1,15 @@
-import { normalizeText } from "./dedupe.ts";
+import { normalizeIntakeText } from "./normalize_intake.ts";
 import { safeBodySearch } from "./safeBodySearch.ts";
-
-const quoteMap: Record<string, string> = {
-  '\u201C': '"',
-  '\u201D': '"',
-  '\u201E': '"',
-  '\u201F': '"',
-  '\u00AB': '"',
-  '\u00BB': '"',
-  '\u2033': '"',
-  '\u2036': '"',
-  '\u2018': "'",
-  '\u2019': "'",
-  '\u201A': "'",
-  '\u201B': "'",
-  '\u2032': "'",
-  '\u2035': "'",
-};
-
-const dashMap: Record<string, string> = {
-  '\u2010': '-',
-  '\u2011': '-',
-  '\u2012': '-',
-  '\u2013': '-',
-  '\u2014': '-',
-  '\u2015': '-',
-  '\u2212': '-',
-};
 
 export function normalizeSnippetForSearch(snippet: string | null | undefined): string {
   if (!snippet) return "";
-  let res = String(snippet);
-  res = res.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  res = res.replace(/\u00A0/g, " ");
-  res = res.replace(/[\u2010-\u2015\u2212]/g, ch => dashMap[ch] || '-');
-  res = res.replace(/[\u00AB\u00BB\u201C-\u201F\u2033\u2036]/g, ch => quoteMap[ch] || '"');
-  res = res.replace(/[\u2018-\u201B\u2032\u2035]/g, ch => quoteMap[ch] || "'");
-  return res;
+  return normalizeIntakeText(String(snippet));
 }
 
 export function pickLongToken(snippet: string | null | undefined): string | null {
   if (!snippet) return null;
-  const tokens = String(snippet)
+  const normalized = normalizeIntakeText(String(snippet));
+  const tokens = normalized
     .replace(/[^\p{L}\p{N} ]/gu, " ")
     .split(" ")
     .map(t => t.trim())
@@ -78,13 +46,16 @@ export async function findAnchors(body: BodyLike, snippetRaw: string, opts?: { n
 
   const attempt = async (txt: string) => await safeBodySearch(body, txt, opt);
 
-  const rawRes = await attempt(snippetRaw || "");
+  const raw = snippetRaw || "";
+  const rawRes = await attempt(raw);
   let items: RangeLike[] = rawRes?.items || [];
 
   if (!items.length) {
-    const norm = normalizeText(snippetRaw || "");
-    const normRes = await attempt(norm);
-    items = normRes?.items || [];
+    const norm = normalizeIntakeText(raw).trim();
+    if (norm) {
+      const normRes = await attempt(norm);
+      items = normRes?.items || [];
+    }
   }
 
   // Sort by start,end
@@ -143,7 +114,14 @@ export async function searchNth(body: BodyLike, snippetRaw: string, nth: number,
   const idx = typeof nth === 'number' && Number.isFinite(nth) && nth >= 0 ? Math.floor(nth) : 0;
   const searchOpts = opt || { matchCase: false, matchWholeWord: false };
   const res = await safeBodySearch(body, snippetRaw, searchOpts);
-  const items: RangeLike[] = res?.items || [];
+  let items: RangeLike[] = res?.items || [];
+  if (!items.length) {
+    const norm = normalizeIntakeText(snippetRaw).trim();
+    if (norm && norm !== snippetRaw) {
+      const normRes = await safeBodySearch(body, norm, searchOpts);
+      items = normRes?.items || [];
+    }
+  }
   if (!items.length) return null;
   if (idx >= items.length) return null;
   const picked = items[idx] ?? null;

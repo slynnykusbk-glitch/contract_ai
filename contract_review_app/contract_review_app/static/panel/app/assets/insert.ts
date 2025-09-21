@@ -20,6 +20,7 @@ export async function insertDraftText(
   await w.Word.run(async (context: any) => {
     const doc = context.document;
     let target: any = null;
+    const prevTrack = doc.trackRevisions;
     try {
       const arr = (w.__findings || []) as any[];
       const idx = w.__findingIdx;
@@ -39,6 +40,7 @@ export async function insertDraftText(
       await context.sync();
       target = sel.isEmpty ? doc.body.getRange('End') : sel;
     }
+    doc.trackRevisions = true;
     const range = target.insertText(text, w.Word.InsertLocation.replace);
     const lines = [`${COMMENT_PREFIX} Suggested clause – ${mode}`];
     const rat = (rationale || '').split(/\r?\n/).slice(0, 2).join(' ');
@@ -54,6 +56,8 @@ export async function insertDraftText(
     lines.push('schema 1.4 | model gpt-4o-mini | provider azure');
 
     try { (doc as any).comments["add"](range, lines.join('\n')); } catch {}
+    await context.sync();
+    doc.trackRevisions = prevTrack;
     await context.sync();
   }).catch((e: any) => {
     const g: any = globalThis as any;

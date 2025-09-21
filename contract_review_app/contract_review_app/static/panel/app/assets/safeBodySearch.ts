@@ -3,6 +3,7 @@ export async function safeBodySearch(body: any, needle: string, options?: any): 
   const txt = (needle ?? '').trim();
   if (!txt) return { items: [] };
 
+  // Normal search for short needles
   if (txt.length <= 240) {
     try {
       const res = body.search(txt, options);
@@ -14,6 +15,7 @@ export async function safeBodySearch(body: any, needle: string, options?: any): 
     }
   }
 
+  // Two phase search for long strings: anchor -> inner search
   const anchor = txt.slice(0, 120);
   let anchorRes: any;
   try {
@@ -46,6 +48,7 @@ export async function safeBodySearch(body: any, needle: string, options?: any): 
       } catch {}
     }
 
+    // token based fallback
     const tokens = innerNeedle.split(/\s+/).filter(t => t.length > 3).slice(0, 5);
     let ok = true;
     for (const t of tokens) {

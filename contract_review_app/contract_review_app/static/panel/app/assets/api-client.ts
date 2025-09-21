@@ -9,11 +9,29 @@ export type Meta = {
   usage?: string | null;
   status?: string | null;
 };
+
 import type { components } from "../types/api";
 import { getApiKeyFromStore, getSchemaFromStore } from "./store.ts";
 import { registerFetch, deregisterFetch, registerTimer, deregisterTimer, withBusy } from './pending.ts';
 import { checkHealth } from './health.ts';
 import { notifyWarn } from './notifier';
+
+const DEV_MODE = (() => {
+  try {
+    const ls = localStorage.getItem('cai_dev');
+    if (ls === '1') return true;
+    const params = new URLSearchParams(globalThis.location?.search || '');
+    return params.get('debug') === '1';
+  } catch { return false; }
+})();
+
+function logError(msg: string, err: any, extra?: any) {
+  if (DEV_MODE) {
+    console.error(msg, err, extra);
+  } else {
+    console.error(msg, err);
+  }
+}
 
 export type AnalyzeFinding = components["schemas"]["Finding"] & Record<string, any>;
 
@@ -151,6 +169,7 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
 
     async function attempt(n: number): Promise<any> {
       const ctrl = new AbortController();
+      (ctrl as any).__key = path;
       const t = setTimeout(() => ctrl.abort(`timeout ${timeoutMs}ms`), timeoutMs!);
       registerFetch(ctrl);
       registerTimer(t);
@@ -183,6 +202,11 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
           }
           throw new DOMException(reason, 'AbortError');
         }
+        logError(`[NET] ${path} failed`, e, { body: bodyWithSchema });
+        try {
+          const msg = DEV_MODE ? String(e) : 'Analysis failed, please try again';
+          notifyWarn(msg);
+        } catch {}
         throw e;
       } finally {
         clearTimeout(t);
@@ -208,6 +232,7 @@ async function req(path: string, { method='GET', body=null, key=path, timeoutMs=
     const payload = body && method !== 'GET' ? { ...body, schema } : method !== 'GET' ? { schema } : undefined;
 
     const ctrl = new AbortController();
+    (ctrl as any).__key = path;
     const t = setTimeout(() => ctrl.abort('timeout'), timeoutMs);
     registerFetch(ctrl);
     registerTimer(t);
@@ -278,18 +303,22 @@ export async function apiSummaryGet() {
 
 
 export async function apiQaRecheck(
-  input: { document_id?: string; text?: string; rules?: any } | string,
+  input: { document_id?: string; text?: string; rules?: any; risk?: string } | string,
   rules: any = {},
 ) {
   let payload: any;
+  let risk: string | undefined;
   if (typeof input === 'string') {
     payload = { text: input };
   } else {
     payload = input.document_id ? { document_id: input.document_id } : { text: input.text };
     rules = input.rules ?? {};
+    risk = input.risk ?? risk;
   }
   const dict = Array.isArray(rules) ? Object.assign({}, ...rules) : (rules || {});
-  const { resp, json } = await postJSON('/api/qa-recheck', { ...payload, rules: dict });
+  const body = { ...payload, rules: dict };
+  if (risk) body.risk = risk;
+  const { resp, json } = await postJSON('/api/qa-recheck', body);
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
   try { applyMetaToBadges(meta); } catch {}
   return { ok: resp.ok, json, resp, meta };

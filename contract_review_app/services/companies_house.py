@@ -6,12 +6,13 @@ from typing import Any, Dict
 
 import httpx
 
+from contract_review_app.api.limits import CH_TIMEOUT_S
 from contract_review_app.config import CH_API_KEY, CH_ENABLED
 
 log = logging.getLogger("contract_ai")
 
 BASE_URL = os.getenv("COMPANIES_HOUSE_BASE", "https://api.company-information.service.gov.uk")
-TIMEOUT_S = float(os.getenv("CH_TIMEOUT_S", "8"))
+TIMEOUT_S = float(CH_TIMEOUT_S)
 CACHE_TTL = int(os.getenv("CH_CACHE_TTL", str(20 * 60)))  # default 20 minutes
 
 # cache keyed by endpoint path

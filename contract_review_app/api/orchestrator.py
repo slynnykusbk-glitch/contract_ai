@@ -1,6 +1,25 @@
 from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 from itertools import islice
+import asyncio
+from functools import wraps
+
+from contract_review_app.api.limits import (
+    ANALYZE_TIMEOUT_S,
+    QA_TIMEOUT_S,
+    DRAFT_TIMEOUT_S,
+)
+
+
+def _with_timeout(timeout_s: float):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            return await asyncio.wait_for(func(*args, **kwargs), timeout=timeout_s)
+
+        return wrapper
+
+    return decorator
 
 # Prefer YAML/runtime rule registry when available
 try:
@@ -302,6 +321,7 @@ def _norm_suggestion(s: Any) -> Dict[str, Any]:
 
 
 # ----------------- Public API -----------------
+@_with_timeout(ANALYZE_TIMEOUT_S)
 async def run_analyze(inp: "AnalyzeIn") -> Dict[str, Any]:
     text = getattr(inp, "text", "") or ""
     # Prefer YAML runtime for now (registry-based)
@@ -348,6 +368,7 @@ async def run_analyze(inp: "AnalyzeIn") -> Dict[str, Any]:
     return {"analysis": analysis, "results": results, "clauses": clauses, "document": doc}
 
 
+@_with_timeout(DRAFT_TIMEOUT_S)
 async def run_gpt_draft(inp: "DraftIn") -> Dict[str, Any]:
     text = getattr(inp, "text", "") or ""
     clause_type = getattr(inp, "clause_type", None)
@@ -430,6 +451,7 @@ async def run_suggest_edits(inp: "SuggestIn") -> Dict[str, Any]:
     return suggestions
 
 
+@_with_timeout(QA_TIMEOUT_S)
 async def run_qa_recheck(inp: "QARecheckIn") -> Dict[str, Any]:
     original_text = getattr(inp, "text", "") or ""
     # BEFORE

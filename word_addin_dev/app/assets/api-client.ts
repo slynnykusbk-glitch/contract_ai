@@ -103,9 +103,15 @@ function base(): string {
   catch { return DEFAULT_BASE; }
 }
 
-const ANALYZE_BASE_MS = 9000;
-const ANALYZE_PER_KB_MS = 60;
-const ANALYZE_MAX_MS = 90000;
+export function computeAnalyzeTimeout(textBytes: number): number {
+  const BASE = 28_000;   // 28с базово
+  const PER_KB = 50;     // +50мс за каждый КБ текста
+  const CEIL = 120_000;  // потолок 120с
+  const kb = Math.ceil((textBytes || 0) / 1024);
+  return Math.min(CEIL, BASE + PER_KB * kb);
+}
+
+const DEFAULT_TIMEOUT_MS = 9000;
 const ANALYZE_RETRY_COUNT = 1;
 const ANALYZE_RETRY_BACKOFF_MS = 3000;
 
@@ -128,8 +134,7 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
 
     if (path === '/api/analyze') {
       if (timeoutMs == null) {
-        const dyn = ANALYZE_BASE_MS + ANALYZE_PER_KB_MS * (sizeBytes / 1024);
-        timeoutMs = Math.max(ANALYZE_BASE_MS, Math.min(ANALYZE_MAX_MS, Math.floor(dyn)));
+        timeoutMs = computeAnalyzeTimeout(sizeBytes);
       }
       try {
         for (const k of [
@@ -165,7 +170,7 @@ export async function postJSON(path: string, body: any, timeoutOverride?: number
         if (rb) backoffMs = parseInt(rb, 10);
       } catch {}
     }
-    timeoutMs = timeoutMs ?? ANALYZE_BASE_MS;
+    timeoutMs = timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
     async function attempt(n: number): Promise<any> {
       const ctrl = new AbortController();
@@ -272,7 +277,31 @@ export async function analyze(opts: any = {}) {
     mode:  opts?.mode ?? 'live',
     risk:  opts?.risk ?? 'medium',
   };
-  const { resp, json } = await postJSON('/api/analyze', body);
+  let textBytes = 0;
+  const guessBytes = (input: unknown): number => {
+    if (!input) return 0;
+    if (typeof input === 'string') return new TextEncoder().encode(input).length;
+    if (typeof input === 'number' && Number.isFinite(input)) return input;
+    if (typeof input === 'object') {
+      const anyObj = input as Record<string, unknown>;
+      if (typeof anyObj.text === 'string') return new TextEncoder().encode(anyObj.text).length;
+      if (anyObj.text && typeof (anyObj.text as any).length === 'number') return Number((anyObj.text as any).length) || 0;
+    }
+    return 0;
+  };
+  try {
+    const w = window as any;
+    textBytes = guessBytes(w?.__lastAnalyzed);
+    if (!textBytes) {
+      const metaBytes = w?.__last?.analyze?.json?.meta?.text_bytes ?? w?.__last?.analyze?.json?.meta?.textBytes;
+      textBytes = guessBytes(metaBytes);
+    }
+  } catch {}
+  if (!textBytes) {
+    textBytes = guessBytes(body.text);
+  }
+  const timeoutMs = computeAnalyzeTimeout(textBytes);
+  const { resp, json } = await postJSON('/api/analyze', body, timeoutMs);
   const meta = metaFromResponse({ headers: resp.headers, json, status: resp.status });
   try { applyMetaToBadges(meta); } catch {}
   try {

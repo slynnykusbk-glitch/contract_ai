@@ -21,7 +21,7 @@ import logging
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path, PurePosixPath
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 from collections import OrderedDict
 import secrets
@@ -1969,7 +1969,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             "dispatch",
             build_dispatch(0, 0, 0, []),
         )
-        TRACE.add(request.state.cid, "constraints", build_constraints())
+        TRACE.add(request.state.cid, "constraints", build_constraints([]))
         TRACE.add(request.state.cid, "proposals", build_proposals())
     txt = req.text
     debug = request.query_params.get("debug")  # noqa: F841
@@ -2178,6 +2178,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             if rule_id:
                 seen_ids.add(str(rule_id))
 
+        new_payloads: List[Dict[str, Any]] = []
         for item in new_items or []:
             if isinstance(item, InternalFinding):
                 try:
@@ -2192,7 +2193,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                 continue
 
             anchors = payload.get("anchors") or []
-            merged.append(
+            new_payloads.append(
                 {
                     "rule_id": rule_id,
                     "severity": payload.get("severity"),
@@ -2211,7 +2212,12 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             )
             seen_ids.add(str(rule_id))
 
-        return apply_merge_policy(merged)
+        merged = apply_merge_policy(merged)
+        if new_payloads:
+            new_payloads.sort(key=lambda item: str(item.get("rule_id") or ""))
+            merged.extend(new_payloads)
+
+        return merged
 
     # resolve citations for each finding after final list is determined
     def _add_citations(lst: List[Dict[str, Any]]):
@@ -2574,10 +2580,13 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         else:
             findings = []
 
+    constraint_checks_iter: Sequence[Any] | List[Any] = []
+    constraint_checks_populated = False
     if FEATURE_LX_ENGINE and LX_L2_CONSTRAINTS:
         try:
             pg = constraints.build_param_graph(snap, parsed.segments, lx_features)
-            l2_results = constraints.eval_constraints(pg, findings)
+            l2_results, constraint_checks_iter = constraints.eval_constraints(pg, findings)
+            constraint_checks_populated = True
             l2_internal = [
                 item for item in l2_results if isinstance(item, InternalFinding)
             ]
@@ -2601,10 +2610,16 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                         l2_results_filtered = [InternalFinding(**payload)]
             if l2_results_filtered:
                 findings = merge_findings(findings, l2_results_filtered)
-            try:
-                TRACE.add(request.state.cid, "constraints", constraints.to_trace(pg, l2_results))
-            except Exception:
-                pass
+        except Exception:
+            pass
+
+    if constraint_checks_populated:
+        try:
+            TRACE.add(
+                request.state.cid,
+                "constraints",
+                build_constraints(constraint_checks_iter),
+            )
         except Exception:
             pass
 

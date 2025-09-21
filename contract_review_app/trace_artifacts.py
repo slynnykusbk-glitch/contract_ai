@@ -191,8 +191,61 @@ def build_dispatch(
     }
 
 
-def build_constraints(*args: Any, **kwargs: Any) -> TConstraints:
-    return {}
+def _coerce_check_details(details: Any) -> dict[str, Any]:
+    if details is None:
+        return {}
+    if isinstance(details, Mapping):
+        return {str(k): v for k, v in details.items()}
+    if hasattr(details, "model_dump"):
+        try:
+            dumped = details.model_dump(exclude_none=True)  # type: ignore[attr-defined]
+            if isinstance(dumped, dict):
+                return {str(k): v for k, v in dumped.items()}
+        except Exception:
+            pass
+    if hasattr(details, "dict"):
+        try:
+            dumped = details.dict()  # type: ignore[attr-defined]
+            if isinstance(dumped, dict):
+                return {str(k): v for k, v in dumped.items()}
+        except Exception:
+            pass
+    return {"value": details}
+
+
+def build_constraints(checks_iter: Iterable[Any]) -> TConstraints:
+    checks_payload: list[dict[str, Any]] = []
+    for entry in checks_iter or []:
+        if entry is None:
+            continue
+        if isinstance(entry, Mapping):
+            raw_id = entry.get("id")
+            raw_scope = entry.get("scope")
+            raw_result = entry.get("result")
+            raw_details = entry.get("details")
+        else:
+            raw_id = getattr(entry, "id", None)
+            raw_scope = getattr(entry, "scope", None)
+            raw_result = getattr(entry, "result", None)
+            raw_details = getattr(entry, "details", None)
+
+        check_id = str(raw_id) if raw_id is not None else ""
+        scope = str(raw_scope) if raw_scope is not None else ""
+        result = str(raw_result or "").lower()
+        if result not in {"pass", "fail", "skip"}:
+            result = "skip"
+        details = _coerce_check_details(raw_details)
+
+        checks_payload.append(
+            {
+                "id": check_id,
+                "scope": scope,
+                "result": result,  # type: ignore[typeddict-item]
+                "details": details,
+            }
+        )
+
+    return {"checks": checks_payload}
 
 
 def build_proposals(*args: Any, **kwargs: Any) -> TProposals:

@@ -88,8 +88,12 @@ def test_trace_flag_enabled():
         assert isinstance(payload["features"], dict)
         assert "doc" in payload["features"]
         assert "segments" in payload["features"]
-        for key in ("dispatch", "proposals"):
-            assert payload[key] == {}
+        dispatch = payload["dispatch"]
+        assert isinstance(dispatch, dict)
+        proposals = payload["proposals"]
+        assert isinstance(proposals, dict)
+        assert proposals.get("drafts") == []
+        assert proposals.get("merged") == []
         constraints = payload["constraints"]
         assert isinstance(constraints, dict)
         assert constraints.get("checks") == []

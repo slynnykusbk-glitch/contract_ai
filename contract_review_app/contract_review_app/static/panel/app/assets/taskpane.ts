@@ -230,12 +230,36 @@ function ensureContainer(parent: HTMLElement) {
   return container;
 }
 
+type CompaniesHouseJson = {
+  summary?: {
+    parties?: Array<{ registry?: PartyRegistry | null } | null> | null;
+  };
+  meta?: {
+    companies_meta?: Array<CompaniesMetaItem | null> | null;
+  };
+};
+
 export function renderCompaniesHouse(
-  registries: PartyRegistry[] | undefined,
-  metaItems: CompaniesMetaItem[] | undefined,
+  jsonOrRegistries: CompaniesHouseJson | PartyRegistry[] | undefined,
+  metaItems?: CompaniesMetaItem[] | undefined,
 ) {
-  const parties = Array.isArray(registries) ? registries.filter(Boolean) : [];
-  const companiesMeta = Array.isArray(metaItems) ? metaItems.filter(Boolean) : [];
+  let parties: PartyRegistry[] = [];
+  let companiesMeta: CompaniesMetaItem[] = [];
+
+  if (Array.isArray(jsonOrRegistries)) {
+    parties = jsonOrRegistries.filter(Boolean);
+    companiesMeta = Array.isArray(metaItems) ? metaItems.filter(Boolean) : [];
+  } else {
+    const json = jsonOrRegistries;
+    parties = Array.isArray(json?.summary?.parties)
+      ? json.summary.parties
+          .map(party => party?.registry)
+          .filter((registry): registry is PartyRegistry => Boolean(registry))
+      : [];
+    companiesMeta = Array.isArray(json?.meta?.companies_meta)
+      ? json.meta.companies_meta.filter((item): item is CompaniesMetaItem => Boolean(item))
+      : [];
+  }
 
   const containerExisting = document.getElementById(CH_BLOCK_ID) as HTMLElement | null;
   if (!parties.length && !companiesMeta.length) {
@@ -843,15 +867,6 @@ export function renderAnalysisSummary(json: any) {
   const findings = Array.isArray(json?.findings) ? json.findings : [];
   const recs = Array.isArray(json?.recommendations) ? json.recommendations : [];
 
-  const registries: PartyRegistry[] = Array.isArray(json?.summary?.parties)
-    ? json.summary.parties
-        .map((p: any) => p?.registry)
-        .filter((reg: any): reg is PartyRegistry => Boolean(reg))
-    : [];
-  const companiesMeta: CompaniesMetaItem[] = Array.isArray(json?.meta?.companies_meta)
-    ? json.meta.companies_meta.filter((item: any): item is CompaniesMetaItem => Boolean(item))
-    : [];
-
   const thr = getRiskThreshold();
   const visibleFindings = filterByThreshold(findings, thr);
   const visible = visibleFindings.length;
@@ -927,7 +942,7 @@ export function renderAnalysisSummary(json: any) {
   const rb = mustGetElementById<HTMLElement>("resultsBlock");
   rb.style.removeProperty("display");
 
-  renderCompaniesHouse(registries, companiesMeta);
+  renderCompaniesHouse(json);
 }
 
 export function renderResults(res: any) {

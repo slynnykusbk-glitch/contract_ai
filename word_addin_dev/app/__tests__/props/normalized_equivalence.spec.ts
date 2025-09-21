@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 
-let normalizeSnippetForSearch: (typeof import('../../anchors'))['normalizeSnippetForSearch'];
-let normalizeIntakeText: (typeof import('../../normalize_intake'))['normalizeIntakeText'];
-let normalizeText: (typeof import('../../dedupe'))['normalizeText'];
+let normalizeSnippetForSearch: (typeof import('../../assets/anchors'))['normalizeSnippetForSearch'];
+let normalizeIntakeText: (typeof import('../../assets/normalize_intake'))['normalizeIntakeText'];
+let normalizeText: (typeof import('../../assets/dedupe'))['normalizeText'];
 
 beforeAll(async () => {
-  const anchorsMod = await import('../../anchors');
+  const anchorsMod = await import('../../assets/anchors');
   normalizeSnippetForSearch = anchorsMod.normalizeSnippetForSearch;
-  const intakeMod = await import('../../normalize_intake');
+  const intakeMod = await import('../../assets/normalize_intake');
   normalizeIntakeText = intakeMod.normalizeIntakeText;
-  const dedupeMod = await import('../../dedupe');
+  const dedupeMod = await import('../../assets/dedupe');
   normalizeText = dedupeMod.normalizeText;
 });
 

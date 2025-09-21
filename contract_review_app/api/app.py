@@ -2507,14 +2507,25 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                         if not isinstance(span, Mapping):
                             continue
                         match_payload: Dict[str, Any] = {}
+                        span_payload: Dict[str, int] = {}
                         start_val = span.get("start")
                         end_val = span.get("end")
                         if isinstance(start_val, (int, float)):
-                            match_payload["start"] = seg_start + int(start_val)
+                            span_payload["start"] = seg_start + int(start_val)
                         if isinstance(end_val, (int, float)):
-                            match_payload["end"] = seg_start + int(end_val)
+                            span_payload["end"] = seg_start + int(end_val)
+                        if span_payload:
+                            match_payload["span"] = span_payload
+
+                        text_value: Optional[str] = None
                         if idx < len(evidence) and evidence[idx] is not None:
-                            match_payload["text"] = str(evidence[idx])
+                            text_value = str(evidence[idx])
+
+                        if text_value:
+                            digest = hashlib.sha256(text_value.encode("utf-8")).hexdigest()
+                            match_payload["hash8"] = digest[:8]
+                            match_payload["len"] = len(text_value)
+
                         if match_payload:
                             matches.append(match_payload)
 

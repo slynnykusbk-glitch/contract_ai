@@ -64,5 +64,15 @@ def test_trace_dispatch_rules_match_findings():
         for candidate in gated_matches:
             rule_id = str(candidate.get("rule_id"))
             assert rule_id in finding_ids or rule_id in failed_constraint_rules
+            triggers = candidate.get("triggers") or {}
+            matched = triggers.get("matched") or []
+            for match in matched:
+                assert isinstance(match, dict)
+                lowered = {str(k).lower() for k in match.keys()}
+                assert "text" not in lowered
+                span = match.get("span") if isinstance(match.get("span"), dict) else {}
+                has_span = bool(span)
+                has_hash = "hash8" in match and "len" in match
+                assert has_span or has_hash, "expected span or hash/len metadata"
     finally:
         _cleanup(client, modules)

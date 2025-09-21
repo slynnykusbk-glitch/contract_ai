@@ -308,27 +308,126 @@ def build_features(
     doc_payload["hints"] = _normalize_hints(hints)
     return payload
 
+def _sanitize_groups(groups: Any) -> Mapping[str, Any]:
+    if not isinstance(groups, Mapping):
+        return {}
+
+    sanitized: dict[str, Any] = {}
+    for raw_key, raw_value in groups.items():
+        key = str(raw_key)
+        if key == "":
+            continue
+
+        def _clean(value: Any) -> Any:
+            if value is None:
+                return None
+            if isinstance(value, (str, int, float, bool)):
+                return value
+            if isinstance(value, Mapping):
+                nested = {
+                    str(k): _clean(v)
+                    for k, v in value.items()
+                    if v is not None
+                }
+                return {k: v for k, v in nested.items() if v is not None}
+            if isinstance(value, Iterable) and not isinstance(
+                value, (str, bytes, bytearray)
+            ):
+                cleaned = [
+                    _clean(v)
+                    for v in value
+                    if v is not None
+                ]
+                return [v for v in cleaned if v is not None]
+            return str(value)
+
+        cleaned_value = _clean(raw_value)
+        if cleaned_value is None:
+            continue
+        sanitized[key] = cleaned_value
+
+    return sanitized
+
+
 def _coerce_match_entry(item: Any) -> Mapping[str, Any]:
-    start = None
-    end = None
-    text = None
+    raw_start = None
+    raw_end = None
+    raw_text: Any = None
+    raw_span: Any = None
 
     if isinstance(item, Mapping):
-        start = item.get("start")
-        end = item.get("end")
-        text = item.get("text")
+        raw_start = item.get("start")
+        raw_end = item.get("end")
+        raw_text = item.get("text")
+        raw_span = item.get("span")
     else:
-        start = getattr(item, "start", None)
-        end = getattr(item, "end", None)
-        text = getattr(item, "text", None)
+        raw_start = getattr(item, "start", None)
+        raw_end = getattr(item, "end", None)
+        raw_text = getattr(item, "text", None)
+        raw_span = getattr(item, "span", None)
+
+    span: dict[str, int] = {}
+    if isinstance(raw_span, Mapping):
+        span_start = raw_span.get("start")
+        span_end = raw_span.get("end")
+        if isinstance(span_start, (int, float)):
+            span["start"] = int(span_start)
+        if isinstance(span_end, (int, float)):
+            span["end"] = int(span_end)
+
+    if isinstance(raw_start, (int, float)):
+        span.setdefault("start", int(raw_start))
+    if isinstance(raw_end, (int, float)):
+        span.setdefault("end", int(raw_end))
 
     payload: dict[str, Any] = {}
-    if isinstance(start, (int, float)):
-        payload["start"] = int(start)
-    if isinstance(end, (int, float)):
-        payload["end"] = int(end)
-    if text is not None:
-        payload["text"] = str(text)
+
+    if span:
+        payload["span"] = span
+
+    pattern_id = None
+    rule_id = None
+    groups = None
+    pattern = None
+    flag = None
+
+    if isinstance(item, Mapping):
+        pattern_id = item.get("pattern_id")
+        rule_id = item.get("rule_id")
+        groups = item.get("groups")
+        pattern = item.get("pattern")
+        flag = item.get("flag")
+    else:
+        pattern_id = getattr(item, "pattern_id", None)
+        rule_id = getattr(item, "rule_id", None)
+        groups = getattr(item, "groups", None)
+        pattern = getattr(item, "pattern", None)
+        flag = getattr(item, "flag", None)
+
+    if pattern_id not in (None, ""):
+        payload["pattern_id"] = str(pattern_id)
+    if rule_id not in (None, ""):
+        payload["rule_id"] = str(rule_id)
+
+    sanitized_groups = _sanitize_groups(groups)
+    if sanitized_groups:
+        payload["groups"] = sanitized_groups
+
+    if pattern is not None and not isinstance(pattern, (bytes, bytearray)):
+        pattern_str = str(pattern)
+        if pattern_str:
+            payload["pattern"] = pattern_str
+
+    if flag is not None and not isinstance(flag, (bytes, bytearray)):
+        flag_str = str(flag)
+        if flag_str:
+            payload["flag"] = flag_str
+
+    if isinstance(raw_text, str) and raw_text:
+        digest = sha256(raw_text.encode("utf-8")).hexdigest()
+        payload["hash8"] = digest[:8]
+        payload["len"] = len(raw_text)
+
     return payload
 
 

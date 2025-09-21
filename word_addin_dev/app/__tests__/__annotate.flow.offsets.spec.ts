@@ -2,11 +2,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const anchorsMock = vi.fn();
 const searchNthMock = vi.fn();
+const anchorByOffsetsMock = vi.fn();
 
 vi.mock('../assets/anchors', async () => {
   const actual = await vi.importActual<typeof import('../assets/anchors')>('../assets/anchors');
   return {
     ...actual,
+    anchorByOffsets: anchorByOffsetsMock,
     findAnchors: anchorsMock,
     searchNth: searchNthMock
   };
@@ -17,6 +19,7 @@ describe('annotate flow offsets', () => {
     vi.clearAllMocks();
     anchorsMock.mockReset();
     searchNthMock.mockReset();
+    anchorByOffsetsMock.mockReset();
     (globalThis as any).Office = { context: { requirements: { isSetSupported: () => true } } };
   });
 
@@ -28,6 +31,9 @@ describe('annotate flow offsets', () => {
   });
 
   it('requests anchors using nth derived from offsets', async () => {
+    anchorByOffsetsMock.mockImplementation(async opts => {
+      return (await searchNthMock(opts.body, opts.snippet, opts.nth ?? 0, opts.searchOptions)) as any;
+    });
     const baseText = 'foo bar foo bar foo bar foo bar';
     (globalThis as any).__lastAnalyzed = baseText;
     const snippet = 'foo bar';
@@ -99,6 +105,7 @@ describe('annotate flow offsets', () => {
   });
 
   it('uses the first reordered anchor when offset anchoring fails', async () => {
+    anchorByOffsetsMock.mockResolvedValue(null);
     const baseText = 'foo bar foo bar foo bar foo bar';
     (globalThis as any).__lastAnalyzed = baseText;
     const snippet = 'foo bar';

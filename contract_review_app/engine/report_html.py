@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from html import escape
+import json
 from typing import Any, Dict
 
 
@@ -26,6 +27,9 @@ def render_html_report(trace: Dict[str, Any]) -> str:
         f"<b>Created:</b> {escape(trace.get('created_at',''))} | "
         f"<b>Model:</b> {escape(str(meta.get('model','')))}</div>"
     )
+    def _pretty_json(value: Any) -> str:
+        return escape(json.dumps(value or {}, indent=2, ensure_ascii=False))
+
     html = f"""<!DOCTYPE html>
 <html><head><meta charset='utf-8'><title>Contract AI Report</title>
 <style>body{{font-family:Arial, sans-serif;margin:20px;}}
@@ -39,5 +43,9 @@ def render_html_report(trace: Dict[str, Any]) -> str:
 <h2>Findings</h2>
 <table><thead><tr><th>Severity</th><th>Rule</th><th>Excerpt</th><th>Advice</th></tr></thead>
 <tbody>{findings_html}</tbody></table>
+<details><summary>Features</summary><pre id='features'>{_pretty_json(trace.get('features'))}</pre></details>
+<details><summary>Dispatch</summary><pre id='dispatch'>{_pretty_json(trace.get('dispatch'))}</pre></details>
+<details><summary>Constraints</summary><pre id='constraints'>{_pretty_json(trace.get('constraints'))}</pre></details>
+<details><summary>Proposals</summary><pre id='proposals'>{_pretty_json(trace.get('proposals'))}</pre></details>
 </body></html>"""
     return html

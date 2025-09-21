@@ -4,7 +4,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:ci": "sh -c \"cd ../contract_review_app/static/panel && NODE_PATH=../../../../word_addin_dev/node_modules ../../../../word_addin_dev/node_modules/.bin/vitest run -c vitest.config.ci.ts --root .\""
   },
   "dependencies": {
     "react": "^18.3.1",

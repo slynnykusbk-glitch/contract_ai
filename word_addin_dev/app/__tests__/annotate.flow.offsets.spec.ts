@@ -97,4 +97,75 @@ describe('annotate flow offsets', () => {
     expect(insertedStarts).toEqual([targetRange.start]);
     expect(searchNthMock).toHaveBeenCalled();
   });
+
+  it('uses the first reordered anchor when offset anchoring fails', async () => {
+    const baseText = 'foo bar foo bar foo bar foo bar';
+    (globalThis as any).__lastAnalyzed = baseText;
+    const snippet = 'foo bar';
+
+    const starts: number[] = [];
+    let idx = -1;
+    while ((idx = baseText.indexOf(snippet, idx + 1)) !== -1) {
+      starts.push(idx);
+    }
+
+    const insertedStarts: number[] = [];
+
+    const makeRange = (start: number) => ({
+      start,
+      end: start + snippet.length,
+      load: vi.fn(),
+      context: { sync: vi.fn(async () => {}) },
+      insertContentControl: () => {
+        insertedStarts.push(start);
+        return {
+          tag: '',
+          title: '',
+          color: '',
+          insertText: vi.fn()
+        };
+      }
+    });
+
+    const preferredRange = makeRange(starts[2]);
+
+    const otherRanges = [starts[0], starts[1]].map(makeRange) as any[];
+
+    const annotateMod = await import('../assets/annotate');
+    const { annotateFindingsIntoWord } = annotateMod;
+
+    searchNthMock.mockResolvedValue(null);
+    anchorsMock.mockImplementation(async (_body, text, opts) => {
+      expect(text).toBe(snippet);
+      expect(opts?.nth).toBe(2);
+      return [preferredRange, ...otherRanges];
+    });
+
+    (globalThis as any).Word = {
+      InsertLocation: { end: 'end' },
+      run: async (cb: any) => {
+        const ctx = {
+          document: {
+            body: {
+              context: { sync: vi.fn(async () => {}), trackedObjects: { add: () => {} } }
+            }
+          },
+          sync: vi.fn(async () => {})
+        };
+        return await cb(ctx);
+      }
+    };
+
+    (globalThis as any).Office = { context: { requirements: { isSetSupported: () => false } } };
+
+    const findings = [
+      { rule_id: 'r1', snippet, start: preferredRange.start, end: preferredRange.end, nth: 2 }
+    ];
+
+    const inserted = await annotateFindingsIntoWord(findings as any);
+    expect(inserted).toBe(1);
+    expect(insertedStarts).toEqual([preferredRange.start]);
+    expect(preferredRange.load).toHaveBeenCalledWith(['start', 'end']);
+    expect(anchorsMock).toHaveBeenCalledWith(expect.anything(), snippet, { nth: 2 });
+  });
 });

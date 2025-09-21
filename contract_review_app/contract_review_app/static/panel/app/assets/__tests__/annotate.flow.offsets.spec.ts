@@ -95,4 +95,78 @@ describe('annotate flow offsets', () => {
     expect(inserted).toBe(1);
     expect(targetRange.load).toHaveBeenCalledWith(['start', 'end']);
   });
+
+  it('uses the reordered nth anchor when offset anchoring fails', async () => {
+    const baseText = 'foo bar foo bar foo bar foo bar';
+    (globalThis as any).__lastAnalyzed = baseText;
+    const snippet = 'foo bar';
+
+    const starts: number[] = [];
+    let idx = -1;
+    while ((idx = baseText.indexOf(snippet, idx + 1)) !== -1) {
+      starts.push(idx);
+    }
+
+    const insertedStarts: number[] = [];
+
+    const makeRange = (start: number) => ({
+      start,
+      end: start + snippet.length,
+      load: vi.fn(),
+      context: { sync: vi.fn(async () => {}) },
+      insertContentControl: () => {
+        insertedStarts.push(start);
+        return {
+          tag: '',
+          title: '',
+          color: '',
+          insertText: vi.fn()
+        };
+      }
+    });
+
+    const preferredRange = makeRange(starts[2]);
+
+    const otherRanges = [starts[0], starts[1]].map(makeRange) as any[];
+
+    searchNthMock.mockResolvedValue(null);
+    findAnchorsMock.mockImplementation(async (_body, text, opts) => {
+      expect(text).toBe(snippet);
+      expect(opts?.nth).toBe(2);
+      return [preferredRange, ...otherRanges];
+    });
+
+    const ctx = {
+      document: {
+        body: {
+          context: { sync: vi.fn(async () => {}), trackedObjects: { add: vi.fn() } },
+          getRange: vi.fn(() => ({
+            context: { sync: vi.fn(async () => {}) },
+            insertContentControl: () => ({
+              tag: '',
+              title: '',
+              color: '',
+              insertText: vi.fn()
+            })
+          }))
+        }
+      },
+      sync: vi.fn(async () => {})
+    } as any;
+
+    (globalThis as any).Word = {
+      InsertLocation: { end: 'end' },
+      run: async (cb: any) => cb(ctx)
+    };
+
+    (globalThis as any).Office = { context: { requirements: { isSetSupported: () => false } } };
+
+    const finding = { rule_id: 'r2', snippet, start: preferredRange.start, end: preferredRange.end, nth: 2 };
+
+    const inserted = await annotateFindingsIntoWord([finding] as any);
+    expect(inserted).toBe(1);
+    expect(insertedStarts).toEqual([preferredRange.start]);
+    expect(preferredRange.load).toHaveBeenCalledWith(['start', 'end']);
+    expect(findAnchorsMock).toHaveBeenCalledWith(expect.anything(), snippet, { nth: 2 });
+  });
 });

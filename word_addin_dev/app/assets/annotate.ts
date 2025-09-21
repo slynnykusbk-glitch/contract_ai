@@ -352,9 +352,12 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFindingEx[]): Pr
 
       if (!target) {
         const anchors = await findAnchors(body, op.raw, { nth: typeof desired === "number" ? desired : undefined });
-        target = anchors[0] || null;
-        if (target && !anchorMethod) {
-          anchorMethod = 'nth';
+        const preferred = anchors[0] || null;
+        if (preferred) {
+          target = preferred;
+          if (!anchorMethod) {
+            anchorMethod = 'nth';
+          }
         }
       }
       if (target) {

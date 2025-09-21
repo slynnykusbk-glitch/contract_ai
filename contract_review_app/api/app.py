@@ -2136,7 +2136,20 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     doc_language = str(getattr(parsed_doc, "language", "") or "").lower()
     t1 = time.perf_counter()
 
+    hints_data: Any = []
     lx_features = None  # noqa: F841  # reserved for future L0 integration
+
+    def emit_features_trace() -> None:
+        if not FEATURE_TRACE_ARTIFACTS:
+            return
+        TRACE.add(
+            request.state.cid,
+            "features",
+            build_features(parsed_doc, parsed.segments, lx_features, hints_data),
+        )
+
+    emit_features_trace()
+
     if FEATURE_LX_ENGINE:
         try:
             from contract_review_app.analysis import lx_features as _lx_features
@@ -2157,18 +2170,18 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                 "l0_features",
                 {"status": "enabled", "count": segment_count},
             )
+            emit_features_trace()
     analysis_classifier.classify_segments(parsed.segments)
     t2 = time.perf_counter()
 
+    emit_features_trace()
+
     snap = extract_document_snapshot(txt)
 
-    if FEATURE_TRACE_ARTIFACTS:
-        hints = getattr(snap, "hints", None) if snap else []
-        TRACE.add(
-            request.state.cid,
-            "features",
-            build_features(parsed_doc, parsed.segments, hints, lx_features),
-        )
+    emit_features_trace()
+
+    hints_data = getattr(snap, "hints", None) if snap else []
+    emit_features_trace()
 
     seg_findings: List[Dict[str, Any]] = []
     clause_types_set: set[str] = set()

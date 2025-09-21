@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+from hashlib import sha256
 from typing import Any, Iterable, Mapping, Sequence, TYPE_CHECKING
 
 from contract_review_app.intake.parser import ParsedDocument
 
 from .types_trace import TConstraints, TDispatch, TFeatures, TProposals
+
+
+MAX_LABELS_PER_SEG = 16
+MAX_AMOUNTS_PER_SEG = 20
+MAX_DURATIONS_PER_SEG = 20
 
 if TYPE_CHECKING:  # pragma: no cover - imported for typing only
     from contract_review_app.core.lx_types import LxDocFeatures, LxFeatureSet
@@ -16,10 +22,28 @@ def _coerce_labels(raw: Any) -> list[str]:
         raw = raw.strip()
         return [raw] if raw else []
     if isinstance(raw, Mapping):
-        return [str(v) for v in raw.values() if v is not None]
-    if isinstance(raw, Iterable) and not isinstance(raw, (bytes, bytearray)):
-        return [str(item) for item in raw if item is not None]
-    return [str(raw)]
+        return [
+            str(v).strip()
+            for v in raw.values()
+            if v not in (None, "") and str(v).strip()
+        ]
+    if isinstance(raw, Iterable) and not isinstance(raw, (bytes, bytearray, str)):
+        values: list[str] = []
+        for item in raw:
+            if item is None:
+                continue
+            if isinstance(item, str):
+                item = item.strip()
+                if not item:
+                    continue
+                values.append(item)
+            else:
+                text = str(item).strip()
+                if text:
+                    values.append(text)
+        return values
+    text = str(raw).strip()
+    return [text] if text else []
 
 
 def _resolve_language(doc_norm: ParsedDocument) -> str:
@@ -35,22 +59,121 @@ def _resolve_language(doc_norm: ParsedDocument) -> str:
     return "und"
 
 
+def _unique_ordered(items: Iterable[str]) -> list[str]:
+    ordered: dict[str, None] = {}
+    for item in items:
+        if item not in ordered:
+            ordered[item] = None
+    return list(ordered.keys())
+
+
+def _flatten_to_strings(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        value = value.strip()
+        return [value] if value else []
+    if isinstance(value, Mapping):
+        items: list[str] = []
+        for entry in value.values():
+            items.extend(_flatten_to_strings(entry))
+        return items
+    if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, str)):
+        items: list[str] = []
+        for entry in value:
+            items.extend(_flatten_to_strings(entry))
+        return items
+    text = str(value).strip()
+    return [text] if text else []
+
+
+def _collect_amounts(*values: Any) -> list[str]:
+    collected: list[str] = []
+    for value in values:
+        collected.extend(_flatten_to_strings(value))
+    unique = _unique_ordered(collected)
+    return unique[:MAX_AMOUNTS_PER_SEG]
+
+
+def _coerce_duration_value(value: Any) -> list[dict[str, int]]:
+    if value is None:
+        return []
+    if isinstance(value, Mapping):
+        entry: dict[str, int] = {}
+        for key, raw_val in value.items():
+            try:
+                entry[str(key)] = int(raw_val)
+            except (TypeError, ValueError):
+                continue
+        return [entry] if entry else []
+    if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, str)):
+        items: list[dict[str, int]] = []
+        for part in value:
+            items.extend(_coerce_duration_value(part))
+        return items
+    return []
+
+
+def _collect_duration_entries(*values: Any) -> list[dict[str, int]]:
+    entries: list[dict[str, int]] = []
+    for value in values:
+        entries.extend(_coerce_duration_value(value))
+    deduped: list[dict[str, int]] = []
+    seen: set[tuple[tuple[str, int], ...]] = set()
+    for entry in entries:
+        if not entry:
+            continue
+        key = tuple(sorted(entry.items()))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(entry)
+        if len(deduped) >= MAX_DURATIONS_PER_SEG:
+            break
+    return deduped
+
+
+def _slice_normalized_text(norm_text: str, start: int, end: int) -> str:
+    if not norm_text:
+        return ""
+    length = len(norm_text)
+    start = max(0, min(start, length))
+    end = max(start, min(end, length))
+    return norm_text[start:end]
+
+
+def _count_tokens(text: str) -> int:
+    if not text:
+        return 0
+    return sum(1 for token in text.split() if token)
+
+
+def _normalize_hints(hints: Any) -> list[Any]:
+    if hints is None:
+        return []
+    if isinstance(hints, str):
+        return [hints]
+    if isinstance(hints, Mapping):
+        return [hints]
+    try:
+        return list(hints)
+    except TypeError:
+        return [hints]
+
+
 def serialize_features(
     doc_norm: ParsedDocument,
     segments: Iterable[Mapping[str, Any]],
     l0_features: "LxDocFeatures | None" = None,
 ) -> TFeatures:
     norm_text = getattr(doc_norm, "normalized_text", "") or ""
-    doc_hash = getattr(doc_norm, "checksum", None)
-    if doc_hash is None:
-        doc_hash = getattr(doc_norm, "checksum_sha256", None)
+    doc_hash = sha256(norm_text.encode("utf-8")).hexdigest()
 
     doc_payload: dict[str, Any] = {
         "language": _resolve_language(doc_norm),
         "length": len(norm_text),
+        "hash": doc_hash,
     }
-    if doc_hash:
-        doc_payload["hash"] = doc_hash
 
     features_by_segment: Mapping[int, "LxFeatureSet"] = {}
     if l0_features is not None:
@@ -65,7 +188,6 @@ def serialize_features(
             clause_type = seg.get("clause_type")
             labels_raw = seg.get("labels")
             entities_raw = seg.get("entities") or {}
-            seg_text = seg.get("text") or ""
         else:
             seg_id = getattr(seg, "id", None)
             start_raw = getattr(seg, "start", 0)
@@ -73,7 +195,6 @@ def serialize_features(
             clause_type = getattr(seg, "clause_type", None)
             labels_raw = getattr(seg, "labels", None)
             entities_raw = getattr(seg, "entities", {}) or {}
-            seg_text = getattr(seg, "text", "") or ""
 
         try:
             seg_id_int = int(seg_id) if seg_id is not None else None
@@ -89,10 +210,11 @@ def serialize_features(
         except (TypeError, ValueError):
             end = 0
 
-        labels = _coerce_labels(clause_type)
-        if not labels:
-            labels = _coerce_labels(labels_raw)
+        segment_labels: list[str] = []
+        segment_labels.extend(_coerce_labels(clause_type))
+        segment_labels.extend(_coerce_labels(labels_raw))
 
+        feat_obj = None
         if (
             seg_id_int is not None
             and isinstance(features_by_segment, Mapping)
@@ -100,42 +222,50 @@ def serialize_features(
         ):
             feat_obj = features_by_segment.get(seg_id_int)
             if feat_obj is not None:
-                extra_labels = _coerce_labels(getattr(feat_obj, "labels", None))
-                if extra_labels:
-                    labels = list(dict.fromkeys(labels + extra_labels))
-                if hasattr(feat_obj, "model_dump"):
-                    l0_payload = feat_obj.model_dump(exclude_none=True)
-                else:  # pragma: no cover - fallback for BaseModel-like
-                    l0_payload = feat_obj.dict(exclude_none=True)  # type: ignore[call-arg]
-                l0_payload = {
-                    k: v
-                    for k, v in l0_payload.items()
-                    if v not in (None, [], {}, "")
-                }
-            else:
-                l0_payload = {}
-        else:
-            l0_payload = {}
+                segment_labels.extend(_coerce_labels(getattr(feat_obj, "labels", None)))
 
-        entities: dict[str, Any]
+        labels = sorted({label for label in segment_labels if label})
+        if len(labels) > MAX_LABELS_PER_SEG:
+            labels = labels[:MAX_LABELS_PER_SEG]
+
+        normalized_span = _slice_normalized_text(norm_text, start, end)
+        token_len = _count_tokens(normalized_span)
+
         if isinstance(entities_raw, Mapping):
-            entities = {
-                k: v
+            entities_dict: dict[str, Any] = {
+                str(k): v
                 for k, v in entities_raw.items()
-                if v is not None
+                if k not in {"amounts", "durations"} and v not in (None, "", [], {})
             }
+            amounts_raw = entities_raw.get("amounts")
+            durations_raw = entities_raw.get("durations")
         else:
-            entities = {}
-        if l0_payload:
-            entities.setdefault("l0", {}).update(l0_payload)
+            entities_dict = {}
+            amounts_raw = None
+            durations_raw = None
+
+        amounts_sources = [amounts_raw]
+        durations_sources = [durations_raw]
+
+        if feat_obj is not None:
+            amounts_sources.append(getattr(feat_obj, "amounts", None))
+            durations_sources.append(getattr(feat_obj, "durations", None))
+
+        amounts = _collect_amounts(*amounts_sources)
+        if amounts:
+            entities_dict["amounts"] = amounts
+
+        durations = _collect_duration_entries(*durations_sources)
+        if durations:
+            entities_dict["durations"] = durations
 
         segment_entries.append(
             {
                 "id": seg_id_int if seg_id_int is not None else seg_id,
                 "range": {"start": start, "end": end},
                 "labels": labels,
-                "entities": entities,
-                "tokens": {"len": len(seg_text)},
+                "entities": entities_dict,
+                "tokens": {"len": token_len},
             }
         )
 
@@ -148,23 +278,12 @@ def serialize_features(
 def build_features(
     doc_norm: ParsedDocument,
     segments: Iterable[Mapping[str, Any]],
-    hints: Any,
     l0_features: "LxDocFeatures | None" = None,
+    hints: Any = None,
 ) -> TFeatures:
     payload = serialize_features(doc_norm, segments, l0_features)
-
-    if isinstance(hints, str):
-        hints_list: list[Any] = [hints]
-    elif hints is None:
-        hints_list = []
-    else:
-        try:
-            hints_list = list(hints)
-        except TypeError:
-            hints_list = [hints]
-
     doc_payload = payload.setdefault("doc", {})
-    doc_payload["hints"] = hints_list
+    doc_payload["hints"] = _normalize_hints(hints)
     return payload
 
 def _coerce_match_entry(item: Any) -> Mapping[str, Any]:

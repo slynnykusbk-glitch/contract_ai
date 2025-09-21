@@ -1,11 +1,35 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, TypedDict
+from typing import Any, Dict, List, Literal, TypedDict, Union
+
+
+class TRange(TypedDict):
+    start: int
+    end: int
+
+
+class TFeatureTokens(TypedDict, total=False):
+    len: int
+
+
+class TFeatureSeg(TypedDict, total=False):
+    id: Union[int, str]
+    range: TRange
+    labels: List[str]
+    entities: Dict[str, Any]
+    tokens: TFeatureTokens
+
+
+class TFeatureDoc(TypedDict, total=False):
+    language: str
+    length: int
+    hash: str
+    hints: List[Any]
 
 
 class TFeatures(TypedDict, total=False):
-    doc: Dict[str, Any]
-    segments: List[Dict[str, Any]]
+    doc: TFeatureDoc
+    segments: List[TFeatureSeg]
 
 
 class TRulesetStats(TypedDict, total=False):

@@ -28,7 +28,7 @@ declare const Violins: { initAudio: () => void };
 // enable rich debug when OfficeExtension is available
 const gg: any = (globalThis as any);
 const oe: any = gg.OfficeExtension;
-const BUILD_ID = 'build-20250912-195756';
+const BUILD_ID = 'build-20250921-085759';
 console.log('ContractAI build', BUILD_ID);
 let __cfg_timeout: string | null = null;
 let __cfg_abort_hidden = '1';

@@ -2,7 +2,7 @@ import { applyMetaToBadges, AnalyzeFinding, AnalyzeResponse, postRedlines, analy
 import type { AnalyzeFindingEx } from "./types.ts";
 import { parseFindings } from "./findings.ts";
 import domSchema from "../panel_dom.schema.json";
-import { normalizeText, dedupeFindings } from "./dedupe.ts";
+import { normalizeText, dedupeFindings, severityRank, type RiskLevel } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX, safeInsertComment, fallbackAnnotateWithContentControl } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
@@ -28,7 +28,7 @@ declare const Violins: { initAudio: () => void };
 // enable rich debug when OfficeExtension is available
 const gg: any = (globalThis as any);
 const oe: any = gg.OfficeExtension;
-const BUILD_ID = 'build-20250912-195756';
+const BUILD_ID = 'build-20250921-085759';
 console.log('ContractAI build', BUILD_ID);
 let __cfg_timeout: string | null = null;
 let __cfg_abort_hidden = '1';
@@ -110,7 +110,7 @@ let analyzeBound = false;
 let analyzeInProgress = false;
 const REQUIRED_IDS: string[] = (domSchema as any).required_ids || [];
 
-function mustGetElementById<T extends HTMLElement>(id: string): T {
+export function mustGetElementById<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
   if (!el) {
     throw new Error(`missing element #${id}`);
@@ -490,7 +490,7 @@ function slot(id: string, role: string): HTMLElement {
   return mustGetElementById<HTMLElement>(id);
 }
 
-export function getRiskThreshold(): "low" | "medium" | "high" | "critical" {
+export function getRiskThreshold(): RiskLevel {
   try {
     const sel = mustGetElementById<HTMLSelectElement>("selectRiskThreshold");
     const v = sel.value.toLowerCase();
@@ -523,27 +523,17 @@ function isDryRunAnnotateEnabled(): boolean {
   return !!cb.checked;
 }
 
-const RISK_ORDER: readonly ["low", "medium", "high", "critical"] = ["low", "medium", "high", "critical"];
-
-function normalizeSeverity(val: unknown): "low" | "medium" | "high" | "critical" | null {
-  if (typeof val !== "string") return null;
-  const v = val.trim().toLowerCase();
-  return (v === "low" || v === "medium" || v === "high" || v === "critical") ? v : null;
-}
-
-function severityRank(val: unknown): number {
-  const sev = normalizeSeverity(val);
-  if (!sev) return RISK_ORDER.indexOf("medium");
-  return RISK_ORDER.indexOf(sev);
-}
-
-function filterByThreshold(list: AnalyzeFinding[], thr: "low" | "medium" | "high" | "critical"): AnalyzeFinding[] {
+function filterByThreshold(list: AnalyzeFinding[], thr: RiskLevel): AnalyzeFinding[] {
   if (!Array.isArray(list)) return [];
-  const minRank = RISK_ORDER.indexOf(thr);
+  const minRank = severityRank(thr);
   return list.filter(item => {
     if (!item) return false;
     return severityRank((item as any).severity) >= minRank;
   });
+}
+
+export function filterFindingsByRiskForTests(list: AnalyzeFinding[], thr: RiskLevel): AnalyzeFinding[] {
+  return filterByThreshold(list, thr);
 }
 
 function buildLegalComment(f: AnalyzeFinding): string {
@@ -804,10 +794,10 @@ async function navigateFinding(dir: number) {
     isNavigating = false;
     return;
   }
-  const prevBtn = document.getElementById("btnPrevIssue") as HTMLButtonElement | null;
-  const nextBtn = document.getElementById("btnNextIssue") as HTMLButtonElement | null;
-  if (prevBtn) prevBtn.disabled = true;
-  if (nextBtn) nextBtn.disabled = true;
+  const prevBtn = mustGetElementById<HTMLButtonElement>("btnPrevIssue");
+  const nextBtn = mustGetElementById<HTMLButtonElement>("btnNextIssue");
+  prevBtn.disabled = true;
+  nextBtn.disabled = true;
   const w: any = window as any;
   w.__findingIdx = (w.__findingIdx ?? 0) + dir;
   if (w.__findingIdx < 0) w.__findingIdx = arr.length - 1;
@@ -878,51 +868,49 @@ export function renderAnalysisSummary(json: any) {
   // Заполняем findings
 
   const findingsBlock = mustGetElementById('findingsBlock');
-  const fCont = document.getElementById("findingsList");
-  if (fCont) {
-    fCont.innerHTML = "";
-    visibleFindings.forEach((f, idx) => {
-      const li = document.createElement("li");
-      const title =
-        f?.title || f?.finding?.title || f?.rule_id || "Issue";
-      const snippet = f?.snippet || f?.evidence?.text || "";
-      li.textContent = snippet ? `${title}: ${snippet}` : String(title);
+  const fCont = mustGetElementById<HTMLElement>("findingsList");
+  fCont.innerHTML = "";
+  visibleFindings.forEach((f, idx) => {
+    const li = document.createElement("li");
+    const title =
+      f?.title || f?.finding?.title || f?.rule_id || "Issue";
+    const snippet = f?.snippet || f?.evidence?.text || "";
+    li.textContent = snippet ? `${title}: ${snippet}` : String(title);
 
-      li.addEventListener('click', () => {
-        const items = Array.from(fCont.querySelectorAll('li'));
-        items.forEach((el, i) => {
-          (el as HTMLElement).classList.toggle('active', i === idx);
-        });
-        (window as any).__findingIdx = idx;
-        highlightFinding(f).catch(() => {});
+    li.addEventListener('click', () => {
+      const items = Array.from(fCont.querySelectorAll('li'));
+      items.forEach((el, i) => {
+        (el as HTMLElement).classList.toggle('active', i === idx);
       });
-
-      const links = Array.isArray((f as any).links)
-        ? (f as any).links.filter((l: any) => l?.type === 'conflict' && l?.targetFindingId)
-        : [];
-      if (links.length) {
-        const div = document.createElement('div');
-        div.textContent = `Conflicts: ${links.length} `;
-        links.forEach((lnk: any, lidx: number) => {
-          const a = document.createElement('a');
-          a.href = '#';
-          a.textContent = 'Jump to';
-          a.addEventListener('click', ev => { ev.preventDefault(); jumpToFinding(lnk.targetFindingId); });
-          div.appendChild(a);
-          if (lidx < links.length - 1) div.append(' ');
-        });
-        li.appendChild(div);
-      }
-
-      fCont.appendChild(li);
+      (window as any).__findingIdx = idx;
+      highlightFinding(f).catch(() => {});
     });
-  }
+
+    const links = Array.isArray((f as any).links)
+      ? (f as any).links.filter((l: any) => l?.type === 'conflict' && l?.targetFindingId)
+      : [];
+    if (links.length) {
+      const div = document.createElement('div');
+      div.textContent = `Conflicts: ${links.length} `;
+      links.forEach((lnk: any, lidx: number) => {
+        const a = document.createElement('a');
+        a.href = '#';
+        a.textContent = 'Jump to';
+        a.addEventListener('click', ev => { ev.preventDefault(); jumpToFinding(lnk.targetFindingId); });
+        div.appendChild(a);
+        if (lidx < links.length - 1) div.append(' ');
+      });
+      li.appendChild(div);
+    }
+
+    fCont.appendChild(li);
+  });
   findingsBlock.style.display = visibleFindings.length ? '' : 'none';
 
   // Заполняем рекомендации
 
-  const recommendationsBlock = mustGetElementById('recommendationsBlock');
-  const recommendationsList = document.getElementById("recommendationsList");
+  const recommendationsBlock = document.getElementById('recommendationsBlock') as HTMLElement | null;
+  const recommendationsList = document.getElementById("recommendationsList") as HTMLElement | null;
   if (recommendationsList) {
     recommendationsList.innerHTML = "";
     for (const r of recs) {
@@ -931,7 +919,9 @@ export function renderAnalysisSummary(json: any) {
       recommendationsList.appendChild(li);
     }
   }
-  recommendationsBlock.style.display = recs.length ? '' : 'none';
+  if (recommendationsBlock) {
+    recommendationsBlock.style.display = recs.length ? '' : 'none';
+  }
 
   // Показать блок результатов (если был скрыт стилями)
   const rb = mustGetElementById<HTMLElement>("resultsBlock");
@@ -1331,18 +1321,16 @@ async function doAnalyze() {
         const ops = planAnnotations(filtered);
         (window as any).__findings = ops;
         (window as any).__findingIdx = 0;
-        const list = document.getElementById("findingsList");
-        if (list) {
-          const frag = document.createDocumentFragment();
-          ops.forEach((op, i) => {
-            const li = document.createElement("li");
-            li.textContent = `${op.rule_id}: ${op.raw}`;
-            if (i === 0) li.classList.add("active");
-            frag.appendChild(li);
-          });
-          list.innerHTML = "";
-          list.appendChild(frag);
-        }
+        const list = mustGetElementById<HTMLElement>("findingsList");
+        const frag = document.createDocumentFragment();
+        ops.forEach((op, i) => {
+          const li = document.createElement("li");
+          li.textContent = `${op.rule_id}: ${op.raw}`;
+          if (i === 0) li.classList.add("active");
+          frag.appendChild(li);
+        });
+        list.innerHTML = "";
+        list.appendChild(frag);
         if (isAddCommentsOnAnalyzeEnabled() && filtered.length) {
           await annotateFindingsIntoWord(filtered);
         }
@@ -1388,13 +1376,14 @@ async function doQARecheck() {
     ensureHeaders();
 
     const docId = (window as any).__docId;
-    let payload: any;
+    const risk = getRiskThreshold();
+    const payload: any = { rules: {}, risk };
     if (docId) {
-      payload = { document_id: docId, rules: {} };
+      payload.document_id = docId;
     } else {
       const text = await getWholeDocText();
       (window as any).__lastAnalyzed = text;
-      payload = { text, rules: {} };
+      payload.text = text;
     }
     const { json } = await postJSON('/api/qa-recheck', payload);
       mustGetElementById<HTMLElement>("results").dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
@@ -1406,8 +1395,7 @@ async function doQARecheck() {
       const prevKey = prev[prevIdx] ? key(prev[prevIdx]) : null;
 
       const parsed = parseFindings(json);
-      const thr = getRiskThreshold();
-      const filtered = filterByThreshold(parsed, thr);
+      const filtered = filterByThreshold(parsed, risk);
       const ops = planAnnotations(filtered);
       const uniq = new Map<string, AnnotationPlan>();
       ops.forEach(op => {
@@ -1425,18 +1413,16 @@ async function doQARecheck() {
       if (newIdx >= deduped.length) newIdx = 0;
       (window as any).__findingIdx = newIdx;
 
-      const list = document.getElementById("findingsList");
-      if (list) {
-        const frag = document.createDocumentFragment();
-        deduped.forEach((op, i) => {
-          const li = document.createElement("li");
-          li.textContent = `${op.rule_id}: ${op.raw}`;
-          if (i === newIdx) li.classList.add("active");
-          frag.appendChild(li);
-        });
-        list.innerHTML = "";
-        list.appendChild(frag);
-      }
+      const list = mustGetElementById<HTMLElement>("findingsList");
+      const frag = document.createDocumentFragment();
+      deduped.forEach((op, i) => {
+        const li = document.createElement("li");
+        li.textContent = `${op.rule_id}: ${op.raw}`;
+        if (i === newIdx) li.classList.add("active");
+        frag.appendChild(li);
+      });
+      list.innerHTML = "";
+      list.appendChild(frag);
 
       notifyOk("QA recheck OK");
     } else {
@@ -1545,30 +1531,32 @@ async function onRejectAll() {
 
 export function wireUI() {
   console.log('[PANEL] wireUI start');
-    if (!(globalThis as any).__CAI_TESTING__) {
-      const missing = REQUIRED_IDS.filter(id => {
-        try { mustGetElementById<HTMLElement>(id); return false; }
-        catch { return true; }
-      });
-      if (missing.length) {
-      console.error('[PANEL] wireUI missing IDs:', missing);
-      const msg = `FATAL: panel template mismatch (missing: ${missing.join(', ')}). Check build pipeline.`;
-      try {
-        const banner = document.createElement ? document.createElement('div') : null;
-        if (banner) {
-          banner.textContent = msg;
-          banner.style.padding = '12px';
-          banner.style.color = '#f66';
-          document.body.innerHTML = '';
-          document.body.appendChild(banner);
-        }
-      } catch {}
-      console.error(msg);
-      return;
-    }
+  if ((globalThis as any).__CAI_TESTING__) {
+    console.log('[PANEL] wireUI (__CAI_TESTING__ mode)');
+    return;
+  }
+  const missing = REQUIRED_IDS.filter(id => {
+    try { mustGetElementById<HTMLElement>(id); return false; }
+    catch { return true; }
+  });
+  if (missing.length) {
+    console.error('[PANEL] wireUI missing IDs:', missing);
+    const msg = `FATAL: panel template mismatch (missing: ${missing.join(', ')}). Check build pipeline.`;
+    try {
+      const banner = document.createElement ? document.createElement('div') : null;
+      if (banner) {
+        banner.textContent = msg;
+        banner.style.padding = '12px';
+        banner.style.color = '#f66';
+        document.body.innerHTML = '';
+        document.body.appendChild(banner);
+      }
+    } catch {}
+    console.error(msg);
+    return;
   }
 
-    const bookEl = mustGetElementById<HTMLElement>('loading-book');
+  const bookEl = mustGetElementById<HTMLElement>('loading-book');
     window.addEventListener('cai:busy', (e: any) => {
       const busy = !!(e?.detail?.busy);
       if (busy) bookEl.classList.remove('hidden');
@@ -1651,7 +1639,7 @@ export function wireUI() {
     annotateBtn.classList.remove("js-disable-while-busy");
     annotateBtn.removeAttribute("disabled");
 
-  (document.getElementById('results') || document.body).addEventListener('ca.qa', (ev: any) => {
+  mustGetElementById<HTMLElement>('results').addEventListener('ca.qa', (ev: any) => {
     const json = ev?.detail;
     try {
       if (!json || json.error) {
@@ -1673,8 +1661,8 @@ export function wireUI() {
   wireResultsToggle();
 
   console.log("Panel UI wired [OK]");
-  const ab = document.getElementById("btnAnalyze") as HTMLButtonElement | null;
-  if (ab) ab.disabled = true;
+  const ab = mustGetElementById<HTMLButtonElement>("btnAnalyze");
+  ab.disabled = true;
   ensureHeaders();
   updateStatusChip();
   updateAnchorBadge();

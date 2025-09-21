@@ -11,27 +11,41 @@ export interface CommentItem {
   message: string;
 }
 
-export async function safeInsertComment(range: Word.Range, text: string): Promise<{ ok: boolean; err?: any }> {
+
+/**
+ * Insert a comment if Word API 1.4 is available.
+ *
+ * @returns true when a comment was inserted, false when the comments API is
+ *          unavailable or throws a NotImplemented error.
+ */
+export async function safeInsertComment(range: Word.Range, text: string): Promise<boolean> {
+  try {
+    if (!Office.context.requirements.isSetSupported('WordApi', '1.4')) return false;
+  } catch {
+    return false;
+  }
   const context: any = (range as any).context;
-  let lastErr: any = null;
   try {
     const anyDoc = (context?.document as any);
-    if (anyDoc?.comments?.add) {
-      anyDoc.comments.add(range, text);
+    if (anyDoc?.comments?.["add"]) {
+      anyDoc.comments["add"](range, text);
       await context?.sync?.();
       return { ok: true };
+
     }
-  } catch (e) { lastErr = e; }
+  } catch (e: any) {
+    if (e?.code === 'NotImplemented') return false;
+  }
   try {
-    range.insertComment(text);
+    (range as any)["insertComment"](text);
     await context?.sync?.();
     return { ok: true };
   } catch (e) { lastErr = e; }
   try {
     await context?.sync?.();
     const anyDoc = (context?.document as any);
-    if (anyDoc?.comments?.add) {
-      anyDoc.comments.add(range, text);
+    if (anyDoc?.comments?.["add"]) {
+      anyDoc.comments["add"](range, text);
       await context?.sync?.();
       return { ok: true };
     }
@@ -66,8 +80,8 @@ export async function fallbackAnnotateWithContentControl(range: Word.Range, text
   } catch (e) {
     console.warn("fallbackAnnotateWithContentControl failed", e);
     return { ok: false };
-
   }
+
 }
 
 /**
@@ -177,6 +191,12 @@ function buildLegalComment(f: AnalyzeFinding): string {
   const parts = [f.rule_id];
   if (f.advice) parts.push(f.advice);
   if (f.law_refs?.length) parts.push(f.law_refs.join("; "));
+  if (f.norm_quote) parts.push(`"${f.norm_quote}"`);
+  if (f.clause_url || f.clause_id) {
+    const linkText = f.clause_id ? `Clause ${f.clause_id}` : "Clause";
+    if (f.clause_url) parts.push(`${linkText}: ${f.clause_url}`);
+    else parts.push(linkText);
+  }
   return `${COMMENT_PREFIX} ${parts.join("\n")}`;
 }
 
@@ -186,6 +206,7 @@ export interface AnnotationPlan extends AnnotationPlanEx {
   occIdx: number;
   msg: string;
   rule_id: string;
+  code?: string;
   normalized_fallback: string;
 }
 
@@ -230,6 +251,7 @@ export function planAnnotations(findings: AnalyzeFindingEx[]): AnnotationPlan[] 
       occIdx,
       msg: buildLegalComment(f),
       rule_id: f.rule_id,
+      code: (f as any).code,
       normalized_fallback: normalizeIntakeText((f as any).normalized_snippet || "").trim(),
       start,
       end,
@@ -247,18 +269,18 @@ export function planAnnotations(findings: AnalyzeFindingEx[]): AnnotationPlan[] 
 }
 
 /**
- * Convert findings directly into Word comments using a two-phase plan.
+ * Insert comments for provided findings. Builds an annotation plan and anchors
+ * each snippet to Word ranges using ``findAnchors``.
  */
-export async function findingsToWord(findings: AnalyzeFindingEx[]): Promise<number> {
+export async function annotateFindingsIntoWord(findings: AnalyzeFindingEx[]): Promise<number> {
   const ops = planAnnotations(findings);
   if (!ops.length) return 0;
   const g: any = globalThis as any;
   return await g.Word?.run?.(async (ctx: any) => {
-    const body = ctx.document.body;
-    const searchOpts = { matchCase: false, matchWholeWord: false } as Word.SearchOptions;
+    const body = ctx.document.body as any;
+    const searchOptions = { matchCase: false, matchWholeWord: false } as Word.SearchOptions;
     const used: { start: number; end: number }[] = [];
     let inserted = 0;
-
     for (const op of ops) {
       const desired = typeof op.nth === "number" ? op.nth : op.occIdx;
       let target: any = null;
@@ -276,7 +298,7 @@ export async function findingsToWord(findings: AnalyzeFindingEx[]): Promise<numb
             start: op.start,
             end: op.end,
             nth: desired,
-            searchOptions: searchOpts,
+            searchOptions,
             normalizedCandidates,
             token: pickLongToken(op.raw),
             onMethod: m => {
@@ -298,9 +320,8 @@ export async function findingsToWord(findings: AnalyzeFindingEx[]): Promise<numb
           }
         }
       }
-
       if (target) {
-        target.load(["start", "end"]);
+        target.load?.(["start", "end"]);
         await ctx.sync();
         const start = target.start ?? 0;
         const end = target.end ?? start;
@@ -344,9 +365,8 @@ export async function findingsToWord(findings: AnalyzeFindingEx[]): Promise<numb
           }
         }
       }
+      await ctx.sync();
     }
-
-    await ctx.sync();
     return inserted;
   }).catch((e: any) => {
     const gg: any = globalThis as any;
@@ -355,5 +375,3 @@ export async function findingsToWord(findings: AnalyzeFindingEx[]): Promise<numb
     return 0;
   });
 }
-
-export const annotateFindingsIntoWord = findingsToWord;

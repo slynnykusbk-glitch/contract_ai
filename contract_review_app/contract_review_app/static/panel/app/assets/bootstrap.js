@@ -12,5 +12,6 @@ export async function bootstrapHeaders() {
     const k = window.__DEV_DEFAULT_API_KEY__;
     if (k) localStorage.setItem('api_key', k);
   }
+  localStorage.setItem('cai.force.comments', '1');
 }
 bootstrapHeaders();

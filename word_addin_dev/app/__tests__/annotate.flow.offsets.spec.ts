@@ -1,15 +1,22 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const anchorsMock = vi.fn();
+const searchNthMock = vi.fn();
 
-vi.mock('../assets/anchors', () => ({
-  findAnchors: anchorsMock
-}));
+vi.mock('../assets/anchors', async () => {
+  const actual = await vi.importActual<typeof import('../assets/anchors')>('../assets/anchors');
+  return {
+    ...actual,
+    findAnchors: anchorsMock,
+    searchNth: searchNthMock
+  };
+});
 
 describe('annotate flow offsets', () => {
   beforeEach(() => {
-    vi.resetModules();
+    vi.clearAllMocks();
     anchorsMock.mockReset();
+    searchNthMock.mockReset();
     (globalThis as any).Office = { context: { requirements: { isSetSupported: () => true } } };
   });
 
@@ -57,10 +64,13 @@ describe('annotate flow offsets', () => {
     });
 
     const ranges = [...otherRanges.map(wrapRange), wrapRange(targetRange)];
-    anchorsMock.mockImplementation(async (_body, _snippet, opts) => {
-      expect(opts?.nth).toBe(2);
-      return ranges;
+    searchNthMock.mockImplementation(async (_body, needle, nth) => {
+      expect(needle).toBe(snippet);
+      expect(nth).toBe(2);
+      return ranges.find(r => r.start === targetRange.start) as any;
     });
+
+    anchorsMock.mockResolvedValue([]);
 
     (globalThis as any).Word = {
       InsertLocation: { end: 'end' },
@@ -85,5 +95,6 @@ describe('annotate flow offsets', () => {
     const inserted = await annotateFindingsIntoWord(findings as any);
     expect(inserted).toBe(1);
     expect(insertedStarts).toEqual([targetRange.start]);
+    expect(searchNthMock).toHaveBeenCalled();
   });
 });

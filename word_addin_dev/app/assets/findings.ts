@@ -13,6 +13,7 @@ export function parseFindings(resp: AnalyzeResponse | AnalyzeFinding[]): Analyze
       ...f,
       start: coerceOffset(f.start),
       end: coerceOffset(f.end),
+      nth: coerceOffset((f as any).nth),
       clause_type: f.clause_type || 'Unknown'
     }))
     .filter(f => f.clause_type);

@@ -32,6 +32,7 @@ export interface CompaniesMetaItem {
 export interface AnalyzeFindingEx extends AnalyzeFinding {
   start?: number
   end?: number
+  nth?: number
 }
 
 export interface AnnotationPlanEx {

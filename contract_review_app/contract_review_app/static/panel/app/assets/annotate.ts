@@ -1,6 +1,6 @@
 import { AnalyzeFinding } from "./api-client.ts";
 import { dedupeFindings, normalizeText } from "./dedupe.ts";
-import { safeBodySearch } from "./safeBodySearch.ts";
+import { findAnchors, normalizeSnippetForSearch, pickLongToken, searchNth } from "./anchors.ts";
 import type { AnalyzeFindingEx, AnnotationPlanEx } from "./types.ts";
 
 /** Utilities for inserting comments into Word with batching and retries. */
@@ -144,6 +144,65 @@ export function computeNthFromOffsets(text: string, snippet: string, start?: num
   return count;
 }
 
+export type AnchorMethod = 'nth' | 'normalized' | 'token' | 'cc';
+
+export interface AnchorOpts {
+  body: Word.Body;
+  searchOptions?: Word.SearchOptions;
+  normalizedCandidates?: Array<string | null | undefined>;
+  token?: string | null;
+  onMethod?: (method: AnchorMethod) => void;
+}
+
+export async function anchorByOffsets(snippet: string, nth: number, opts: AnchorOpts): Promise<Word.Range | null> {
+  if (!opts?.body || !snippet) return null;
+  const safeNth = typeof nth === 'number' && Number.isFinite(nth) && nth >= 0 ? Math.floor(nth) : 0;
+  const searchOptions = opts.searchOptions || { matchCase: false, matchWholeWord: false };
+  const logMethod = (method: AnchorMethod) => {
+    try {
+      opts.onMethod?.(method);
+    } catch {}
+  };
+
+  let range = await searchNth(opts.body as any, snippet, safeNth, searchOptions);
+  if (range) {
+    logMethod('nth');
+    return range as Word.Range;
+  }
+
+  const variants = new Set<string>();
+  const pushVariant = (cand: string | null | undefined) => {
+    if (!cand) return;
+    const normalized = normalizeSnippetForSearch(cand);
+    if (!normalized || normalized === snippet) return;
+    variants.add(normalized);
+  };
+
+  pushVariant(normalizeSnippetForSearch(snippet));
+  for (const cand of opts.normalizedCandidates || []) {
+    pushVariant(cand || undefined);
+  }
+
+  for (const variant of variants) {
+    range = await searchNth(opts.body as any, variant, safeNth, searchOptions);
+    if (range) {
+      logMethod('normalized');
+      return range as Word.Range;
+    }
+  }
+
+  const token = opts.token ?? pickLongToken(snippet);
+  if (token) {
+    const tokenRange = await searchNth(opts.body as any, token, 0, searchOptions);
+    if (tokenRange) {
+      logMethod('token');
+      return tokenRange as Word.Range;
+    }
+  }
+
+  return null;
+}
+
 function isDryRunAnnotateEnabled(): boolean {
   try {
     return !!(document.getElementById("cai-dry-run-annotate") as HTMLInputElement | null)?.checked;
@@ -206,7 +265,8 @@ export function planAnnotations(findings: AnalyzeFindingEx[]): AnnotationPlan[] 
       continue;
     }
     const norm = normalizeText(snippet);
-    const nth = computeNthFromOffsets(baseText, snippet, start);
+    const nthSource = typeof f.nth === "number" ? f.nth : computeNthFromOffsets(baseText, snippet, start);
+    const nth = typeof nthSource === "number" && nthSource >= 0 ? Math.floor(nthSource) : undefined;
     const occIdx = typeof nth === "number" ? nth : nthOccurrenceIndex(baseNorm, norm, start);
     ops.push({
       raw: snippet,
@@ -217,7 +277,7 @@ export function planAnnotations(findings: AnalyzeFindingEx[]): AnnotationPlan[] 
       normalized_fallback: normalizeText((f as any).normalized_snippet || ""),
       start,
       end,
-      nth: nth ?? undefined
+      nth
     });
 
     lastEnd = end;
@@ -243,36 +303,36 @@ export async function findingsToWord(findings: AnalyzeFindingEx[]): Promise<numb
     const used: { start: number; end: number }[] = [];
     let inserted = 0;
 
-    const pick = (coll: any, occ: number) => {
-      const arr = coll?.items || [];
-      if (!arr.length) return null;
-      return arr[Math.min(Math.max(occ, 0), arr.length - 1)] || null;
-    };
-
     for (const op of ops) {
       const desired = typeof op.nth === "number" ? op.nth : op.occIdx;
       let target: any = null;
+      let anchorMethod: AnchorMethod | undefined;
 
-      const sRaw = await safeBodySearch(body, op.raw, searchOpts);
-      target = pick(sRaw, desired);
-
-      if (!target) {
-        const fb = op.normalized_fallback && op.normalized_fallback !== op.norm ? op.normalized_fallback : op.norm;
-        if (fb && fb.trim()) {
-          const sNorm = await safeBodySearch(body, fb, searchOpts);
-          target = pick(sNorm, desired);
+      if (typeof desired === "number" && Number.isFinite(desired) && desired >= 0) {
+        const normalizedCandidates = [
+          op.normalized_fallback && op.normalized_fallback !== op.raw ? op.normalized_fallback : null,
+          op.norm && op.norm !== op.raw ? op.norm : null,
+        ];
+        try {
+          target = await anchorByOffsets(op.raw, desired, {
+            body,
+            searchOptions: searchOpts,
+            normalizedCandidates,
+            token: pickLongToken(op.raw),
+            onMethod: m => {
+              anchorMethod = m;
+            }
+          });
+        } catch (err) {
+          console.warn("anchorByOffsets failed", err);
         }
       }
 
       if (!target) {
-        const token = (() => {
-          const tks = op.raw.replace(/[^\p{L}\p{N} ]/gu, " ").split(" ").filter(x => x.length >= 12);
-          if (tks.length) return tks.sort((a, b) => b.length - a.length)[0].slice(0, 64);
-          return null;
-        })();
-        if (token) {
-          const sTok = await safeBodySearch(body, token, searchOpts);
-          target = pick(sTok, 0);
+        const anchors = await findAnchors(body, op.raw, { nth: typeof desired === "number" ? desired : undefined });
+        target = anchors[0] || null;
+        if (target && !anchorMethod) {
+          anchorMethod = 'nth';
         }
       }
 
@@ -294,15 +354,32 @@ export async function findingsToWord(findings: AnalyzeFindingEx[]): Promise<numb
           else {
             const fb = await fallbackAnnotateWithContentControl(target, op.msg.replace(COMMENT_PREFIX, "").trim());
             ok = fb.ok;
+            if (ok) anchorMethod = 'cc';
           }
         }
         if (ok) {
           used.push({ start, end });
           inserted++;
-
+          if (anchorMethod) {
+            console.log("[annotate] anchor", { rid: op.rule_id, anchor_method: anchorMethod });
+          }
         }
       } else {
         console.warn("[annotate] no match for snippet", { rid: op.rule_id, snippet: op.raw.slice(0, 120) });
+        if (!isDryRunAnnotateEnabled()) {
+          try {
+            const ccRange = body.getRange?.('End' as any) ?? null;
+            if (ccRange) {
+              const fb = await fallbackAnnotateWithContentControl(ccRange, op.msg.replace(COMMENT_PREFIX, "").trim());
+              if (fb.ok) {
+                inserted++;
+                console.log("[annotate] anchor", { rid: op.rule_id, anchor_method: 'cc' });
+              }
+            }
+          } catch (err) {
+            console.warn("[annotate] cc fallback failed", err);
+          }
+        }
       }
     }
 
@@ -315,3 +392,5 @@ export async function findingsToWord(findings: AnalyzeFindingEx[]): Promise<numb
     return 0;
   });
 }
+
+export const annotateFindingsIntoWord = findingsToWord;

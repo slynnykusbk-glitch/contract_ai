@@ -1,9 +1,9 @@
-import { normalizeIntakeText } from "./normalize_intake.ts";
+import { normalizeIntakeText, normalizeTextFull } from "./normalize_intake.ts";
 import { safeBodySearch } from "./safeBodySearch.ts";
 
 export function normalizeSnippetForSearch(snippet: string | null | undefined): string {
   if (!snippet) return "";
-  return normalizeIntakeText(String(snippet));
+  return normalizeTextFull(String(snippet)).text;
 }
 
 export function pickLongToken(snippet: string | null | undefined): string | null {

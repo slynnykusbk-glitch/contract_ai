@@ -2,7 +2,7 @@ import { applyMetaToBadges, AnalyzeFinding, AnalyzeResponse, postRedlines, analy
 import type { AnalyzeFindingEx } from "./types.ts";
 import { parseFindings } from "./findings.ts";
 import domSchema from "../panel_dom.schema.json";
-import { normalizeText, dedupeFindings } from "./dedupe.ts";
+import { normalizeText, dedupeFindings, severityRank, type RiskLevel } from "./dedupe.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX, safeInsertComment, fallbackAnnotateWithContentControl } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
@@ -438,7 +438,7 @@ function slot(id: string, role: string): HTMLElement {
   return mustGetElementById<HTMLElement>(id);
 }
 
-export function getRiskThreshold(): "low" | "medium" | "high" | "critical" {
+export function getRiskThreshold(): RiskLevel {
   try {
     const sel = mustGetElementById<HTMLSelectElement>("selectRiskThreshold");
     const v = sel.value.toLowerCase();
@@ -471,27 +471,17 @@ function isDryRunAnnotateEnabled(): boolean {
   return !!cb.checked;
 }
 
-const RISK_ORDER: readonly ["low", "medium", "high", "critical"] = ["low", "medium", "high", "critical"];
-
-function normalizeSeverity(val: unknown): "low" | "medium" | "high" | "critical" | null {
-  if (typeof val !== "string") return null;
-  const v = val.trim().toLowerCase();
-  return (v === "low" || v === "medium" || v === "high" || v === "critical") ? v : null;
-}
-
-function severityRank(val: unknown): number {
-  const sev = normalizeSeverity(val);
-  if (!sev) return RISK_ORDER.indexOf("medium");
-  return RISK_ORDER.indexOf(sev);
-}
-
-function filterByThreshold(list: AnalyzeFinding[], thr: "low" | "medium" | "high" | "critical"): AnalyzeFinding[] {
+function filterByThreshold(list: AnalyzeFinding[], thr: RiskLevel): AnalyzeFinding[] {
   if (!Array.isArray(list)) return [];
-  const minRank = RISK_ORDER.indexOf(thr);
+  const minRank = severityRank(thr);
   return list.filter(item => {
     if (!item) return false;
     return severityRank((item as any).severity) >= minRank;
   });
+}
+
+export function filterFindingsByRiskForTests(list: AnalyzeFinding[], thr: RiskLevel): AnalyzeFinding[] {
+  return filterByThreshold(list, thr);
 }
 
 function buildLegalComment(f: AnalyzeFinding): string {
@@ -1331,11 +1321,15 @@ async function doQARecheck() {
     ensureHeaders();
 
     const docId = (window as any).__docId;
-    const text = await getWholeDocText();
-    (window as any).__lastAnalyzed = text;
-    const payload: any = docId
-      ? { document_id: docId, rules: {} }
-      : { text, rules: {} };
+    const risk = getRiskThreshold();
+    const payload: any = { rules: {}, risk };
+    if (docId) {
+      payload.document_id = docId;
+    } else {
+      const text = await getWholeDocText();
+      (window as any).__lastAnalyzed = text;
+      payload.text = text;
+    }
     const { json } = await postJSON('/api/qa-recheck', payload);
       mustGetElementById<HTMLElement>("results").dispatchEvent(new CustomEvent("ca.qa", { detail: json }));
     const ok = !json?.error;
@@ -1346,8 +1340,7 @@ async function doQARecheck() {
       const prevKey = prev[prevIdx] ? key(prev[prevIdx]) : null;
 
       const parsed = parseFindings(json);
-      const thr = getRiskThreshold();
-      const filtered = filterByThreshold(parsed, thr);
+      const filtered = filterByThreshold(parsed, risk);
       const ops = planAnnotations(filtered);
       const uniq = new Map<string, AnnotationPlan>();
       ops.forEach(op => {

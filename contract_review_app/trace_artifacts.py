@@ -11,6 +11,7 @@ from .types_trace import TConstraints, TDispatch, TFeatures, TProposals
 MAX_LABELS_PER_SEG = 16
 MAX_AMOUNTS_PER_SEG = 20
 MAX_DURATIONS_PER_SEG = 20
+MAX_ENTITY_VALUES_PER_KEY = 20
 
 if TYPE_CHECKING:  # pragma: no cover - imported for typing only
     from contract_review_app.core.lx_types import LxDocFeatures, LxFeatureSet
@@ -131,6 +132,24 @@ def _collect_duration_entries(*values: Any) -> list[dict[str, int]]:
         if len(deduped) >= MAX_DURATIONS_PER_SEG:
             break
     return deduped
+
+
+def _clamp_sequence(value: Any, limit: int) -> Any:
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        seq = list(value)
+        if len(seq) > limit:
+            return seq[:limit]
+        return seq
+    return value
+
+
+def _clamp_entities_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    clamped: dict[str, Any] = {}
+    for key, value in payload.items():
+        if value in (None, ""):
+            continue
+        clamped[key] = _clamp_sequence(value, MAX_ENTITY_VALUES_PER_KEY)
+    return clamped
 
 
 def _slice_normalized_text(norm_text: str, start: int, end: int) -> str:
@@ -258,6 +277,9 @@ def serialize_features(
         durations = _collect_duration_entries(*durations_sources)
         if durations:
             entities_dict["durations"] = durations
+
+        if entities_dict:
+            entities_dict = _clamp_entities_payload(entities_dict)
 
         segment_entries.append(
             {

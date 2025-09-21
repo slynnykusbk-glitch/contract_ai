@@ -2,7 +2,7 @@ import { AnalyzeFinding } from "./api-client.ts";
 import { dedupeFindings, normalizeText } from "./dedupe.ts";
 import { anchorByOffsets, findAnchors, pickLongToken } from "./anchors.ts";
 import type { AnchorMethod as AnchorCascadeMethod } from "./anchors.ts";
-import { normalizeIntakeText } from "./normalize_intake.ts";
+import { normalizeIntakeText, normalizeTextFull, type NormalizeTextFullResult } from "./normalize_intake.ts";
 import type { AnalyzeFindingEx, AnnotationPlanEx } from "./types.ts";
 
 /** Utilities for inserting comments into Word with batching and retries. */
@@ -126,15 +126,20 @@ function nthOccurrenceIndex(hay: string, needle: string, startPos?: number): num
   return n;
 }
 
-const normalizedCache = new Map<string, string>();
+const normalizedFullCache = new Map<string, NormalizeTextFullResult>();
 
-function normalizeCached(text: string): string {
-  let cached = normalizedCache.get(text);
-  if (cached == null) {
-    cached = normalizeIntakeText(text).trim();
-    normalizedCache.set(text, cached);
+function getNormalizedFull(text: string): NormalizeTextFullResult {
+  let cached = normalizedFullCache.get(text);
+  if (!cached) {
+    cached = normalizeTextFull(text);
+    normalizedFullCache.set(text, cached);
   }
   return cached;
+}
+
+function normalizeCached(text: string): string {
+  if (!text) return "";
+  return getNormalizedFull(text).text;
 }
 
 export function computeNthFromOffsets(text: string, snippet: string, start?: number): number | null {
@@ -143,17 +148,23 @@ export function computeNthFromOffsets(text: string, snippet: string, start?: num
   const normSnippet = normalizeIntakeText(snippet).trim();
   if (!normSnippet) return null;
 
-  const normText = normalizeCached(text);
-  const prefix = text.slice(0, Math.max(0, Math.min(text.length, Math.floor(start))));
-  const normPrefix = normalizeIntakeText(prefix).trim();
-
+  const { text: normText, map } = getNormalizedFull(text);
   if (!normText) return null;
+
+  const floorStart = Math.floor(start);
+  let prefixLimit = map.length;
+  for (let i = 0; i < map.length; i++) {
+    if (map[i] >= floorStart) {
+      prefixLimit = i;
+      break;
+    }
+  }
 
   let count = 0;
   let searchIdx = 0;
   while (true) {
     const foundIdx = normText.indexOf(normSnippet, searchIdx);
-    if (foundIdx === -1 || foundIdx >= normPrefix.length) break;
+    if (foundIdx === -1 || foundIdx >= prefixLimit) break;
     count++;
     searchIdx = foundIdx + Math.max(normSnippet.length, 1);
   }

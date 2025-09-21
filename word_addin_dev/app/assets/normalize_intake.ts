@@ -1,9 +1,18 @@
-const ZERO_WIDTH_REGEX = /[\u200B-\u200F\u2060-\u2064\uFEFF]/g;
-const NBSP_REGEX = /\u00A0/g;
-const MULTI_SPACE_REGEX = /[ \t]+/g;
-const DASH_REGEX = /[\u2010-\u2015\u2212]/g;
-const DOUBLE_QUOTE_REGEX = /[\u00AB\u00BB\u201C-\u201F\u2033\u2036]/g;
-const SINGLE_QUOTE_REGEX = /[\u2018-\u201B\u2032\u2035]/g;
+const ZERO_WIDTH_CHARS = new Set<string>([
+  '\u200B',
+  '\u200C',
+  '\u200D',
+  '\u200E',
+  '\u200F',
+  '\u2060',
+  '\u2061',
+  '\u2062',
+  '\u2063',
+  '\u2064',
+  '\uFEFF',
+]);
+
+const NBSP_CHARS = new Set<string>(['\u00A0', '\u202F']);
 
 const dashMap: Record<string, string> = {
   '\u2010': '-',
@@ -35,19 +44,101 @@ const singleQuoteMap: Record<string, string> = {
   '\u2035': "'",
 };
 
-function replaceFromMap(source: string, re: RegExp, map: Record<string, string>): string {
-  return source.replace(re, ch => map[ch] ?? ch);
+export interface NormalizeTextFullResult {
+  text: string;
+  map: number[];
+}
+
+function isZeroWidthChar(ch: string): boolean {
+  return ZERO_WIDTH_CHARS.has(ch);
+}
+
+function replaceSmartChar(ch: string): string {
+  if (dashMap[ch]) return dashMap[ch];
+  if (doubleQuoteMap[ch]) return doubleQuoteMap[ch];
+  if (singleQuoteMap[ch]) return singleQuoteMap[ch];
+  if (NBSP_CHARS.has(ch)) return ' ';
+  return ch;
+}
+
+function trimNormalized(result: NormalizeTextFullResult): NormalizeTextFullResult {
+  const { text, map } = result;
+  let start = 0;
+  let end = text.length;
+  while (start < end && /\s/.test(text[start]!)) start++;
+  while (end > start && /\s/.test(text[end - 1]!)) end--;
+  if (start === 0 && end === text.length) {
+    return result;
+  }
+  return {
+    text: text.slice(start, end),
+    map: map.slice(start, end),
+  };
+}
+
+export function normalizeTextFull(input: string | null | undefined): NormalizeTextFullResult {
+  const source = typeof input === 'string' ? input.normalize('NFC') : '';
+  if (!source) {
+    return { text: '', map: [] };
+  }
+
+  const chars: string[] = [];
+  const map: number[] = [];
+  let prevSpace = false;
+
+  for (let i = 0; i < source.length; ) {
+    const codePoint = source.codePointAt(i)!;
+    let ch = String.fromCodePoint(codePoint);
+    const step = ch.length;
+
+    if (ch === '\r') {
+      map.push(i);
+      chars.push('\n');
+      i += step;
+      if (i < source.length && source[i] === '\n') {
+        i += 1;
+      }
+      prevSpace = false;
+      continue;
+    }
+
+    if (ch === '\n') {
+      map.push(i);
+      chars.push('\n');
+      i += step;
+      prevSpace = false;
+      continue;
+    }
+
+    if (isZeroWidthChar(ch)) {
+      i += step;
+      continue;
+    }
+
+    ch = replaceSmartChar(ch);
+    if (ch === '\t') ch = ' ';
+
+    if (ch === ' ') {
+      if (prevSpace) {
+        i += step;
+        continue;
+      }
+      prevSpace = true;
+    } else {
+      prevSpace = false;
+    }
+
+    chars.push(ch);
+    map.push(i);
+    i += step;
+  }
+
+  const normalized = chars.join('').normalize('NFC');
+  const result: NormalizeTextFullResult = { text: normalized, map };
+  return trimNormalized(result);
 }
 
 export function normalizeIntakeText(input: string): string {
   if (!input) return '';
-  let text = input.normalize('NFC');
-  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  text = text.replace(ZERO_WIDTH_REGEX, '');
-  text = text.replace(NBSP_REGEX, ' ');
-  text = replaceFromMap(text, DASH_REGEX, dashMap);
-  text = replaceFromMap(text, DOUBLE_QUOTE_REGEX, doubleQuoteMap);
-  text = replaceFromMap(text, SINGLE_QUOTE_REGEX, singleQuoteMap);
-  text = text.replace(MULTI_SPACE_REGEX, ' ');
-  return text.trim();
+  return normalizeTextFull(input).text;
 }

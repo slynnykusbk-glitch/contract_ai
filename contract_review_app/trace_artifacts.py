@@ -248,5 +248,65 @@ def build_constraints(checks_iter: Iterable[Any]) -> TConstraints:
     return {"checks": checks_payload}
 
 
-def build_proposals(*args: Any, **kwargs: Any) -> TProposals:
-    return {}
+def _extract_field(item: Any, key: str) -> Any:
+    if isinstance(item, Mapping):
+        return item.get(key)
+    return getattr(item, key, None)
+
+
+def _normalize_ops(raw: Any) -> list[Any]:
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return list(raw)
+    if isinstance(raw, Mapping):
+        return [raw]
+    if isinstance(raw, Iterable) and not isinstance(raw, (str, bytes, bytearray)):
+        return list(raw)
+    return [raw]
+
+
+def build_proposals(
+    drafts_iter: Iterable[Any] | None = None,
+    merged_iter: Iterable[Any] | None = None,
+) -> TProposals:
+    drafts_payload: list[dict[str, Any]] = []
+    for draft in drafts_iter or []:
+        rule_id = _extract_field(draft, "rule_id")
+        if rule_id is None:
+            continue
+        ops = _normalize_ops(_extract_field(draft, "ops"))
+        before = _extract_field(draft, "before")
+        snippet = _extract_field(draft, "snippet")
+        after = _extract_field(draft, "after")
+        if before is None:
+            before = snippet
+        drafts_payload.append(
+            {
+                "rule_id": rule_id,
+                "ops": ops,
+                "before": before,
+                "after": after,
+            }
+        )
+
+    merged_payload: list[dict[str, Any]] = []
+    for item in merged_iter or []:
+        rule_id = _extract_field(item, "rule_id")
+        if rule_id is None:
+            continue
+        ops = _normalize_ops(_extract_field(item, "ops"))
+        text = _extract_field(item, "text")
+        if text is None:
+            text = _extract_field(item, "after")
+        if text is None:
+            text = _extract_field(item, "snippet")
+        merged_payload.append(
+            {
+                "rule_id": rule_id,
+                "ops": ops,
+                "text": text,
+            }
+        )
+
+    return {"drafts": drafts_payload, "merged": merged_payload}

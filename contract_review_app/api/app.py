@@ -1955,6 +1955,30 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         payload = body.get("payload")
         if isinstance(payload, dict):
             data = payload
+
+    trace_proposals_drafts: list[dict[str, Any]] | None = None
+
+    def _proposal_snapshot(items: Iterable[Any] | None) -> list[dict[str, Any]]:
+        snapshot: list[dict[str, Any]] = []
+        for item in items or []:
+            if isinstance(item, Mapping):
+                rule_id = item.get("rule_id")
+                ops = item.get("ops")
+                snippet = item.get("snippet")
+            else:
+                rule_id = getattr(item, "rule_id", None)
+                ops = getattr(item, "ops", None)
+                snippet = getattr(item, "snippet", None)
+            if not rule_id:
+                continue
+            snapshot.append(
+                {
+                    "rule_id": rule_id,
+                    "ops": ops,
+                    "snippet": snippet,
+                }
+            )
+        return snapshot
     try:
         req = AnalyzeRequest.model_validate(data)
     except ValidationError as e:
@@ -2580,6 +2604,9 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         else:
             findings = []
 
+    if FEATURE_TRACE_ARTIFACTS:
+        trace_proposals_drafts = _proposal_snapshot(findings)
+
     constraint_checks_iter: Sequence[Any] | List[Any] = []
     constraint_checks_populated = False
     if FEATURE_LX_ENGINE and LX_L2_CONSTRAINTS:
@@ -2628,6 +2655,19 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         snip = f.get("snippet")
         if isinstance(snip, str):
             f["normalized_snippet"] = normalize_for_intake(snip)
+
+    if FEATURE_TRACE_ARTIFACTS:
+        try:
+            TRACE.add(
+                request.state.cid,
+                "proposals",
+                build_proposals(
+                    trace_proposals_drafts,
+                    _proposal_snapshot(findings),
+                ),
+            )
+        except Exception:
+            pass
 
     analysis_out = {"findings": findings, "status": "ok"}
     status_out = "ok"

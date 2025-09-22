@@ -92,11 +92,35 @@ REGEX_MISS = 1 << 4
 WHEN_FALSE = 1 << 5
 TEXT_NORMALIZATION_ISSUE = 1 << 6
 FIRED = 1 << 7
+SEGMENT_LABEL_MISMATCH = 1 << 8
+SEGMENT_KIND_MISMATCH = 1 << 9
 
 
 def _compile(patterns: Iterable[str]) -> List[re.Pattern[str]]:
     """Compile regex patterns with IGNORECASE|MULTILINE by default (inline flags respected)."""
     return [re.compile(p, re.I | re.MULTILINE) for p in patterns if p]
+
+
+def _normalize_str_list(values: Any) -> List[str]:
+    if not values:
+        return []
+    if isinstance(values, str):
+        values = [values]
+    result: List[str] = []
+    for item in values:
+        if item is None:
+            continue
+        text = str(item).strip().lower()
+        if not text:
+            continue
+        if text not in result:
+            result.append(text)
+    return result
+
+
+class AppliesToSchema(BaseModel):
+    labels: List[str] = Field(default_factory=list)
+    segment_kind: List[str] = Field(default_factory=list)
 
 
 class RuleSchema(BaseModel):
@@ -113,6 +137,7 @@ class RuleSchema(BaseModel):
     deprecated: bool = False
     always_on: bool = False
     generic: bool = False
+    applies_to: Optional[AppliesToSchema] = None
 
     @field_validator("severity")
     @classmethod
@@ -274,6 +299,20 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
                         pack_rel = str(path)
 
                     title_val = raw.get("Title") or raw.get("title")
+                    applies_to_raw = raw.get("applies_to") or {}
+                    applies_to_spec: Dict[str, List[str]] = {}
+                    if isinstance(applies_to_raw, dict):
+                        labels_norm = _normalize_str_list(
+                            applies_to_raw.get("labels")
+                        )
+                        kinds_norm = _normalize_str_list(
+                            applies_to_raw.get("segment_kind")
+                        )
+                        if labels_norm:
+                            applies_to_spec["labels"] = labels_norm
+                        if kinds_norm:
+                            applies_to_spec["segment_kind"] = kinds_norm
+
                     spec = {
                         "id": rid,
                         "rule_id": rid,
@@ -311,6 +350,8 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
                         "always_on": bool(raw.get("always_on")),
                         "generic": bool(raw.get("generic")),
                     }
+                    if applies_to_spec:
+                        spec["applies_to"] = applies_to_spec
 
                     # Валидация схемы правила (но не прерываем загрузку)
                     try:
@@ -330,6 +371,7 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
                                 "deprecated": deprecated,
                                 "always_on": spec["always_on"],
                                 "generic": spec["generic"],
+                                "applies_to": applies_to_spec,
                             }
                         )
                     except ValidationError:
@@ -419,6 +461,8 @@ def filter_rules(
     doc_type: str,
     clause_types: Iterable[str],
     jurisdiction: Optional[str] = None,
+    segment_labels: Optional[Set[str]] = None,
+    segment_kind: Optional[str] = None,
 ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
     Return (matched_rules, coverage).
@@ -442,6 +486,13 @@ def filter_rules(
 
     filtered: List[Dict[str, Any]] = []
     coverage: List[Dict[str, Any]] = []
+
+    segment_labels_lc: Optional[Set[str]] = None
+    if segment_labels is not None:
+        segment_labels_lc = {
+            str(lbl).strip().lower() for lbl in segment_labels if str(lbl).strip()
+        }
+    segment_kind_lc = str(segment_kind).strip().lower() if segment_kind else ""
 
     candidate_ids = CANDIDATES_VAR.get()
     candidate_active = bool(candidate_ids)
@@ -477,6 +528,19 @@ def filter_rules(
         req_clauses = {c.lower() for c in rule.get("requires_clause", [])}
         if req_clauses and clause_set.isdisjoint(req_clauses):
             rule_flags |= NO_CLAUSE
+
+        applies_to = rule.get("applies_to") or {}
+        if isinstance(applies_to, dict):
+            rule_labels = applies_to.get("labels") or []
+            if rule_labels:
+                labels_provided = segment_labels_lc or set()
+                if not labels_provided.intersection(rule_labels):
+                    rule_flags |= SEGMENT_LABEL_MISMATCH
+
+            rule_kinds = applies_to.get("segment_kind") or []
+            if rule_kinds:
+                if not segment_kind_lc or segment_kind_lc not in rule_kinds:
+                    rule_flags |= SEGMENT_KIND_MISMATCH
 
         # Triggers
         ok = True

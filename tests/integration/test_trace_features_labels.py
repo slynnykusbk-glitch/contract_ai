@@ -15,13 +15,16 @@ def _sanitize_env(key: str, value: str) -> None:
 
 
 def test_trace_features_include_labels_and_entities():
-    previous_flag = os.environ.get("FEATURE_L0_LABELS")
+    previous_l0 = os.environ.get("FEATURE_L0_LABELS")
+    previous_trace = os.environ.get("FEATURE_TRACE_ARTIFACTS")
     _sanitize_env("FEATURE_L0_LABELS", "1")
+    _sanitize_env("FEATURE_TRACE_ARTIFACTS", "1")
 
     client, modules = _build_client("1")
     try:
         payload = {
             "text": (
+                "Invoices are payable within thirty (30) days.\n"
                 "Payment Terms. The Supplier shall be paid within thirty (30) days of invoice.\n"
                 "Term. This agreement continues for sixty (60) days from the Effective Date.\n"
                 "Governing Law. The parties agree to English law and submit to the courts of London."
@@ -49,11 +52,14 @@ def test_trace_features_include_labels_and_entities():
         assert isinstance(segments, list)
         assert segments
 
+        payment_segments = []
         for segment in segments:
             assert isinstance(segment, dict)
             labels = segment.get("labels")
             assert isinstance(labels, list)
             assert labels
+            if "payment_terms" in labels:
+                payment_segments.append(segment)
 
             entities = segment.get("entities")
             assert isinstance(entities, dict)
@@ -78,9 +84,30 @@ def test_trace_features_include_labels_and_entities():
                     if isinstance(value, dict):
                         assert "text" not in value
 
+        assert payment_segments
+
+        for segment in payment_segments:
+            durations = segment.get("entities", {}).get("durations", [])
+            if durations:
+                assert any(
+                    (
+                        entry.get("unit") == "days" and entry.get("value") == 30
+                    )
+                    or (
+                        isinstance(entry.get("value"), dict)
+                        and entry["value"].get("days") == 30
+                    )
+                    for entry in durations
+                    if isinstance(entry, dict)
+                )
+                break
     finally:
         _cleanup(client, modules)
-        if previous_flag is None:
+        if previous_l0 is None:
             os.environ.pop("FEATURE_L0_LABELS", None)
         else:
-            os.environ["FEATURE_L0_LABELS"] = previous_flag
+            os.environ["FEATURE_L0_LABELS"] = previous_l0
+        if previous_trace is None:
+            os.environ.pop("FEATURE_TRACE_ARTIFACTS", None)
+        else:
+            os.environ["FEATURE_TRACE_ARTIFACTS"] = previous_trace

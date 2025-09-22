@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import json
 import logging
 import os
@@ -72,6 +73,7 @@ def _make_long_document() -> str:
 
 def test_trace_perf_guard() -> None:
     prev_rule_dirs = os.environ.get("RULE_PACKS_DIRS")
+    prev_loader_module = sys.modules.get("contract_review_app.legal_rules.loader")
     os.environ["RULE_PACKS_DIRS"] = str(_EMPTY_RULE_DIR)
     client = None
     modules: list[str] = []
@@ -118,3 +120,9 @@ def test_trace_perf_guard() -> None:
             os.environ.pop("RULE_PACKS_DIRS", None)
         else:
             os.environ["RULE_PACKS_DIRS"] = prev_rule_dirs
+
+        if prev_loader_module is not None:
+            sys.modules["contract_review_app.legal_rules.loader"] = prev_loader_module
+        else:
+            importlib.invalidate_caches()
+            importlib.import_module("contract_review_app.legal_rules.loader")

@@ -5,7 +5,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 import re
-from typing import Dict, Iterable, List, MutableMapping, Optional, Set, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    MutableMapping,
+    Optional,
+    Set,
+    Tuple,
+)
+from typing import Literal
 
 from contract_review_app.core.lx_types import LxFeatureSet, LxSegment
 
@@ -13,11 +24,45 @@ from . import loader
 
 
 @dataclass(frozen=True)
+class ReasonPattern:
+    kind: Literal["regex", "keyword"]
+    offsets: Tuple[Tuple[int, int], ...] = ()
+
+    def to_json(self) -> Dict[str, Any]:
+        return {
+            "kind": self.kind,
+            "offsets": [[int(start), int(end)] for start, end in self.offsets],
+        }
+
+
+@dataclass(frozen=True)
+class ReasonPayload:
+    labels: Tuple[str, ...] = ()
+    patterns: Tuple[ReasonPattern, ...] = ()
+    gates: Tuple[Tuple[str, bool], ...] = ()
+
+    def identity(self) -> Tuple[Tuple[str, ...], Tuple[Tuple[str, Tuple[Tuple[int, int], ...]], ...], Tuple[Tuple[str, bool], ...]]:
+        label_key = tuple(sorted(self.labels))
+        pattern_key = tuple(
+            (pattern.kind, tuple(pattern.offsets)) for pattern in self.patterns
+        )
+        gates_key = tuple(sorted(self.gates))
+        return label_key, pattern_key, gates_key
+
+    def to_json(self) -> Dict[str, Any]:
+        return {
+            "labels": list(dict.fromkeys(sorted(self.labels))),
+            "patterns": [pattern.to_json() for pattern in self.patterns],
+            "gates": {name: bool(flag) for name, flag in self.gates},
+        }
+
+
+@dataclass(frozen=True)
 class RuleRef:
     """Reference to a rule suggested for evaluation."""
 
     rule_id: str
-    reasons: Tuple[str, ...] = ()
+    reasons: Tuple[ReasonPayload, ...] = ()
 
 
 def _normalize_token(token: str) -> str:
@@ -155,11 +200,27 @@ _TEXT_TOKEN_ALLOWLIST: Set[str] = {
 }
 
 
+def _make_reason(
+    *,
+    labels: Iterable[str] = (),
+    pattern_kind: Optional[Literal["regex", "keyword"]] = None,
+    gates: Optional[Dict[str, bool]] = None,
+) -> ReasonPayload:
+    label_items = tuple(sorted({str(lbl).strip() for lbl in labels if str(lbl).strip()}))
+    patterns: Tuple[ReasonPattern, ...] = ()
+    if pattern_kind is not None:
+        patterns = (ReasonPattern(kind=pattern_kind, offsets=()),)
+    gate_items: Tuple[Tuple[str, bool], ...] = ()
+    if gates:
+        gate_items = tuple((str(name), bool(value)) for name, value in sorted(gates.items()))
+    return ReasonPayload(labels=label_items, patterns=patterns, gates=gate_items)
+
+
 def _collect_from_index(
     index: MutableMapping[str, Set[str]],
     keys: Iterable[str],
-    reason: str,
-    acc: MutableMapping[str, Set[str]],
+    reason_factory: Callable[[str], Optional[ReasonPayload]],
+    acc: MutableMapping[str, Dict[Tuple[Any, ...], ReasonPayload]],
 ) -> None:
     for key in keys:
         if not key:
@@ -167,8 +228,15 @@ def _collect_from_index(
         vals = index.get(key)
         if not vals:
             continue
+        payload = reason_factory(key)
+        if payload is None:
+            continue
+        reason_key = payload.identity()
         for rule_id in vals:
-            acc.setdefault(rule_id, set()).add(reason)
+            rid = str(rule_id)
+            acc.setdefault(rid, {})
+            if reason_key not in acc[rid]:
+                acc[rid][reason_key] = payload
 
 
 def _features_from_segment(segment: LxSegment) -> Set[str]:
@@ -187,7 +255,7 @@ def select_candidate_rules(
 
     (_, token_index, clause_index, jurisdiction_index) = _rule_index()
 
-    reasons: Dict[str, Set[str]] = {}
+    reasons: Dict[str, Dict[Tuple[Any, ...], ReasonPayload]] = {}
 
     labels = { _normalize_token(lbl) for lbl in (feats.labels or []) }
     clause_type = _normalize_token(segment.clause_type or "")
@@ -200,7 +268,7 @@ def select_candidate_rules(
             _collect_from_index(
                 clause_index,
                 (ct for ct in clause_targets),
-                f"label:{label}",
+                lambda _clause, lbl=label: _make_reason(labels={lbl}),
                 reasons,
             )
         keywords = _LABEL_KEYWORDS.get(label, set())
@@ -208,38 +276,87 @@ def select_candidate_rules(
             _collect_from_index(
                 token_index,
                 keywords,
-                f"keyword:{label}",
+                lambda _kw, lbl=label: _make_reason(
+                    labels={lbl}, pattern_kind="keyword"
+                ),
                 reasons,
             )
 
     if feats.durations:
-        _collect_from_index(token_index, {"day", "days", "payment", "term"}, "duration", reasons)
+        duration_reason = _make_reason(labels={"duration"})
+        _collect_from_index(
+            token_index,
+            {"day", "days", "payment", "term"},
+            lambda _token: duration_reason,
+            reasons,
+        )
 
     if feats.amounts:
-        _collect_from_index(token_index, {"amount", "fee", "charge", "price"}, "amount", reasons)
+        amount_reason = _make_reason(labels={"amount"})
+        _collect_from_index(
+            token_index,
+            {"amount", "fee", "charge", "price"},
+            lambda _token: amount_reason,
+            reasons,
+        )
 
     for signal in feats.law_signals or []:
         tokens = _tokenize(signal)
-        _collect_from_index(token_index, tokens, "law", reasons)
+        law_reason = _make_reason(labels={"law"}, pattern_kind="keyword")
+        _collect_from_index(
+            token_index,
+            tokens,
+            lambda _token: law_reason,
+            reasons,
+        )
 
     if feats.jurisdiction:
         juris_tokens = {feats.jurisdiction.lower()} | _tokenize(feats.jurisdiction)
-        _collect_from_index(jurisdiction_index, juris_tokens, "jurisdiction", reasons)
-        _collect_from_index(token_index, juris_tokens, "jurisdiction", reasons)
+        juris_reason = _make_reason(labels={"jurisdiction"})
+        _collect_from_index(
+            jurisdiction_index,
+            juris_tokens,
+            lambda _token: juris_reason,
+            reasons,
+        )
+        _collect_from_index(
+            token_index,
+            juris_tokens,
+            lambda _token: juris_reason,
+            reasons,
+        )
 
     for token in _features_from_segment(segment):
-        _collect_from_index(token_index, {token}, f"text:{token}", reasons)
+        _collect_from_index(
+            token_index,
+            {token},
+            lambda key: _make_reason(labels={key}, pattern_kind="keyword"),
+            reasons,
+        )
 
     if not reasons:
         if clause_type:
-            _collect_from_index(clause_index, {clause_type}, f"clause:{clause_type}", reasons)
+            _collect_from_index(
+                clause_index,
+                {clause_type},
+                lambda key: _make_reason(labels={key}),
+                reasons,
+            )
 
     if not reasons:
         return []
 
     rule_refs = [
-        RuleRef(rule_id=rid, reasons=tuple(sorted(reason_set)))
-        for rid, reason_set in reasons.items()
+        RuleRef(
+            rule_id=rid,
+            reasons=tuple(
+                sorted(
+                    reason_map.values(),
+                    key=lambda payload: payload.identity(),
+                )
+            ),
+        )
+        for rid, reason_map in reasons.items()
     ]
     rule_refs.sort(key=lambda ref: ref.rule_id)
     return rule_refs

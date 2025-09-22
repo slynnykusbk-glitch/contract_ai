@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal, TypedDict, Union
+from typing import Any, Dict, List, Literal, Optional, TypedDict, Union
 
 
 class TRange(TypedDict):
@@ -38,9 +38,29 @@ class TRulesetStats(TypedDict, total=False):
     triggered: int
 
 
+class TDispatchReasonPattern(TypedDict, total=False):
+    kind: Literal["regex", "keyword"]
+    offsets: List[List[int]]
+
+
+class TDispatchReason(TypedDict, total=False):
+    labels: List[str]
+    patterns: List[TDispatchReasonPattern]
+    gates: Dict[str, bool]
+
+
+class TDispatchCandidate(TypedDict, total=False):
+    rule_id: str
+    gates: Dict[str, Any]
+    gates_passed: bool
+    triggers: Dict[str, Any]
+    reason_not_triggered: Optional[str]
+    reasons: List[TDispatchReason]
+
+
 class TDispatch(TypedDict, total=False):
     ruleset: TRulesetStats
-    candidates: List[Dict[str, Any]]
+    candidates: List[TDispatchCandidate]
 
 
 class TConstraintCheck(TypedDict, total=False):

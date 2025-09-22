@@ -7,7 +7,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 import pytest
 
@@ -23,6 +23,7 @@ _LOGGER = logging.getLogger(__name__)
 _TRACE_SIZE_LIMIT: Final[int] = 1_500_000
 _TRACE_FETCH_LIMIT_SECONDS: Final[float] = 1.5
 _TARGET_DOCUMENT_SIZE_CHARS: Final[int] = 120_000
+_TRACE_PER_ENTRY_LIMIT: Final[int] = 60_000
 _EMPTY_RULE_DIR: Final[Path] = (
     Path(__file__).resolve().parent / "data" / "empty_rules"
 )
@@ -71,6 +72,53 @@ def _make_long_document() -> str:
     return "\n\n".join(sections)
 
 
+def _capture_trace_snapshot(document_text: str) -> dict[str, Any]:
+    client = None
+    modules: list[str] = []
+    try:
+        client, modules = _build_client("1")
+        payload = {"text": document_text}
+        analyze_response = client.post(
+            "/api/analyze", headers=_headers(), json=payload
+        )
+        assert analyze_response.status_code == 200
+
+        cid = analyze_response.headers.get("x-cid")
+        assert cid
+
+        start = time.perf_counter()
+        trace_response = client.get(f"/api/trace/{cid}")
+        fetch_duration = time.perf_counter() - start
+        assert trace_response.status_code == 200
+
+        trace_body = trace_response.json()
+        trace_size = len(json.dumps(trace_body))
+
+        dispatch_candidates = 0
+        dispatch_payload = trace_body.get("dispatch")
+        if isinstance(dispatch_payload, dict):
+            candidates = dispatch_payload.get("candidates")
+            if isinstance(candidates, list):
+                dispatch_candidates = len(candidates)
+
+        feature_segments = 0
+        features_payload = trace_body.get("features")
+        if isinstance(features_payload, dict):
+            segments = features_payload.get("segments")
+            if isinstance(segments, list):
+                feature_segments = len(segments)
+
+        return {
+            "fetch_duration": fetch_duration,
+            "size": trace_size,
+            "dispatch_candidates": dispatch_candidates,
+            "feature_segments": feature_segments,
+        }
+    finally:
+        if client is not None:
+            _cleanup(client, modules)
+
+
 def test_trace_perf_guard() -> None:
     prev_rule_dirs = os.environ.get("RULE_PACKS_DIRS")
     prev_loader_module = sys.modules.get("contract_review_app.legal_rules.loader")
@@ -116,6 +164,57 @@ def test_trace_perf_guard() -> None:
     finally:
         if client is not None:
             _cleanup(client, modules)
+        if prev_rule_dirs is None:
+            os.environ.pop("RULE_PACKS_DIRS", None)
+        else:
+            os.environ["RULE_PACKS_DIRS"] = prev_rule_dirs
+
+        if prev_loader_module is not None:
+            sys.modules["contract_review_app.legal_rules.loader"] = prev_loader_module
+        else:
+            importlib.invalidate_caches()
+            importlib.import_module("contract_review_app.legal_rules.loader")
+
+
+def test_trace_perf_guard_entry_limit() -> None:
+    prev_rule_dirs = os.environ.get("RULE_PACKS_DIRS")
+    prev_loader_module = sys.modules.get("contract_review_app.legal_rules.loader")
+    prev_entry_limit = os.environ.get("TRACE_PER_ENTRY_MAX_BYTES")
+
+    document_text = _make_long_document()
+    os.environ["RULE_PACKS_DIRS"] = str(_EMPTY_RULE_DIR)
+
+    try:
+        os.environ.pop("TRACE_PER_ENTRY_MAX_BYTES", None)
+        baseline = _capture_trace_snapshot(document_text)
+
+        assert baseline["size"] > _TRACE_PER_ENTRY_LIMIT
+
+        os.environ["TRACE_PER_ENTRY_MAX_BYTES"] = str(_TRACE_PER_ENTRY_LIMIT)
+        limited = _capture_trace_snapshot(document_text)
+
+        assert (
+            limited["size"] <= _TRACE_PER_ENTRY_LIMIT
+        ), f"Trace payload exceeds entry limit: {limited['size']} > {_TRACE_PER_ENTRY_LIMIT}"
+        assert limited["size"] < baseline["size"]
+        assert limited["dispatch_candidates"] <= baseline["dispatch_candidates"]
+        assert limited["feature_segments"] <= baseline["feature_segments"]
+        assert (
+            limited["dispatch_candidates"] < baseline["dispatch_candidates"]
+            or limited["feature_segments"] < baseline["feature_segments"]
+        )
+        assert (
+            limited["fetch_duration"] <= _TRACE_FETCH_LIMIT_SECONDS
+        ), (
+            "Trace fetch slower than expected with entry limit: "
+            f"{limited['fetch_duration']:.3f}s > {_TRACE_FETCH_LIMIT_SECONDS:.3f}s"
+        )
+    finally:
+        if prev_entry_limit is None:
+            os.environ.pop("TRACE_PER_ENTRY_MAX_BYTES", None)
+        else:
+            os.environ["TRACE_PER_ENTRY_MAX_BYTES"] = prev_entry_limit
+
         if prev_rule_dirs is None:
             os.environ.pop("RULE_PACKS_DIRS", None)
         else:

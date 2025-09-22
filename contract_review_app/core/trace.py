@@ -11,9 +11,15 @@ from fastapi import Request
 class TraceStore:
     """Simple in-memory LRU store for trace snapshots."""
 
-    def __init__(self, maxlen: int = 200, max_size_bytes: int = 0) -> None:
+    def __init__(
+        self,
+        maxlen: int = 200,
+        max_size_bytes: int = 0,
+        max_entry_size_bytes: int = 0,
+    ) -> None:
         self.maxlen = maxlen
         self.max_size_bytes = max(0, int(max_size_bytes))
+        self.max_entry_size_bytes = max(0, int(max_entry_size_bytes))
         self._data: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
         self._weights: Dict[str, int] = {}
         self._total_weight = 0
@@ -44,6 +50,70 @@ class TraceStore:
         self._weights[cid] = new_weight
         self._total_weight += new_weight - old_weight
 
+    def _apply_entry_limit(self, cid: str) -> None:
+        if self.max_entry_size_bytes <= 0:
+            return
+        entry = self._data.get(cid)
+        if entry is None:
+            return
+        weight = self._estimate_weight(entry)
+        if weight <= self.max_entry_size_bytes:
+            return
+        body = entry.get("body")
+        if not isinstance(body, dict):
+            return
+
+        def _resolve_list(container: Dict[str, Any], path: tuple[str, ...]) -> list[Any] | None:
+            current: Any = container
+            for key in path:
+                if not isinstance(current, dict):
+                    return None
+                current = current.get(key)
+                if current is None:
+                    return None
+            return current if isinstance(current, list) else None
+
+        trim_paths: tuple[tuple[str, ...], ...] = (
+            ("dispatch", "candidates"),
+            ("features", "segments"),
+        )
+
+        trimmed = False
+        while weight > self.max_entry_size_bytes:
+            changed = False
+            for path in trim_paths:
+                items = _resolve_list(body, path)
+                if not items:
+                    continue
+                # remove items from the tail to favour earlier entries
+                items.pop()
+                changed = True
+                trimmed = True
+                weight = self._estimate_weight(entry)
+                if weight <= self.max_entry_size_bytes:
+                    break
+            if not changed:
+                break
+
+        if trimmed:
+            # remove empty containers to avoid noise in the payload
+            for path in trim_paths:
+                parent: Any = body
+                for key in path[:-1]:
+                    if not isinstance(parent, dict):
+                        parent = None
+                        break
+                    parent = parent.get(key)
+                    if parent is None:
+                        break
+                if parent is None:
+                    continue
+                last_key = path[-1]
+                if isinstance(parent, dict):
+                    value = parent.get(last_key)
+                    if isinstance(value, list) and not value:
+                        parent[last_key] = []
+
     def _enforce_limits(self) -> None:
         while len(self._data) > self.maxlen:
             self._drop_lru()
@@ -73,6 +143,7 @@ class TraceStore:
         else:
             self._data[cid] = dict(item)
         self._data.move_to_end(cid)
+        self._apply_entry_limit(cid)
         self._record_weight(cid)
         self._enforce_limits()
 
@@ -90,6 +161,7 @@ class TraceStore:
         body[key] = value
         entry["body"] = body
         self._data.move_to_end(cid)
+        self._apply_entry_limit(cid)
         self._record_weight(cid)
         self._enforce_limits()
 

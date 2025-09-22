@@ -143,9 +143,10 @@ log.info("[PANEL] build token: %s", PANEL_BUILD_TOKEN)
 
 TRACE_MAX = int(os.getenv("TRACE_MAX", "200"))
 TRACE_MAX_SIZE_BYTES = int(os.getenv("TRACE_MAX_SIZE_BYTES", "0"))
+TRACE_PER_ENTRY_MAX_BYTES = int(os.getenv("TRACE_PER_ENTRY_MAX_BYTES", "0"))
 
 
-TRACE = TraceStore(TRACE_MAX, TRACE_MAX_SIZE_BYTES)
+TRACE = TraceStore(TRACE_MAX, TRACE_MAX_SIZE_BYTES, TRACE_PER_ENTRY_MAX_BYTES)
 
 # flag indicating whether rule engine is usable
 _RULE_ENGINE_OK = True

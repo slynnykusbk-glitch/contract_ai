@@ -444,83 +444,95 @@ def _sanitize_groups(groups: Any) -> Mapping[str, Any]:
 
 
 def _coerce_match_entry(item: Any) -> Mapping[str, Any]:
-    raw_start = None
-    raw_end = None
-    raw_text: Any = None
-    raw_span: Any = None
+    def _extract(value: Any, key: str) -> Any:
+        if isinstance(value, Mapping):
+            return value.get(key)
+        return getattr(value, key, None)
 
-    if isinstance(item, Mapping):
-        raw_start = item.get("start")
-        raw_end = item.get("end")
-        raw_text = item.get("text")
-        raw_span = item.get("span")
-    else:
-        raw_start = getattr(item, "start", None)
-        raw_end = getattr(item, "end", None)
-        raw_text = getattr(item, "text", None)
-        raw_span = getattr(item, "span", None)
+    def _to_int(raw: Any) -> int | None:
+        try:
+            if isinstance(raw, bool):  # guard against bools being ints
+                return None
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
 
-    span: dict[str, int] = {}
-    if isinstance(raw_span, Mapping):
-        span_start = raw_span.get("start")
-        span_end = raw_span.get("end")
-        if isinstance(span_start, (int, float)):
-            span["start"] = int(span_start)
-        if isinstance(span_end, (int, float)):
-            span["end"] = int(span_end)
+    def _add_offset_pair(pairs: list[list[int]], start: Any, end: Any) -> None:
+        start_int = _to_int(start)
+        end_int = _to_int(end)
+        if start_int is None or end_int is None:
+            return
+        pairs.append([start_int, end_int])
 
-    if isinstance(raw_start, (int, float)):
-        span.setdefault("start", int(raw_start))
-    if isinstance(raw_end, (int, float)):
-        span.setdefault("end", int(raw_end))
+    def _extend_offsets_from_value(pairs: list[list[int]], value: Any) -> None:
+        if value is None:
+            return
+        if isinstance(value, Mapping):
+            _add_offset_pair(pairs, value.get("start"), value.get("end"))
+            return
+        if isinstance(value, Iterable) and not isinstance(value, (str, bytes, bytearray)):
+            normalized = _normalize_offsets(value)
+            if normalized:
+                pairs.extend(normalized)
+                return
+            items = list(value)
+            if len(items) >= 2:
+                _add_offset_pair(pairs, items[0], items[1])
+
+    kind_raw = _extract(item, "kind")
+    if not kind_raw:
+        kind_raw = _extract(item, "type")
+
+    pattern_id_raw = _extract(item, "pattern_id")
+
+    offsets: list[list[int]] = []
+    _extend_offsets_from_value(offsets, _extract(item, "offsets"))
+    _extend_offsets_from_value(offsets, _extract(item, "span"))
+
+    _add_offset_pair(offsets, _extract(item, "start"), _extract(item, "end"))
+
+    text_value: str | None = None
+    for alias in ("text", "raw_text", "value", "snippet", "content", "raw"):
+        candidate = _extract(item, alias)
+        if isinstance(candidate, str) and candidate:
+            text_value = candidate
+            break
+
+    hash_raw = _extract(item, "hash8")
+    len_raw = _extract(item, "len")
 
     payload: dict[str, Any] = {}
 
-    if span:
-        payload["span"] = span
+    if isinstance(kind_raw, str) and kind_raw.strip():
+        payload["kind"] = kind_raw.strip()
 
-    pattern_id = None
-    rule_id = None
-    groups = None
-    pattern = None
-    flag = None
+    if pattern_id_raw not in (None, ""):
+        payload["pattern_id"] = str(pattern_id_raw)
 
-    if isinstance(item, Mapping):
-        pattern_id = item.get("pattern_id")
-        rule_id = item.get("rule_id")
-        groups = item.get("groups")
-        pattern = item.get("pattern")
-        flag = item.get("flag")
-    else:
-        pattern_id = getattr(item, "pattern_id", None)
-        rule_id = getattr(item, "rule_id", None)
-        groups = getattr(item, "groups", None)
-        pattern = getattr(item, "pattern", None)
-        flag = getattr(item, "flag", None)
+    if offsets:
+        seen_offsets: set[tuple[int, int]] = set()
+        deduped: list[list[int]] = []
+        for start_int, end_int in offsets:
+            key = (start_int, end_int)
+            if key in seen_offsets:
+                continue
+            seen_offsets.add(key)
+            deduped.append([start_int, end_int])
+        if deduped:
+            payload["offsets"] = deduped
 
-    if pattern_id not in (None, ""):
-        payload["pattern_id"] = str(pattern_id)
-    if rule_id not in (None, ""):
-        payload["rule_id"] = str(rule_id)
+    if isinstance(hash_raw, str) and hash_raw:
+        payload["hash8"] = hash_raw[:8]
 
-    sanitized_groups = _sanitize_groups(groups)
-    if sanitized_groups:
-        payload["groups"] = sanitized_groups
+    len_int = _to_int(len_raw)
 
-    if pattern is not None and not isinstance(pattern, (bytes, bytearray)):
-        pattern_str = str(pattern)
-        if pattern_str:
-            payload["pattern"] = pattern_str
-
-    if flag is not None and not isinstance(flag, (bytes, bytearray)):
-        flag_str = str(flag)
-        if flag_str:
-            payload["flag"] = flag_str
-
-    if isinstance(raw_text, str) and raw_text:
-        digest = sha256(raw_text.encode("utf-8")).hexdigest()
+    if isinstance(text_value, str) and text_value:
+        digest = sha256(text_value.encode("utf-8")).hexdigest()
         payload["hash8"] = digest[:8]
-        payload["len"] = len(raw_text)
+        len_int = len(text_value)
+
+    if len_int is not None and len_int >= 0:
+        payload["len"] = len_int
 
     return payload
 
@@ -598,9 +610,11 @@ def build_dispatch(
                 "triggers": {
                     "expected_any": list(expected_any or []),
                     "matched": [
-                        _coerce_match_entry(entry)
+                        coerced
                         for entry in matches
                         if entry is not None
+                        for coerced in (_coerce_match_entry(entry),)
+                        if coerced
                     ],
                 },
                 "reasons": serialized_reasons,

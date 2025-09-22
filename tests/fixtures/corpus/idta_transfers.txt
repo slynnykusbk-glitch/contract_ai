@@ -1,0 +1,2 @@
+The Parties acknowledge that the arrangement involves an international transfer of personal data under the IDTA. The Processor shall implement appropriate technical and organisational security measures documented in Annex 2.
+In the event of a personal data breach the Processor must notify the Controller within 72 hours.

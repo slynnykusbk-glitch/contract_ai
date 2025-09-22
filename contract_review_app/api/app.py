@@ -2285,7 +2285,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     evaluated_rule_ids: Set[str] = set()
     triggered_rule_ids: Set[str] = set()
     active_pack_set: Set[str] = set()
-    segments_for_yaml: List[Tuple[int, str, int]] = []
+    segments_for_yaml: List[Tuple[int, str, int, Mapping[str, Any]]] = []
     candidate_rules_by_segment: Dict[int, Set[str]] = {}
     dispatcher_mod = None
     features_by_segment: Dict[int, LxFeatureSet] = {}
@@ -2302,7 +2302,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         seg_id = int(seg.get("id", 0) or 0)
         seg_text = str(seg.get("text") or "")
         seg_start = int(seg.get("start") or 0)
-        segments_for_yaml.append((seg_id, seg_text, seg_start))
+        segments_for_yaml.append((seg_id, seg_text, seg_start, seg))
         if dispatcher_mod and seg_id in features_by_segment:
             feats = features_by_segment.get(seg_id)
             if feats is not None:
@@ -2502,9 +2502,17 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             or ""
         )
 
-        for seg_id, seg_text, seg_start in segments_for_yaml:
+        for seg_id, seg_text, seg_start, seg in segments_for_yaml:
             if not seg_text or not seg_text.strip():
                 continue
+
+            feats = features_by_segment.get(seg_id) if features_by_segment else None
+            if feats is not None:
+                raw_labels = getattr(feats, "labels", None) or []
+                segment_labels = {str(lbl) for lbl in raw_labels if lbl}
+            else:
+                segment_labels = set()
+            segment_kind = seg.get("kind") if isinstance(seg, Mapping) else None
 
             token = None
             try:
@@ -2517,6 +2525,8 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                     doc_type=doc_type_val,
                     clause_types=clause_types_set,
                     jurisdiction=jurisdiction,
+                    segment_labels=segment_labels,
+                    segment_kind=segment_kind,
                 )
             finally:
                 if token is not None:
@@ -2614,6 +2624,10 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                             reasons.append("when_clause_false")
                         if flags & getattr(yaml_loader, "TEXT_NORMALIZATION_ISSUE", 0):
                             reasons.append("normalization_issue")
+                        if flags & getattr(yaml_loader, "SEGMENT_LABEL_MISMATCH", 0):
+                            reasons.append("segment_label_mismatch")
+                        if flags & getattr(yaml_loader, "SEGMENT_KIND_MISMATCH", 0):
+                            reasons.append("segment_kind_mismatch")
                         reason = ",".join(reasons) if reasons else None
 
                     pack_id = cov.get("pack_id") or rule_spec.get("pack")

@@ -38,6 +38,7 @@ class LxFeatureSet(BaseModel):
     jurisdiction: Optional[str] = None
     liability_caps: List[str] = Field(default_factory=list)
     carveouts: List[str] = Field(default_factory=list)
+    entities: Dict[str, Any] = Field(default_factory=dict)
 
 
 class LxDocFeatures(BaseModel):

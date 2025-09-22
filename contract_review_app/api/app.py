@@ -2069,6 +2069,65 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                 }
             )
         return snapshot
+
+    def _l0_entities_snapshot(feats: Any) -> Dict[str, Any]:
+        if feats is None:
+            return {}
+        entities = getattr(feats, "entities", {}) or {}
+        if not isinstance(entities, Mapping):
+            return {}
+
+        limits = {
+            "amounts": 20,
+            "percentages": 20,
+            "durations": 20,
+            "dates": 20,
+            "incoterms": 12,
+            "law": 12,
+            "jurisdiction": 12,
+        }
+
+        payload: Dict[str, Any] = {}
+        for key, value in entities.items():
+            if value in (None, "", [], {}):
+                continue
+            key_str = str(key)
+            limit = limits.get(key_str, 20)
+            if isinstance(value, Mapping):
+                payload[key_str] = {
+                    str(k): v for k, v in value.items() if v not in (None, "")
+                }
+                continue
+            if isinstance(value, Sequence) and not isinstance(
+                value, (str, bytes, bytearray)
+            ):
+                items: list[Dict[str, Any]] = []
+                for entry in value:
+                    if not isinstance(entry, Mapping):
+                        continue
+                    normalized: Dict[str, Any] = {}
+                    start = entry.get("start")
+                    if isinstance(start, (int, float)):
+                        normalized["start"] = int(start)
+                    end = entry.get("end")
+                    if isinstance(end, (int, float)):
+                        normalized["end"] = int(end)
+                    if "value" in entry:
+                        normalized["value"] = entry["value"]
+                    kind = entry.get("kind")
+                    if isinstance(kind, str) and kind:
+                        normalized["kind"] = kind
+                    elif kind not in (None, ""):
+                        normalized["kind"] = str(kind)
+                    if normalized:
+                        items.append(normalized)
+                    if len(items) >= limit:
+                        break
+                if items:
+                    payload[key_str] = items
+                continue
+            payload[key_str] = value
+        return payload
     try:
         req = AnalyzeRequest.model_validate(data)
     except ValidationError as e:
@@ -2168,7 +2227,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     t1 = time.perf_counter()
 
     hints_data: Any = []
-    lx_features = None  # noqa: F841  # reserved for future L0 integration
+    lx_features = None
 
     def emit_features_trace() -> None:
         if not FEATURE_TRACE_ARTIFACTS:
@@ -2181,26 +2240,31 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
 
     emit_features_trace()
 
-    if FEATURE_LX_ENGINE:
+    should_extract_l0 = FEATURE_L0_LABELS or FEATURE_LX_ENGINE
+
+    if should_extract_l0:
         try:
             from contract_review_app.analysis import lx_features as _lx_features
         except ImportError:
             lx_features = None
         else:
             try:
-                lx_features = _lx_features.extract_l0_features(txt, parsed.segments)
+                lx_features = _lx_features.extract_l0_features(
+                    parsed_doc, parsed.segments
+                )
             except Exception:
                 lx_features = None
-            segments = getattr(parsed, "segments", None) or []
-            try:
-                segment_count = len(segments)
-            except Exception:
-                segment_count = 0
-            TRACE.add(
-                request.state.cid,
-                "l0_features",
-                {"status": "enabled", "count": segment_count},
-            )
+            if FEATURE_LX_ENGINE:
+                segments = getattr(parsed, "segments", None) or []
+                try:
+                    segment_count = len(segments)
+                except Exception:
+                    segment_count = 0
+                TRACE.add(
+                    request.state.cid,
+                    "l0_features",
+                    {"status": "enabled", "count": segment_count},
+                )
             emit_features_trace()
     analysis_classifier.classify_segments(parsed.segments)
     t2 = time.perf_counter()
@@ -2256,13 +2320,18 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                     candidate_ids = [ref.rule_id for ref in refs]
                     candidate_rules_by_segment[seg_id] = set(candidate_ids)
                     if hasattr(feats, "model_dump"):
-                        feat_payload = feats.model_dump()
+                        feat_payload = feats.model_dump(exclude_none=True)
                     else:  # pragma: no cover
                         feat_payload = feats.dict()  # type: ignore[call-arg]
+                    dispatch_labels = sorted(
+                        {str(lbl) for lbl in (feats.labels or []) if lbl}
+                    )
+                    dispatch_entities = _l0_entities_snapshot(feats)
                     dispatch_segments.append(
                         {
                             "segment_id": seg_id,
-                            "labels": list(feats.labels or []),
+                            "labels": dispatch_labels,
+                            "entities": dispatch_entities,
                             "features": feat_payload,
                             "candidates": [
                                 {

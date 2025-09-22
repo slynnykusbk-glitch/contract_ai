@@ -13,6 +13,7 @@ def test_feature_set_defaults():
     assert feature_set.jurisdiction is None
     assert feature_set.liability_caps == []
     assert feature_set.carveouts == []
+    assert feature_set.entities == {}
 
     serialized = feature_set.dict()
     assert serialized["labels"] == []
@@ -24,6 +25,7 @@ def test_feature_set_defaults():
     assert serialized["jurisdiction"] is None
     assert serialized["liability_caps"] == []
     assert serialized["carveouts"] == []
+    assert serialized["entities"] == {}
 
 
 def test_doc_features_defaults():

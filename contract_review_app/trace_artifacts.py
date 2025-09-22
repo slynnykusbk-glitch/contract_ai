@@ -250,33 +250,43 @@ def serialize_features(
         normalized_span = _slice_normalized_text(norm_text, start, end)
         token_len = _count_tokens(normalized_span)
 
+        entities_dict: dict[str, Any] = {}
         if isinstance(entities_raw, Mapping):
-            entities_dict: dict[str, Any] = {
-                str(k): v
-                for k, v in entities_raw.items()
-                if k not in {"amounts", "durations"} and v not in (None, "", [], {})
-            }
             amounts_raw = entities_raw.get("amounts")
             durations_raw = entities_raw.get("durations")
+            for key, value in entities_raw.items():
+                if key in {"amounts", "durations"}:
+                    continue
+                if value in (None, "", [], {}):
+                    continue
+                entities_dict[str(key)] = value
         else:
-            entities_dict = {}
             amounts_raw = None
             durations_raw = None
 
-        amounts_sources = [amounts_raw]
-        durations_sources = [durations_raw]
-
         if feat_obj is not None:
-            amounts_sources.append(getattr(feat_obj, "amounts", None))
-            durations_sources.append(getattr(feat_obj, "durations", None))
+            feat_entities = getattr(feat_obj, "entities", None)
+            if isinstance(feat_entities, Mapping):
+                for key, value in feat_entities.items():
+                    if value in (None, "", [], {}):
+                        continue
+                    entities_dict[str(key)] = value
 
-        amounts = _collect_amounts(*amounts_sources)
-        if amounts:
-            entities_dict["amounts"] = amounts
+        if "amounts" not in entities_dict:
+            amounts_sources = [amounts_raw]
+            if feat_obj is not None:
+                amounts_sources.append(getattr(feat_obj, "amounts", None))
+            amounts = _collect_amounts(*amounts_sources)
+            if amounts:
+                entities_dict["amounts"] = amounts
 
-        durations = _collect_duration_entries(*durations_sources)
-        if durations:
-            entities_dict["durations"] = durations
+        if "durations" not in entities_dict:
+            durations_sources = [durations_raw]
+            if feat_obj is not None:
+                durations_sources.append(getattr(feat_obj, "durations", None))
+            durations = _collect_duration_entries(*durations_sources)
+            if durations:
+                entities_dict["durations"] = durations
 
         if entities_dict:
             entities_dict = _clamp_entities_payload(entities_dict)

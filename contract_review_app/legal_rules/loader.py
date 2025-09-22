@@ -111,6 +111,8 @@ class RuleSchema(BaseModel):
     advice: Optional[str] = None
     law_refs: List[Any] = Field(default_factory=list)
     deprecated: bool = False
+    always_on: bool = False
+    generic: bool = False
 
     @field_validator("severity")
     @classmethod
@@ -306,6 +308,8 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
                         "jurisdiction": jurisdiction,
                         "requires_clause": requires_clause,
                         "deprecated": deprecated,
+                        "always_on": bool(raw.get("always_on")),
+                        "generic": bool(raw.get("generic")),
                     }
 
                     # Валидация схемы правила (но не прерываем загрузку)
@@ -324,6 +328,8 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
                                 "advice": spec["advice"],
                                 "law_refs": spec["law_refs"],
                                 "deprecated": deprecated,
+                                "always_on": spec["always_on"],
+                                "generic": spec["generic"],
                             }
                         )
                     except ValidationError:
@@ -449,16 +455,20 @@ def filter_rules(
         matches: List[str] = []
         spans: List[Dict[str, int]] = []
 
+        always_on = bool(rule.get("always_on"))
+        is_generic = bool(rule.get("generic"))
+        skip_scope_checks = always_on or is_generic
+
         # Gate: doc_type
         rule_doc_types = [d.lower() for d in rule.get("doc_types", [])]
-        if doc_type_lc:
+        if doc_type_lc and not skip_scope_checks:
             if rule_doc_types and "any" not in rule_doc_types:
                 if doc_type_lc not in rule_doc_types:
                     rule_flags |= DOC_TYPE_MISMATCH
 
         # Gate: jurisdiction
         rule_juris = [j.lower() for j in rule.get("jurisdiction", [])]
-        if juris_lc:
+        if juris_lc and not skip_scope_checks:
             if rule_juris and "any" not in rule_juris:
                 if juris_lc not in rule_juris:
                     rule_flags |= JURISDICTION_MISMATCH

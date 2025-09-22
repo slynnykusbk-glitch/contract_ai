@@ -34,6 +34,17 @@ def _normalize(value: str) -> str:
     return normalized.strip()
 
 
+_SYNONYM_PATTERNS: dict[str, Pattern[str]] = {}
+
+
+def _synonym_pattern(synonym: str) -> Pattern[str]:
+    pattern = _SYNONYM_PATTERNS.get(synonym)
+    if pattern is None:
+        pattern = re.compile(rf"(?<!\\w){re.escape(synonym)}(?!\\w)")
+        _SYNONYM_PATTERNS[synonym] = pattern
+    return pattern
+
+
 def _analysis_window(text: str, radius: int = 900) -> str:
     if len(text) <= radius * 2:
         return text
@@ -915,7 +926,7 @@ def resolve_labels(text: str, heading: str | None) -> set[str]:
             if not haystack:
                 continue
             for synonym in synonyms:
-                if synonym in haystack:
+                if _synonym_pattern(synonym).search(haystack):
                     resolved.add(label)
                     found = True
                     break

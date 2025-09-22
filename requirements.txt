@@ -5,7 +5,7 @@ pyyaml
 pytest-cov
 requests
 SQLAlchemy>=2.0,<3.0
-loguru>=0.7,<1.0
+loguru==0.7.2
 sentry-sdk>=1.39,<2
 fastapi==0.115.*
 uvicorn[standard]==0.30.*

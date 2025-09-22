@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import os
 from hashlib import sha256
 from typing import Any, Iterable, Mapping, Sequence, TYPE_CHECKING
 
 from contract_review_app.intake.parser import ParsedDocument
+
+from contract_review_app.legal_rules.dispatcher import ReasonPayload
 
 from .types_trace import TConstraints, TDispatch, TFeatures, TProposals
 
@@ -12,6 +15,20 @@ MAX_LABELS_PER_SEG = 16
 MAX_AMOUNTS_PER_SEG = 20
 MAX_DURATIONS_PER_SEG = 20
 MAX_ENTITY_VALUES_PER_KEY = 20
+
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        value = int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
+DISPATCH_MAX_CANDIDATES_PER_SEGMENT = _env_int(
+    "DISPATCH_MAX_CANDIDATES_PER_SEGMENT", 50
+)
+DISPATCH_MAX_REASONS_PER_RULE = _env_int("DISPATCH_MAX_REASONS_PER_RULE", 12)
 
 if TYPE_CHECKING:  # pragma: no cover - imported for typing only
     from contract_review_app.core.lx_types import LxDocFeatures, LxFeatureSet
@@ -150,6 +167,73 @@ def _clamp_entities_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
             continue
         clamped[key] = _clamp_sequence(value, MAX_ENTITY_VALUES_PER_KEY)
     return clamped
+
+
+def _normalize_offsets(raw: Any) -> list[list[int]]:
+    offsets: list[list[int]] = []
+    if isinstance(raw, Iterable) and not isinstance(raw, (str, bytes, bytearray)):
+        for entry in raw:
+            if isinstance(entry, Iterable) and not isinstance(
+                entry, (str, bytes, bytearray)
+            ):
+                items = list(entry)
+                if len(items) < 2:
+                    continue
+                start_raw, end_raw = items[0], items[1]
+                try:
+                    start = int(start_raw)
+                    end = int(end_raw)
+                except (TypeError, ValueError):
+                    continue
+                offsets.append([start, end])
+    return offsets
+
+
+def serialize_reason_entry(reason: Any) -> dict[str, Any]:
+    if isinstance(reason, ReasonPayload):
+        payload = reason.to_json()
+    elif isinstance(reason, Mapping):
+        payload = dict(reason)
+    else:
+        text = str(reason).strip()
+        payload = {"labels": [text] if text else []}
+
+    labels_raw = payload.get("labels") if isinstance(payload, Mapping) else []
+    labels = _coerce_labels(labels_raw) if labels_raw is not None else []
+
+    patterns_payload: list[dict[str, Any]] = []
+    if isinstance(payload, Mapping):
+        raw_patterns = payload.get("patterns")
+        if isinstance(raw_patterns, Iterable) and not isinstance(
+            raw_patterns, (str, bytes, bytearray)
+        ):
+            for entry in raw_patterns:
+                if not isinstance(entry, Mapping):
+                    continue
+                kind = entry.get("kind")
+                if isinstance(kind, str):
+                    kind_lower = kind.lower()
+                    if kind_lower in {"regex", "keyword"}:
+                        patterns_payload.append(
+                            {
+                                "kind": kind_lower,
+                                "offsets": _normalize_offsets(entry.get("offsets")),
+                            }
+                        )
+
+    gates_payload: dict[str, bool] = {}
+    if isinstance(payload, Mapping):
+        raw_gates = payload.get("gates")
+        if isinstance(raw_gates, Mapping):
+            for key, value in raw_gates.items():
+                if isinstance(key, str):
+                    gates_payload[key] = bool(value)
+
+    return {
+        "labels": labels,
+        "patterns": patterns_payload,
+        "gates": gates_payload,
+    }
 
 
 def _slice_normalized_text(norm_text: str, start: int, end: int) -> str:
@@ -455,7 +539,13 @@ def build_dispatch(
 ) -> TDispatch:
     candidates_payload: list[dict[str, Any]] = []
 
+    max_candidates = DISPATCH_MAX_CANDIDATES_PER_SEGMENT
+    max_reasons = DISPATCH_MAX_REASONS_PER_RULE
+
     for candidate in candidates_iter or []:
+        if max_candidates > 0 and len(candidates_payload) >= max_candidates:
+            break
+
         if isinstance(candidate, Mapping):
             rule_id = candidate.get("rule_id")
             gates = candidate.get("gates")
@@ -463,6 +553,7 @@ def build_dispatch(
             expected_any = candidate.get("expected_any")
             matched_entries = candidate.get("matched") or []
             reason = candidate.get("reason_not_triggered")
+            raw_reasons = candidate.get("reasons")
         else:
             rule_id = getattr(candidate, "rule_id", None)
             gates = getattr(candidate, "gates", None)
@@ -470,6 +561,7 @@ def build_dispatch(
             expected_any = getattr(candidate, "expected_any", None)
             matched_entries = getattr(candidate, "matched", [])
             reason = getattr(candidate, "reason", None)
+            raw_reasons = getattr(candidate, "reasons", None)
 
         gates_payload = {
             "packs": _extract_gate_value(gates, "packs"),
@@ -489,6 +581,15 @@ def build_dispatch(
         else:
             matches = []
 
+        serialized_reasons: list[dict[str, Any]] = []
+        if isinstance(raw_reasons, Iterable) and not isinstance(
+            raw_reasons, (str, bytes, bytearray)
+        ):
+            for entry in raw_reasons:
+                serialized_reasons.append(serialize_reason_entry(entry))
+                if max_reasons > 0 and len(serialized_reasons) >= max_reasons:
+                    break
+
         candidates_payload.append(
             {
                 "rule_id": str(rule_id) if rule_id is not None else "",
@@ -502,6 +603,7 @@ def build_dispatch(
                         if entry is not None
                     ],
                 },
+                "reasons": serialized_reasons,
                 "reason_not_triggered": str(reason)
                 if reason is not None
                 else None,

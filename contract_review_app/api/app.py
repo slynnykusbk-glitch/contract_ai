@@ -54,9 +54,12 @@ from contract_review_app.legal_rules import constraints
 from contract_review_app.legal_rules.aggregate import apply_merge_policy
 from contract_review_app.legal_rules.constraints import InternalFinding
 from contract_review_app.trace_artifacts import (
+    DISPATCH_MAX_CANDIDATES_PER_SEGMENT,
+    DISPATCH_MAX_REASONS_PER_RULE,
     build_dispatch,
     build_features,
     build_proposals,
+    serialize_reason_entry,
 )
 
 
@@ -2281,6 +2284,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     seg_findings: List[Dict[str, Any]] = []
     clause_types_set: set[str] = set()
     dispatch_segments: List[Dict[str, Any]] = []
+    dispatch_reasons_by_rule: Dict[str, Dict[Any, Any]] = {}
     dispatch_candidates: List[Dict[str, Any]] = []
     evaluated_rule_ids: Set[str] = set()
     triggered_rule_ids: Set[str] = set()
@@ -2327,19 +2331,43 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                         {str(lbl) for lbl in (feats.labels or []) if lbl}
                     )
                     dispatch_entities = _l0_entities_snapshot(feats)
+                    limited_refs = list(refs)
+                    if DISPATCH_MAX_CANDIDATES_PER_SEGMENT > 0:
+                        limited_refs = limited_refs[:DISPATCH_MAX_CANDIDATES_PER_SEGMENT]
+                    segment_candidates: list[Dict[str, Any]] = []
+                    for ref in limited_refs:
+                        reasons_list = list(ref.reasons)
+                        if DISPATCH_MAX_REASONS_PER_RULE > 0:
+                            reasons_list = reasons_list[:DISPATCH_MAX_REASONS_PER_RULE]
+                        serialized_reasons = [
+                            serialize_reason_entry(reason)
+                            for reason in reasons_list
+                        ]
+                        segment_candidates.append(
+                            {
+                                "rule_id": ref.rule_id,
+                                "reasons": serialized_reasons,
+                            }
+                        )
+                        rule_key = str(ref.rule_id)
+                        reason_bucket = dispatch_reasons_by_rule.setdefault(
+                            rule_key, {}
+                        )
+                        for reason in reasons_list:
+                            key = (
+                                reason.identity()
+                                if hasattr(reason, "identity")
+                                else str(reason)
+                            )
+                            if key not in reason_bucket:
+                                reason_bucket[key] = reason
                     dispatch_segments.append(
                         {
                             "segment_id": seg_id,
                             "labels": dispatch_labels,
                             "entities": dispatch_entities,
                             "features": feat_payload,
-                            "candidates": [
-                                {
-                                    "rule_id": ref.rule_id,
-                                    "reasons": list(ref.reasons),
-                                }
-                                for ref in refs
-                            ],
+                            "candidates": segment_candidates,
                         }
                     )
 
@@ -2666,6 +2694,20 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                             "gates_passed": bool(packs_gate and lang_gate and doctypes_gate),
                             "expected_any": expected_any,
                             "matched": matches,
+                            "reasons": [
+                                serialize_reason_entry(reason)
+                                for reason in (
+                                    list(
+                                        dispatch_reasons_by_rule.get(
+                                            str(rule_id), {}
+                                        ).values()
+                                    )[:
+                                        DISPATCH_MAX_REASONS_PER_RULE
+                                        if DISPATCH_MAX_REASONS_PER_RULE > 0
+                                        else None
+                                    ]
+                                )
+                            ],
                             "reason_not_triggered": reason,
                         }
                     )

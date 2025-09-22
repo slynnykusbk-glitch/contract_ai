@@ -933,6 +933,7 @@ gpt_cache = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
 FEATURE_METRICS = os.getenv("FEATURE_METRICS", "1") == "1"
 FEATURE_LX_ENGINE = os.getenv("FEATURE_LX_ENGINE", "0") == "1"
 FEATURE_TRACE_ARTIFACTS = os.getenv("FEATURE_TRACE_ARTIFACTS", "0") == "1"
+FEATURE_L0_LABELS = os.getenv("FEATURE_L0_LABELS", "1") == "1"
 LX_L2_CONSTRAINTS = os.getenv("LX_L2_CONSTRAINTS", "0") == "1"
 METRICS_EXPORT_DIR = Path(os.getenv("METRICS_EXPORT_DIR", "var/metrics"))
 DISABLE_PII_IN_METRICS = os.getenv("DISABLE_PII_IN_METRICS", "1") == "1"

@@ -3,7 +3,17 @@ from __future__ import annotations
 
 import os
 import sys
-from loguru import logger
+
+try:
+    from loguru import logger  # type: ignore
+except Exception:  # loguru отсутствует — уходим в stdlib
+    import logging as _pylog
+
+    logger = _pylog.getLogger("contract_ai")
+    if not logger.handlers:
+        _h = _pylog.StreamHandler()
+        _pylog.basicConfig(level=_pylog.INFO)
+        logger.addHandler(_h)
 
 
 def init_logging() -> logger.__class__:

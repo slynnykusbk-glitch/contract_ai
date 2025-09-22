@@ -29,6 +29,7 @@ def _normalize(value: str) -> str:
         normalized = normalized.replace(src, dst)
     normalized = normalized.replace("\u00A0", " ")
     normalized = normalized.replace("\u200D", "")
+    normalized = re.sub(r"\biso\s*\(\s*27001\s*\)", "iso 27001", normalized, flags=re.IGNORECASE)
     normalized = normalized.lower()
     normalized = re.sub(r"\s+", " ", normalized)
     return normalized.strip()
@@ -60,6 +61,29 @@ _DAYS = r"days?"
 _PAY_TRIG = r"(?:net|within|no\s+later\s+than|payable\s+within|due\s+within)"
 PAYMENT_TERMS_PATTERN = rf"\b{_PAY_TRIG}\s+{_NUM}\s+{_DAY_QUAL}{_DAYS}\b"
 PAYMENT_TERMS_REGEX = re.compile(PAYMENT_TERMS_PATTERN, re.IGNORECASE | re.UNICODE)
+
+
+ISO27001_REGEX = re.compile(
+    r"""
+    \b
+    iso
+    (?:\s*/\s*iec)?
+    \s*
+    [\-/\s]?
+    \(?\s*27001\s*\)?
+    (?:\s*:\s*(?:2013|2017|2022))?
+    \b
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+SECURITY_INFORMATION_REGEXES = [
+    ISO27001_REGEX,
+    re.compile(r"\biso27001\b", re.IGNORECASE),
+    re.compile(r"\biso\s*[/\-]?\s*iec\s*27001\b", re.IGNORECASE),
+    re.compile(r"\binformation\s+security\b", re.IGNORECASE),
+    re.compile(r"\bisms\b", re.IGNORECASE),
+]
 
 
 LABELS_CANON: dict[str, dict[str, object]] = {
@@ -398,7 +422,7 @@ LABELS_CANON: dict[str, dict[str, object]] = {
     },
     "security_information": {
         "high_priority_synonyms": ["information security", "security requirements", "iso27001", "cyber essentials"],
-        "regex": [],
+        "regex": SECURITY_INFORMATION_REGEXES,
         "domains": {"it", "dp"},
     },
     "business_continuity_bcp": {

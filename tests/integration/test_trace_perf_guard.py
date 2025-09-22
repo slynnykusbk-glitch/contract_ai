@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 import time
 from pathlib import Path
 from typing import Final
@@ -75,6 +76,7 @@ def test_trace_perf_guard() -> None:
     client = None
     modules: list[str] = []
     try:
+        sys.modules.pop("contract_review_app.legal_rules.loader", None)
         client, modules = _build_client("1")
         payload = {"text": _make_long_document()}
         analyze_response = client.post(

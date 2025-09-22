@@ -16,8 +16,21 @@ def test_api_contract_no_new_keys():
         response = client.post("/api/analyze", headers=_headers(), json={"text": "Hello"})
         assert response.status_code == 200
         payload = response.json()
-        for key in {"features", "dispatch", "constraints", "proposals"}:
-            assert key not in payload
+        expected_keys = {
+            "analysis",
+            "cid",
+            "clauses",
+            "document",
+            "findings",
+            "meta",
+            "recommendations",
+            "results",
+            "rules_coverage",
+            "schema_version",
+            "status",
+            "summary",
+        }
+        assert set(payload) == expected_keys
     finally:
         _cleanup(client, modules)
         if previous_flag is None:

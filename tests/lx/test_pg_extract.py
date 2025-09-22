@@ -61,7 +61,7 @@ SIGNED by John Doe on 1 January 2024
 def _build_pg(text: str) -> ParamGraph:
     parsed = parse_text(text)
     snapshot = extract_document_snapshot(text)
-    features = extract_l0_features(text, parsed.segments)
+    features = extract_l0_features(parsed, parsed.segments)
     return build_param_graph(snapshot, parsed.segments, features)
 
 

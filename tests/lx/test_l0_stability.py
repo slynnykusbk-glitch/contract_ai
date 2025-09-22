@@ -1,5 +1,6 @@
 from contract_review_app.analysis.parser import parse_text, ParsedDoc
 from contract_review_app.analysis.lx_features import extract_l0_features, LxDocFeatures
+from contract_review_app.analysis.parser import ParsedDoc, parse_text
 
 
 def _reorder_segments(doc: ParsedDoc) -> ParsedDoc:
@@ -21,10 +22,10 @@ def test_segment_label_mapping_is_stable():
     )
     parsed = parse_text(text)
 
-    original_features: LxDocFeatures = extract_l0_features(text, parsed.segments)
+    original_features: LxDocFeatures = extract_l0_features(parsed, parsed.segments)
     reordered_doc = _reorder_segments(parsed)
     reordered_features: LxDocFeatures = extract_l0_features(
-        text, reordered_doc.segments
+        reordered_doc, reordered_doc.segments
     )
 
     def _collect_labels(doc_features: LxDocFeatures) -> dict[int, list[str]]:

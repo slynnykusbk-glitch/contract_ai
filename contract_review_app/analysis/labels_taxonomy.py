@@ -48,7 +48,18 @@ def _synonym_pattern(synonym: str) -> Pattern[str]:
 def _analysis_window(text: str, radius: int = 900) -> str:
     if len(text) <= radius * 2:
         return text
-    return text[:radius] + text[-radius:]
+    head = text[:radius]
+    tail = text[-radius:]
+    separator = "\n"
+    return head + separator + tail
+
+
+_NUM = r"(?:\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fifteen|twenty|thirty|sixty|ninety)(?:\s*\(\d{1,3}\))?"
+_DAY_QUAL = r"(?:(?:business|working|calendar)\s+)?"
+_DAYS = r"days?"
+_PAY_TRIG = r"(?:net|within|no\s+later\s+than|payable\s+within|due\s+within)"
+PAYMENT_TERMS_PATTERN = rf"\b{_PAY_TRIG}\s+{_NUM}\s+{_DAY_QUAL}{_DAYS}\b"
+PAYMENT_TERMS_REGEX = re.compile(PAYMENT_TERMS_PATTERN, re.IGNORECASE | re.UNICODE)
 
 
 LABELS_CANON: dict[str, dict[str, object]] = {
@@ -268,6 +279,7 @@ LABELS_CANON: dict[str, dict[str, object]] = {
             "due within",
         ],
         "regex": [
+            PAYMENT_TERMS_REGEX,
             _compile(r"net\s+(?:thirty|sixty|\d+)[^a-z0-9]{0,5}\(\s*\d+\s*\)\s*day"),
             _compile(
                 r"within\s+(?:[a-z]+|\d+)[^a-z0-9]{0,5}\(\s*\d+\s*\)\s*business\s+day"

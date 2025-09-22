@@ -56,6 +56,7 @@ from contract_review_app.legal_rules.constraints import InternalFinding
 from contract_review_app.trace_artifacts import (
     DISPATCH_MAX_CANDIDATES_PER_SEGMENT,
     DISPATCH_MAX_REASONS_PER_RULE,
+    _coerce_match_entry,
     build_dispatch,
     build_features,
     build_proposals,
@@ -2614,7 +2615,9 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                     for idx, span in enumerate(spans):
                         if not isinstance(span, Mapping):
                             continue
-                        match_payload: Dict[str, Any] = {}
+
+                        raw_match: Dict[str, Any] = {}
+
                         span_payload: Dict[str, int] = {}
                         start_val = span.get("start")
                         end_val = span.get("end")
@@ -2623,19 +2626,23 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                         if isinstance(end_val, (int, float)):
                             span_payload["end"] = seg_start + int(end_val)
                         if span_payload:
-                            match_payload["span"] = span_payload
+                            raw_match["span"] = span_payload
+
+                        if span.get("pattern_id") is not None:
+                            raw_match["pattern_id"] = span.get("pattern_id")
+                        if span.get("kind") is not None:
+                            raw_match["kind"] = span.get("kind")
 
                         text_value: Optional[str] = None
                         if idx < len(evidence) and evidence[idx] is not None:
                             text_value = str(evidence[idx])
 
                         if text_value:
-                            digest = hashlib.sha256(text_value.encode("utf-8")).hexdigest()
-                            match_payload["hash8"] = digest[:8]
-                            match_payload["len"] = len(text_value)
+                            raw_match["text"] = text_value
 
-                        if match_payload:
-                            matches.append(match_payload)
+                        coerced = _coerce_match_entry(raw_match)
+                        if coerced:
+                            matches.append(dict(coerced))
 
                     reason = None
                     if not (flags & getattr(yaml_loader, "FIRED", 0)):

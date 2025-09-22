@@ -70,9 +70,19 @@ def test_trace_dispatch_rules_match_findings():
                 assert isinstance(match, dict)
                 lowered = {str(k).lower() for k in match.keys()}
                 assert "text" not in lowered
-                span = match.get("span") if isinstance(match.get("span"), dict) else {}
-                has_span = bool(span)
-                has_hash = "hash8" in match and "len" in match
-                assert has_span or has_hash, "expected span or hash/len metadata"
+                assert set(lowered) <= {"kind", "pattern_id", "offsets", "hash8", "len"}
+                if "offsets" in match:
+                    assert isinstance(match["offsets"], list)
+                    for offset in match["offsets"]:
+                        assert isinstance(offset, list)
+                        assert len(offset) == 2
+                        assert all(isinstance(val, int) for val in offset)
+                if "hash8" in match:
+                    assert isinstance(match["hash8"], str)
+                    assert len(match["hash8"]) == 8
+                if "len" in match:
+                    assert isinstance(match["len"], int)
+                    assert match["len"] >= 0
+                assert ("offsets" in match) or ("hash8" in match and "len" in match)
     finally:
         _cleanup(client, modules)

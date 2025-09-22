@@ -53,12 +53,14 @@ _CURRENCY_SYMBOLS = {"£": "GBP", "€": "EUR", "$": "USD"}
 
 _AMOUNT_PATTERN = re.compile(
     r"""
-    (?P<prefix>(?:gbp|eur|usd|us\$))?      # currency words
+    (?P<prefix>(?:gbp|eur|usd|us\$))?      # currency words before the number
     \s*                                     # optional whitespace
     (?P<symbol>[£€$])?                      # currency symbol
     \s*                                     # optional whitespace
     (?P<number>\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)  # numeric part
-    (?:\s*(?P<scale>thousand|million|billion|k|m|mm|bn))?       # scale words
+    (?:\s*(?P<scale>thousand|million|billion|k|m|mm|bn))?        # scale words
+    (?:\s*(?P<suffix>(?:gbp|eur|usd|us\$|pounds?|dollars?|sterling|euros?))
+        (?=[\s.,;:!?]|$))?                 # currency words after the number
     """,
     re.IGNORECASE | re.VERBOSE,
 )
@@ -156,17 +158,23 @@ _ROLE_PATTERNS: Dict[str, Dict[re.Pattern[str], str]] = {
 }
 
 
-def _normalise_currency(prefix: Optional[str], symbol: Optional[str], text: str) -> Optional[str]:
-    if prefix:
-        prefix_norm = prefix.lower()
-        if prefix_norm in _CURRENCY_KEYWORDS:
-            return _CURRENCY_KEYWORDS[prefix_norm]
+def _normalise_currency(
+    prefix: Optional[str],
+    symbol: Optional[str],
+    suffix: Optional[str],
+    text: str,
+) -> Optional[str]:
+    for candidate in (prefix, suffix):
+        if candidate:
+            candidate_norm = candidate.lower()
+            if candidate_norm in _CURRENCY_KEYWORDS:
+                return _CURRENCY_KEYWORDS[candidate_norm]
     if symbol and symbol in _CURRENCY_SYMBOLS:
         return _CURRENCY_SYMBOLS[symbol]
     # attempt to infer from surrounding text
     lowered = text.lower()
     for keyword, value in _CURRENCY_KEYWORDS.items():
-        if keyword in lowered:
+        if re.search(rf"\b{re.escape(keyword)}\b", lowered):
             return value
     return None
 
@@ -235,7 +243,12 @@ def extract_amounts(text: str) -> List[Dict[str, object]]:
 
     results: List[Dict[str, object]] = []
     for match in _AMOUNT_PATTERN.finditer(text):
-        currency = _normalise_currency(match.group("prefix"), match.group("symbol"), match.group(0))
+        currency = _normalise_currency(
+            match.group("prefix"),
+            match.group("symbol"),
+            match.group("suffix"),
+            match.group(0),
+        )
         if not currency:
             continue
 

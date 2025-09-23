@@ -27,6 +27,12 @@ jobs:
           python -m pip install -U pip
           pip install -r requirements-dev.txt
           npm --prefix word_addin_dev ci
+      - name: Diagnostics
+        run: |
+          python -V
+          pip --version
+          pip freeze | head -n 50
+          pre-commit --version || python -m pre_commit --version || true
       - name: Pre-commit and lint
         shell: bash
         run: |
@@ -47,10 +53,10 @@ jobs:
           if [ -n "$CHANGED" ]; then
             echo "Running pre-commit on changed files:"
             echo "$CHANGED"
-            pre-commit run --files $CHANGED
+            python -m pre_commit run --files $CHANGED
           else
             echo "No merge-base or no changed files, running pre-commit on all files"
-            pre-commit run -a
+            python -m pre_commit run -a
           fi
 
           npm --prefix word_addin_dev run lint
@@ -73,6 +79,7 @@ jobs:
         with:
           name: pytest-report
           path: reports/pytest.xml
+          if-no-files-found: ignore
 
       - name: Upload TRACE artifacts
         if: always()

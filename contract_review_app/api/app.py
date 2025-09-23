@@ -2712,15 +2712,14 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                             "expected_any": expected_any,
                             "matched": matches,
                             "reasons": [
-                                serialize_reason_entry(
-                                    reason, include_offsets=FEATURE_REASON_OFFSETS
-                                )
+                                reason
                                 for reason in (
                                     list(
                                         dispatch_reasons_by_rule.get(
                                             str(rule_id), {}
                                         ).values()
-                                    )[:
+                                    )[
+                                        :
                                         DISPATCH_MAX_REASONS_PER_RULE
                                         if DISPATCH_MAX_REASONS_PER_RULE > 0
                                         else None

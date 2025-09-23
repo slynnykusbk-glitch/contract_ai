@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import math
 import os
+from decimal import Decimal
 from hashlib import sha256
 from typing import Any, Iterable, Mapping, Sequence, TYPE_CHECKING
 
@@ -189,6 +191,46 @@ def _normalize_offsets(raw: Any) -> list[list[int]]:
     return offsets
 
 
+def _coerce_number_value(value: Any) -> int | float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return int(value)
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
+        return value
+    if isinstance(value, Decimal):
+        integral = value.to_integral_value()
+        if integral == value:
+            return int(integral)
+        return float(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        normalized = text.replace(",", "")
+        try:
+            number = float(normalized) if "." in normalized else int(normalized)
+        except ValueError:
+            return None
+        if isinstance(number, float) and (math.isnan(number) or math.isinf(number)):
+            return None
+        return number
+    return None
+
+
+def _coerce_int_value(value: Any) -> int | None:
+    number = _coerce_number_value(value)
+    if number is None:
+        return None
+    if isinstance(number, float):
+        if not number.is_integer():
+            return None
+        number = int(number)
+    return int(number)
+
+
 def serialize_reason_entry(reason: Any) -> dict[str, Any]:
     if isinstance(reason, ReasonPayload):
         payload = reason.to_json()
@@ -229,10 +271,93 @@ def serialize_reason_entry(reason: Any) -> dict[str, Any]:
                 if isinstance(key, str):
                     gates_payload[key] = bool(value)
 
+    amounts_payload: list[dict[str, Any]] = []
+    durations_payload: list[dict[str, Any]] = []
+    law_payload: list[dict[str, Any]] = []
+    jurisdiction_payload: list[dict[str, Any]] = []
+
+    if isinstance(payload, Mapping):
+        raw_amounts = payload.get("amounts")
+        if isinstance(raw_amounts, Iterable) and not isinstance(
+            raw_amounts, (str, bytes, bytearray)
+        ):
+            for entry in raw_amounts:
+                if not isinstance(entry, Mapping):
+                    continue
+                currency = entry.get("ccy")
+                if not isinstance(currency, str) or not currency.strip():
+                    continue
+                value_number = _coerce_number_value(entry.get("value"))
+                if value_number is None:
+                    continue
+                offsets = _normalize_offsets(entry.get("offsets"))
+                if not offsets:
+                    continue
+                normalized_value: int | float = value_number
+                if isinstance(normalized_value, float) and normalized_value.is_integer():
+                    normalized_value = int(normalized_value)
+                amounts_payload.append(
+                    {
+                        "ccy": currency.strip().upper(),
+                        "value": normalized_value,
+                        "offsets": offsets,
+                    }
+                )
+
+        raw_durations = payload.get("durations")
+        if isinstance(raw_durations, Iterable) and not isinstance(
+            raw_durations, (str, bytes, bytearray)
+        ):
+            for entry in raw_durations:
+                if not isinstance(entry, Mapping):
+                    continue
+                unit = entry.get("unit")
+                if not isinstance(unit, str) or not unit.strip():
+                    continue
+                value_int = _coerce_int_value(entry.get("value"))
+                if value_int is None:
+                    continue
+                offsets = _normalize_offsets(entry.get("offsets"))
+                if not offsets:
+                    continue
+                durations_payload.append(
+                    {
+                        "unit": unit.strip().lower(),
+                        "value": value_int,
+                        "offsets": offsets,
+                    }
+                )
+
+        for key, target in (("law", law_payload), ("jurisdiction", jurisdiction_payload)):
+            raw_entries = payload.get(key)
+            if not isinstance(raw_entries, Iterable) or isinstance(
+                raw_entries, (str, bytes, bytearray)
+            ):
+                continue
+            for entry in raw_entries:
+                if not isinstance(entry, Mapping):
+                    continue
+                code = entry.get("code")
+                if not isinstance(code, str) or not code.strip():
+                    continue
+                offsets = _normalize_offsets(entry.get("offsets"))
+                if not offsets:
+                    continue
+                target.append(
+                    {
+                        "code": code.strip().upper(),
+                        "offsets": offsets,
+                    }
+                )
+
     return {
         "labels": labels,
         "patterns": patterns_payload,
         "gates": gates_payload,
+        "amounts": amounts_payload,
+        "durations": durations_payload,
+        "law": law_payload,
+        "jurisdiction": jurisdiction_payload,
     }
 
 

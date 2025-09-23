@@ -273,7 +273,7 @@ def _coerce_int_value(value: Any) -> int | None:
     return int(number)
 
 
-def serialize_reason_entry(reason: Any) -> dict[str, Any]:
+def serialize_reason_entry(reason: Any, *, include_offsets: bool = True) -> dict[str, Any]:
     if isinstance(reason, ReasonPayload):
         payload = reason.to_json()
     elif isinstance(reason, Mapping):
@@ -413,7 +413,7 @@ def serialize_reason_entry(reason: Any) -> dict[str, Any]:
             jurisdiction_payload, TRACE_REASON_MAX_OFFSETS_PER_TYPE
         )
 
-    return {
+    reason_payload = {
         "labels": labels,
         "patterns": patterns_payload,
         "gates": gates_payload,
@@ -422,6 +422,17 @@ def serialize_reason_entry(reason: Any) -> dict[str, Any]:
         "law": law_payload,
         "jurisdiction": jurisdiction_payload,
     }
+
+    if not include_offsets:
+        for entry in reason_payload["patterns"]:
+            if isinstance(entry, dict):
+                entry.pop("offsets", None)
+        for bucket in ("amounts", "durations", "law", "jurisdiction"):
+            for entry in reason_payload[bucket]:
+                if isinstance(entry, dict):
+                    entry.pop("offsets", None)
+
+    return reason_payload
 
 
 def _slice_normalized_text(norm_text: str, start: int, end: int) -> str:
@@ -758,6 +769,8 @@ def build_dispatch(
     evaluated: int,
     triggered: int,
     candidates_iter: Iterable[Any],
+    *,
+    include_reason_offsets: bool = True,
 ) -> TDispatch:
     candidates_payload: list[dict[str, Any]] = []
 
@@ -812,7 +825,9 @@ def build_dispatch(
             raw_reasons, (str, bytes, bytearray)
         ):
             for entry in raw_reasons:
-                serialized_reasons.append(serialize_reason_entry(entry))
+                serialized_reasons.append(
+                    serialize_reason_entry(entry, include_offsets=include_reason_offsets)
+                )
                 if max_reasons > 0 and len(serialized_reasons) >= max_reasons:
                     break
 

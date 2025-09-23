@@ -1,9 +1,193 @@
 """Utilities for deterministic aggregation of rule findings."""
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Sequence, Set, Tuple
 
-__all__ = ["apply_merge_policy"]
+from contract_review_app.analysis.agenda import (
+    agenda_sort_key,
+    coerce_int,
+    extract_span,
+    map_to_agenda_group,
+    resolve_salience,
+)
+
+__all__ = ["apply_merge_policy", "apply_legacy_merge_policy"]
+
+@dataclass
+class _EnrichedFinding:
+    finding: MutableMapping[str, Any]
+    index: int
+    group: str
+    salience: int
+    span: Tuple[int, int] | None
+    sort_key: Tuple[int, int, int, str]
+    entity_keys: Set[str]
+
+
+def apply_merge_policy(
+    findings: Iterable[Dict[str, Any]],
+    *,
+    strict_merge: bool = False,
+) -> List[Dict[str, Any]]:
+    """Apply agenda-based ordering and overlap resolution to ``findings``."""
+
+    items: List[MutableMapping[str, Any]] = [
+        f for f in findings if isinstance(f, MutableMapping)
+    ]
+    if not items:
+        return []
+
+    enriched: List[_EnrichedFinding] = []
+    for idx, finding in enumerate(items):
+        group = map_to_agenda_group(finding)
+        salience = resolve_salience(finding, group=group)
+        finding["salience"] = salience
+        span = extract_span(finding)
+        start = span[0] if span is not None else None
+        sort_key = agenda_sort_key(finding, group=group, salience=salience, start=start)
+        entity_keys = _entity_key_set(finding)
+        enriched.append(
+            _EnrichedFinding(
+                finding=finding,
+                index=idx,
+                group=group,
+                salience=salience,
+                span=span,
+                sort_key=sort_key,
+                entity_keys=entity_keys,
+            )
+        )
+
+    survivors = _select_survivors(enriched, strict_merge=strict_merge)
+    survivors.sort(key=lambda item: (item.sort_key, item.index))
+    return [entry.finding for entry in survivors]
+
+
+def _select_survivors(
+    candidates: Sequence[_EnrichedFinding],
+    *,
+    strict_merge: bool,
+) -> List[_EnrichedFinding]:
+    ordered = sorted(candidates, key=lambda entry: (entry.sort_key, entry.index))
+    survivors: List[_EnrichedFinding] = []
+    for candidate in ordered:
+        span = candidate.span
+        if span is None:
+            survivors.append(candidate)
+            continue
+
+        keep = True
+        for existing in survivors:
+            other_span = existing.span
+            if other_span is None:
+                continue
+            if not _spans_overlap(span, other_span):
+                continue
+            if not _should_eliminate(existing, candidate, strict_merge=strict_merge):
+                continue
+            keep = False
+            break
+        if keep:
+            survivors.append(candidate)
+    return survivors
+
+
+def _spans_overlap(lhs: Tuple[int, int], rhs: Tuple[int, int]) -> bool:
+    start_a, end_a = lhs
+    start_b, end_b = rhs
+    if end_a is None or end_b is None:
+        return False
+    if end_a <= start_a or end_b <= start_b:
+        return False
+
+    intersection = min(end_a, end_b) - max(start_a, start_b)
+    if intersection <= 0:
+        return False
+
+    union = max(end_a, end_b) - min(start_a, start_b)
+    if union <= 0:
+        return False
+
+    iou = intersection / union
+    if iou >= 0.6:
+        return True
+
+    span_a = end_a - start_a
+    span_b = end_b - start_b
+    smaller = min(span_a, span_b)
+    return intersection >= smaller
+
+
+def _should_eliminate(
+    existing: _EnrichedFinding,
+    candidate: _EnrichedFinding,
+    *,
+    strict_merge: bool,
+) -> bool:
+    if strict_merge:
+        return True
+    if existing.group != candidate.group:
+        return False
+    if not existing.entity_keys or not candidate.entity_keys:
+        return False
+    return bool(existing.entity_keys & candidate.entity_keys)
+
+
+def _entity_key_set(finding: Mapping[str, Any]) -> Set[str]:
+    tokens: Set[str] = set()
+
+    def _add(value: Any) -> None:
+        token = _normalize_entity_token(value)
+        if token:
+            tokens.add(token)
+
+    _add(finding.get("rule_id"))
+    for key in (
+        "entity",
+        "entity_key",
+        "legal_entity",
+        "topic",
+        "issue_id",
+        "canonical_name",
+    ):
+        _add(finding.get(key))
+
+    meta = finding.get("meta")
+    if isinstance(meta, Mapping):
+        for key in (
+            "entity_id",
+            "entity",
+            "entity_key",
+            "legal_entity",
+            "legal_issue",
+            "topic",
+            "subtopic",
+            "issue_id",
+        ):
+            _add(meta.get(key))
+
+    return tokens
+
+
+def _normalize_entity_token(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        token = value.strip().lower()
+        return token or None
+    try:
+        token = str(value).strip().lower()
+    except Exception:
+        return None
+    return token or None
+
+
+# Legacy prioritisation ----------------------------------------------------
 
 # Priority order for channels when conflicts share the same span.
 _CHANNEL_PRIORITY = {
@@ -33,14 +217,8 @@ _SEVERITY_PRIORITY = {
 _MAX_POSITION = 10 ** 12
 
 
-def apply_merge_policy(findings: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Return a deterministically ordered list with conflicts resolved.
-
-    Conflicts are defined as findings that share the same span (start/end
-    coordinates). Only the highest-priority finding for each span is kept.  The
-    priority order is: channel, severity, length, rule_id.  The output list is
-    always sorted deterministically so identical inputs yield identical outputs.
-    """
+def apply_legacy_merge_policy(findings: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Legacy merge behaviour kept for feature flag rollbacks."""
 
     items = [f for f in findings if isinstance(f, dict)]
     if not items:
@@ -153,13 +331,4 @@ def _span_length(finding: Dict[str, Any]) -> int:
 
 
 def _coerce_int(value: Any) -> int | None:
-    if isinstance(value, bool):  # bool is subclass of int; filter out explicitly
-        return int(value)
-    if isinstance(value, (int, float)):
-        return int(value)
-    if value is None:
-        return None
-    try:
-        return int(str(value))
-    except Exception:
-        return None
+    return coerce_int(value)

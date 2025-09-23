@@ -51,7 +51,10 @@ from contract_review_app.core.lx_types import LxFeatureSet, LxSegment
 from contract_review_app.config import CH_ENABLED, CH_API_KEY
 from contract_review_app.utils.logging import logger as cai_logger
 from contract_review_app.legal_rules import constraints
-from contract_review_app.legal_rules.aggregate import apply_merge_policy
+from contract_review_app.legal_rules.aggregate import (
+    apply_legacy_merge_policy,
+    apply_merge_policy,
+)
 from contract_review_app.legal_rules.constraints import InternalFinding
 from contract_review_app.trace_artifacts import (
     DISPATCH_MAX_CANDIDATES_PER_SEGMENT,
@@ -946,6 +949,8 @@ FEATURE_REASON_OFFSETS = os.getenv("FEATURE_REASON_OFFSETS", "1") == "1"
 FEATURE_L0_LABELS = os.getenv("FEATURE_L0_LABELS", "1") == "1"
 FEATURE_COVERAGE_MAP = os.getenv("FEATURE_COVERAGE_MAP", "1") == "1"
 FEATURE_COVERAGE_DEV_RELOAD = os.getenv("FEATURE_COVERAGE_DEV_RELOAD", "0") == "1"
+FEATURE_AGENDA_SORT = os.getenv("FEATURE_AGENDA_SORT", "1") == "1"
+FEATURE_AGENDA_STRICT_MERGE = os.getenv("FEATURE_AGENDA_STRICT_MERGE", "0") == "1"
 LX_L2_CONSTRAINTS = os.getenv("LX_L2_CONSTRAINTS", "0") == "1"
 METRICS_EXPORT_DIR = Path(os.getenv("METRICS_EXPORT_DIR", "var/metrics"))
 DISABLE_PII_IN_METRICS = os.getenv("DISABLE_PII_IN_METRICS", "1") == "1"
@@ -2488,7 +2493,16 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             )
             seen_ids.add(str(rule_id))
 
-        merged = apply_merge_policy(merged)
+        if FEATURE_AGENDA_SORT:
+            combined = list(merged)
+            if new_payloads:
+                combined.extend(new_payloads)
+            return apply_merge_policy(
+                combined,
+                strict_merge=FEATURE_AGENDA_STRICT_MERGE,
+            )
+
+        merged = apply_legacy_merge_policy(merged)
         if new_payloads:
             new_payloads.sort(key=lambda item: str(item.get("rule_id") or ""))
             merged.extend(new_payloads)

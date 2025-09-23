@@ -79,7 +79,10 @@ _shared_catalog/manifest.xml
 # ==== Артефакты тестов/отчётов ====
 junit.xml
 test-results/
-reports/
+reports/*
+!reports/
+!/reports/garbage_report.md
+!/reports/garbage_report.json
 
 # ==== Служебные ====
 .DS_Store

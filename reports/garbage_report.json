@@ -1,0 +1,1712 @@
+{
+  "summary": {
+    "generated_at": "2025-09-23T20:17:49.091433Z",
+    "total_findings": 170,
+    "confidence_breakdown": {
+      "Medium": 113,
+      "High": 41,
+      "Low": 16
+    },
+    "sections": {
+      "unused_exports": 71,
+      "unused_dependencies": 22,
+      "orphan_tests_and_snapshots": 64,
+      "orphan_assets": 2,
+      "workflows": 5,
+      "big_files": 4,
+      "fragile_tests": 2
+    }
+  },
+  "sections": {
+    "unused_exports": {
+      "title": "Unused exports (TypeScript)",
+      "entries": [
+        {
+          "path": "word_addin_dev/app/assets/anchors.ts",
+          "type": "ts-export",
+          "reason": "Export 'normalizeSnippetForSearch' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/anchors.ts:5 - normalizeSnippetForSearch (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "normalizeSnippetForSearch",
+            "raw": "word_addin_dev/app/assets/anchors.ts:5 - normalizeSnippetForSearch (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/anchors.ts",
+          "type": "ts-export",
+          "reason": "Export 'pickLongToken' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/anchors.ts:10 - pickLongToken (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "pickLongToken",
+            "raw": "word_addin_dev/app/assets/anchors.ts:10 - pickLongToken (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/anchors.ts",
+          "type": "ts-export",
+          "reason": "Export 'findAnchors' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/anchors.ts:58 - findAnchors",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "findAnchors",
+            "raw": "word_addin_dev/app/assets/anchors.ts:58 - findAnchors"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/anchors.ts",
+          "type": "ts-export",
+          "reason": "Export 'searchNth' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/anchors.ts:127 - searchNth (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "searchNth",
+            "raw": "word_addin_dev/app/assets/anchors.ts:127 - searchNth (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/anchors.ts",
+          "type": "ts-export",
+          "reason": "Export 'anchorByOffsets' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/anchors.ts:165 - anchorByOffsets",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "anchorByOffsets",
+            "raw": "word_addin_dev/app/assets/anchors.ts:165 - anchorByOffsets"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/anchors.ts",
+          "type": "ts-export",
+          "reason": "Export 'AnchorMethod' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/anchors.ts:35 - AnchorMethod (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "AnchorMethod",
+            "raw": "word_addin_dev/app/assets/anchors.ts:35 - AnchorMethod (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/anchors.ts",
+          "type": "ts-export",
+          "reason": "Export 'AnchorByOffsetsOptions' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/anchors.ts:37 - AnchorByOffsetsOptions (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "AnchorByOffsetsOptions",
+            "raw": "word_addin_dev/app/assets/anchors.ts:37 - AnchorByOffsetsOptions (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/anchors.ts",
+          "type": "ts-export",
+          "reason": "Export 'RangeLike' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/anchors.ts:125 - RangeLike (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "RangeLike",
+            "raw": "word_addin_dev/app/assets/anchors.ts:125 - RangeLike (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/annotate.ts",
+          "type": "ts-export",
+          "reason": "Export 'safeInsertComment' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/annotate.ts:22 - safeInsertComment (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "safeInsertComment",
+            "raw": "word_addin_dev/app/assets/annotate.ts:22 - safeInsertComment (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/annotate.ts",
+          "type": "ts-export",
+          "reason": "Export 'fallbackAnnotateWithContentControl' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/annotate.ts:62 - fallbackAnnotateWithContentControl (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "fallbackAnnotateWithContentControl",
+            "raw": "word_addin_dev/app/assets/annotate.ts:62 - fallbackAnnotateWithContentControl (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/annotate.ts",
+          "type": "ts-export",
+          "reason": "Export 'insertComments' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/annotate.ts:98 - insertComments",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "insertComments",
+            "raw": "word_addin_dev/app/assets/annotate.ts:98 - insertComments"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/annotate.ts",
+          "type": "ts-export",
+          "reason": "Export 'computeNthFromOffsets' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/annotate.ts:147 - computeNthFromOffsets (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "computeNthFromOffsets",
+            "raw": "word_addin_dev/app/assets/annotate.ts:147 - computeNthFromOffsets (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/annotate.ts",
+          "type": "ts-export",
+          "reason": "Export 'planAnnotations' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/annotate.ts:220 - planAnnotations (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "planAnnotations",
+            "raw": "word_addin_dev/app/assets/annotate.ts:220 - planAnnotations (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/annotate.ts",
+          "type": "ts-export",
+          "reason": "Export 'annotateFindingsIntoWord' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/annotate.ts:277 - annotateFindingsIntoWord",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "annotateFindingsIntoWord",
+            "raw": "word_addin_dev/app/assets/annotate.ts:277 - annotateFindingsIntoWord"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/annotate.ts",
+          "type": "ts-export",
+          "reason": "Export 'CommentItem' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/annotate.ts:10 - CommentItem (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "CommentItem",
+            "raw": "word_addin_dev/app/assets/annotate.ts:10 - CommentItem (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/annotate.ts",
+          "type": "ts-export",
+          "reason": "Export 'COMMENT_PREFIX' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/annotate.ts:186 - COMMENT_PREFIX (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "COMMENT_PREFIX",
+            "raw": "word_addin_dev/app/assets/annotate.ts:186 - COMMENT_PREFIX (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/annotate.ts",
+          "type": "ts-export",
+          "reason": "Export 'AnnotationPlan' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/annotate.ts:205 - AnnotationPlan (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "AnnotationPlan",
+            "raw": "word_addin_dev/app/assets/annotate.ts:205 - AnnotationPlan (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/annotate.ts",
+          "type": "ts-export",
+          "reason": "Export 'MAX_ANNOTATE_OPS' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/annotate.ts:215 - MAX_ANNOTATE_OPS (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "MAX_ANNOTATE_OPS",
+            "raw": "word_addin_dev/app/assets/annotate.ts:215 - MAX_ANNOTATE_OPS (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/bootstrap.ts",
+          "type": "ts-export",
+          "reason": "Export 'bootstrapHeaders' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/bootstrap.ts:3 - bootstrapHeaders (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "bootstrapHeaders",
+            "raw": "word_addin_dev/app/assets/bootstrap.ts:3 - bootstrapHeaders (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/dedupe.ts",
+          "type": "ts-export",
+          "reason": "Export 'normalizeText' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/dedupe.ts:7 - normalizeText (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "normalizeText",
+            "raw": "word_addin_dev/app/assets/dedupe.ts:7 - normalizeText (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/dedupe.ts",
+          "type": "ts-export",
+          "reason": "Export 'normalizeSeverity' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/dedupe.ts:11 - normalizeSeverity (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "normalizeSeverity",
+            "raw": "word_addin_dev/app/assets/dedupe.ts:11 - normalizeSeverity (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/dedupe.ts",
+          "type": "ts-export",
+          "reason": "Export 'severityRank' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/dedupe.ts:20 - severityRank (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "severityRank",
+            "raw": "word_addin_dev/app/assets/dedupe.ts:20 - severityRank (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/dedupe.ts",
+          "type": "ts-export",
+          "reason": "Export 'dedupeFindings' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/dedupe.ts:26 - dedupeFindings",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "dedupeFindings",
+            "raw": "word_addin_dev/app/assets/dedupe.ts:26 - dedupeFindings"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/dedupe.ts",
+          "type": "ts-export",
+          "reason": "Export 'RISK_LEVELS' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/dedupe.ts:4 - RISK_LEVELS (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "RISK_LEVELS",
+            "raw": "word_addin_dev/app/assets/dedupe.ts:4 - RISK_LEVELS (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/dedupe.ts",
+          "type": "ts-export",
+          "reason": "Export 'RiskLevel' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/dedupe.ts:5 - RiskLevel (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "RiskLevel",
+            "raw": "word_addin_dev/app/assets/dedupe.ts:5 - RiskLevel (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/findings.ts",
+          "type": "ts-export",
+          "reason": "Export 'coerceOffset' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/findings.ts:4 - coerceOffset (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "coerceOffset",
+            "raw": "word_addin_dev/app/assets/findings.ts:4 - coerceOffset (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/findings.ts",
+          "type": "ts-export",
+          "reason": "Export 'parseFindings' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/findings.ts:8 - parseFindings (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "parseFindings",
+            "raw": "word_addin_dev/app/assets/findings.ts:8 - parseFindings (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/health.ts",
+          "type": "ts-export",
+          "reason": "Export 'checkHealth' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/health.ts:3 - checkHealth",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "checkHealth",
+            "raw": "word_addin_dev/app/assets/health.ts:3 - checkHealth"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/insert.ts",
+          "type": "ts-export",
+          "reason": "Export 'insertDraftText' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/insert.ts:4 - insertDraftText",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "insertDraftText",
+            "raw": "word_addin_dev/app/assets/insert.ts:4 - insertDraftText"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/normalize_full.ts",
+          "type": "ts-export",
+          "reason": "Export 'normalizeTextFull' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/normalize_full.ts:79 - normalizeTextFull",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "normalizeTextFull",
+            "raw": "word_addin_dev/app/assets/normalize_full.ts:79 - normalizeTextFull"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/normalize_full.ts",
+          "type": "ts-export",
+          "reason": "Export 'NormalizeTextFullResult' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/normalize_full.ts:47 - NormalizeTextFullResult (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "NormalizeTextFullResult",
+            "raw": "word_addin_dev/app/assets/normalize_full.ts:47 - NormalizeTextFullResult (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/normalize_intake.ts",
+          "type": "ts-export",
+          "reason": "Export 'normalizeIntakeText' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/normalize_intake.ts:3 - normalizeIntakeText",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "normalizeIntakeText",
+            "raw": "word_addin_dev/app/assets/normalize_intake.ts:3 - normalizeIntakeText"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/office.ts",
+          "type": "ts-export",
+          "reason": "Export 'getWholeDocText' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/office.ts:1 - getWholeDocText",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "getWholeDocText",
+            "raw": "word_addin_dev/app/assets/office.ts:1 - getWholeDocText"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/office.ts",
+          "type": "ts-export",
+          "reason": "Export 'getSelectionText' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/office.ts:10 - getSelectionText",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "getSelectionText",
+            "raw": "word_addin_dev/app/assets/office.ts:10 - getSelectionText"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/pending.ts",
+          "type": "ts-export",
+          "reason": "Export 'pushBusy' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/pending.ts:10 - pushBusy (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "pushBusy",
+            "raw": "word_addin_dev/app/assets/pending.ts:10 - pushBusy (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/pending.ts",
+          "type": "ts-export",
+          "reason": "Export 'popBusy' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/pending.ts:15 - popBusy (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "popBusy",
+            "raw": "word_addin_dev/app/assets/pending.ts:15 - popBusy (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/pending.ts",
+          "type": "ts-export",
+          "reason": "Export 'withBusy' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/pending.ts:20 - withBusy",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "withBusy",
+            "raw": "word_addin_dev/app/assets/pending.ts:20 - withBusy"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/pending.ts",
+          "type": "ts-export",
+          "reason": "Export 'registerFetch' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/pending.ts:29 - registerFetch",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "registerFetch",
+            "raw": "word_addin_dev/app/assets/pending.ts:29 - registerFetch"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/pending.ts",
+          "type": "ts-export",
+          "reason": "Export 'deregisterFetch' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/pending.ts:30 - deregisterFetch",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "deregisterFetch",
+            "raw": "word_addin_dev/app/assets/pending.ts:30 - deregisterFetch"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/pending.ts",
+          "type": "ts-export",
+          "reason": "Export 'registerTimer' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/pending.ts:31 - registerTimer",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "registerTimer",
+            "raw": "word_addin_dev/app/assets/pending.ts:31 - registerTimer"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/pending.ts",
+          "type": "ts-export",
+          "reason": "Export 'deregisterTimer' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/pending.ts:32 - deregisterTimer",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "deregisterTimer",
+            "raw": "word_addin_dev/app/assets/pending.ts:32 - deregisterTimer"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/pending.ts",
+          "type": "ts-export",
+          "reason": "Export 'clearPending' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/pending.ts:34 - clearPending (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "clearPending",
+            "raw": "word_addin_dev/app/assets/pending.ts:34 - clearPending (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/pending.ts",
+          "type": "ts-export",
+          "reason": "Export 'registerUnloadHandlers' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/pending.ts:44 - registerUnloadHandlers",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "registerUnloadHandlers",
+            "raw": "word_addin_dev/app/assets/pending.ts:44 - registerUnloadHandlers"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/pending.ts",
+          "type": "ts-export",
+          "reason": "Export 'wasUnloaded' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/pending.ts:69 - wasUnloaded",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "wasUnloaded",
+            "raw": "word_addin_dev/app/assets/pending.ts:69 - wasUnloaded"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/pending.ts",
+          "type": "ts-export",
+          "reason": "Export 'resetUnloadFlag' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/pending.ts:70 - resetUnloadFlag",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "resetUnloadFlag",
+            "raw": "word_addin_dev/app/assets/pending.ts:70 - resetUnloadFlag"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/pending.ts",
+          "type": "ts-export",
+          "reason": "Export 'pendingFetches' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/pending.ts:4 - pendingFetches (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "pendingFetches",
+            "raw": "word_addin_dev/app/assets/pending.ts:4 - pendingFetches (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/pending.ts",
+          "type": "ts-export",
+          "reason": "Export 'pendingTimers' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/pending.ts:5 - pendingTimers (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "pendingTimers",
+            "raw": "word_addin_dev/app/assets/pending.ts:5 - pendingTimers (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/safeBodySearch.ts",
+          "type": "ts-export",
+          "reason": "Export 'safeBodySearch' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/safeBodySearch.ts:1 - safeBodySearch",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "safeBodySearch",
+            "raw": "word_addin_dev/app/assets/safeBodySearch.ts:1 - safeBodySearch"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/startup.selftest.ts",
+          "type": "ts-export",
+          "reason": "Export 'runStartupSelftest' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/startup.selftest.ts:5 - runStartupSelftest",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "runStartupSelftest",
+            "raw": "word_addin_dev/app/assets/startup.selftest.ts:5 - runStartupSelftest"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/store.ts",
+          "type": "ts-export",
+          "reason": "Export 'getApiKeyFromStore' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/store.ts:23 - getApiKeyFromStore (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "getApiKeyFromStore",
+            "raw": "word_addin_dev/app/assets/store.ts:23 - getApiKeyFromStore (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/store.ts",
+          "type": "ts-export",
+          "reason": "Export 'setApiKey' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/store.ts:31 - setApiKey (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "setApiKey",
+            "raw": "word_addin_dev/app/assets/store.ts:31 - setApiKey (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/store.ts",
+          "type": "ts-export",
+          "reason": "Export 'getSchemaFromStore' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/store.ts:39 - getSchemaFromStore (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "getSchemaFromStore",
+            "raw": "word_addin_dev/app/assets/store.ts:39 - getSchemaFromStore (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/store.ts",
+          "type": "ts-export",
+          "reason": "Export 'setSchemaVersion' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/store.ts:47 - setSchemaVersion (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "setSchemaVersion",
+            "raw": "word_addin_dev/app/assets/store.ts:47 - setSchemaVersion (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/store.ts",
+          "type": "ts-export",
+          "reason": "Export 'getAddCommentsFlag' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/store.ts:55 - getAddCommentsFlag",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "getAddCommentsFlag",
+            "raw": "word_addin_dev/app/assets/store.ts:55 - getAddCommentsFlag"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/store.ts",
+          "type": "ts-export",
+          "reason": "Export 'setAddCommentsFlag' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/store.ts:68 - setAddCommentsFlag",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "setAddCommentsFlag",
+            "raw": "word_addin_dev/app/assets/store.ts:68 - setAddCommentsFlag"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/store.ts",
+          "type": "ts-export",
+          "reason": "Export 'DEFAULT_SCHEMA' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/store.ts:2 - DEFAULT_SCHEMA (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "DEFAULT_SCHEMA",
+            "raw": "word_addin_dev/app/assets/store.ts:2 - DEFAULT_SCHEMA (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/supports.ts",
+          "type": "ts-export",
+          "reason": "Export 'detectSupports' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/supports.ts:9 - detectSupports (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "detectSupports",
+            "raw": "word_addin_dev/app/assets/supports.ts:9 - detectSupports (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/supports.ts",
+          "type": "ts-export",
+          "reason": "Export 'logSupportMatrix' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/supports.ts:49 - logSupportMatrix",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "logSupportMatrix",
+            "raw": "word_addin_dev/app/assets/supports.ts:49 - logSupportMatrix"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/supports.ts",
+          "type": "ts-export",
+          "reason": "Export 'FeatureSupport' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/supports.ts:1 - FeatureSupport (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "FeatureSupport",
+            "raw": "word_addin_dev/app/assets/supports.ts:1 - FeatureSupport (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/supports.ts",
+          "type": "ts-export",
+          "reason": "Export 'supports' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/supports.ts:42 - supports",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "supports",
+            "raw": "word_addin_dev/app/assets/supports.ts:42 - supports"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/types.ts",
+          "type": "ts-export",
+          "reason": "Export 'PartyRegistry' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/types.ts:3 - PartyRegistry",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "PartyRegistry",
+            "raw": "word_addin_dev/app/assets/types.ts:3 - PartyRegistry"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/types.ts",
+          "type": "ts-export",
+          "reason": "Export 'CompaniesMetaItem' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/types.ts:12 - CompaniesMetaItem",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "CompaniesMetaItem",
+            "raw": "word_addin_dev/app/assets/types.ts:12 - CompaniesMetaItem"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/types.ts",
+          "type": "ts-export",
+          "reason": "Export 'AnalyzeFindingEx' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/types.ts:32 - AnalyzeFindingEx",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "AnalyzeFindingEx",
+            "raw": "word_addin_dev/app/assets/types.ts:32 - AnalyzeFindingEx"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/types.ts",
+          "type": "ts-export",
+          "reason": "Export 'AnnotationPlanEx' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/types.ts:38 - AnnotationPlanEx",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "AnnotationPlanEx",
+            "raw": "word_addin_dev/app/assets/types.ts:38 - AnnotationPlanEx"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/wordq.ts",
+          "type": "ts-export",
+          "reason": "Export 'Job' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/wordq.ts:1 - Job (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "Job",
+            "raw": "word_addin_dev/app/assets/wordq.ts:1 - Job (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/wordq.ts",
+          "type": "ts-export",
+          "reason": "Export 'wordQ' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/wordq.ts:3 - wordQ (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "wordQ",
+            "raw": "word_addin_dev/app/assets/wordq.ts:3 - wordQ (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/assets/wordq.ts",
+          "type": "ts-export",
+          "reason": "Export 'default' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/assets/wordq.ts:11 - default",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "default",
+            "raw": "word_addin_dev/app/assets/wordq.ts:11 - default"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/types/api.d.ts",
+          "type": "ts-export",
+          "reason": "Export 'paths' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/types/api.d.ts:6 - paths",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "paths",
+            "raw": "word_addin_dev/app/types/api.d.ts:6 - paths"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/types/api.d.ts",
+          "type": "ts-export",
+          "reason": "Export 'webhooks' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/types/api.d.ts:612 - webhooks",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "High",
+          "metadata": {
+            "symbol": "webhooks",
+            "raw": "word_addin_dev/app/types/api.d.ts:612 - webhooks"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/types/api.d.ts",
+          "type": "ts-export",
+          "reason": "Export '$defs' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/types/api.d.ts:1121 - $defs (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "$defs",
+            "raw": "word_addin_dev/app/types/api.d.ts:1121 - $defs (used in module)"
+          }
+        },
+        {
+          "path": "word_addin_dev/app/types/api.d.ts",
+          "type": "ts-export",
+          "reason": "Export 'operations' has no external imports (ts-prune).",
+          "evidence": "word_addin_dev/app/types/api.d.ts:1122 - operations (used in module)",
+          "suggested_action": "Confirm the export is needed; otherwise move it to local scope or archive it.",
+          "confidence": "Medium",
+          "metadata": {
+            "symbol": "operations",
+            "raw": "word_addin_dev/app/types/api.d.ts:1122 - operations (used in module)"
+          }
+        }
+      ],
+      "notes": []
+    },
+    "unused_dependencies": {
+      "title": "Unused dependencies (TS/Python)",
+      "entries": [
+        {
+          "path": "word_addin_dev/package.json",
+          "type": "npm-devDependency",
+          "reason": "Dev dependency 'prettier' is not referenced by code or scripts (depcheck).",
+          "evidence": "depcheck unused devDependencies: prettier",
+          "suggested_action": "Drop from devDependencies or add the missing usage.",
+          "confidence": "High"
+        },
+        {
+          "path": "_deprecated/serve_https_panel.py",
+          "type": "python-unused",
+          "reason": "383: unused variable 'frame' (100% confidence)",
+          "evidence": "_deprecated/serve_https_panel.py:383: unused variable 'frame' (100% confidence)",
+          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
+          "confidence": "High"
+        },
+        {
+          "path": "_deprecated/serve_https_panel.py",
+          "type": "python-unused",
+          "reason": "383: unused variable 'signum' (100% confidence)",
+          "evidence": "_deprecated/serve_https_panel.py:383: unused variable 'signum' (100% confidence)",
+          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
+          "confidence": "High"
+        },
+        {
+          "path": "contract_review_app/api/app.py",
+          "type": "python-unused",
+          "reason": "540: unused import 'run_qa_recheck' (90% confidence)",
+          "evidence": "contract_review_app/api/app.py:540: unused import 'run_qa_recheck' (90% confidence)",
+          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
+          "confidence": "Medium"
+        },
+        {
+          "path": "contract_review_app/core/schemas.py",
+          "type": "python-unused",
+          "reason": "807: unreachable code after 'return' (100% confidence)",
+          "evidence": "contract_review_app/core/schemas.py:807: unreachable code after 'return' (100% confidence)",
+          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
+          "confidence": "High"
+        },
+        {
+          "path": "contract_review_app/learning/adaptor.py",
+          "type": "python-unused",
+          "reason": "22: unused import 'errno' (90% confidence)",
+          "evidence": "contract_review_app/learning/adaptor.py:22: unused import 'errno' (90% confidence)",
+          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
+          "confidence": "Medium"
+        },
+        {
+          "path": "contract_review_app/learning/replay_io.py",
+          "type": "python-unused",
+          "reason": "56: unused variable 'retention_days' (100% confidence)",
+          "evidence": "contract_review_app/learning/replay_io.py:56: unused variable 'retention_days' (100% confidence)",
+          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
+          "confidence": "High"
+        },
+        {
+          "path": "contract_review_app/legal_rules/constraints.py",
+          "type": "python-unused",
+          "reason": "1382: unused variable '__context' (100% confidence)",
+          "evidence": "contract_review_app/legal_rules/constraints.py:1382: unused variable '__context' (100% confidence)",
+          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
+          "confidence": "High"
+        },
+        {
+          "path": "contract_review_app/reportpdf.py",
+          "type": "python-unused",
+          "reason": "73: unused variable 'capture_output' (100% confidence)",
+          "evidence": "contract_review_app/reportpdf.py:73: unused variable 'capture_output' (100% confidence)",
+          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
+          "confidence": "High"
+        },
+        {
+          "path": "requirements.txt",
+          "type": "python-dependency",
+          "reason": "Package 'black' is installed but no imports were found (modules: black).",
+          "evidence": "ripgrep found no import hits",
+          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "requirements.txt",
+          "type": "python-dependency",
+          "reason": "Package 'httptools' is installed but no imports were found (modules: httptools).",
+          "evidence": "ripgrep found no import hits",
+          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "requirements.txt",
+          "type": "python-dependency",
+          "reason": "Package 'isort' is installed but no imports were found (modules: isort).",
+          "evidence": "ripgrep found no import hits",
+          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "requirements.txt",
+          "type": "python-dependency",
+          "reason": "Package 'mypy' is installed but no imports were found (modules: edfc647aaf02b20aa651__mypyc, mypy, mypyc).",
+          "evidence": "ripgrep found no import hits",
+          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "requirements.txt",
+          "type": "python-dependency",
+          "reason": "Package 'pipdeptree' is installed but no imports were found (modules: pipdeptree).",
+          "evidence": "ripgrep found no import hits",
+          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "requirements.txt",
+          "type": "python-dependency",
+          "reason": "Package 'pyright' is installed but no imports were found (modules: pyright).",
+          "evidence": "ripgrep found no import hits",
+          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "requirements.txt",
+          "type": "python-dependency",
+          "reason": "Package 'pytest-cov' is installed but no imports were found (modules: pytest_cov).",
+          "evidence": "ripgrep found no import hits",
+          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "requirements.txt",
+          "type": "python-dependency",
+          "reason": "Package 'ruff' is installed but no imports were found (modules: ruff).",
+          "evidence": "ripgrep found no import hits",
+          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "requirements.txt",
+          "type": "python-dependency",
+          "reason": "Package 'uvicorn' is installed but no imports were found (modules: uvicorn).",
+          "evidence": "ripgrep found no import hits",
+          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "requirements.txt",
+          "type": "python-dependency",
+          "reason": "Package 'uvloop' is installed but no imports were found (modules: uvloop).",
+          "evidence": "ripgrep found no import hits",
+          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "requirements.txt",
+          "type": "python-dependency",
+          "reason": "Package 'vulture' is installed but no imports were found (modules: vulture).",
+          "evidence": "ripgrep found no import hits",
+          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "requirements.txt",
+          "type": "python-dependency",
+          "reason": "Package 'watchfiles' is installed but no imports were found (modules: watchfiles).",
+          "evidence": "ripgrep found no import hits",
+          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "requirements.txt",
+          "type": "python-dependency",
+          "reason": "Package 'websockets' is installed but no imports were found (modules: websockets).",
+          "evidence": "ripgrep found no import hits",
+          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
+          "confidence": "Medium"
+        }
+      ],
+      "notes": [
+        "depcheck exited with 255, continuing with parsed stdout"
+      ]
+    },
+    "orphan_tests_and_snapshots": {
+      "title": "Orphan tests & snapshots",
+      "entries": [
+        {
+          "path": "word_addin_dev",
+          "type": "vitest-list",
+          "reason": "vitest list returned no discovered test files",
+          "evidence": "DEV  v0.34.6 /workspace/contract_ai/word_addin_dev",
+          "suggested_action": "Verify vitest include globs and Node runtime; all tests may be skipped in CI.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/analyze.flow.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/analyze.flow.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/analyze.payload.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/analyze.payload.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/analyze.risk.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/analyze.risk.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/annotate.anchor_by_offsets.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/annotate.anchor_by_offsets.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/annotate.flow.offsets.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/annotate.flow.offsets.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/annotate_plan.test.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/annotate_plan.test.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/applyOpsTracked.long.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/applyOpsTracked.long.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/bootstrap.noOffice.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/bootstrap.noOffice.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/bootstrap.once.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/bootstrap.once.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/bootstrap.test.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/bootstrap.test.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/bundle_no_raw_comments.test.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/bundle_no_raw_comments.test.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/clear_annotations.test.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/clear_annotations.test.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/dev.gating.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/dev.gating.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/dom.ids.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/dom.ids.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/draft.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/draft.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/enable.analyze.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/enable.analyze.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/ensure.text.analyze.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/ensure.text.analyze.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/health.negatives.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/health.negatives.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/health.positive.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/health.positive.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/insertDraftText.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/insertDraftText.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/insertIntoWord.test.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/insertIntoWord.test.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/large.analyze.flow.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/large.analyze.flow.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/loading.indicator.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/loading.indicator.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/logging.test.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/logging.test.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/no-text.blocks-analyze.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/no-text.blocks-analyze.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/normalize.full.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/normalize.full.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/panel.dom.contract.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/panel.dom.contract.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/postJson.timeout.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/postJson.timeout.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/postRedlines.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/postRedlines.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/props/normalized_equivalence.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/props/normalized_equivalence.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/qa.recheck.navigation.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/qa.recheck.navigation.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/render.ch.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/render.ch.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/render.trace.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/render.trace.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/renderAnalysisSummary.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/renderAnalysisSummary.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/requirement.sets.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/requirement.sets.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/riskThreshold.read.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/riskThreshold.read.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/safeBodySearch.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/safeBodySearch.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/startup.selftest.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/startup.selftest.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/unload.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/unload.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/usewholedoc.analyze.flow.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/usewholedoc.analyze.flow.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/usewholedoc.analyze.large.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/usewholedoc.analyze.large.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/wordq.test.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/__tests__/wordq.test.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/assets/__tests__/analyze.422.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/assets/__tests__/analyze.422.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/assets/__tests__/analyze.body.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/assets/__tests__/analyze.body.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/assets/__tests__/analyze.timeout.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/assets/__tests__/analyze.timeout.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/assets/__tests__/fallbackAnnotateWithContentControl.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/assets/__tests__/fallbackAnnotateWithContentControl.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/assets/__tests__/safeInsertComment.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/assets/__tests__/safeInsertComment.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/assets/__tests__/supports.test.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/assets/__tests__/supports.test.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/assets/__tests__/ui-gating.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/assets/__tests__/ui-gating.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/src/panel/analyze.flow.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/src/panel/analyze.flow.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/src/panel/postJson.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/src/panel/postJson.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/src/panel/state.spec.ts",
+          "type": "test-not-discovered",
+          "reason": "Test file is not returned by 'vitest list'.",
+          "evidence": "vitest list output lacked word_addin_dev/app/src/panel/state.spec.ts",
+          "suggested_action": "Align vitest include patterns so this spec participates in CI runs.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/annotate.anchor_by_offsets.spec.ts",
+          "type": "test-mock-alias",
+          "reason": "Test replaces '../assets/safeBodySearch.ts' via vi.mock().",
+          "evidence": "vi.mock('../assets/safeBodySearch.ts'",
+          "suggested_action": "Document mocked modules or add explicit integration coverage to reduce false positives.",
+          "confidence": "Low"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/annotate.flow.offsets.spec.ts",
+          "type": "test-mock-alias",
+          "reason": "Test replaces '../assets/anchors' via vi.mock().",
+          "evidence": "vi.mock('../assets/anchors'",
+          "suggested_action": "Document mocked modules or add explicit integration coverage to reduce false positives.",
+          "confidence": "Low"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/applyOpsTracked.long.spec.ts",
+          "type": "test-mock-alias",
+          "reason": "Test replaces '../assets/pending.ts' via vi.mock().",
+          "evidence": "vi.mock('../assets/pending.ts'",
+          "suggested_action": "Document mocked modules or add explicit integration coverage to reduce false positives.",
+          "confidence": "Low"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/applyOpsTracked.long.spec.ts",
+          "type": "test-mock-alias",
+          "reason": "Test replaces '../assets/annotate.ts' via vi.mock().",
+          "evidence": "vi.mock('../assets/annotate.ts'",
+          "suggested_action": "Document mocked modules or add explicit integration coverage to reduce false positives.",
+          "confidence": "Low"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/applyOpsTracked.long.spec.ts",
+          "type": "test-mock-alias",
+          "reason": "Test replaces '../assets/safeBodySearch.ts' via vi.mock().",
+          "evidence": "vi.mock('../assets/safeBodySearch.ts'",
+          "suggested_action": "Document mocked modules or add explicit integration coverage to reduce false positives.",
+          "confidence": "Low"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/draft.spec.ts",
+          "type": "test-mock-alias",
+          "reason": "Test replaces '../assets/notifier' via vi.mock().",
+          "evidence": "vi.mock('../assets/notifier'",
+          "suggested_action": "Document mocked modules or add explicit integration coverage to reduce false positives.",
+          "confidence": "Low"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/ensure.text.analyze.spec.ts",
+          "type": "test-mock-alias",
+          "reason": "Test replaces '../assets/notifier' via vi.mock().",
+          "evidence": "vi.mock('../assets/notifier'",
+          "suggested_action": "Document mocked modules or add explicit integration coverage to reduce false positives.",
+          "confidence": "Low"
+        },
+        {
+          "path": "word_addin_dev/app/assets/__tests__/analyze.422.spec.ts",
+          "type": "test-mock-alias",
+          "reason": "Test replaces '../notifier' via vi.mock().",
+          "evidence": "vi.mock('../notifier'",
+          "suggested_action": "Document mocked modules or add explicit integration coverage to reduce false positives.",
+          "confidence": "Low"
+        },
+        {
+          "path": "word_addin_dev/app/src/panel/state.spec.ts",
+          "type": "test-mock-alias",
+          "reason": "Test replaces '../assets/safeBodySearch.ts' via vi.mock().",
+          "evidence": "vi.mock('../assets/safeBodySearch.ts'",
+          "suggested_action": "Document mocked modules or add explicit integration coverage to reduce false positives.",
+          "confidence": "Low"
+        },
+        {
+          "path": "word_addin_dev/app/src/panel/state.spec.ts",
+          "type": "test-mock-alias",
+          "reason": "Test replaces '../assets/api-client.ts' via vi.mock().",
+          "evidence": "vi.mock('../assets/api-client.ts'",
+          "suggested_action": "Document mocked modules or add explicit integration coverage to reduce false positives.",
+          "confidence": "Low"
+        },
+        {
+          "path": "word_addin_dev/app/src/panel/state.spec.ts",
+          "type": "test-mock-alias",
+          "reason": "Test replaces '../assets/annotate.ts' via vi.mock().",
+          "evidence": "vi.mock('../assets/annotate.ts'",
+          "suggested_action": "Document mocked modules or add explicit integration coverage to reduce false positives.",
+          "confidence": "Low"
+        }
+      ],
+      "notes": [
+        "No Vitest snapshot (*.snap) files found under word_addin_dev."
+      ]
+    },
+    "orphan_assets": {
+      "title": "Orphan assets",
+      "entries": [
+        {
+          "path": "word_addin_dev/app/assets/notifier.js",
+          "type": "asset-orphan",
+          "reason": "Asset file has no references in code or configs.",
+          "evidence": "ripgrep 'notifier.js' returned 0 hits",
+          "suggested_action": "Confirm the asset is unused; consider archiving or documenting usage.",
+          "confidence": "High"
+        },
+        {
+          "path": "assets/icons/contractai_scales.ico",
+          "type": "asset-orphan",
+          "reason": "Asset file has no references in code or configs.",
+          "evidence": "ripgrep 'contractai_scales.ico' returned 0 hits",
+          "suggested_action": "Confirm the asset is unused; consider archiving or documenting usage.",
+          "confidence": "High"
+        }
+      ],
+      "notes": []
+    },
+    "workflows": {
+      "title": "Workflow issues",
+      "entries": [
+        {
+          "path": ".github/workflows/ci.yml::test",
+          "type": "workflow-job",
+          "reason": "Manual trigger history unknown",
+          "evidence": "last_run=unknown (requires GitHub API)",
+          "suggested_action": "Check GitHub Actions history and validate referenced scripts exist.",
+          "confidence": "Low"
+        },
+        {
+          "path": ".github/workflows/corpus.yml::corpus",
+          "type": "workflow-job",
+          "reason": "Manual trigger history unknown",
+          "evidence": "last_run=unknown (requires GitHub API)",
+          "suggested_action": "Check GitHub Actions history and validate referenced scripts exist.",
+          "confidence": "Low"
+        },
+        {
+          "path": ".github/workflows/garbage-sweep.yml::sweep",
+          "type": "workflow-job",
+          "reason": "Manual trigger history unknown",
+          "evidence": "last_run=unknown (requires GitHub API)",
+          "suggested_action": "Check GitHub Actions history and validate referenced scripts exist.",
+          "confidence": "Low"
+        },
+        {
+          "path": ".github/workflows/i18n-lint.yml::i18n-lint",
+          "type": "workflow-job",
+          "reason": "Manual trigger history unknown",
+          "evidence": "last_run=unknown (requires GitHub API)",
+          "suggested_action": "Check GitHub Actions history and validate referenced scripts exist.",
+          "confidence": "Low"
+        },
+        {
+          "path": ".github/workflows/manual-backup.yml::backup",
+          "type": "workflow-job",
+          "reason": "Manual trigger history unknown",
+          "evidence": "last_run=unknown (requires GitHub API)",
+          "suggested_action": "Check GitHub Actions history and validate referenced scripts exist.",
+          "confidence": "Low"
+        }
+      ],
+      "notes": []
+    },
+    "big_files": {
+      "title": "Big files",
+      "entries": [
+        {
+          "path": "contract_ai_tree.txt",
+          "type": "large-file",
+          "reason": "File size 1.10 MB",
+          "evidence": "last_modified=2025-09-17, name references=1",
+          "suggested_action": "Confirm this belongs to active sources; otherwise move to _archive/.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "бокова панель AI.docx",
+          "type": "doc-asset",
+          "reason": "Office/PDF fixture stored at repository root.",
+          "evidence": "Consider relocating to tests/fixtures or _archive.",
+          "suggested_action": "Move to tests/fixtures or _archive/YYYY-MM for clarity.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "~$ntract.docx",
+          "type": "doc-asset",
+          "reason": "Office/PDF fixture stored at repository root.",
+          "evidence": "Consider relocating to tests/fixtures or _archive.",
+          "suggested_action": "Move to tests/fixtures or _archive/YYYY-MM for clarity.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "contract.docx",
+          "type": "doc-asset",
+          "reason": "Office/PDF fixture stored at repository root.",
+          "evidence": "Consider relocating to tests/fixtures or _archive.",
+          "suggested_action": "Move to tests/fixtures or _archive/YYYY-MM for clarity.",
+          "confidence": "Medium"
+        }
+      ],
+      "notes": []
+    },
+    "fragile_tests": {
+      "title": "Fragile tests",
+      "entries": [
+        {
+          "path": "word_addin_dev/app/__tests__/bundle_no_raw_comments.test.ts",
+          "type": "fragile-test",
+          "reason": "Test asserts hard-coded counts of Office comment API usage in built bundle.",
+          "evidence": "Counts insertComment/comments.add occurrences; bundle changes will break expectation.",
+          "suggested_action": "Check for behavior-based assertions (e.g., stub notifier) instead of raw regex counts.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "word_addin_dev/app/__tests__/requirement.sets.spec.ts",
+          "type": "fragile-test",
+          "reason": "Test enforces specific disabled=true DOM state for mocked requirement sets.",
+          "evidence": "Global Office mocks + direct DOM queries can desync from production behavior.",
+          "suggested_action": "Assert high-level capability toggles rather than individual button.disabled flags.",
+          "confidence": "Medium"
+        }
+      ],
+      "notes": []
+    }
+  }
+}

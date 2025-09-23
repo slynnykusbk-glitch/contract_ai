@@ -23,9 +23,7 @@ def apply_merge_policy(
 ) -> List[Dict[str, Any]]:
     """Merge findings using agenda ordering and overlap resolution."""
 
-    items: List[Dict[str, Any]] = [
-        f for f in findings if isinstance(f, dict)
-    ]
+    items: List[Dict[str, Any]] = [f for f in findings if isinstance(f, dict)]
     if not items:
         return []
 
@@ -33,32 +31,39 @@ def apply_merge_policy(
         return apply_legacy_merge_policy(items)
 
     strict_merge = os.getenv("FEATURE_AGENDA_STRICT_MERGE", "0") == "1"
+
     groups: List[str] = []
     spans: List[Tuple[int, int] | None] = []
     sort_keys: List[Tuple[int, int, int, str]] = []
 
+    # precompute sort keys, spans, groups; inject resolved salience into finding
     for finding in items:
         group = map_to_agenda_group(finding)
         salience = _resolve_salience(finding, group)
+
         anchor = finding.get("anchor") or {}
         start_val = _coerce_int(anchor.get("start"))
         end_val = _coerce_int(anchor.get("end"))
+
         if start_val is not None and end_val is not None and end_val > start_val:
             span = (start_val, end_val)
             start = start_val
         else:
             span = _extract_span(finding)
             start = start_val if start_val is not None else 0
+
         rid = str(finding.get("rule_id") or "")
+
         groups.append(group)
         spans.append(span)
         sort_keys.append((AGENDA_ORDER.get(group, 999), -salience, start, rid))
+
+        # persist salience for downstream consumers (non-breaking)
         finding["salience"] = salience
 
     order = sorted(range(len(items)), key=lambda idx: sort_keys[idx])
 
     survivors: List[int] = []
-
     for idx in order:
         span = spans[idx]
         if span is None:
@@ -73,16 +78,22 @@ def apply_merge_policy(
             if existing_span is None:
                 ptr -= 1
                 continue
+
+            # early exit if no more overlaps possible (sorted by start)
             if existing_span[1] <= span[0]:
                 break
+
+            # when strict_merge=0 we only collapse overlaps within the same agenda group
             if not strict_merge and groups[idx] != groups[existing_idx]:
                 ptr -= 1
                 continue
+
             if span_iou(existing_span, span) >= 0.6:
                 champion = stronger(items[idx], items[existing_idx])
                 if champion is items[existing_idx]:
                     should_add = False
                     break
+                # replace weaker survivor
                 survivors.pop(ptr)
             ptr -= 1
 
@@ -95,6 +106,7 @@ def apply_merge_policy(
 
 
 def _extract_span(finding: Mapping[str, Any]) -> Tuple[int, int] | None:
+    """Best-effort span extraction from anchor/start/end/anchors[*]."""
     anchor = finding.get("anchor")
     if isinstance(anchor, Mapping):
         start = _coerce_int(anchor.get("start"))
@@ -140,9 +152,8 @@ def _resolve_salience(finding: Mapping[str, Any], group: str) -> int:
     return DEFAULT_SALIENCE.get(group, 50)
 
 
-# Legacy prioritisation ----------------------------------------------------
+# ----------------------- Legacy prioritisation (for rollback) ----------------
 
-# Priority order for channels when conflicts share the same span.
 _CHANNEL_PRIORITY = {
     "law": 0,
     "policy": 1,
@@ -152,7 +163,6 @@ _CHANNEL_PRIORITY = {
 }
 _DEFAULT_CHANNEL_RANK = len(_CHANNEL_PRIORITY)
 
-# Severity ranking (higher numbers mean higher severity).
 _SEVERITY_PRIORITY = {
     "critical": 4,
     "severe": 4,
@@ -172,7 +182,6 @@ _MAX_POSITION = 10 ** 12
 
 def apply_legacy_merge_policy(findings: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Legacy merge behaviour kept for feature flag rollbacks."""
-
     items = [f for f in findings if isinstance(f, dict)]
     if not items:
         return []
@@ -205,10 +214,7 @@ def _bucket_key(finding: Dict[str, Any], idx: int) -> Tuple[Any, ...]:
         anchor = anchors[0]
         if isinstance(anchor, dict):
             span = anchor.get("span")
-            if (
-                isinstance(span, (list, tuple))
-                and len(span) == 2
-            ):
+            if isinstance(span, (list, tuple)) and len(span) == 2:
                 a_start = _coerce_int(span[0])
                 a_end = _coerce_int(span[1])
                 if a_start is not None and a_end is not None:

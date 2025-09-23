@@ -83,3 +83,28 @@ class TProposals(TypedDict, total=False):
 
 class TTraceMeta(TypedDict, total=False):
     risk_threshold: Literal["low", "medium", "high", "critical"]
+
+
+class TCoverageSegment(TypedDict, total=False):
+    index: int
+    span: List[int]
+
+
+class TCoverageZone(TypedDict, total=False):
+    zone_id: str
+    status: Literal["missing", "present", "rules_candidate", "rules_fired"]
+    matched_labels: List[str]
+    matched_entities: Dict[str, int]
+    segments: List[TCoverageSegment]
+    candidate_rules: List[str]
+    fired_rules: List[str]
+    missing_rules: List[str]
+
+
+class TCoverage(TypedDict, total=False):
+    version: int
+    zones_total: int
+    zones_present: int
+    zones_candidates: int
+    zones_fired: int
+    details: List[TCoverageZone]

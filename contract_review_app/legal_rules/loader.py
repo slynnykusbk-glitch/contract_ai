@@ -177,6 +177,9 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
                 continue
             if path.resolve() == BASELINE_FILE.resolve():
                 continue
+            if path.name == "coverage_map.yaml":
+                continue
+
             try:
                 docs = list(yaml.safe_load_all(path.read_text(encoding="utf-8")))
             except Exception as exc:  # pragma: no cover

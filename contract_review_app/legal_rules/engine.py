@@ -99,23 +99,26 @@ def analyze(text: str, rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             for pat in r.get("patterns", []):
                 hits += len(list(pat.finditer(block.text)))
             if hits:
-                findings.append(
-                    {
-                        "rule_id": r.get("id"),
-                        "clause_type": r.get("clause_type"),
-                        "severity": r.get("severity"),
-                        "start": block.start,
-                        "end": block.end,
-                        "snippet": block.text,
-                        "advice": r.get("advice", ""),
-                        "law_refs": r.get("law_refs", []),
-                        "suggestion": r.get("suggestion"),
-                        "conflict_with": r.get("conflict_with", []),
-                        "ops": r.get("ops", []),
-                        "scope": {"unit": block.type, "nth": block.nth},
-                        "occurrences": hits,
-                    }
-                )
+                finding = {
+                    "rule_id": r.get("id"),
+                    "clause_type": r.get("clause_type"),
+                    "severity": r.get("severity"),
+                    "start": block.start,
+                    "end": block.end,
+                    "snippet": block.text,
+                    "advice": r.get("advice", ""),
+                    "law_refs": r.get("law_refs", []),
+                    "suggestion": r.get("suggestion"),
+                    "conflict_with": r.get("conflict_with", []),
+                    "ops": r.get("ops", []),
+                    "scope": {"unit": block.type, "nth": block.nth},
+                    "occurrences": hits,
+                    "salience": r.get("salience", 50),
+                }
+                channel = r.get("channel")
+                if channel is not None:
+                    finding["channel"] = channel
+                findings.append(finding)
     # Stable sort: start, end, severity desc, rule_id
     findings.sort(
         key=lambda f: (

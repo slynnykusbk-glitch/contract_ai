@@ -1,0 +1,9 @@
+---
+id: smoke.policy.salience
+clause_type: smoke
+severity: medium
+channel: policy
+salience: 70
+advice: Ensure policy coverage is documented.
+patterns:
+  - (?i)policy channel test

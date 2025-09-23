@@ -1,4 +1,0 @@
-# file: C:\Users\Ludmila\contract_ai\contract_review_app\report\metrics.py
-# hypothesis_version: 6.136.7
-
-[0.0, 100.0, 'FAIL', 'OK', 'WARN', 'fail', 'fail_pct', 'ok', 'ok_pct', 'status', 'total', 'warn', 'warn_pct']

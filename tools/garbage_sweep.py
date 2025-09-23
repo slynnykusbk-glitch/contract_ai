@@ -11,11 +11,14 @@ import datetime as dt
 import json
 import os
 import re
+import shlex
+import shutil
 import subprocess
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
+from functools import lru_cache
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 try:  # Python 3.11+
@@ -42,6 +45,8 @@ SECTION_ORDER = [
 ]
 
 ENTRY_FIELDS = ["path", "type", "reason", "evidence", "suggested_action", "confidence"]
+
+VERBOSE = False
 
 
 @dataclass
@@ -78,9 +83,49 @@ class Section:
         }
 
 
+@lru_cache()
+def resolve_npx_executable() -> Optional[str]:
+    """Return the path to the npx executable, handling Windows shims."""
+    resolved = shutil.which("npx")
+    if resolved:
+        return resolved
+    if os.name == "nt":
+        return shutil.which("npx.cmd")
+    return None
+
+
+def build_npx_command(*args: str) -> Optional[List[str]]:
+    """Construct an npx command that honours cross-platform resolution."""
+    npx_path = resolve_npx_executable()
+    if not npx_path:
+        return None
+    return [npx_path, "--yes", *args]
+
+
+def ensure_npx_command(section: Optional[Section], context: str, *args: str) -> Optional[List[str]]:
+    """Return an npx command or emit a helpful message if npx is missing."""
+    cmd = build_npx_command(*args)
+    if cmd is not None:
+        return cmd
+    message = f"npx executable not found; skipping {context}."
+    print(message)
+    if section is not None:
+        section.notes.append(message)
+    return None
+
+
 def run_command(cmd: Sequence[str], cwd: Optional[Path] = None) -> Tuple[int, str, str]:
     """Run a subprocess command and capture stdout/stderr."""
-    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    cmd_list = [str(part) for part in cmd]
+    if VERBOSE:
+        command_str = shlex.join(cmd_list)
+        if cwd:
+            command_str += f" (cwd={cwd})"
+        print(f"$ {command_str}")
+    try:
+        proc = subprocess.run(cmd_list, cwd=cwd, capture_output=True, text=True)
+    except FileNotFoundError as exc:  # pragma: no cover - surfaced as stderr message
+        return 127, "", str(exc)
     return proc.returncode, proc.stdout, proc.stderr
 
 
@@ -100,20 +145,25 @@ def gather_ts_unused_exports(section: Section) -> None:
         return
 
     project_flag = os.path.relpath(TS_TSCONFIG, REPO_ROOT)
-    cmd = [
-        "npx",
-        "--yes",
+    cmd = ensure_npx_command(
+        section,
+        "TypeScript unused exports sweep",
         "ts-prune",
+        "--error",
         "-p",
         project_flag,
         "--skip-dts",
-    ]
+    )
+    if cmd is None:
+        return
     rc, stdout, stderr = run_command(cmd, cwd=REPO_ROOT)
-    if rc not in (0, 1):  # ts-prune exits with 1 when findings are present
+    if not stdout.strip() and rc not in (0, 1):
         section.notes.append(
-            f"ts-prune failed (exit {rc}): {stderr.strip() or stdout.strip() or 'no output'}"
+            f"ts-prune exited with {rc}: {stderr.strip() or 'no output'}"
         )
         return
+    if stderr.strip():
+        section.notes.append(f"ts-prune stderr: {stderr.strip()}")
 
     lines = [line.strip() for line in stdout.splitlines() if line.strip()]
     for line in lines:
@@ -146,7 +196,9 @@ def gather_ts_depcheck(section: Section) -> None:
     if not TS_PROJECT.exists():
         section.notes.append("word_addin_dev directory missing; depcheck skipped.")
         return
-    cmd = ["npx", "--yes", "depcheck", "--json"]
+    cmd = ensure_npx_command(section, "depcheck run", "depcheck", "--json")
+    if cmd is None:
+        return
     rc, stdout, stderr = run_command(cmd, cwd=TS_PROJECT)
     if not stdout.strip():
         section.notes.append(f"depcheck failed (exit {rc}): {stderr.strip() or 'no output'}")
@@ -211,7 +263,9 @@ def collect_ts_test_files() -> List[Path]:
 
 
 def gather_vitest_list(section: Section, all_tests: List[Path]) -> Tuple[List[Path], Optional[str]]:
-    cmd = ["npx", "--yes", "vitest", "list", "--config", "vitest.config.ts"]
+    cmd = ensure_npx_command(section, "vitest list", "vitest", "list", "--config", "vitest.config.ts")
+    if cmd is None:
+        return [], None
     rc, stdout, stderr = run_command(cmd, cwd=TS_PROJECT)
     if rc not in (0, 1):
         section.entries.append(
@@ -718,7 +772,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--no-workflows", action="store_true", help="Skip workflow audit")
     parser.add_argument("--no-files", action="store_true", help="Skip large file scan")
     parser.add_argument("--no-fragile", action="store_true", help="Skip fragile test heuristics")
+    parser.add_argument("--verbose", action="store_true", help="Print commands before executing them")
     args = parser.parse_args(argv)
+
+    global VERBOSE
+    VERBOSE = args.verbose
 
     ensure_reports_dir()
 

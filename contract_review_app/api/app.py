@@ -51,10 +51,7 @@ from contract_review_app.core.lx_types import LxFeatureSet, LxSegment
 from contract_review_app.config import CH_ENABLED, CH_API_KEY
 from contract_review_app.utils.logging import logger as cai_logger
 from contract_review_app.legal_rules import constraints
-from contract_review_app.legal_rules.aggregate import (
-    apply_legacy_merge_policy,
-    apply_merge_policy,
-)
+from contract_review_app.legal_rules.aggregate import apply_merge_policy
 from contract_review_app.legal_rules.constraints import InternalFinding
 from contract_review_app.trace_artifacts import (
     DISPATCH_MAX_CANDIDATES_PER_SEGMENT,
@@ -2445,12 +2442,16 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
 
     dispatch_duration = max(time.perf_counter() - dispatch_start, 0.0)
 
+    merge_duration_total = 0.0
+
     jurisdiction = getattr(snap, "jurisdiction", "") or ""
 
     def merge_findings(
         existing: List[Dict[str, Any]], new_items: Iterable[Any]
     ) -> List[Dict[str, Any]]:
         """Merge serialized findings with L2 constraint results."""
+
+        nonlocal merge_duration_total
 
         merged: List[Dict[str, Any]] = list(existing or [])
         seen_ids: Set[str] = set()
@@ -2493,21 +2494,20 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             )
             seen_ids.add(str(rule_id))
 
-        if FEATURE_AGENDA_SORT:
-            combined = list(merged)
-            if new_payloads:
-                combined.extend(new_payloads)
-            return apply_merge_policy(
-                combined,
-                strict_merge=FEATURE_AGENDA_STRICT_MERGE,
-            )
-
-        merged = apply_legacy_merge_policy(merged)
+        combined: List[Dict[str, Any]] = list(merged)
         if new_payloads:
-            new_payloads.sort(key=lambda item: str(item.get("rule_id") or ""))
-            merged.extend(new_payloads)
+            combined.extend(new_payloads)
 
-        return merged
+        start = time.perf_counter()
+        try:
+            result = apply_merge_policy(
+                combined,
+                use_agenda=FEATURE_AGENDA_SORT,
+            )
+        finally:
+            merge_duration_total += max(time.perf_counter() - start, 0.0)
+
+        return result
 
     # resolve citations for each finding after final list is determined
     def _add_citations(lst: List[Dict[str, Any]]):
@@ -3043,6 +3043,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         "load_rules_ms": round(load_duration * 1000, 2),
         "run_rules_ms": round(run_duration * 1000, 2),
         "dispatch_ms": round(dispatch_duration * 1000, 2),
+        "merge_ms": int(merge_duration_total * 1000),
     }
 
     debug_meta = {

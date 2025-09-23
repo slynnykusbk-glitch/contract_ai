@@ -99,6 +99,8 @@ def analyze(text: str, rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             for pat in r.get("patterns", []):
                 hits += len(list(pat.finditer(block.text)))
             if hits:
+                spec_channel = r.get("channel")
+                spec_salience = r.get("salience")
                 finding = {
                     "rule_id": r.get("id"),
                     "clause_type": r.get("clause_type"),
@@ -113,11 +115,17 @@ def analyze(text: str, rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     "ops": r.get("ops", []),
                     "scope": {"unit": block.type, "nth": block.nth},
                     "occurrences": hits,
-                    "salience": r.get("salience", 50),
+                    "salience": spec_salience if spec_salience is not None else 50,
                 }
-                channel = r.get("channel")
-                if channel is not None:
-                    finding["channel"] = channel
+                if spec_channel is not None:
+                    finding["channel"] = spec_channel
+                    finding["_spec_channel"] = spec_channel
+                if spec_salience is not None:
+                    finding["_spec_salience"] = spec_salience
+                    finding["salience"] = spec_salience
+                inferred = finding.get("_infer_channel")
+                if inferred is not None:
+                    finding["_inferred_channel"] = inferred
                 findings.append(finding)
     # Stable sort: start, end, severity desc, rule_id
     findings.sort(

@@ -73,6 +73,46 @@ class TraceStore:
                     return None
             return current if isinstance(current, list) else None
 
+        def _trim_reason_buckets(container: Dict[str, Any]) -> bool:
+            dispatch = container.get("dispatch")
+            if not isinstance(dispatch, dict):
+                return False
+            candidates = dispatch.get("candidates")
+            if not isinstance(candidates, list):
+                return False
+            bucket_keys = ("patterns", "amounts", "durations", "law", "jurisdiction")
+            for candidate in reversed(candidates):
+                if not isinstance(candidate, dict):
+                    continue
+                reasons = candidate.get("reasons")
+                if not isinstance(reasons, list):
+                    continue
+                for reason in reversed(reasons):
+                    if not isinstance(reason, dict):
+                        continue
+                    for key in bucket_keys:
+                        bucket = reason.get(key)
+                        if isinstance(bucket, list) and bucket:
+                            bucket.pop()
+                            return True
+            return False
+
+        def _trim_reason_list(container: Dict[str, Any]) -> bool:
+            dispatch = container.get("dispatch")
+            if not isinstance(dispatch, dict):
+                return False
+            candidates = dispatch.get("candidates")
+            if not isinstance(candidates, list):
+                return False
+            for candidate in reversed(candidates):
+                if not isinstance(candidate, dict):
+                    continue
+                reasons = candidate.get("reasons")
+                if isinstance(reasons, list) and reasons:
+                    reasons.pop()
+                    return True
+            return False
+
         trim_paths: tuple[tuple[str, ...], ...] = (
             ("dispatch", "candidates"),
             ("features", "segments"),
@@ -93,7 +133,20 @@ class TraceStore:
                 if weight <= self.max_entry_size_bytes:
                     break
             if not changed:
-                break
+                if _trim_reason_buckets(body):
+                    changed = True
+                    trimmed = True
+                    weight = self._estimate_weight(entry)
+                    if weight <= self.max_entry_size_bytes:
+                        break
+                elif _trim_reason_list(body):
+                    changed = True
+                    trimmed = True
+                    weight = self._estimate_weight(entry)
+                    if weight <= self.max_entry_size_bytes:
+                        break
+                else:
+                    break
 
         if trimmed:
             # remove empty containers to avoid noise in the payload

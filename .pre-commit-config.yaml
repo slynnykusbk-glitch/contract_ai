@@ -3,10 +3,13 @@ repos:
     rev: v0.12.10
     hooks:
       - id: ruff
+        args: [--fix]
+        exclude: ^(\.hypothesis|\.pytest_cache|reports|node_modules)/
   - repo: https://github.com/psf/black
     rev: 25.1.0
     hooks:
       - id: black
+        exclude: ^(\.hypothesis|\.pytest_cache|reports|node_modules)/
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:

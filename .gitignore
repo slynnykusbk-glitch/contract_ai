@@ -21,16 +21,24 @@ __pycache__/
 htmlcov/
 .tox/
 .mypy_cache/
+
+# Test caches and transient artifacts
+.hypothesis/
+**/.hypothesis/
 .pytest_cache/
+**/.pytest_cache/
 
 # ==== Node/Frontend ====
 node_modules/
+**/node_modules/
 .npm/
 .pnpm-store/
 yarn.lock
 pnpm-lock.yaml
 # артефакты сборки (оставим исходники, игнорим сборку в word_addin_dev/dist, если нужно хранить – удали эту строку)
 word_addin_dev/dist/
+**/dist/
+**/coverage/
 
 # ==== Office/WebView2 кэши локального Word sideload ====
 AppData/
@@ -79,7 +87,7 @@ _shared_catalog/manifest.xml
 # ==== Артефакты тестов/отчётов ====
 junit.xml
 test-results/
-reports/*
+reports/**
 !reports/
 !/reports/garbage_report.md
 !/reports/garbage_report.json

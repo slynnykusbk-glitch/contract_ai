@@ -22,10 +22,14 @@ def test_health_timeout(monkeypatch):
 
     captured: dict[str, float] = {}
 
-    async def fake_wait_for(awaitable, timeout, **_):
-        captured["timeout"] = timeout
-        await awaitable
-        raise asyncio.TimeoutError
+    orig_wait_for = app_module.asyncio.wait_for
+
+    async def fake_wait_for(awaitable, timeout, **kwargs):
+        if timeout == app_module.RULE_DISCOVERY_TIMEOUT_S:
+            captured["timeout"] = timeout
+            await awaitable
+            raise asyncio.TimeoutError
+        return await orig_wait_for(awaitable, timeout, **kwargs)
 
     monkeypatch.setattr(app_module.asyncio, "wait_for", fake_wait_for)
 

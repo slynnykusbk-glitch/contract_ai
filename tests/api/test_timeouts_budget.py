@@ -44,6 +44,7 @@ def test_api_timeout_budget(monkeypatch, api_timeout, request_timeout):
 
     assert response.status_code == 504
     payload = response.json()
-    assert payload.get("type") == "timeout"
+    assert payload.get("status_text") == "timeout"
+    assert payload.get("reason") == "analyze_timeout"
     assert captured["timeout"] == pytest.approx(limits_module.API_TIMEOUT_S)
     assert limits_module.API_TIMEOUT_S < limits_module.REQUEST_TIMEOUT_S

@@ -1,0 +1,39 @@
+name: Garbage Sweep
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    name: Garbage sweep report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+          python -m pip install vulture pip-chill pipdeptree
+      - name: Install root npm dependencies
+        run: npm install
+      - name: Install panel npm dependencies
+        working-directory: word_addin_dev
+        run: npm install
+      - name: Run garbage sweep
+        run: make sweep
+      - name: Upload sweep reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: garbage-sweep-report
+          path: |
+            reports/garbage_report.md
+            reports/garbage_report.json

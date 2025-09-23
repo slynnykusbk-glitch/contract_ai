@@ -64,6 +64,9 @@ def test_dispatch_trace_limits_and_reason_shape(monkeypatch):
                 assert isinstance(reason["labels"], list)
                 assert isinstance(reason["patterns"], list)
                 assert isinstance(reason["gates"], dict)
+                for bucket in ("amounts", "durations", "law", "jurisdiction"):
+                    bucket_value = reason.get(bucket)
+                    assert isinstance(bucket_value, list)
                 for pattern in reason["patterns"]:
                     assert pattern.get("kind") in {"regex", "keyword"}
                     assert isinstance(pattern.get("offsets"), list)

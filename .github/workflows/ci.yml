@@ -14,6 +14,8 @@ jobs:
       SCHEMA_VERSION: "1.4"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -26,12 +28,31 @@ jobs:
           pip install -r requirements-dev.txt
           npm --prefix word_addin_dev ci
       - name: Pre-commit and lint
+        shell: bash
         run: |
-          git fetch origin main --depth=1 || true
-          files=$(git diff --name-only origin/main...HEAD)
-          if [ -n "$files" ]; then
-            pre-commit run --files $files
+          set -eo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE_SHA="$(git rev-parse HEAD^)"
           fi
+
+          # Пытаемся получить список изменённых файлов относительно BASE_SHA
+          if git merge-base --is-ancestor "$BASE_SHA" HEAD 2>/dev/null; then
+            CHANGED="$(git diff --name-only "$BASE_SHA"...HEAD || true)"
+          else
+            CHANGED=""
+          fi
+
+          if [ -n "$CHANGED" ]; then
+            echo "Running pre-commit on changed files:"
+            echo "$CHANGED"
+            pre-commit run --files $CHANGED
+          else
+            echo "No merge-base or no changed files, running pre-commit on all files"
+            pre-commit run -a
+          fi
+
           npm --prefix word_addin_dev run lint
       - name: Build add-in
         run: npm --prefix word_addin_dev run build

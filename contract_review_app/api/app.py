@@ -2700,6 +2700,8 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                                 "doctypes": doctypes_gate,
                             },
                             "gates_passed": bool(packs_gate and lang_gate and doctypes_gate),
+                            "channel": rule_spec.get("channel"),
+                            "salience": rule_spec.get("salience"),
                             "expected_any": expected_any,
                             "matched": matches,
                             "reasons": [

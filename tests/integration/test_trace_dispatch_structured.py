@@ -18,6 +18,8 @@ class _DummyCandidate:
         ]
         self.reasons = reasons
         self.reason = None
+        self.channel = f"channel-{idx}"
+        self.salience = 10 + idx
 
 
 def _make_reason(rule_idx: int, reason_idx: int) -> ReasonPayload:
@@ -65,6 +67,16 @@ def test_dispatch_trace_limits_and_reason_shape(monkeypatch):
                 for pattern in reason["patterns"]:
                     assert pattern.get("kind") in {"regex", "keyword"}
                     assert isinstance(pattern.get("offsets"), list)
+
+        expected_meta = {
+            f"rule-{idx}": {"channel": f"channel-{idx}", "salience": 10 + idx}
+            for idx in range(3)
+        }
+        for entry in candidates_payload:
+            rule_id = entry.get("rule_id")
+            assert rule_id in expected_meta
+            assert entry.get("channel") == expected_meta[rule_id]["channel"]
+            assert entry.get("salience") == expected_meta[rule_id]["salience"]
     finally:
         monkeypatch.delenv("DISPATCH_MAX_CANDIDATES_PER_SEGMENT", raising=False)
         monkeypatch.delenv("DISPATCH_MAX_REASONS_PER_RULE", raising=False)

@@ -31,6 +31,9 @@ DISPATCH_MAX_CANDIDATES_PER_SEGMENT = _env_int(
     "DISPATCH_MAX_CANDIDATES_PER_SEGMENT", 50
 )
 DISPATCH_MAX_REASONS_PER_RULE = _env_int("DISPATCH_MAX_REASONS_PER_RULE", 12)
+TRACE_REASON_MAX_OFFSETS_PER_TYPE = _env_int(
+    "TRACE_REASON_MAX_OFFSETS_PER_TYPE", 4
+)
 
 if TYPE_CHECKING:  # pragma: no cover - imported for typing only
     from contract_review_app.core.lx_types import LxDocFeatures, LxFeatureSet
@@ -191,6 +194,45 @@ def _normalize_offsets(raw: Any) -> list[list[int]]:
     return offsets
 
 
+def _limit_reason_offsets(
+    entries: list[dict[str, Any]],
+    limit: int,
+) -> list[dict[str, Any]]:
+    if limit <= 0:
+        return entries
+    remaining = limit
+    limited: list[dict[str, Any]] = []
+    for entry in entries:
+        offsets = entry.get("offsets")
+        if not isinstance(offsets, list):
+            continue
+        if remaining <= 0:
+            break
+        trimmed: list[list[int]] = []
+        for span in offsets:
+            if remaining <= 0:
+                break
+            if not isinstance(span, Sequence) or isinstance(span, (str, bytes, bytearray)):
+                continue
+            if len(span) < 2:
+                continue
+            start_raw, end_raw = span[0], span[1]
+            try:
+                start = int(start_raw)
+                end = int(end_raw)
+            except (TypeError, ValueError):
+                continue
+            trimmed.append([start, end])
+            remaining -= 1
+        if trimmed:
+            new_entry = dict(entry)
+            new_entry["offsets"] = trimmed
+            limited.append(new_entry)
+        if remaining <= 0:
+            break
+    return limited
+
+
 def _coerce_number_value(value: Any) -> int | float | None:
     if isinstance(value, bool):
         return None
@@ -262,6 +304,10 @@ def serialize_reason_entry(reason: Any) -> dict[str, Any]:
                                 "offsets": _normalize_offsets(entry.get("offsets")),
                             }
                         )
+    if patterns_payload:
+        patterns_payload = _limit_reason_offsets(
+            patterns_payload, TRACE_REASON_MAX_OFFSETS_PER_TYPE
+        )
 
     gates_payload: dict[str, bool] = {}
     if isinstance(payload, Mapping):
@@ -349,6 +395,23 @@ def serialize_reason_entry(reason: Any) -> dict[str, Any]:
                         "offsets": offsets,
                     }
                 )
+
+    if amounts_payload:
+        amounts_payload = _limit_reason_offsets(
+            amounts_payload, TRACE_REASON_MAX_OFFSETS_PER_TYPE
+        )
+    if durations_payload:
+        durations_payload = _limit_reason_offsets(
+            durations_payload, TRACE_REASON_MAX_OFFSETS_PER_TYPE
+        )
+    if law_payload:
+        law_payload = _limit_reason_offsets(
+            law_payload, TRACE_REASON_MAX_OFFSETS_PER_TYPE
+        )
+    if jurisdiction_payload:
+        jurisdiction_payload = _limit_reason_offsets(
+            jurisdiction_payload, TRACE_REASON_MAX_OFFSETS_PER_TYPE
+        )
 
     return {
         "labels": labels,

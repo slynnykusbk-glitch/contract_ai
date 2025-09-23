@@ -1,4 +1,4 @@
-.PHONY: lint fix test regen-snapshots test-cov corpus-demo corpus-test
+.PHONY: lint fix test regen-snapshots test-cov corpus-demo corpus-test rules-lint
 
 lint:
 	ruff check . && isort --check-only . && black --check .
@@ -20,7 +20,11 @@ corpus-demo:
 	python -m contract_review_app.corpus.ingest --dir data/corpus_demo
 
 corpus-test:
-\tpytest -q contract_review_app/tests/corpus --maxfail=1
+	pytest -q contract_review_app/tests/corpus --maxfail=1
+
+.PHONY: rules-lint
+rules-lint:
+	python tools/rules_lint.py
 
 .PHONY: retrieval-build
 retrieval-build:

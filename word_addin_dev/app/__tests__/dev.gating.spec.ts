@@ -5,20 +5,37 @@ const html = readFileSync(new URL('../../taskpane.html', import.meta.url), 'utf-
 if (!html.includes('id="btnTest"')) throw new Error('btnTest missing from canonical HTML');
 
 const mkDoc = () => {
-  const el: any = { disabled: false, style: { display: '' }, addEventListener: () => {}, classList: { remove: () => {} }, removeAttribute: () => {} };
+  const el: any = {
+    disabled: false,
+    style: { display: '' },
+    addEventListener: () => {},
+    classList: { remove: () => {} },
+    removeAttribute: () => {},
+  };
   return {
-    getElementById: (id: string) => id === 'btnTest' ? el : null,
-    querySelector: (sel: string) => sel === '#btnTest' ? el : null,
+    getElementById: (id: string) => (id === 'btnTest' ? el : null),
+    querySelector: (sel: string) => (sel === '#btnTest' ? el : null),
   } as any;
 };
 
 describe('dev gating', () => {
   beforeEach(() => {
     vi.resetModules();
-    (globalThis as any).window = { addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => {} };
+    (globalThis as any).window = {
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => {},
+    };
     (globalThis as any).__CAI_TESTING__ = true;
-    (globalThis as any).Office = { context: { requirements: { isSetSupported: () => true } } } as any;
-    (globalThis as any).Word = { Revision:{}, Comment:{}, SearchOptions:{}, ContentControl:{} } as any;
+    (globalThis as any).Office = {
+      context: { requirements: { isSetSupported: () => true } },
+    } as any;
+    (globalThis as any).Word = {
+      Revision: {},
+      Comment: {},
+      SearchOptions: {},
+      ContentControl: {},
+    } as any;
   });
 
   it('hides test button in prod', async () => {

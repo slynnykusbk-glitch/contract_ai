@@ -1,0 +1,7 @@
+node_modules
+.dist
+/dist
+app/assets
+.taskpane.bundle.js
+taskpane.bundle.js
+app/types

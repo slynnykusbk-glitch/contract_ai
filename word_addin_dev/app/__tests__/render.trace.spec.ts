@@ -1,16 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vitest';
 
 function matchesSelector(el: any, selector: string): boolean {
-  if (!el) return false
+  if (!el) return false;
   if (selector === '.muted') {
-    const cls = typeof el.className === 'string' ? el.className : ''
-    return cls.split(/\s+/).includes('muted')
+    const cls = typeof el.className === 'string' ? el.className : '';
+    return cls.split(/\s+/).includes('muted');
   }
-  const roleMatch = selector.match(/^\[data-role="(.+)"\]$/)
+  const roleMatch = selector.match(/^\[data-role="(.+)"\]$/);
   if (roleMatch) {
-    return el.dataset?.role === roleMatch[1]
+    return el.dataset?.role === roleMatch[1];
   }
-  return false
+  return false;
 }
 
 function createElementFactory(elements: Record<string, any>) {
@@ -24,161 +24,161 @@ function createElementFactory(elements: Record<string, any>) {
       parentElement: null as any,
       appendChild(child: any) {
         if (child === undefined || child === null) {
-          return child
+          return child;
         }
         if (typeof child === 'string') {
-          const textNode = { nodeType: 3, textContent: String(child) }
-          this.children.push(textNode)
-          return textNode
+          const textNode = { nodeType: 3, textContent: String(child) };
+          this.children.push(textNode);
+          return textNode;
         }
-        this.children.push(child)
+        this.children.push(child);
         if (typeof child === 'object') {
-          child.parentElement = this
+          child.parentElement = this;
         }
-        return child
+        return child;
       },
       removeChild(child: any) {
-        this.children = this.children.filter((node: any) => node !== child)
+        this.children = this.children.filter((node: any) => node !== child);
         if (child && typeof child === 'object') {
-          child.parentElement = null
+          child.parentElement = null;
         }
-        return child
+        return child;
       },
       append(...nodes: any[]) {
         for (const node of nodes) {
-          if (node === undefined || node === null) continue
+          if (node === undefined || node === null) continue;
           if (typeof node === 'string') {
-            const textNode = { nodeType: 3, textContent: String(node) }
-            this.children.push(textNode)
-            continue
+            const textNode = { nodeType: 3, textContent: String(node) };
+            this.children.push(textNode);
+            continue;
           }
-          this.appendChild(node)
+          this.appendChild(node);
         }
       },
       replaceChildren(...nodes: any[]) {
-        this.children = []
-        this.append(...nodes)
+        this.children = [];
+        this.append(...nodes);
       },
       querySelector(selector: string) {
         if (matchesSelector(this, selector)) {
-          return this
+          return this;
         }
         for (const child of this.children) {
           if (child && typeof child === 'object' && typeof child.querySelector === 'function') {
-            const found = child.querySelector(selector)
-            if (found) return found
+            const found = child.querySelector(selector);
+            if (found) return found;
           }
         }
-        return null
+        return null;
       },
       setAttribute(name: string, value: any) {
-        ;(this as any)[name] = value
+        (this as any)[name] = value;
       },
       addEventListener() {
         // noop for tests
       },
-    }
+    };
 
-    let textContent = ''
+    let textContent = '';
     Object.defineProperty(el, 'textContent', {
       get() {
-        if (textContent) return textContent
-        let acc = ''
+        if (textContent) return textContent;
+        let acc = '';
         for (const child of el.children) {
           if (child && typeof child === 'object') {
-            acc += child.textContent || ''
+            acc += child.textContent || '';
           } else if (typeof child === 'string') {
-            acc += child
+            acc += child;
           }
         }
-        return acc
+        return acc;
       },
       set(val) {
-        textContent = String(val ?? '')
-        el.children = []
+        textContent = String(val ?? '');
+        el.children = [];
       },
-    })
+    });
 
     Object.defineProperty(el, 'innerHTML', {
       get() {
-        return textContent
+        return textContent;
       },
-      set(_val) {
-        textContent = ''
-        el.children = []
+      set() {
+        textContent = '';
+        el.children = [];
       },
-    })
+    });
 
     Object.defineProperty(el, 'id', {
       get() {
-        return (this as any)._id
+        return (this as any)._id;
       },
       set(val) {
-        ;(this as any)._id = val
+        (this as any)._id = val;
         if (val) {
-          elements[val] = el
+          elements[val] = el;
         }
       },
-    })
+    });
 
-    return el
-  }
+    return el;
+  };
 }
 
 function findAnchor(node: any): any {
-  if (!node) return null
-  if (node.tagName === 'A') return node
+  if (!node) return null;
+  if (node.tagName === 'A') return node;
   if (Array.isArray(node.children)) {
     for (const child of node.children) {
-      const found = findAnchor(child)
-      if (found) return found
+      const found = findAnchor(child);
+      if (found) return found;
     }
   }
-  return null
+  return null;
 }
 
 describe('renderResults trace link', () => {
   it('renders trace link when cid is provided', async () => {
-    const elements: Record<string, any> = {}
-    const createElement = createElementFactory(elements)
+    const elements: Record<string, any> = {};
+    const createElement = createElementFactory(elements);
 
-    const clauseTypeOut = createElement('span')
-    clauseTypeOut.dataset.role = 'clause-type'
-    elements.resClauseType = clauseTypeOut
+    const clauseTypeOut = createElement('span');
+    clauseTypeOut.dataset.role = 'clause-type';
+    elements.resClauseType = clauseTypeOut;
 
-    const findingsList = createElement('ol')
-    findingsList.dataset.role = 'findings'
-    elements.findingsList = findingsList
+    const findingsList = createElement('ol');
+    findingsList.dataset.role = 'findings';
+    elements.findingsList = findingsList;
 
-    const findingsBlock = createElement('div')
-    findingsBlock.id = 'findingsBlock'
-    findingsBlock.style = { display: 'none' }
-    elements.findingsBlock = findingsBlock
+    const findingsBlock = createElement('div');
+    findingsBlock.id = 'findingsBlock';
+    findingsBlock.style = { display: 'none' };
+    elements.findingsBlock = findingsBlock;
 
-    const recommendationsList = createElement('ol')
-    recommendationsList.dataset.role = 'recommendations'
-    elements.recommendationsList = recommendationsList
+    const recommendationsList = createElement('ol');
+    recommendationsList.dataset.role = 'recommendations';
+    elements.recommendationsList = recommendationsList;
 
-    const recommendationsBlock = createElement('div')
-    recommendationsBlock.id = 'recommendationsBlock'
-    recommendationsBlock.style = { display: 'none' }
-    elements.recommendationsBlock = recommendationsBlock
+    const recommendationsBlock = createElement('div');
+    recommendationsBlock.id = 'recommendationsBlock';
+    recommendationsBlock.style = { display: 'none' };
+    elements.recommendationsBlock = recommendationsBlock;
 
-    const findingsCount = createElement('span')
-    findingsCount.dataset.role = 'findings-count'
-    elements.resFindingsCount = findingsCount
+    const findingsCount = createElement('span');
+    findingsCount.dataset.role = 'findings-count';
+    elements.resFindingsCount = findingsCount;
 
-    const rawJson = createElement('pre')
-    rawJson.dataset.role = 'raw-json'
-    elements.rawJson = rawJson
+    const rawJson = createElement('pre');
+    rawJson.dataset.role = 'raw-json';
+    elements.rawJson = rawJson;
 
-    const resultsBlock = createElement('section')
-    resultsBlock.id = 'resultsBlock'
-    const header = createElement('div')
-    header.className = 'muted'
-    header.textContent = 'Results'
-    resultsBlock.appendChild(header)
-    elements.resultsBlock = resultsBlock
+    const resultsBlock = createElement('section');
+    resultsBlock.id = 'resultsBlock';
+    const header = createElement('div');
+    header.className = 'muted';
+    header.textContent = 'Results';
+    resultsBlock.appendChild(header);
+    elements.resultsBlock = resultsBlock;
 
     const roleMap: Record<string, any> = {
       'clause-type': clauseTypeOut,
@@ -186,75 +186,75 @@ describe('renderResults trace link', () => {
       'findings-count': findingsCount,
       'raw-json': rawJson,
       recommendations: recommendationsList,
-    }
+    };
 
-    const originalDocument = (globalThis as any).document
-    const originalWindow = (globalThis as any).window
-    const originalLocalStorage = (globalThis as any).localStorage
-    const originalTesting = (globalThis as any).__CAI_TESTING__
+    const originalDocument = (globalThis as any).document;
+    const originalWindow = (globalThis as any).window;
+    const originalLocalStorage = (globalThis as any).localStorage;
+    const originalTesting = (globalThis as any).__CAI_TESTING__;
 
     try {
-      ;(globalThis as any).document = {
+      (globalThis as any).document = {
         getElementById(id: string) {
-          return elements[id] || null
+          return elements[id] || null;
         },
         querySelector(selector: string) {
-          const roleMatch = selector.match(/^\[data-role="(.+)"\]$/)
+          const roleMatch = selector.match(/^\[data-role="(.+)"\]$/);
           if (roleMatch) {
-            return roleMap[roleMatch[1]] || null
+            return roleMap[roleMatch[1]] || null;
           }
-          return null
+          return null;
         },
         createElement,
-      } as any
-      ;(globalThis as any).window = globalThis as any
-      ;(globalThis as any).localStorage = {
+      } as any;
+      (globalThis as any).window = globalThis as any;
+      (globalThis as any).localStorage = {
         getItem(key: string) {
           if (key === 'backend.url' || key === 'backendUrl') {
-            return 'https://backend.test'
+            return 'https://backend.test';
           }
-          return null
+          return null;
         },
         setItem() {},
-      }
-      ;(globalThis as any).__CAI_TESTING__ = true
+      };
+      (globalThis as any).__CAI_TESTING__ = true;
 
-      const mod = await import('../assets/taskpane')
+      const mod = await import('../assets/taskpane');
       mod.renderResults({
         meta: { cid: 'cid-123' },
         findings: [],
         recommendations: [],
-      })
+      });
 
-      const traceContainer = header.querySelector('[data-role="trace-link"]')
-      expect(traceContainer).toBeTruthy()
-      expect(traceContainer?.style.display).toBe('')
+      const traceContainer = header.querySelector('[data-role="trace-link"]');
+      expect(traceContainer).toBeTruthy();
+      expect(traceContainer?.style.display).toBe('');
 
-      const anchor = findAnchor(traceContainer)
-      expect(anchor).toBeTruthy()
-      expect(anchor?.href).toBe('https://backend.test/api/trace/cid-123')
-      expect(anchor?.textContent).toBe('/api/trace/cid-123')
+      const anchor = findAnchor(traceContainer);
+      expect(anchor).toBeTruthy();
+      expect(anchor?.href).toBe('https://backend.test/api/trace/cid-123');
+      expect(anchor?.textContent).toBe('/api/trace/cid-123');
     } finally {
       if (originalDocument === undefined) {
-        delete (globalThis as any).document
+        delete (globalThis as any).document;
       } else {
-        ;(globalThis as any).document = originalDocument
+        (globalThis as any).document = originalDocument;
       }
       if (originalWindow === undefined) {
-        delete (globalThis as any).window
+        delete (globalThis as any).window;
       } else {
-        ;(globalThis as any).window = originalWindow
+        (globalThis as any).window = originalWindow;
       }
       if (originalLocalStorage === undefined) {
-        delete (globalThis as any).localStorage
+        delete (globalThis as any).localStorage;
       } else {
-        ;(globalThis as any).localStorage = originalLocalStorage
+        (globalThis as any).localStorage = originalLocalStorage;
       }
       if (originalTesting === undefined) {
-        delete (globalThis as any).__CAI_TESTING__
+        delete (globalThis as any).__CAI_TESTING__;
       } else {
-        ;(globalThis as any).__CAI_TESTING__ = originalTesting
+        (globalThis as any).__CAI_TESTING__ = originalTesting;
       }
     }
-  })
-})
+  });
+});

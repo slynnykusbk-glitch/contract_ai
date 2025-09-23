@@ -1,7 +1,10 @@
-
 import { safeBodySearch } from '../assets/safeBodySearch.ts';
 import { postJSON } from '../assets/api-client.ts';
-import { safeInsertComment, COMMENT_PREFIX, fallbackAnnotateWithContentControl } from '../assets/annotate.ts';
+import {
+  safeInsertComment,
+  COMMENT_PREFIX,
+  fallbackAnnotateWithContentControl,
+} from '../assets/annotate.ts';
 
 export interface Finding {
   id: string;
@@ -35,15 +38,14 @@ export type PanelState = {
 export async function addCommentAtRange(range: Word.Range, text: string) {
   let res = await safeInsertComment(range, text);
   if (!res.ok) {
-
     try {
       const p = range.paragraphs.getFirst();
       res = await safeInsertComment(p as unknown as Word.Range, text);
       if (!res.ok) {
-        await fallbackAnnotateWithContentControl(range, text.replace(COMMENT_PREFIX, "").trim());
+        await fallbackAnnotateWithContentControl(range, text.replace(COMMENT_PREFIX, '').trim());
       }
     } catch {
-      await fallbackAnnotateWithContentControl(range, text.replace(COMMENT_PREFIX, "").trim());
+      await fallbackAnnotateWithContentControl(range, text.replace(COMMENT_PREFIX, '').trim());
     }
   }
 }
@@ -57,12 +59,14 @@ async function focusRange(body: Word.Body, anchor: string) {
   const res = await safeBodySearch(body, anchor, searchOpts);
   const range = res?.items?.[0];
 
-    if (range) {
-      try {
-        range.select();
-        if (range.font) range.font.highlightColor = '#ffff00';
-      } catch { /* ignore */ }
+  if (range) {
+    try {
+      range.select();
+      if (range.font) range.font.highlightColor = '#ffff00';
+    } catch {
+      /* ignore */
     }
+  }
 }
 
 async function move(state: PanelState, dir: -1 | 1, doc: Word.Document) {
@@ -100,10 +104,15 @@ export async function applyDraft(state: PanelState, id: string, draft: Draft, do
     prevTracking = !!docObj.trackRevisions;
     docObj.trackRevisions = true;
     await doc.context.sync?.();
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   for (const op of draft.ops) {
-    const res = await safeBodySearch(doc.body, op.anchor, { matchCase: false, matchWholeWord: false });
+    const res = await safeBodySearch(doc.body, op.anchor, {
+      matchCase: false,
+      matchWholeWord: false,
+    });
     const range = res?.items?.[0];
     if (!range) continue;
     if (op.replace) {
@@ -118,14 +127,18 @@ export async function applyDraft(state: PanelState, id: string, draft: Draft, do
   try {
     docObj.trackRevisions = prevTracking;
     await doc.context.sync?.();
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   try {
     const raw = localStorage.getItem('cai_history') || '[]';
     const hist = JSON.parse(raw);
     hist.push({ id, ts: Date.now(), ops: draft.ops });
     localStorage.setItem('cai_history', JSON.stringify(hist));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 export function rejectFinding(state: PanelState, id: string) {

@@ -13,13 +13,16 @@ describe('clearAnnotations', () => {
         const cmts = {
           items: [
             { text: `${COMMENT_PREFIX} one`, delete: () => deleted.push('a') },
-            { text: 'foreign', delete: () => deleted.push('b') }
+            { text: 'foreign', delete: () => deleted.push('b') },
           ],
-          load: () => {}
+          load: () => {},
         };
-        const ctx = { document: { comments: cmts, body: { font: { highlightColor: 'Yellow' } } }, sync: async () => {} };
+        const ctx = {
+          document: { comments: cmts, body: { font: { highlightColor: 'Yellow' } } },
+          sync: async () => {},
+        };
         await cb(ctx);
-      }
+      },
     };
     await mod.clearAnnotations();
     expect(deleted).toEqual(['a']);

@@ -5,8 +5,14 @@ describe('onInsertIntoWord', () => {
     (globalThis as any).__CAI_TESTING__ = true;
     const add = vi.fn();
     const sel = { isEmpty: false, load: vi.fn(), insertText: vi.fn().mockReturnValue({}) };
-    const doc = { getSelection: () => sel, body: { getRange: () => ({}) }, comments: { add } } as any;
-    const run = vi.fn(async (cb: any) => { await cb({ document: doc, sync: vi.fn() }); });
+    const doc = {
+      getSelection: () => sel,
+      body: { getRange: () => ({}) },
+      comments: { add },
+    } as any;
+    const run = vi.fn(async (cb: any) => {
+      await cb({ document: doc, sync: vi.fn() });
+    });
     (globalThis as any).Word = { run, InsertLocation: { replace: 'Replace' } };
     (globalThis as any).document = { querySelector: () => ({ value: 'draft' }) } as any;
     const mod = await import('../src/panel/index');

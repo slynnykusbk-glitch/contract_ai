@@ -2,7 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 
 describe('analyze payload wrapper', () => {
   it('sends flat payload with mode only', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}), headers: new Headers(), status:200 });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({}), headers: new Headers(), status: 200 });
     (globalThis as any).fetch = fetchMock;
     (globalThis as any).window = { dispatchEvent() {} } as any;
     (globalThis as any).localStorage = { getItem: () => null, setItem: () => {} } as any;

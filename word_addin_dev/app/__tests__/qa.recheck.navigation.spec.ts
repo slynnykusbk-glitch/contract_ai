@@ -3,8 +3,11 @@ import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
 const html = readFileSync(
-  new URL('../../../contract_review_app/contract_review_app/static/panel/taskpane.html', import.meta.url),
-  'utf-8',
+  new URL(
+    '../../../contract_review_app/contract_review_app/static/panel/taskpane.html',
+    import.meta.url
+  ),
+  'utf-8'
 );
 
 describe('qa recheck navigation', () => {
@@ -21,11 +24,21 @@ describe('qa recheck navigation', () => {
       context: {
         requirements: { isSetSupported: () => true },
         host: 'Word',
-        document: { addHandlerAsync: (_: any, cb: any) => { (globalThis as any).__selHandler = cb; } },
+        document: {
+          addHandlerAsync: (_: any, cb: any) => {
+            (globalThis as any).__selHandler = cb;
+          },
+        },
       },
       EventType: { DocumentSelectionChanged: 'DocumentSelectionChanged' },
     };
-    (globalThis as any).Word = { run: async () => {}, SearchOptions: {}, Comment: {}, Revision: {}, ContentControl: {} };
+    (globalThis as any).Word = {
+      run: async () => {},
+      SearchOptions: {},
+      Comment: {},
+      Revision: {},
+      ContentControl: {},
+    };
     (globalThis as any).__CAI_TESTING__ = true;
   });
 
@@ -73,7 +86,11 @@ describe('qa recheck navigation', () => {
     await postJSON('/api/qa-recheck', { document_id: 'doc1', rules: {}, risk: expectedRisk });
     resultsEl.dispatchEvent(new CustomEvent('ca.qa', { detail: qaResp }));
 
-    expect(postJSON).toHaveBeenCalledWith('/api/qa-recheck', { document_id: 'doc1', rules: {}, risk: expectedRisk });
+    expect(postJSON).toHaveBeenCalledWith('/api/qa-recheck', {
+      document_id: 'doc1',
+      rules: {},
+      risk: expectedRisk,
+    });
 
     const items = (window as any).__findings;
     expect(items).toEqual(qaResp.analysis.findings);

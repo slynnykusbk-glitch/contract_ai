@@ -4,8 +4,12 @@ function mkEnv(ls: Record<string, string> = {}) {
   const handlers: Record<string, ((ev: any) => void)[]> = {};
   const docHandlers: Record<string, ((ev: any) => void)[]> = {};
   const win: any = {
-    addEventListener: (n: string, f: any) => { (handlers[n] ||= []).push(f); },
-    dispatchEvent: (ev: Event) => { (handlers[ev.type] || []).forEach(fn => fn(ev)); },
+    addEventListener: (n: string, f: any) => {
+      (handlers[n] ||= []).push(f);
+    },
+    dispatchEvent: (ev: Event) => {
+      (handlers[ev.type] || []).forEach(fn => fn(ev));
+    },
     location: { search: '' },
   };
   const prog = { className: 'progress', style: { display: 'block' } };
@@ -13,8 +17,12 @@ function mkEnv(ls: Record<string, string> = {}) {
     getElementById: (id: string) => (id === 'progress' ? prog : null),
     querySelector: () => null,
     querySelectorAll: (sel: string) => (sel === '.progress' ? [prog] : []),
-    addEventListener: (n: string, f: any) => { (docHandlers[n] ||= []).push(f); },
-    dispatchEvent: (ev: Event) => { (docHandlers[ev.type] || []).forEach(fn => fn(ev)); },
+    addEventListener: (n: string, f: any) => {
+      (docHandlers[n] ||= []).push(f);
+    },
+    dispatchEvent: (ev: Event) => {
+      (docHandlers[ev.type] || []).forEach(fn => fn(ev));
+    },
     visibilityState: 'visible',
     hidden: false,
   };
@@ -22,19 +30,27 @@ function mkEnv(ls: Record<string, string> = {}) {
   (globalThis as any).fetch = (_: any, opts: any = {}) =>
     new Promise((_res, rej) => {
       const sig = opts.signal;
-      if (sig) sig.addEventListener('abort', () => {
-        aborted = true;
-        rej(new DOMException('aborted', 'AbortError'));
-      });
+      if (sig)
+        sig.addEventListener('abort', () => {
+          aborted = true;
+          rej(new DOMException('aborted', 'AbortError'));
+        });
     });
   (globalThis as any).window = win;
   (globalThis as any).document = doc;
   (globalThis as any).localStorage = {
     getItem: (k: string) => (k in ls ? ls[k] : null),
-    setItem: (k: string, v: string) => { ls[k] = v; },
+    setItem: (k: string, v: string) => {
+      ls[k] = v;
+    },
   } as any;
   (globalThis as any).Office = { context: { requirements: { isSetSupported: () => true } } } as any;
-  (globalThis as any).Word = { Revision: {}, Comment: {}, SearchOptions: {}, ContentControl: {} } as any;
+  (globalThis as any).Word = {
+    Revision: {},
+    Comment: {},
+    SearchOptions: {},
+    ContentControl: {},
+  } as any;
   (globalThis as any).__CAI_TESTING__ = true;
   return { win, doc, wasAborted: () => aborted };
 }

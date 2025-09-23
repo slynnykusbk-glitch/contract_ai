@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { AnalyzeFinding } from '../assets/api-client';
-import { planAnnotations, MAX_ANNOTATE_OPS, annotateFindingsIntoWord, COMMENT_PREFIX } from '../assets/annotate';
+import {
+  planAnnotations,
+  MAX_ANNOTATE_OPS,
+  annotateFindingsIntoWord,
+  COMMENT_PREFIX,
+} from '../assets/annotate';
 import { findAnchors } from '../assets/anchors';
-
 
 describe('annotate scheduler', () => {
   beforeEach(() => {
@@ -57,8 +61,8 @@ describe('annotate scheduler', () => {
         rule_id: 'r1',
         norm_quote: 'norm',
         clause_url: 'http://example.com/clause/1',
-        clause_id: '1'
-      }
+        clause_id: '1',
+      },
     ];
     const ops = planAnnotations(findings);
     expect(ops[0].msg).toContain('norm');
@@ -72,22 +76,22 @@ describe('annotate scheduler', () => {
         items: [
           { start: 0, end: 5 },
           { start: 3, end: 7 },
-          { start: 10, end: 12 }
+          { start: 10, end: 12 },
         ],
-        load: () => {}
-      })
+        load: () => {},
+      }),
     } as any;
     const res = await findAnchors(body, 'dummy');
     expect(res).toEqual([
       { start: 0, end: 5 },
-      { start: 10, end: 12 }
+      { start: 10, end: 12 },
     ]);
   });
 
   it('skips findings with no anchors', async () => {
     const body = {
       context: { sync: async () => {}, trackedObjects: { add: () => {} } },
-      search: () => ({ items: [], load: () => {} })
+      search: () => ({ items: [], load: () => {} }),
     } as any;
     const finding: AnalyzeFinding = { start: 0, end: 3, snippet: 'abc', rule_id: 'r1' };
     const ops = planAnnotations([finding]);
@@ -101,26 +105,32 @@ describe('annotate scheduler', () => {
       start: i * 2,
       end: i * 2 + 1,
       snippet: 'x',
-      rule_id: `r${i}`
+      rule_id: `r${i}`,
     }));
     const ops = planAnnotations(findings);
     expect(ops.length).toBe(MAX_ANNOTATE_OPS);
   });
 
   it('annotates findings on correct ranges with prefix', async () => {
-    const findings: AnalyzeFinding[] = [
-      { start: 0, end: 3, snippet: 'abc', rule_id: 'r1' }
-    ];
+    const findings: AnalyzeFinding[] = [{ start: 0, end: 3, snippet: 'abc', rule_id: 'r1' }];
     const inserted: string[] = [];
     const ranges = [
-      { start: 0, end: 3, load: () => {}, insertComment: (msg: string) => inserted.push(msg) }
+      { start: 0, end: 3, load: () => {}, insertComment: (msg: string) => inserted.push(msg) },
     ];
     (globalThis as any).Office = { context: { requirements: { isSetSupported: () => true } } };
     (globalThis as any).Word = {
       run: async (cb: any) => {
-        const ctx = { document: { body: { context: { sync: async () => {}, trackedObjects: { add: () => {} } }, search: () => ({ items: ranges, load: () => {} }) } }, sync: async () => {} };
+        const ctx = {
+          document: {
+            body: {
+              context: { sync: async () => {}, trackedObjects: { add: () => {} } },
+              search: () => ({ items: ranges, load: () => {} }),
+            },
+          },
+          sync: async () => {},
+        };
         return await cb(ctx);
-      }
+      },
     };
     const count = await annotateFindingsIntoWord(findings);
     expect(count).toBe(1);
@@ -130,7 +140,7 @@ describe('annotate scheduler', () => {
   it('handles very long snippets gracefully', async () => {
     const long = 'a'.repeat(5000);
     const findings: AnalyzeFinding[] = [
-      { start: 0, end: long.length, snippet: long, rule_id: 'r1' }
+      { start: 0, end: long.length, snippet: long, rule_id: 'r1' },
     ];
     const plan = planAnnotations(findings);
     expect(plan.length).toBe(1);
@@ -140,11 +150,15 @@ describe('annotate scheduler', () => {
       run: async (cb: any) => {
         const body = {
           context: { sync: async () => {}, trackedObjects: { add: () => {} } },
-          search: () => { const err: any = new Error('fail'); err.code = 'SearchStringInvalidOrTooLong'; throw err; }
+          search: () => {
+            const err: any = new Error('fail');
+            err.code = 'SearchStringInvalidOrTooLong';
+            throw err;
+          },
         } as any;
         const ctx = { document: { body }, sync: async () => {} };
         return await cb(ctx);
-      }
+      },
     };
     const inserted = await annotateFindingsIntoWord(findings);
     expect(inserted).toBe(0);

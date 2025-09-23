@@ -43,7 +43,7 @@ export default defineConfig({
       '**/render*.spec.*',
       '**/*taskpane*.spec.*',
       '**/*ui-gating*.spec.*',
-      '**/*annotate.flow*.spec.*'
+      '**/*annotate.flow*.spec.*',
     ],
     // Разрешённый «белый список» — логика, утилиты, поиск, аннотации, таймауты, нормализация:
     include: [
@@ -53,7 +53,7 @@ export default defineConfig({
       'app/assets/__tests__/**/*annotate*.spec.ts',
       'app/assets/__tests__/**/*timeout*.spec.ts',
       'app/assets/__tests__/**/*normalized*.spec.ts',
-      'app/assets/__tests__/**/*supports*.spec.ts'
+      'app/assets/__tests__/**/*supports*.spec.ts',
     ],
     // ускоряем/стабилизируем CI
     reporters: ['default'],

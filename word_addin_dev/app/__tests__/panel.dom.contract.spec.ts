@@ -5,7 +5,10 @@ const schema = JSON.parse(
   readFileSync(new URL('../panel_dom.schema.json', import.meta.url), 'utf-8')
 );
 const html = readFileSync(
-  new URL('../../../contract_review_app/contract_review_app/static/panel/taskpane.html', import.meta.url),
+  new URL(
+    '../../../contract_review_app/contract_review_app/static/panel/taskpane.html',
+    import.meta.url
+  ),
   'utf-8'
 );
 

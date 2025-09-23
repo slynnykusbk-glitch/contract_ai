@@ -5,20 +5,37 @@ describe('postJson timeout/retry', () => {
     vi.useFakeTimers();
     const timers: number[] = [];
     const origSet = setTimeout;
-    (globalThis as any).setTimeout = ((fn: any, ms: number) => { timers.push(ms); return origSet(fn, ms); }) as any;
+    (globalThis as any).setTimeout = ((fn: any, ms: number) => {
+      timers.push(ms);
+      return origSet(fn, ms);
+    }) as any;
     const origClear = clearTimeout;
     (globalThis as any).clearTimeout = (id: any) => origClear(id);
-    (globalThis as any).window = { dispatchEvent: () => {}, addEventListener: () => {}, location: { search: '' } } as any;
+    (globalThis as any).window = {
+      dispatchEvent: () => {},
+      addEventListener: () => {},
+      location: { search: '' },
+    } as any;
     (globalThis as any).location = (globalThis as any).window.location;
     (globalThis as any).localStorage = { getItem: () => null, setItem: () => {} } as any;
     const logs: string[] = [];
-    vi.spyOn(console, 'log').mockImplementation((...a: any[]) => { logs.push(a.join(' ')); });
+    vi.spyOn(console, 'log').mockImplementation((...a: any[]) => {
+      logs.push(a.join(' '));
+    });
     const fetchMock = vi
       .fn()
-      .mockImplementationOnce((_u, opts: any) => new Promise((_res, rej) => {
-        opts.signal.addEventListener('abort', () => rej(new DOMException('x', 'AbortError')));
-      }))
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}), headers: new Headers(), status: 200 });
+      .mockImplementationOnce(
+        (_u, opts: any) =>
+          new Promise((_res, rej) => {
+            opts.signal.addEventListener('abort', () => rej(new DOMException('x', 'AbortError')));
+          })
+      )
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+        headers: new Headers(),
+        status: 200,
+      });
     (globalThis as any).fetch = fetchMock;
     const { postJson } = await import('../assets/api-client.ts');
     const p = postJson('/api/analyze', { text: 'hi' });
@@ -36,7 +53,10 @@ describe('postJson timeout/retry', () => {
     vi.useFakeTimers();
     const timers: number[] = [];
     const origSet = setTimeout;
-    (globalThis as any).setTimeout = ((fn: any, ms: number) => { timers.push(ms); return origSet(fn, ms); }) as any;
+    (globalThis as any).setTimeout = ((fn: any, ms: number) => {
+      timers.push(ms);
+      return origSet(fn, ms);
+    }) as any;
     const origClear2 = clearTimeout;
     (globalThis as any).clearTimeout = (id: any) => origClear2(id);
     const store: Record<string, string> = {
@@ -46,7 +66,9 @@ describe('postJson timeout/retry', () => {
     };
     (globalThis as any).localStorage = {
       getItem: (k: string) => store[k] || null,
-      setItem: (k: string, v: string) => { store[k] = v; },
+      setItem: (k: string, v: string) => {
+        store[k] = v;
+      },
     } as any;
     (globalThis as any).window = {
       dispatchEvent: () => {},
@@ -56,13 +78,24 @@ describe('postJson timeout/retry', () => {
     (globalThis as any).location = (globalThis as any).window.location;
     const fetchMock = vi
       .fn()
-      .mockImplementationOnce((_u, opts: any) => new Promise((_res, rej) => {
-        opts.signal.addEventListener('abort', () => rej(new DOMException('x', 'AbortError')));
-      }))
-      .mockImplementationOnce((_u, opts: any) => new Promise((_res, rej) => {
-        opts.signal.addEventListener('abort', () => rej(new DOMException('x', 'AbortError')));
-      }))
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}), headers: new Headers(), status: 200 });
+      .mockImplementationOnce(
+        (_u, opts: any) =>
+          new Promise((_res, rej) => {
+            opts.signal.addEventListener('abort', () => rej(new DOMException('x', 'AbortError')));
+          })
+      )
+      .mockImplementationOnce(
+        (_u, opts: any) =>
+          new Promise((_res, rej) => {
+            opts.signal.addEventListener('abort', () => rej(new DOMException('x', 'AbortError')));
+          })
+      )
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+        headers: new Headers(),
+        status: 200,
+      });
     (globalThis as any).fetch = fetchMock;
     const { postJson } = await import('../assets/api-client.ts');
     const p = postJson('/api/analyze', { text: 'hi' });

@@ -8,7 +8,7 @@ describe('extended error logging', () => {
     (globalThis as any).window = globalThis;
     (globalThis as any).localStorage = {
       getItem: () => null,
-      setItem: () => {}
+      setItem: () => {},
     };
     const stubEl = {
       addEventListener: () => {},
@@ -17,13 +17,13 @@ describe('extended error logging', () => {
       setAttribute: () => {},
       removeAttribute: () => {},
       innerHTML: '',
-      textContent: ''
+      textContent: '',
     };
     (globalThis as any).document = {
       readyState: 'complete',
       addEventListener: () => {},
       querySelector: () => stubEl,
-      body: { dataset: {}, querySelectorAll: () => ({ forEach: () => {} }) }
+      body: { dataset: {}, querySelectorAll: () => ({ forEach: () => {} }) },
     };
     (globalThis as any).__CAI_TESTING__ = true;
   });

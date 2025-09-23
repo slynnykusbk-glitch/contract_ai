@@ -8,13 +8,18 @@ describe('startPanel bootstrap', () => {
       querySelector: qSpy,
       getElementById: () => null,
       addEventListener: () => {},
-      readyState: 'complete'
+      readyState: 'complete',
     } as any;
     (globalThis as any).localStorage = { getItem: () => '', setItem: () => {} };
     (globalThis as any).fetch = vi.fn(async () => ({ json: async () => ({}) }));
     const mod = await import('../src/panel/index');
     let readyResolve: () => void;
-    const onReady = vi.fn(() => new Promise<void>(res => { readyResolve = res; }));
+    const onReady = vi.fn(
+      () =>
+        new Promise<void>(res => {
+          readyResolve = res;
+        })
+    );
     (globalThis as any).Office = { onReady };
     const p = mod.startPanel();
     expect(onReady).toHaveBeenCalled();

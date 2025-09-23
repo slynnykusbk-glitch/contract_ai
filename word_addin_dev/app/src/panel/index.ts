@@ -13,7 +13,9 @@ export {
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) =>
   document.querySelector(sel) as T | null;
-const show = (el: HTMLElement | null) => { if (el) el.hidden = false; };
+const show = (el: HTMLElement | null) => {
+  if (el) el.hidden = false;
+};
 
 export function wireDom() {
   $<HTMLButtonElement>('#btnInsertIntoWord')?.addEventListener('click', onInsertIntoWord);
@@ -25,7 +27,10 @@ export function onDraftReady() {
 
 export async function onInsertIntoWord() {
   const txt = ($<HTMLTextAreaElement>('#txtDraft')?.value ?? '').trim();
-  if (!txt) { notifyWarn('No draft text'); return; }
+  if (!txt) {
+    notifyWarn('No draft text');
+    return;
+  }
   await insertDraftText(txt, 'live');
 }
 
@@ -44,7 +49,9 @@ export async function startPanel() {
 
 if (!(globalThis as { __CAI_TESTING__?: boolean }).__CAI_TESTING__) {
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => { void startPanel(); });
+    document.addEventListener('DOMContentLoaded', () => {
+      void startPanel();
+    });
   } else {
     void startPanel();
   }

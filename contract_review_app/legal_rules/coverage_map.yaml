@@ -1,0 +1,296 @@
+version: 1
+zones:
+  - zone_id: "payment"
+    zone_name: "Payment & Invoicing"
+    description: "Payment obligations, invoicing, and settlement mechanics."
+    label_selectors:
+      any: ["payment", "invoice", "billing"]
+      all: []
+      none: []
+    entity_selectors:
+      amounts: true
+      durations: true
+      law: false
+      jurisdiction: false
+    rule_ids_opt: ["pay_late_interest_v1", "pay_terms_clear_v2"]
+    weight: 1.0
+    required: true
+
+  - zone_id: "term"
+    zone_name: "Term & Duration"
+    label_selectors:
+      any: ["term", "duration", "renewal"]
+      all: []
+      none: []
+    entity_selectors:
+      amounts: false
+      durations: true
+      law: false
+      jurisdiction: false
+    rule_ids_opt: ["term_auto_renewal_v1"]
+
+  - zone_id: "termination"
+    zone_name: "Termination"
+    label_selectors:
+      any: ["termination", "terminate", "termination_rights"]
+      all: []
+      none: []
+    rule_ids_opt: ["term_termination_for_cause_v1"]
+
+  - zone_id: "notices"
+    zone_name: "Notices"
+    label_selectors:
+      any: ["notice", "notices", "notification"]
+      all: []
+      none: []
+    rule_ids_opt: ["notice_method_v1"]
+
+  - zone_id: "governing_law"
+    zone_name: "Governing Law"
+    label_selectors:
+      any: ["governing law", "law", "governed_by"]
+      all: []
+      none: []
+    entity_selectors:
+      amounts: false
+      durations: false
+      law: true
+      jurisdiction: false
+    rule_ids_opt: ["gl_specify_law_v1"]
+
+  - zone_id: "jurisdiction"
+    zone_name: "Jurisdiction"
+    label_selectors:
+      any: ["jurisdiction", "venue", "forum"]
+      all: []
+      none: []
+    entity_selectors:
+      amounts: false
+      durations: false
+      law: false
+      jurisdiction: true
+    rule_ids_opt: ["jurisdiction_forum_v1"]
+
+  - zone_id: "dispute_resolution"
+    zone_name: "Dispute Resolution"
+    label_selectors:
+      any: ["dispute", "arbitration", "dr"]
+      all: []
+      none: []
+    rule_ids_opt: ["dr_escalation_v1"]
+
+  - zone_id: "liability_cap"
+    zone_name: "Liability Cap"
+    label_selectors:
+      any: ["liability", "cap", "limitation"]
+      all: []
+      none: ["no_cap"]
+    rule_ids_opt: ["liability_cap_defined_v1"]
+
+  - zone_id: "indemnity"
+    zone_name: "Indemnity"
+    label_selectors:
+      any: ["indemnity", "indemnification"]
+      all: []
+      none: []
+    rule_ids_opt: ["indemnity_scope_v1"]
+
+  - zone_id: "confidentiality"
+    zone_name: "Confidentiality"
+    label_selectors:
+      any: ["confidentiality", "nda", "confidential"]
+      all: []
+      none: []
+    rule_ids_opt: ["confidentiality_survival_v1"]
+
+  - zone_id: "ip"
+    zone_name: "Intellectual Property"
+    label_selectors:
+      any: ["intellectual property", "ip", "ownership"]
+      all: []
+      none: []
+    rule_ids_opt: ["ip_ownership_v1"]
+
+  - zone_id: "data_protection"
+    zone_name: "Data Protection"
+    label_selectors:
+      any: ["data protection", "gdpr", "privacy"]
+      all: []
+      none: []
+    rule_ids_opt: ["dp_security_measures_v1"]
+
+  - zone_id: "insurance"
+    zone_name: "Insurance"
+    label_selectors:
+      any: ["insurance", "insured", "coverage"]
+      all: []
+      none: []
+    rule_ids_opt: ["insurance_maintain_limits_v1"]
+
+  - zone_id: "force_majeure"
+    zone_name: "Force Majeure"
+    label_selectors:
+      any: ["force majeure", "fm_event"]
+      all: []
+      none: []
+    rule_ids_opt: ["force_majeure_notice_v1"]
+
+  - zone_id: "taxes"
+    zone_name: "Taxes"
+    label_selectors:
+      any: ["tax", "taxes", "withholding"]
+      all: []
+      none: []
+    rule_ids_opt: ["tax_withholding_v1"]
+
+  - zone_id: "assignment"
+    zone_name: "Assignment"
+    label_selectors:
+      any: ["assignment", "assign"]
+      all: []
+      none: []
+    rule_ids_opt: ["assignment_consent_v1"]
+
+  - zone_id: "subcontracting"
+    zone_name: "Subcontracting"
+    label_selectors:
+      any: ["subcontract", "subcontracting"]
+      all: []
+      none: []
+    rule_ids_opt: ["subcontracting_controls_v1"]
+
+  - zone_id: "order_of_precedence"
+    zone_name: "Order of Precedence"
+    label_selectors:
+      any: ["precedence", "order of precedence"]
+      all: []
+      none: []
+    rule_ids_opt: ["precedence_hierarchy_v1"]
+
+  - zone_id: "definitions"
+    zone_name: "Definitions"
+    label_selectors:
+      any: ["definition", "definitions"]
+      all: []
+      none: []
+    rule_ids_opt: []
+
+  - zone_id: "interpretation"
+    zone_name: "Interpretation"
+    label_selectors:
+      any: ["interpretation", "construction"]
+      all: []
+      none: []
+    rule_ids_opt: []
+
+  - zone_id: "acceptance"
+    zone_name: "Acceptance"
+    label_selectors:
+      any: ["acceptance", "accept"]
+      all: []
+      none: []
+    rule_ids_opt: ["acceptance_criteria_v1"]
+
+  - zone_id: "delivery"
+    zone_name: "Delivery"
+    label_selectors:
+      any: ["delivery", "deliver", "shipment"]
+      all: []
+      none: []
+    rule_ids_opt: ["delivery_schedule_v1"]
+
+  - zone_id: "service_levels"
+    zone_name: "Service Levels"
+    label_selectors:
+      any: ["service level", "sla", "service_levels"]
+      all: []
+      none: []
+    rule_ids_opt: ["sla_response_times_v1"]
+
+  - zone_id: "price_adjustment"
+    zone_name: "Price Adjustment"
+    label_selectors:
+      any: ["price adjustment", "indexation", "escalation"]
+      all: []
+      none: []
+    rule_ids_opt: ["price_adjustment_index_v1"]
+
+  - zone_id: "interest_late"
+    zone_name: "Late Interest"
+    label_selectors:
+      any: ["late interest", "interest", "overdue"]
+      all: []
+      none: []
+    rule_ids_opt: ["late_interest_rate_v1"]
+
+  - zone_id: "change_control"
+    zone_name: "Change Control"
+    label_selectors:
+      any: ["change control", "variation", "change_request"]
+      all: []
+      none: []
+    rule_ids_opt: ["change_control_process_v1"]
+
+  - zone_id: "audit_records"
+    zone_name: "Audit & Records"
+    label_selectors:
+      any: ["audit", "records", "inspection"]
+      all: []
+      none: []
+    rule_ids_opt: ["audit_rights_v1"]
+
+  - zone_id: "survival"
+    zone_name: "Survival"
+    label_selectors:
+      any: ["survival", "survive"]
+      all: []
+      none: []
+    rule_ids_opt: []
+
+  - zone_id: "personnel"
+    zone_name: "Personnel"
+    label_selectors:
+      any: ["personnel", "staff", "employees"]
+      all: []
+      none: []
+    rule_ids_opt: ["personnel_screening_v1"]
+
+  - zone_id: "cross_refs"
+    zone_name: "Cross References"
+    label_selectors:
+      any: ["cross reference", "cross_refs"]
+      all: []
+      none: []
+    rule_ids_opt: []
+
+  - zone_id: "warranties"
+    zone_name: "Warranties"
+    label_selectors:
+      any: ["warranty", "warranties"]
+      all: []
+      none: []
+    rule_ids_opt: ["warranty_scope_v1"]
+
+  - zone_id: "quality"
+    zone_name: "Quality"
+    label_selectors:
+      any: ["quality", "quality_assurance", "qa"]
+      all: []
+      none: []
+    rule_ids_opt: []
+
+  - zone_id: "compliance_abac"
+    zone_name: "Compliance & ABAC"
+    label_selectors:
+      any: ["compliance", "abac", "anti-bribery", "ethics"]
+      all: []
+      none: []
+    rule_ids_opt: ["abac_policy_v1"]
+
+  - zone_id: "transition"
+    zone_name: "Transition & Exit"
+    label_selectors:
+      any: ["transition", "exit_plan", "handover"]
+      all: []
+      none: []
+    rule_ids_opt: []

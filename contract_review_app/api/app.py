@@ -62,6 +62,10 @@ from contract_review_app.trace_artifacts import (
     build_proposals,
     serialize_reason_entry,
 )
+from contract_review_app.legal_rules.coverage_map import (
+    build_coverage,
+    invalidate_cache as invalidate_coverage_cache,
+)
 
 
 log = logging.getLogger("contract_ai")
@@ -940,6 +944,8 @@ FEATURE_LX_ENGINE = os.getenv("FEATURE_LX_ENGINE", "0") == "1"
 FEATURE_TRACE_ARTIFACTS = os.getenv("FEATURE_TRACE_ARTIFACTS", "0") == "1"
 FEATURE_REASON_OFFSETS = os.getenv("FEATURE_REASON_OFFSETS", "1") == "1"
 FEATURE_L0_LABELS = os.getenv("FEATURE_L0_LABELS", "1") == "1"
+FEATURE_COVERAGE_MAP = os.getenv("FEATURE_COVERAGE_MAP", "1") == "1"
+FEATURE_COVERAGE_DEV_RELOAD = os.getenv("FEATURE_COVERAGE_DEV_RELOAD", "0") == "1"
 LX_L2_CONSTRAINTS = os.getenv("LX_L2_CONSTRAINTS", "0") == "1"
 METRICS_EXPORT_DIR = Path(os.getenv("METRICS_EXPORT_DIR", "var/metrics"))
 DISABLE_PII_IN_METRICS = os.getenv("DISABLE_PII_IN_METRICS", "1") == "1"
@@ -2272,6 +2278,8 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                     {"status": "enabled", "count": segment_count},
                 )
             emit_features_trace()
+    if FEATURE_COVERAGE_DEV_RELOAD:
+        invalidate_coverage_cache()
     analysis_classifier.classify_segments(parsed.segments)
     t2 = time.perf_counter()
 
@@ -2298,6 +2306,8 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     candidate_rules_by_segment: Dict[int, Set[str]] = {}
     dispatcher_mod = None
     features_by_segment: Dict[int, LxFeatureSet] = {}
+    coverage_segments: List[Dict[str, Any]] = []
+    coverage_candidates_by_segment: List[Set[str]] = []
     if FEATURE_LX_ENGINE and lx_features is not None:
         try:
             from contract_review_app.legal_rules import dispatcher as _dispatcher_mod
@@ -2307,13 +2317,13 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             dispatcher_mod = _dispatcher_mod
             features_by_segment = getattr(lx_features, "by_segment", {}) or {}
 
-    for seg in parsed.segments:
+    for idx, seg in enumerate(parsed.segments):
         seg_id = int(seg.get("id", 0) or 0)
         seg_text = str(seg.get("text") or "")
         seg_start = int(seg.get("start") or 0)
         segments_for_yaml.append((seg_id, seg_text, seg_start, seg))
-        if dispatcher_mod and seg_id in features_by_segment:
-            feats = features_by_segment.get(seg_id)
+        feats = features_by_segment.get(seg_id) if features_by_segment else None
+        if dispatcher_mod and feats is not None:
             if feats is not None:
                 try:
                     segment_obj = LxSegment(
@@ -2377,6 +2387,34 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                             "candidates": segment_candidates,
                         }
                     )
+
+        start_val = int(seg.get("start") or 0)
+        end_val_raw = seg.get("end")
+        try:
+            end_val = int(end_val_raw)
+        except (TypeError, ValueError):
+            length_val = seg.get("length")
+            try:
+                length_int = int(length_val)
+            except (TypeError, ValueError):
+                length_int = 0
+            end_val = start_val + max(length_int, 0)
+        if end_val < start_val:
+            end_val = start_val
+        labels_raw = getattr(feats, "labels", []) if feats is not None else []
+        entities_raw = getattr(feats, "entities", {}) if feats is not None else {}
+        coverage_segments.append(
+            {
+                "index": idx,
+                "segment_id": seg_id,
+                "labels": list(labels_raw or []),
+                "entities": dict(entities_raw or {}),
+                "span": [start_val, end_val],
+            }
+        )
+        coverage_candidates_by_segment.append(
+            set(candidate_rules_by_segment.get(seg_id, set()))
+        )
 
         clause_type = seg.get("clause_type")
         if not clause_type:
@@ -2488,6 +2526,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     matched_rules: List[Dict[str, Any]] = []
     load_duration = 0.0
     run_duration = 0.0
+    rule_lookup: Dict[str, Dict[str, Any]] = {}
     try:
         from contract_review_app.legal_rules import loader as yaml_loader, engine as yaml_engine
 
@@ -2819,6 +2858,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         matched_rules = []
         load_duration = 0.0
         run_duration = 0.0
+        rule_lookup = {}
 
     if FEATURE_TRACE_ARTIFACTS:
         try:
@@ -2835,6 +2875,21 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             )
         except Exception:
             pass
+        if FEATURE_COVERAGE_MAP:
+            try:
+                coverage_payload = build_coverage(
+                    coverage_segments,
+                    coverage_candidates_by_segment,
+                    triggered_rule_ids,
+                    rule_lookup,
+                )
+            except Exception:
+                coverage_payload = None
+            if coverage_payload:
+                try:
+                    TRACE.add(request.state.cid, "coverage", coverage_payload)
+                except Exception:
+                    pass
 
     if yaml_findings:
         filtered_yaml = [

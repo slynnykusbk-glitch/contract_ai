@@ -938,6 +938,7 @@ gpt_cache = TTLCache(max_items=ANALYZE_CACHE_MAX, ttl_s=ANALYZE_CACHE_TTL_S)
 FEATURE_METRICS = os.getenv("FEATURE_METRICS", "1") == "1"
 FEATURE_LX_ENGINE = os.getenv("FEATURE_LX_ENGINE", "0") == "1"
 FEATURE_TRACE_ARTIFACTS = os.getenv("FEATURE_TRACE_ARTIFACTS", "0") == "1"
+FEATURE_REASON_OFFSETS = os.getenv("FEATURE_REASON_OFFSETS", "1") == "1"
 FEATURE_L0_LABELS = os.getenv("FEATURE_L0_LABELS", "1") == "1"
 LX_L2_CONSTRAINTS = os.getenv("LX_L2_CONSTRAINTS", "0") == "1"
 METRICS_EXPORT_DIR = Path(os.getenv("METRICS_EXPORT_DIR", "var/metrics"))
@@ -2342,7 +2343,9 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                         if DISPATCH_MAX_REASONS_PER_RULE > 0:
                             reasons_list = reasons_list[:DISPATCH_MAX_REASONS_PER_RULE]
                         serialized_reasons = [
-                            serialize_reason_entry(reason)
+                            serialize_reason_entry(
+                                reason, include_offsets=FEATURE_REASON_OFFSETS
+                            )
                             for reason in reasons_list
                         ]
                         segment_candidates.append(
@@ -2705,7 +2708,9 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                             "expected_any": expected_any,
                             "matched": matches,
                             "reasons": [
-                                serialize_reason_entry(reason)
+                                serialize_reason_entry(
+                                    reason, include_offsets=FEATURE_REASON_OFFSETS
+                                )
                                 for reason in (
                                     list(
                                         dispatch_reasons_by_rule.get(
@@ -2822,6 +2827,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                     len(evaluated_rule_ids),
                     len(triggered_rule_ids),
                     dispatch_candidates,
+                    include_reason_offsets=FEATURE_REASON_OFFSETS,
                 ),
             )
         except Exception:

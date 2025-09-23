@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+from decimal import Decimal
 from dataclasses import dataclass
 from functools import lru_cache
 import re
@@ -11,8 +13,10 @@ from typing import (
     Dict,
     Iterable,
     List,
+    Mapping,
     MutableMapping,
     Optional,
+    Sequence,
     Set,
     Tuple,
 )
@@ -36,24 +40,93 @@ class ReasonPattern:
 
 
 @dataclass(frozen=True)
+class ReasonAmount:
+    currency: str
+    value: int | float
+    offsets: Tuple[Tuple[int, int], ...] = ()
+
+    def to_json(self) -> Dict[str, Any]:
+        value = self.value
+        if isinstance(value, float) and value.is_integer():
+            value = int(value)
+        return {
+            "ccy": self.currency,
+            "value": value,
+            "offsets": [[int(start), int(end)] for start, end in self.offsets],
+        }
+
+
+@dataclass(frozen=True)
+class ReasonDuration:
+    unit: str
+    value: int
+    offsets: Tuple[Tuple[int, int], ...] = ()
+
+    def to_json(self) -> Dict[str, Any]:
+        return {
+            "unit": self.unit,
+            "value": int(self.value),
+            "offsets": [[int(start), int(end)] for start, end in self.offsets],
+        }
+
+
+@dataclass(frozen=True)
+class ReasonCodeRef:
+    code: str
+    offsets: Tuple[Tuple[int, int], ...] = ()
+
+    def to_json(self) -> Dict[str, Any]:
+        return {
+            "code": self.code,
+            "offsets": [[int(start), int(end)] for start, end in self.offsets],
+        }
+
+
+@dataclass(frozen=True)
 class ReasonPayload:
     labels: Tuple[str, ...] = ()
     patterns: Tuple[ReasonPattern, ...] = ()
     gates: Tuple[Tuple[str, bool], ...] = ()
+    amounts: Tuple["ReasonAmount", ...] = ()
+    durations: Tuple["ReasonDuration", ...] = ()
+    law: Tuple["ReasonCodeRef", ...] = ()
+    jurisdiction: Tuple["ReasonCodeRef", ...] = ()
 
-    def identity(self) -> Tuple[Tuple[str, ...], Tuple[Tuple[str, Tuple[Tuple[int, int], ...]], ...], Tuple[Tuple[str, bool], ...]]:
+    def identity(
+        self,
+    ) -> Tuple[
+        Tuple[str, ...],
+        Tuple[Tuple[str, Tuple[Tuple[int, int], ...]], ...],
+        Tuple[Tuple[str, bool], ...],
+        Tuple[Tuple[str, Any], ...],
+    ]:
         label_key = tuple(sorted(self.labels))
         pattern_key = tuple(
             (pattern.kind, tuple(pattern.offsets)) for pattern in self.patterns
         )
         gates_key = tuple(sorted(self.gates))
-        return label_key, pattern_key, gates_key
+        data_key = tuple(
+            [
+                ("amounts", tuple((entry.currency, entry.value, entry.offsets) for entry in self.amounts)),
+                ("durations", tuple((entry.unit, entry.value, entry.offsets) for entry in self.durations)),
+                ("law", tuple((entry.code, entry.offsets) for entry in self.law)),
+                (
+                    "jurisdiction",
+                    tuple((entry.code, entry.offsets) for entry in self.jurisdiction),
+                ),
+            ]
+        )
+        return label_key, pattern_key, gates_key, data_key
 
     def to_json(self) -> Dict[str, Any]:
         return {
             "labels": list(dict.fromkeys(sorted(self.labels))),
             "patterns": [pattern.to_json() for pattern in self.patterns],
             "gates": {name: bool(flag) for name, flag in self.gates},
+            "amounts": [amount.to_json() for amount in self.amounts],
+            "durations": [duration.to_json() for duration in self.durations],
+            "law": [entry.to_json() for entry in self.law],
+            "jurisdiction": [entry.to_json() for entry in self.jurisdiction],
         }
 
 
@@ -63,6 +136,161 @@ class RuleRef:
 
     rule_id: str
     reasons: Tuple[ReasonPayload, ...] = ()
+
+
+def _coerce_reason_number(value: Any) -> int | float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return int(value)
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        normalized = text.replace(",", "")
+        try:
+            if "." in normalized:
+                number = float(normalized)
+            else:
+                number = int(normalized)
+        except ValueError:
+            return None
+        if isinstance(number, float) and (math.isnan(number) or math.isinf(number)):
+            return None
+        return number
+    if isinstance(value, Decimal):
+        integral = value.to_integral_value()
+        if integral == value:
+            return int(integral)
+        return float(value)
+    return None
+
+
+def _coerce_reason_int(value: Any) -> Optional[int]:
+    number = _coerce_reason_number(value)
+    if number is None:
+        return None
+    if isinstance(number, float):
+        if not number.is_integer():
+            return None
+        number = int(number)
+    return int(number)
+
+
+def _coerce_offsets(entry: Mapping[str, Any]) -> Tuple[Tuple[int, int], ...]:
+    start_raw = entry.get("start")
+    end_raw = entry.get("end")
+    try:
+        start = int(start_raw)
+        end = int(end_raw)
+    except (TypeError, ValueError):
+        return ()
+    if end < start:
+        return ()
+    return ((start, end),)
+
+
+def _entity_entries(feats: Optional[LxFeatureSet], key: str) -> Sequence[Mapping[str, Any]]:
+    if feats is None:
+        return ()
+    entities = getattr(feats, "entities", None)
+    if not isinstance(entities, Mapping):
+        return ()
+    raw_entries = entities.get(key)
+    if not isinstance(raw_entries, Iterable) or isinstance(
+        raw_entries, (str, bytes, bytearray)
+    ):
+        return ()
+    collected: list[Mapping[str, Any]] = []
+    for item in raw_entries:
+        if isinstance(item, Mapping):
+            collected.append(item)
+    return tuple(collected)
+
+
+def _reason_amounts(feats: Optional[LxFeatureSet]) -> Tuple[ReasonAmount, ...]:
+    entries: list[ReasonAmount] = []
+    for entry in _entity_entries(feats, "amounts"):
+        offsets = _coerce_offsets(entry)
+        if not offsets:
+            continue
+        value = entry.get("value")
+        if not isinstance(value, Mapping):
+            continue
+        currency_raw = value.get("currency")
+        amount_raw = value.get("amount")
+        if not isinstance(currency_raw, str) or not currency_raw.strip():
+            continue
+        amount = _coerce_reason_number(amount_raw)
+        if amount is None:
+            continue
+        currency = currency_raw.strip().upper()
+        entries.append(ReasonAmount(currency=currency, value=amount, offsets=offsets))
+    if not entries:
+        return ()
+    return tuple(sorted(entries, key=lambda item: (item.offsets, item.currency, item.value)))
+
+
+def _reason_durations(feats: Optional[LxFeatureSet]) -> Tuple[ReasonDuration, ...]:
+    entries: list[ReasonDuration] = []
+    for entry in _entity_entries(feats, "durations"):
+        offsets = _coerce_offsets(entry)
+        if not offsets:
+            continue
+        value = entry.get("value")
+        if not isinstance(value, Mapping):
+            continue
+        number: Optional[int] = None
+        unit: Optional[str] = None
+        for candidate in ("days", "weeks", "months", "years"):
+            candidate_value = _coerce_reason_int(value.get(candidate))
+            if candidate_value is not None:
+                number = candidate_value
+                unit = candidate
+                break
+        if number is None:
+            duration_iso = value.get("duration")
+            if isinstance(duration_iso, str) and duration_iso.upper().startswith("P"):
+                code = duration_iso[-1].upper()
+                unit_map = {"D": "days", "W": "weeks", "M": "months", "Y": "years"}
+                try:
+                    number_candidate = int(duration_iso[1:-1])
+                except (TypeError, ValueError):
+                    number_candidate = None
+                if number_candidate is not None and code in unit_map:
+                    number = number_candidate
+                    unit = unit_map[code]
+        if number is None or unit is None:
+            continue
+        entries.append(ReasonDuration(unit=unit, value=number, offsets=offsets))
+    if not entries:
+        return ()
+    return tuple(sorted(entries, key=lambda item: (item.offsets, item.unit, item.value)))
+
+
+def _reason_codes(
+    feats: Optional[LxFeatureSet], key: str
+) -> Tuple[ReasonCodeRef, ...]:
+    entries: list[ReasonCodeRef] = []
+    for entry in _entity_entries(feats, key):
+        offsets = _coerce_offsets(entry)
+        if not offsets:
+            continue
+        value = entry.get("value")
+        if not isinstance(value, Mapping):
+            continue
+        code_raw = value.get("code")
+        if not isinstance(code_raw, str) or not code_raw.strip():
+            continue
+        code = code_raw.strip().upper()
+        entries.append(ReasonCodeRef(code=code, offsets=offsets))
+    if not entries:
+        return ()
+    return tuple(sorted(entries, key=lambda item: (item.offsets, item.code)))
 
 
 def _normalize_token(token: str) -> str:
@@ -205,15 +433,46 @@ def _make_reason(
     labels: Iterable[str] = (),
     pattern_kind: Optional[Literal["regex", "keyword"]] = None,
     gates: Optional[Dict[str, bool]] = None,
+    pattern_offsets: Optional[Iterable[Tuple[int, int]]] = None,
+    amounts: Optional[Iterable[ReasonAmount]] = None,
+    durations: Optional[Iterable[ReasonDuration]] = None,
+    law: Optional[Iterable[ReasonCodeRef]] = None,
+    jurisdiction: Optional[Iterable[ReasonCodeRef]] = None,
 ) -> ReasonPayload:
     label_items = tuple(sorted({str(lbl).strip() for lbl in labels if str(lbl).strip()}))
     patterns: Tuple[ReasonPattern, ...] = ()
     if pattern_kind is not None:
-        patterns = (ReasonPattern(kind=pattern_kind, offsets=()),)
+        offsets: Tuple[Tuple[int, int], ...] = ()
+        if pattern_offsets:
+            collected: list[Tuple[int, int]] = []
+            for start, end in pattern_offsets:
+                try:
+                    start_int = int(start)
+                    end_int = int(end)
+                except (TypeError, ValueError):
+                    continue
+                if end_int < start_int:
+                    continue
+                collected.append((start_int, end_int))
+            if collected:
+                offsets = tuple(sorted(collected))
+        patterns = (ReasonPattern(kind=pattern_kind, offsets=offsets),)
     gate_items: Tuple[Tuple[str, bool], ...] = ()
     if gates:
         gate_items = tuple((str(name), bool(value)) for name, value in sorted(gates.items()))
-    return ReasonPayload(labels=label_items, patterns=patterns, gates=gate_items)
+    amount_items = tuple(amounts) if amounts else ()
+    duration_items = tuple(durations) if durations else ()
+    law_items = tuple(law) if law else ()
+    juris_items = tuple(jurisdiction) if jurisdiction else ()
+    return ReasonPayload(
+        labels=label_items,
+        patterns=patterns,
+        gates=gate_items,
+        amounts=amount_items,
+        durations=duration_items,
+        law=law_items,
+        jurisdiction=juris_items,
+    )
 
 
 def _collect_from_index(
@@ -283,7 +542,10 @@ def select_candidate_rules(
             )
 
     if feats.durations:
-        duration_reason = _make_reason(labels={"duration"})
+        duration_reason = _make_reason(
+            labels={"duration"},
+            durations=_reason_durations(feats),
+        )
         _collect_from_index(
             token_index,
             {"day", "days", "payment", "term"},
@@ -292,7 +554,10 @@ def select_candidate_rules(
         )
 
     if feats.amounts:
-        amount_reason = _make_reason(labels={"amount"})
+        amount_reason = _make_reason(
+            labels={"amount"},
+            amounts=_reason_amounts(feats),
+        )
         _collect_from_index(
             token_index,
             {"amount", "fee", "charge", "price"},
@@ -302,7 +567,11 @@ def select_candidate_rules(
 
     for signal in feats.law_signals or []:
         tokens = _tokenize(signal)
-        law_reason = _make_reason(labels={"law"}, pattern_kind="keyword")
+        law_reason = _make_reason(
+            labels={"law"},
+            pattern_kind="keyword",
+            law=_reason_codes(feats, "law"),
+        )
         _collect_from_index(
             token_index,
             tokens,
@@ -312,7 +581,10 @@ def select_candidate_rules(
 
     if feats.jurisdiction:
         juris_tokens = {feats.jurisdiction.lower()} | _tokenize(feats.jurisdiction)
-        juris_reason = _make_reason(labels={"jurisdiction"})
+        juris_reason = _make_reason(
+            labels={"jurisdiction"},
+            jurisdiction=_reason_codes(feats, "jurisdiction"),
+        )
         _collect_from_index(
             jurisdiction_index,
             juris_tokens,

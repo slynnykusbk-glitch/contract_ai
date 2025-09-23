@@ -1,19 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 function makeElement(overrides: any = {}) {
-  return Object.assign({
-    style: { display: '', removeProperty: vi.fn() },
-    classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() },
-    appendChild: vi.fn(),
-    removeChild: vi.fn(),
-    dispatchEvent: vi.fn(),
-    addEventListener: vi.fn(),
-    setAttribute: vi.fn(),
-    removeAttribute: vi.fn(),
-    innerHTML: '',
-    textContent: '',
-    value: '',
-  }, overrides);
+  return Object.assign(
+    {
+      style: { display: '', removeProperty: vi.fn() },
+      classList: { add: vi.fn(), remove: vi.fn(), toggle: vi.fn() },
+      appendChild: vi.fn(),
+      removeChild: vi.fn(),
+      dispatchEvent: vi.fn(),
+      addEventListener: vi.fn(),
+      setAttribute: vi.fn(),
+      removeAttribute: vi.fn(),
+      innerHTML: '',
+      textContent: '',
+      value: '',
+    },
+    overrides
+  );
 }
 
 describe('risk forwarding to analyze', () => {
@@ -33,10 +36,22 @@ describe('risk forwarding to analyze', () => {
   });
 
   it('includes selected critical risk in analyze request body', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: new Headers(), json: async () => ({}) });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, status: 200, headers: new Headers(), json: async () => ({}) });
     (globalThis as any).fetch = fetchMock;
-    (globalThis as any).window = { addEventListener() {}, removeEventListener() {}, dispatchEvent() {}, location: { search: '' } } as any;
-    (globalThis as any).document = { addEventListener() {}, querySelectorAll() { return [] as any; } } as any;
+    (globalThis as any).window = {
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent() {},
+      location: { search: '' },
+    } as any;
+    (globalThis as any).document = {
+      addEventListener() {},
+      querySelectorAll() {
+        return [] as any;
+      },
+    } as any;
     (globalThis as any).localStorage = { getItem: () => null, setItem: () => {} } as any;
     const { analyze } = await import('../assets/api-client.ts');
     await analyze({ text: 'hello', risk: 'critical' });
@@ -47,9 +62,7 @@ describe('risk forwarding to analyze', () => {
   });
 
   it('does not drop findings already filtered by the server', async () => {
-    const serverFindings = [
-      { rule_id: 'F1', snippet: 'alpha', severity: 'critical' },
-    ];
+    const serverFindings = [{ rule_id: 'F1', snippet: 'alpha', severity: 'critical' }];
     (globalThis as any).__CAI_TESTING__ = true;
     (globalThis as any).window = {
       addEventListener: vi.fn(),
@@ -71,10 +84,14 @@ describe('risk forwarding to analyze', () => {
       json: { analysis: { findings: serverFindings }, recommendations: [] },
       meta: {},
     } as any);
-    const parseFindingsSpy = vi.spyOn(apiClient, 'parseFindings').mockImplementation(() => serverFindings);
+    const parseFindingsSpy = vi
+      .spyOn(apiClient, 'parseFindings')
+      .mockImplementation(() => serverFindings);
 
     const annotateMod = await import('../assets/annotate.ts');
-    const planAnnotationsSpy = vi.spyOn(annotateMod, 'planAnnotations').mockImplementation((items: any[]) => items.map(f => ({ ...f, raw: f.snippet })) as any);
+    const planAnnotationsSpy = vi
+      .spyOn(annotateMod, 'planAnnotations')
+      .mockImplementation((items: any[]) => items.map(f => ({ ...f, raw: f.snippet })) as any);
     vi.spyOn(annotateMod, 'annotateFindingsIntoWord').mockResolvedValue();
 
     const notifierMod = await import('../assets/notifier');
@@ -137,7 +154,10 @@ describe('risk forwarding to analyze', () => {
     (globalThis as any).localStorage = { getItem: () => null, setItem: () => {} } as any;
     (globalThis as any).CustomEvent = class {
       detail: any;
-      constructor(public type: string, init?: any) {
+      constructor(
+        public type: string,
+        init?: any
+      ) {
         this.detail = init?.detail;
       }
     } as any;
@@ -153,6 +173,9 @@ describe('risk forwarding to analyze', () => {
     const planned = planAnnotationsSpy.mock.calls[0][0];
     expect(planned).toHaveLength(serverFindings.length);
     expect(planned.map((f: any) => f.rule_id)).toEqual(serverFindings.map(f => f.rule_id));
-    expect(parseFindingsSpy).toHaveBeenCalledWith({ analysis: { findings: serverFindings }, recommendations: [] });
+    expect(parseFindingsSpy).toHaveBeenCalledWith({
+      analysis: { findings: serverFindings },
+      recommendations: [],
+    });
   });
 });

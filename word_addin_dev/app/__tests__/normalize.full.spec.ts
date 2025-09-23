@@ -33,7 +33,7 @@ describe('normalizeTextFull', () => {
       ' “Quote” — dash ',
       'A\u00A0B\u200B C',
       'Line1\rLine2',
-      'Zero\u200DWidth'
+      'Zero\u200DWidth',
     ];
     for (const sample of samples) {
       const result = normalizeTextFull(sample);

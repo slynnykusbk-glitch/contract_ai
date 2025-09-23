@@ -57,7 +57,7 @@ describe('normalizeIntakeText', () => {
     "'": ["'", '’', '‘', '‚', '‛'],
     '-': ['-', '—', '–', '−', '‒'],
     ' ': [' ', '\u00A0'],
-    '\n': ['\n', '\r', '\r\n']
+    '\n': ['\n', '\r', '\r\n'],
   };
 
   const randomReplace = (ch: string): string => {
@@ -75,7 +75,9 @@ describe('normalizeIntakeText', () => {
       }
       mutated = mutated.replace('clause', 'clause\nline');
       const newlineVariants = ['\n', '\r', '\r\n'];
-      const newline = newlineVariants[Math.floor(Math.random() * newlineVariants.length)].replace('\\n', '\n').replace('\\r', '\r');
+      const newline = newlineVariants[Math.floor(Math.random() * newlineVariants.length)]
+        .replace('\\n', '\n')
+        .replace('\\r', '\r');
       mutated = mutated.replace('\n', newline);
       const normalized = normalizeIntakeText(mutated);
       expect(normalized).toBe('Alpha - "beta\'s" clause\nline');
@@ -86,7 +88,7 @@ describe('normalizeIntakeText', () => {
     const cases: Array<[string, string]> = [
       ['A\u200Bgreement — “Quote”\u00A0', 'Agreement - "Quote"'],
       ['Cafe\u0301', 'Café'],
-      [' Foo\t\tBar ', 'Foo Bar']
+      [' Foo\t\tBar ', 'Foo Bar'],
     ];
     for (const [input, expected] of cases) {
       expect(normalizeIntakeText(input)).toBe(expected);

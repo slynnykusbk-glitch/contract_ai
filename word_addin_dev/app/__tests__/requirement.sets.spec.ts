@@ -2,23 +2,38 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const mkDoc = (ids: string[]) => {
   const elements: Record<string, any> = {};
-  ids.forEach(id => elements[id] = { disabled: false, style: { display: '' }, addEventListener: () => {}, classList: { remove: () => {} }, removeAttribute: () => {} });
+  ids.forEach(
+    id =>
+      (elements[id] = {
+        disabled: false,
+        style: { display: '' },
+        addEventListener: () => {},
+        classList: { remove: () => {} },
+        removeAttribute: () => {},
+      })
+  );
   return {
     getElementById: (id: string) => elements[id] || null,
-    querySelector: (sel: string) => elements[sel.replace('#','')] || null,
+    querySelector: (sel: string) => elements[sel.replace('#', '')] || null,
   } as any;
 };
 
 describe('requirement sets support', () => {
   beforeEach(() => {
     vi.resetModules();
-    (globalThis as any).window = { addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => {} };
+    (globalThis as any).window = {
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => {},
+    };
     (globalThis as any).__CAI_TESTING__ = true;
-    (globalThis as any).Office = { context: { requirements: { isSetSupported: () => true } } } as any;
+    (globalThis as any).Office = {
+      context: { requirements: { isSetSupported: () => true } },
+    } as any;
   });
 
   it('disables revisions buttons when revisions unsupported', async () => {
-    (globalThis as any).document = mkDoc(['btnApplyTracked','btnAcceptAll','btnRejectAll']);
+    (globalThis as any).document = mkDoc(['btnApplyTracked', 'btnAcceptAll', 'btnRejectAll']);
     (globalThis as any).Word = { Comment: {}, SearchOptions: {}, ContentControl: {} } as any;
     const { wireUI } = await import('../assets/taskpane.ts');
     wireUI();
@@ -36,7 +51,7 @@ describe('requirement sets support', () => {
   });
 
   it('disables search navigation when search unsupported', async () => {
-    (globalThis as any).document = mkDoc(['btnPrevIssue','btnNextIssue','btnQARecheck']);
+    (globalThis as any).document = mkDoc(['btnPrevIssue', 'btnNextIssue', 'btnQARecheck']);
     (globalThis as any).Word = { Revision: {}, Comment: {}, ContentControl: {} } as any;
     const { wireUI } = await import('../assets/taskpane.ts');
     wireUI();

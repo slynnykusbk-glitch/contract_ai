@@ -10,7 +10,7 @@ vi.mock('../assets/anchors', async () => {
     ...actual,
     anchorByOffsets: anchorByOffsetsMock,
     findAnchors: anchorsMock,
-    searchNth: searchNthMock
+    searchNth: searchNthMock,
   };
 });
 
@@ -32,7 +32,12 @@ describe('annotate flow offsets', () => {
 
   it('requests anchors using nth derived from offsets', async () => {
     anchorByOffsetsMock.mockImplementation(async opts => {
-      return (await searchNthMock(opts.body, opts.snippet, opts.nth ?? 0, opts.searchOptions)) as any;
+      return (await searchNthMock(
+        opts.body,
+        opts.snippet,
+        opts.nth ?? 0,
+        opts.searchOptions
+      )) as any;
     });
     const baseText = 'foo bar foo bar foo bar foo bar';
     (globalThis as any).__lastAnalyzed = baseText;
@@ -47,7 +52,7 @@ describe('annotate flow offsets', () => {
     const targetRange = { start, end: start + snippet.length, load: vi.fn() } as any;
     const otherRanges = [
       { start: starts[0], end: starts[0] + snippet.length, load: vi.fn() },
-      { start: starts[1], end: starts[1] + snippet.length, load: vi.fn() }
+      { start: starts[1], end: starts[1] + snippet.length, load: vi.fn() },
     ];
 
     const annotateMod = await import('../assets/annotate');
@@ -64,9 +69,9 @@ describe('annotate flow offsets', () => {
           tag: '',
           title: '',
           color: '',
-          insertText: vi.fn()
+          insertText: vi.fn(),
         };
-      }
+      },
     });
 
     const ranges = [...otherRanges.map(wrapRange), wrapRange(targetRange)];
@@ -84,19 +89,17 @@ describe('annotate flow offsets', () => {
         const ctx = {
           document: {
             body: {
-              context: { sync: vi.fn(async () => {}), trackedObjects: { add: () => {} } }
-            }
+              context: { sync: vi.fn(async () => {}), trackedObjects: { add: () => {} } },
+            },
           },
-          sync: vi.fn(async () => {})
+          sync: vi.fn(async () => {}),
         };
         return await cb(ctx);
-      }
+      },
     };
     (globalThis as any).Office = { context: { requirements: { isSetSupported: () => false } } };
 
-    const findings = [
-      { rule_id: 'r1', snippet, start, end: start + snippet.length }
-    ];
+    const findings = [{ rule_id: 'r1', snippet, start, end: start + snippet.length }];
 
     const inserted = await annotateFindingsIntoWord(findings as any);
     expect(inserted).toBe(1);
@@ -129,9 +132,9 @@ describe('annotate flow offsets', () => {
           tag: '',
           title: '',
           color: '',
-          insertText: vi.fn()
+          insertText: vi.fn(),
         };
-      }
+      },
     });
 
     const preferredRange = makeRange(starts[2]);
@@ -154,19 +157,19 @@ describe('annotate flow offsets', () => {
         const ctx = {
           document: {
             body: {
-              context: { sync: vi.fn(async () => {}), trackedObjects: { add: () => {} } }
-            }
+              context: { sync: vi.fn(async () => {}), trackedObjects: { add: () => {} } },
+            },
           },
-          sync: vi.fn(async () => {})
+          sync: vi.fn(async () => {}),
         };
         return await cb(ctx);
-      }
+      },
     };
 
     (globalThis as any).Office = { context: { requirements: { isSetSupported: () => false } } };
 
     const findings = [
-      { rule_id: 'r1', snippet, start: preferredRange.start, end: preferredRange.end, nth: 2 }
+      { rule_id: 'r1', snippet, start: preferredRange.start, end: preferredRange.end, nth: 2 },
     ];
 
     const inserted = await annotateFindingsIntoWord(findings as any);
@@ -186,7 +189,12 @@ describe('annotate flow offsets', () => {
     const findings = [
       { rule_id: 'r1', snippet: 'alpha', start: 0, end: 5, nth: 0 },
       { rule_id: 'r2', snippet: 'beta', start: 4, end: 8 },
-      { rule_id: 'r3', snippet: 'delta', start: baseText.indexOf('delta'), end: baseText.indexOf('delta') + 'delta'.length }
+      {
+        rule_id: 'r3',
+        snippet: 'delta',
+        start: baseText.indexOf('delta'),
+        end: baseText.indexOf('delta') + 'delta'.length,
+      },
     ];
 
     const plan = planAnnotations(findings as any);

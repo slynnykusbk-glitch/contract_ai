@@ -1,8 +1,13 @@
 {
   "_comment": "Любая панельная HTML-страница обязана содержать эти id",
   "required_ids": [
-    "btnUseWholeDoc", "btnAnalyze",
-    "originalText", "results", "busyBar", "loading-book",
-    "officeBadge", "connBadge"
+    "btnUseWholeDoc",
+    "btnAnalyze",
+    "originalText",
+    "results",
+    "busyBar",
+    "loading-book",
+    "officeBadge",
+    "connBadge"
   ]
 }

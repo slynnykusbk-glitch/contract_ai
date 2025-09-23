@@ -2,20 +2,21 @@ import { describe, it, expect, vi } from 'vitest';
 import { PanelState, nextFinding, prevFinding, addCommentAtRange } from './state';
 
 vi.mock('../assets/safeBodySearch.ts', () => ({
-  safeBodySearch: vi.fn(async () => ({ items: [{ select: vi.fn(), font: {} }] }))
+  safeBodySearch: vi.fn(async () => ({ items: [{ select: vi.fn(), font: {} }] })),
 }));
 
 vi.mock('../assets/api-client.ts', () => ({
-  postJSON: vi.fn(async () => ({ plainText: '', ops: [] }))
+  postJSON: vi.fn(async () => ({ plainText: '', ops: [] })),
 }));
-const safeInsertMock = vi.fn()
+const safeInsertMock = vi
+  .fn()
   .mockResolvedValueOnce({ ok: false, err: new Error('fail') })
   .mockResolvedValue({ ok: true });
 
 vi.mock('../assets/annotate.ts', () => ({
   safeInsertComment: (...args: any[]) => safeInsertMock(...args),
   COMMENT_PREFIX: '[CAI]',
-  fallbackAnnotateWithContentControl: vi.fn()
+  fallbackAnnotateWithContentControl: vi.fn(),
 }));
 
 describe('navigation', () => {
@@ -24,10 +25,10 @@ describe('navigation', () => {
       mode: 'friendly',
       items: [
         { id: 'a', anchor: 'one' },
-        { id: 'b', anchor: 'two' }
+        { id: 'b', anchor: 'two' },
       ],
       cachedDrafts: new Map(),
-      correlationId: 'cid'
+      correlationId: 'cid',
     };
     const doc = { body: {} } as any;
     await nextFinding(state, doc);
@@ -43,7 +44,7 @@ describe('addCommentAtRange', () => {
   it('falls back to paragraph comment on error', async () => {
     const p: any = {};
     const range: any = {
-      paragraphs: { getFirst: () => p }
+      paragraphs: { getFirst: () => p },
     };
     await addCommentAtRange(range, 'hi');
     expect(safeInsertMock).toHaveBeenNthCalledWith(1, range, 'hi');

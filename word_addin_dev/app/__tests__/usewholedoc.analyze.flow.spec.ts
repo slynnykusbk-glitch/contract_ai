@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
 const html = readFileSync(
-  new URL('../../../contract_review_app/contract_review_app/static/panel/taskpane.html', import.meta.url),
+  new URL(
+    '../../../contract_review_app/contract_review_app/static/panel/taskpane.html',
+    import.meta.url
+  ),
   'utf-8'
 );
 
@@ -18,21 +21,31 @@ describe('use whole doc + analyze flow', () => {
     (globalThis as any).CustomEvent = dom.window.CustomEvent;
     (globalThis as any).localStorage = {
       store: { api_key: 'k', schema_version: '1.4', backendUrl: 'https://127.0.0.1:9443' },
-      getItem(key: string) { return (this.store as any)[key] || null; },
-      setItem(key: string, value: string) { (this.store as any)[key] = value; }
+      getItem(key: string) {
+        return (this.store as any)[key] || null;
+      },
+      setItem(key: string, value: string) {
+        (this.store as any)[key] = value;
+      },
     };
-    fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}), headers: new Headers(), status:200 });
+    fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({}), headers: new Headers(), status: 200 });
     (globalThis as any).fetch = fetchMock;
     (globalThis as any).Office = {
       onReady: (cb: any) => cb({ host: 'Word' }),
-      context: { requirements: { isSetSupported: () => true }, host: 'Word' }
+      context: { requirements: { isSetSupported: () => true }, host: 'Word' },
     };
     (globalThis as any).Word = {
-      Revision: {}, Comment: {}, SearchOptions: {}, ContentControl: {},
-      run: (fn: any) => fn({
-        document: { body: { text: 'TEST BODY', load: () => {} } },
-        sync: async () => {}
-      })
+      Revision: {},
+      Comment: {},
+      SearchOptions: {},
+      ContentControl: {},
+      run: (fn: any) =>
+        fn({
+          document: { body: { text: 'TEST BODY', load: () => {} } },
+          sync: async () => {},
+        }),
     };
     (globalThis as any).__CAI_TESTING__ = true;
   });
@@ -52,8 +65,14 @@ describe('use whole doc + analyze flow', () => {
 
     const btnAnalyze = document.getElementById('btnAnalyze') as HTMLButtonElement;
     btnAnalyze.disabled = false;
-    fetchMock.mockImplementationOnce(() =>
-      new Promise(res => setTimeout(() => res({ ok: true, json: async () => ({}), headers: new Headers(), status:200 }), 50))
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise(res =>
+          setTimeout(
+            () => res({ ok: true, json: async () => ({}), headers: new Headers(), status: 200 }),
+            50
+          )
+        )
     );
     btnAnalyze.click();
     const book = document.getElementById('loading-book') as HTMLElement;
@@ -62,7 +81,9 @@ describe('use whole doc + analyze flow', () => {
     await vi.advanceTimersByTimeAsync(60);
     await Promise.resolve();
     expect(book.classList.contains('hidden')).toBe(true);
-    const analyzeCalls = fetchMock.mock.calls.filter((c: any[]) => String(c[0]).includes('/api/analyze'));
+    const analyzeCalls = fetchMock.mock.calls.filter((c: any[]) =>
+      String(c[0]).includes('/api/analyze')
+    );
     expect(analyzeCalls.length).toBe(1);
     const opts = analyzeCalls[0][1];
     const body = JSON.parse(opts.body);

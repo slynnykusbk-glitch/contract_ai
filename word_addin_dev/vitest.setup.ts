@@ -1,5 +1,14 @@
 import '@testing-library/jest-dom/vitest';
 
-(globalThis as any).Office = {
-  context: { requirements: { isSetSupported: () => true }, document: { mode: 'edit' } }
+type OfficeStub = {
+  context: {
+    requirements: { isSetSupported: () => boolean };
+    document: { mode: string };
+  };
 };
+
+const officeMock: OfficeStub = {
+  context: { requirements: { isSetSupported: () => true }, document: { mode: 'edit' } },
+};
+
+(globalThis as typeof globalThis & { Office?: OfficeStub }).Office = officeMock;

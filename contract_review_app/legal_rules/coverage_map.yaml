@@ -1,296 +1,1823 @@
 version: 1
 zones:
-  - zone_id: "payment"
-    zone_name: "Payment & Invoicing"
-    description: "Payment obligations, invoicing, and settlement mechanics."
-    label_selectors:
-      any: ["payment", "invoice", "billing"]
-      all: []
-      none: []
-    entity_selectors:
-      amounts: true
-      durations: true
-      law: false
-      jurisdiction: false
-    rule_ids_opt: ["pay_late_interest_v1", "pay_terms_clear_v2"]
-    weight: 1.0
-    required: true
-
-  - zone_id: "term"
-    zone_name: "Term & Duration"
-    label_selectors:
-      any: ["term", "duration", "renewal"]
-      all: []
-      none: []
-    entity_selectors:
-      amounts: false
-      durations: true
-      law: false
-      jurisdiction: false
-    rule_ids_opt: ["term_auto_renewal_v1"]
-
-  - zone_id: "termination"
-    zone_name: "Termination"
-    label_selectors:
-      any: ["termination", "terminate", "termination_rights"]
-      all: []
-      none: []
-    rule_ids_opt: ["term_termination_for_cause_v1"]
-
-  - zone_id: "notices"
-    zone_name: "Notices"
-    label_selectors:
-      any: ["notice", "notices", "notification"]
-      all: []
-      none: []
-    rule_ids_opt: ["notice_method_v1"]
-
-  - zone_id: "governing_law"
-    zone_name: "Governing Law"
-    label_selectors:
-      any: ["governing law", "law", "governed_by"]
-      all: []
-      none: []
-    entity_selectors:
-      amounts: false
-      durations: false
-      law: true
-      jurisdiction: false
-    rule_ids_opt: ["gl_specify_law_v1"]
-
-  - zone_id: "jurisdiction"
-    zone_name: "Jurisdiction"
-    label_selectors:
-      any: ["jurisdiction", "venue", "forum"]
-      all: []
-      none: []
-    entity_selectors:
-      amounts: false
-      durations: false
-      law: false
-      jurisdiction: true
-    rule_ids_opt: ["jurisdiction_forum_v1"]
-
-  - zone_id: "dispute_resolution"
-    zone_name: "Dispute Resolution"
-    label_selectors:
-      any: ["dispute", "arbitration", "dr"]
-      all: []
-      none: []
-    rule_ids_opt: ["dr_escalation_v1"]
-
-  - zone_id: "liability_cap"
-    zone_name: "Liability Cap"
-    label_selectors:
-      any: ["liability", "cap", "limitation"]
-      all: []
-      none: ["no_cap"]
-    rule_ids_opt: ["liability_cap_defined_v1"]
-
-  - zone_id: "indemnity"
-    zone_name: "Indemnity"
-    label_selectors:
-      any: ["indemnity", "indemnification"]
-      all: []
-      none: []
-    rule_ids_opt: ["indemnity_scope_v1"]
-
-  - zone_id: "confidentiality"
-    zone_name: "Confidentiality"
-    label_selectors:
-      any: ["confidentiality", "nda", "confidential"]
-      all: []
-      none: []
-    rule_ids_opt: ["confidentiality_survival_v1"]
-
-  - zone_id: "ip"
-    zone_name: "Intellectual Property"
-    label_selectors:
-      any: ["intellectual property", "ip", "ownership"]
-      all: []
-      none: []
-    rule_ids_opt: ["ip_ownership_v1"]
-
-  - zone_id: "data_protection"
-    zone_name: "Data Protection"
-    label_selectors:
-      any: ["data protection", "gdpr", "privacy"]
-      all: []
-      none: []
-    rule_ids_opt: ["dp_security_measures_v1"]
-
-  - zone_id: "insurance"
-    zone_name: "Insurance"
-    label_selectors:
-      any: ["insurance", "insured", "coverage"]
-      all: []
-      none: []
-    rule_ids_opt: ["insurance_maintain_limits_v1"]
-
-  - zone_id: "force_majeure"
-    zone_name: "Force Majeure"
-    label_selectors:
-      any: ["force majeure", "fm_event"]
-      all: []
-      none: []
-    rule_ids_opt: ["force_majeure_notice_v1"]
-
-  - zone_id: "taxes"
-    zone_name: "Taxes"
-    label_selectors:
-      any: ["tax", "taxes", "withholding"]
-      all: []
-      none: []
-    rule_ids_opt: ["tax_withholding_v1"]
-
-  - zone_id: "assignment"
-    zone_name: "Assignment"
-    label_selectors:
-      any: ["assignment", "assign"]
-      all: []
-      none: []
-    rule_ids_opt: ["assignment_consent_v1"]
-
-  - zone_id: "subcontracting"
-    zone_name: "Subcontracting"
-    label_selectors:
-      any: ["subcontract", "subcontracting"]
-      all: []
-      none: []
-    rule_ids_opt: ["subcontracting_controls_v1"]
-
-  - zone_id: "order_of_precedence"
-    zone_name: "Order of Precedence"
-    label_selectors:
-      any: ["precedence", "order of precedence"]
-      all: []
-      none: []
-    rule_ids_opt: ["precedence_hierarchy_v1"]
-
-  - zone_id: "definitions"
-    zone_name: "Definitions"
-    label_selectors:
-      any: ["definition", "definitions"]
-      all: []
-      none: []
-    rule_ids_opt: []
-
-  - zone_id: "interpretation"
-    zone_name: "Interpretation"
-    label_selectors:
-      any: ["interpretation", "construction"]
-      all: []
-      none: []
-    rule_ids_opt: []
-
-  - zone_id: "acceptance"
-    zone_name: "Acceptance"
-    label_selectors:
-      any: ["acceptance", "accept"]
-      all: []
-      none: []
-    rule_ids_opt: ["acceptance_criteria_v1"]
-
-  - zone_id: "delivery"
-    zone_name: "Delivery"
-    label_selectors:
-      any: ["delivery", "deliver", "shipment"]
-      all: []
-      none: []
-    rule_ids_opt: ["delivery_schedule_v1"]
-
-  - zone_id: "service_levels"
-    zone_name: "Service Levels"
-    label_selectors:
-      any: ["service level", "sla", "service_levels"]
-      all: []
-      none: []
-    rule_ids_opt: ["sla_response_times_v1"]
-
-  - zone_id: "price_adjustment"
-    zone_name: "Price Adjustment"
-    label_selectors:
-      any: ["price adjustment", "indexation", "escalation"]
-      all: []
-      none: []
-    rule_ids_opt: ["price_adjustment_index_v1"]
-
-  - zone_id: "interest_late"
-    zone_name: "Late Interest"
-    label_selectors:
-      any: ["late interest", "interest", "overdue"]
-      all: []
-      none: []
-    rule_ids_opt: ["late_interest_rate_v1"]
-
-  - zone_id: "change_control"
-    zone_name: "Change Control"
-    label_selectors:
-      any: ["change control", "variation", "change_request"]
-      all: []
-      none: []
-    rule_ids_opt: ["change_control_process_v1"]
-
-  - zone_id: "audit_records"
-    zone_name: "Audit & Records"
-    label_selectors:
-      any: ["audit", "records", "inspection"]
-      all: []
-      none: []
-    rule_ids_opt: ["audit_rights_v1"]
-
-  - zone_id: "survival"
-    zone_name: "Survival"
-    label_selectors:
-      any: ["survival", "survive"]
-      all: []
-      none: []
-    rule_ids_opt: []
-
-  - zone_id: "personnel"
-    zone_name: "Personnel"
-    label_selectors:
-      any: ["personnel", "staff", "employees"]
-      all: []
-      none: []
-    rule_ids_opt: ["personnel_screening_v1"]
-
-  - zone_id: "cross_refs"
-    zone_name: "Cross References"
-    label_selectors:
-      any: ["cross reference", "cross_refs"]
-      all: []
-      none: []
-    rule_ids_opt: []
-
-  - zone_id: "warranties"
-    zone_name: "Warranties"
-    label_selectors:
-      any: ["warranty", "warranties"]
-      all: []
-      none: []
-    rule_ids_opt: ["warranty_scope_v1"]
-
-  - zone_id: "quality"
-    zone_name: "Quality"
-    label_selectors:
-      any: ["quality", "quality_assurance", "qa"]
-      all: []
-      none: []
-    rule_ids_opt: []
-
-  - zone_id: "compliance_abac"
-    zone_name: "Compliance & ABAC"
-    label_selectors:
-      any: ["compliance", "abac", "anti-bribery", "ethics"]
-      all: []
-      none: []
-    rule_ids_opt: ["abac_policy_v1"]
-
-  - zone_id: "transition"
-    zone_name: "Transition & Exit"
-    label_selectors:
-      any: ["transition", "exit_plan", "handover"]
-      all: []
-      none: []
-    rule_ids_opt: []
+- zone_id: payment
+  zone_name: Payment & Invoicing
+  description: Payment obligations, invoicing mechanics, withholding and set-off controls.
+  label_selectors:
+    any:
+    - late_payment_interest
+    - open_book_pricing
+    - payment_security
+    - payment_terms
+    - rate_card
+    - service_credits
+    - set_off
+    - taxes_vat
+    all: []
+    none: []
+  entity_selectors:
+    amounts: true
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - 13.LAB.ISO17025
+  - P1.ALL_INCLUSIVE_RATES
+  - P10.REIMBURSABLES_NET_OF_REBATES
+  - P11.NO_PAY_IDLE_EFFICIENCY
+  - P12.RECEIVABLES_ASSIGNMENT_PERMITTED
+  - P2.INVOICE_CONTENT_VAT
+  - P3.LATE_INVOICE_TIMEBAR
+  - P4.PAYMENT_TERMS_AND_INTEREST
+  - P5.PUBLIC_30DAYS_CASCADE
+  - P6.CONSTRUCTION_PAY_NOTICES
+  - P7.SETOFF_SCOPE
+  - P8.PAY_UNDISPUTED
+  - P9.EINVOICE_PLATFORM_VAT_CONTROL
+  - payment_terms_basic
+  - pricing_payment
+  - subcontracts.ban_pay_when_paid
+  - subcontracts.step_in_third_party_alignment
+  - uk.def.business_day.precision
+  - uk.def.key_personnel.list_ld_controls
+  - uk.def.taxes.matrix_withholding_grossup
+  - uk.def.vat.registration_place_of_supply_zero_rating
+  - uk.def.work.scope_boundary_interfaces
+  - uk.int.2_2_1b.time_basis_calendar_vs_business
+  - uk.master.exhibitj.deed_formalities
+  - uk.s3.editorial.typos_numbering_block
+  - uk.s3.ld.only_remedy_gates
+  - uk.s3.ld.parameters_case_law
+  - uk_ndabasic_unexpected_payment
+  weight: 1.0
+  required: true
+- zone_id: term
+  zone_name: Term & Renewal
+  description: Contract duration, renewal cycles and suspension windows.
+  label_selectors:
+    any:
+    - renewal_auto
+    - survival
+    - suspension
+    - term
+    - usage_limits
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - P4.PAYMENT_TERMS_AND_INTEREST
+  - VARIATIONS.RATE_IMMUTABILITY_BASELINE
+  - ipr.bg.licence.conflict
+  - subcontracts.data_protection_art28
+  - termination_cause
+  - termination_convenience
+  - termination_notice_basic
+  - title.delivery_up.access_right
+  - title.embedded_software.perpetual_licence
+  - title.risk.cross_reference
+  - uk.calloff.exclude_other_terms
+  - uk.def.bribe.ukba_poca_fcpa
+  - uk.def.taxes.matrix_withholding_grossup
+  - uk.int.2_2_4.precedence_calloff
+  - uk.master.incorp.heavy_terms_notice
+  - uk.master.term.extensions_notice
+  - uk.s3.ld.only_remedy_gates
+  - uk.s3.ld.parameters_case_law
+  - uk.s3.nullity.foreign_terms_3_13
+  - uk.s3.order.start_as_acceptance_guard
+  - uk.s3.po.exclude_supplier_terms
+  - universal.inform.transport_employer_items
+  - universal.performance.goods_software_incoterms
+  weight: 1.0
+  required: false
+- zone_id: termination
+  zone_name: Termination Rights
+  description: Termination for breach, convenience, insolvency and related cure steps.
+  label_selectors:
+    any:
+    - termination_assistance
+    - termination_breach
+    - termination_change_of_control
+    - termination_convenience
+    - termination_insolvency
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - cpi.use.only.for.project
+  - ic.agency.no_authority_to_bind
+  - ipr.indemnity.remedies
+  - termination_cause
+  - termination_convenience
+  - termination_notice_basic
+  - title.delivery_up.access_right
+  - title.embedded_software.perpetual_licence
+  - uk.def.bribe.ukba_poca_fcpa
+  - uk.int.2_2_2.headings_no_effect
+  - uk.master.term.extensions_notice
+  - uk.s3.ld.only_remedy_gates
+  - uk.s3.ld.parameters_case_law
+  weight: 1.0
+  required: false
+- zone_id: notices
+  zone_name: Notices
+  description: Service of notices, delivery methods and notice periods.
+  label_selectors:
+    any:
+    - escalation
+    - foi
+    - lead_times
+    - notices
+    - service_levels_sla
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - 13.ITP.NOTICE
+  - P1.ALL_INCLUSIVE_RATES
+  - P10.REIMBURSABLES_NET_OF_REBATES
+  - P11.NO_PAY_IDLE_EFFICIENCY
+  - P12.RECEIVABLES_ASSIGNMENT_PERMITTED
+  - P2.INVOICE_CONTENT_VAT
+  - P3.LATE_INVOICE_TIMEBAR
+  - P4.PAYMENT_TERMS_AND_INTEREST
+  - P5.PUBLIC_30DAYS_CASCADE
+  - P6.CONSTRUCTION_PAY_NOTICES
+  - P7.SETOFF_SCOPE
+  - P8.PAY_UNDISPUTED
+  - P9.EINVOICE_PLATFORM_VAT_CONTROL
+  - cpi.receipt.notice_window.latent
+  - ic.ir35.offpayroll.sds_process
+  - ic.substitution.absent_or_personal_service
+  - notices
+  - quality.itp.hw_notice_5d
+  - uk.def.business_day.precision
+  - uk.def.ipclaim.mechanics_and_carveouts
+  - uk.int.2_2_1b.time_basis_calendar_vs_business
+  - uk.int.2_2_1h.approvals_in_writing_by_reps
+  - uk.int.2_2_1i.writing_email_esign_alignment
+  - uk.int.2_2_1k.subcontracts_flowdown_audit
+  - uk.master.incorp.heavy_terms_notice
+  - uk.master.term.extensions_notice
+  - uk.parties.identity
+  - uk.s3.order.acceptance_triggers_channels
+  - uk.s3.order.channels_align_29
+  - uk.s4.ctr.change_consent_sla
+  - uk.s4.delegation.notice_and_register
+  - uk.s4.reps.notice_channels_alignment
+  - uk_company_address_conflict
+  - uk_regulatory_prohibited_notice
+  - universal.inform.discrepancy_notice_timebar
+  - universal.inform.notice_formalities
+  - universal.performance.rsc_vs_ffp_priority
+  weight: 1.0
+  required: false
+- zone_id: governing_law
+  zone_name: Governing Law
+  description: Choice of law, statutory references and conflict rules.
+  label_selectors:
+    any:
+    - entire_agreement
+    - governing_law
+    - remedies
+    - severance
+    - third_party_rights
+    - waiver
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: true
+  rule_ids_opt:
+  - VARIATIONS.CHANGE_IN_LAW_TAXES_BUSINESS_EXCLUDED
+  - gl_england_wales
+  - gl_jurisdiction_conflict
+  - governing_law
+  - governing_law_basic
+  - jurisdiction_basic
+  - uk.def.business_day.precision
+  - uk_drafting_law_forum_mismatch
+  - universal.inform.deemed_laws_change
+  - universal.personnel.gdpr_personnel_data
+  weight: 1.0
+  required: true
+- zone_id: jurisdiction
+  zone_name: Jurisdiction & Forum
+  description: Courts, venues and escalation forums for disputes.
+  label_selectors:
+    any:
+    - arbitration
+    - dispute_resolution
+    - escalation
+    - jurisdiction
+    - mediation
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: true
+    law: false
+  rule_ids_opt:
+  - gl_jurisdiction_conflict
+  - jurisdiction_basic
+  - uk.def.business_day.precision
+  - uk_drafting_law_forum_mismatch
+  weight: 1.0
+  required: true
+- zone_id: dispute_resolution
+  zone_name: Dispute Resolution
+  description: Mediation, arbitration and escalation procedures.
+  label_selectors:
+    any:
+    - arbitration
+    - dispute_resolution
+    - escalation
+    - foi
+    - mediation
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - P8.PAY_UNDISPUTED
+  - dispute_resolution
+  - uk.int.2_2_5.ambiguity_pre_dr_checks
+  weight: 1.0
+  required: true
+- zone_id: liability_cap
+  zone_name: Liability & Caps
+  description: Limitation of liability, carve outs and capped exposure.
+  label_selectors:
+    any:
+    - deductibles_limits
+    - indirect_consequential_exclusion
+    - liability_cap_amount
+    - liability_carveouts
+    - limitation_of_liability
+    - liquidated_damages
+    all: []
+    none: []
+  entity_selectors:
+    amounts: true
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - 13.AUDIT.ISO19011
+  - 13.INSPECT.NO_WAIVER
+  - cpi.receipt.notice_window.latent
+  - ic.hse.carveout.required
+  - ic.vicarious.liability.supervision_language
+  - liability_cap
+  - liability_cap_basic
+  - uk.def.indemnify.controls_and_negligence
+  - uk.def.invitee.scope_and_exclusions
+  - uk.def.ipclaim.mechanics_and_carveouts
+  - uk.def.key_personnel.list_ld_controls
+  - uk.def.parties.calloff_specificity_crtpa
+  - uk.def.personal_injury.scope_and_el_insurance
+  - uk.def.third_party.crtpa_alignment
+  - uk.def.tupe.eli_requirements
+  - uk.int.2_2_1i.writing_email_esign_alignment
+  - uk.s3.coventurers.agent_model_cap
+  - uk.s3.ld.only_remedy_gates
+  - uk.s3.ld.parameters_case_law
+  - uk.s3.po.per_entity_responsibility
+  - uk_fraud_exclusion_invalid
+  - uk_poca_tipping_off
+  - uk_ucta_2_1_invalid
+  - universal.inform.employer_info_nonreliance
+  - universal.inform.resources_breakdown_carveouts
+  - universal.performance.resources_sufficiency
+  weight: 1.0
+  required: true
+- zone_id: indemnity
+  zone_name: Indemnities
+  description: Scope of indemnities, defence obligations and exclusions.
+  label_selectors:
+    any:
+    - dp_indemnity
+    - indemnity_general
+    - insurance_requirements
+    - ip_indemnity
+    - waiver_of_subrogation
+    all: []
+    none: []
+  entity_selectors:
+    amounts: true
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - ipr.indemnity.remedies
+  - subcontracts.prior_consent
+  - uk.def.indemnify.controls_and_negligence
+  - uk.def.ipclaim.mechanics_and_carveouts
+  - uk.def.key_personnel.list_ld_controls
+  - uk.def.legal_fault.fm_indemnities_consistency
+  - uk.def.work.scope_boundary_interfaces
+  - uk.s3.editorial.typos_numbering_block
+  - uk.s3.ld.only_remedy_gates
+  - uk.s3.ld.parameters_case_law
+  weight: 1.0
+  required: false
+- zone_id: confidentiality
+  zone_name: Confidentiality & Publicity
+  description: Confidential information handling, permitted disclosures and publicity.
+  label_selectors:
+    any:
+    - announcements_publicity
+    - confidentiality
+    - nhs_patient_confidentiality
+    - permitted_disclosures
+    - return_or_destruction
+    - transparency_publication
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - confidentiality
+  - subcontracts.flowdown_minimum_set
+  - uk.def.business_day.precision
+  - uk.def.iprights.coverage_and_moral_rights
+  - uk.def.nonconformity.scope_and_priority
+  - uk.def.personnel.coverage_ir35_awr
+  - uk.def.subcontractor.flowdown_audit
+  - uk.def.work.scope_boundary_interfaces
+  - uk.int.2_2_1b.time_basis_calendar_vs_business
+  - uk.int.2_2_1g.dynamic_incorp_requires_variation
+  - uk.master.incorp.dynamic_refs_change_control
+  - uk.master.incorp.heavy_terms_notice
+  - uk.master.incorp.placeholders_clean
+  - uk.master.recitals.no_min_purchase
+  - uk.master.recitals.no_operational_shall
+  - uk.parties.identity
+  - uk_ndabasic_broad_purpose
+  - uk_ndabasic_unexpected_payment
+  - uk_poca_tipping_off
+  - universal.performance.rsc_vs_ffp_priority
+  weight: 1.0
+  required: true
+- zone_id: ip
+  zone_name: Intellectual Property
+  description: IP ownership, licensing, infringement indemnities and tooling.
+  label_selectors:
+    any:
+    - ip_indemnity
+    - ip_ownership
+    - license_grant
+    - open_source
+    - title_retention_rot
+    - tooling
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - 13.EQUIP.CERT.LOLER_PUWER
+  - 13.SHIP.BLOCK
+  - ip_rights
+  - ip_rights_basic
+  - ipr.agreement_docs_title.company
+  - ipr.bg.licence.conflict
+  - ipr.brand.use.prohibition
+  - ipr.fg.licence.scope
+  - ipr.further_assurances.poa
+  - ipr.indemnity.remedies
+  - ipr.moral_rights.waiver
+  - ipr.oss.guardrails
+  - ipr.source_code.escrow
+  - ipr.supplied_software.definition
+  - quality.audit.iso19011
+  - quality.equipment.certificates_pre_dispatch
+  - quality.equipment.site_tests_swl
+  - quality.no_ship_without_final_inspection
+  - subcontracts.flowdown_minimum_set
+  - title.embedded_software.perpetual_licence
+  - title.vesting.early_wip_offsite
+  - uk.def.bipr.perimeter_and_license
+  - uk.def.indemnify.controls_and_negligence
+  - uk.def.ipclaim.mechanics_and_carveouts
+  - uk.def.iprights.coverage_and_moral_rights
+  - uk.def.site.ownership_access_risk
+  - uk.def.subcontractor.flowdown_audit
+  - uk.def.supplied_software.scope_licence_escrow
+  - uk.int.2_2_1k.subcontracts_flowdown_audit
+  - uk.s3.exclusivity.non_exclusive
+  - uk_poca_tipping_off
+  - universal.inform.resources_breakdown_carveouts
+  - universal.performance.goods_software_incoterms
+  - universal.performance.rental_equipment
+  - universal.performance.schedule_recovery
+  weight: 1.0
+  required: true
+- zone_id: data_protection
+  zone_name: Data Protection
+  description: GDPR roles, processing instructions, breach notification and sub-processing.
+  label_selectors:
+    any:
+    - dp_breach_notification
+    - dp_dpia
+    - dp_dsr
+    - dp_general
+    - dp_localisation
+    - dp_records_of_processing
+    - dp_retention_deletion
+    - dp_roles
+    - dp_security_measures
+    - dp_subprocessing
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - ic.medical.data.minimisation
+  - subcontracts.data_protection_art28
+  - title.commingling.bulk_processing
+  - uk.def.iprights.coverage_and_moral_rights
+  - uk.def.tupe.eli_requirements
+  - uk.def.vor.process
+  - uk.s3.po.exclude_supplier_terms
+  - uk_dpa_1998_outdated
+  - universal.personnel.gdpr_personnel_data
+  weight: 1.0
+  required: true
+- zone_id: insurance
+  zone_name: Insurance Requirements
+  description: Insurance coverage, certificates, limits and waivers.
+  label_selectors:
+    any:
+    - business_continuity_bcp
+    - deductibles_limits
+    - insurance_requirements
+    - insurance_types_limits
+    - waiver_of_subrogation
+    all: []
+    none: []
+  entity_selectors:
+    amounts: true
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - 13.AUDIT.ISO19011
+  - 13.COST.NOSHOW_FAIL
+  - 13.EQUIP.CERT.LOLER_PUWER
+  - 13.HIDDEN.WORKS
+  - 13.INSPECT.NO_WAIVER
+  - 13.ITP.EXISTS
+  - 13.ITP.NOTICE
+  - 13.LAB.ISO17025
+  - 13.MARKING.UKCA_CE
+  - 13.MOC.FORMAL
+  - 13.QMS.ISO9001
+  - 13.QP.REQUIRED
+  - 13.SHIP.BLOCK
+  - P1.ALL_INCLUSIVE_RATES
+  - P10.REIMBURSABLES_NET_OF_REBATES
+  - P11.NO_PAY_IDLE_EFFICIENCY
+  - P12.RECEIVABLES_ASSIGNMENT_PERMITTED
+  - P2.INVOICE_CONTENT_VAT
+  - P3.LATE_INVOICE_TIMEBAR
+  - P4.PAYMENT_TERMS_AND_INTEREST
+  - P5.PUBLIC_30DAYS_CASCADE
+  - P6.CONSTRUCTION_PAY_NOTICES
+  - P7.SETOFF_SCOPE
+  - P8.PAY_UNDISPUTED
+  - P9.EINVOICE_PLATFORM_VAT_CONTROL
+  - VARIATIONS.CHANGE_IN_LAW_TAXES_BUSINESS_EXCLUDED
+  - VARIATIONS.CONTRACTOR_INITIATED_LIMITED
+  - VARIATIONS.DISAGREE_PROCEED_NO_COND_SIGN
+  - VARIATIONS.MITIGATION_DUTY
+  - VARIATIONS.NOM_ONLY
+  - VARIATIONS.RATE_IMMUTABILITY_BASELINE
+  - VARIATIONS.RATE_PARITY_CPA
+  - VARIATIONS.TIMEBAR_IMMEDIATE_OFFSHORE_3D
+  - VARIATIONS.VOR_5BD
+  - VARIATIONS.WAIVER_CUMULATIVE_CARDINAL
+  - assignment
+  - audit
+  - company_provided_items
+  - confidentiality
+  - cpi.ccc.insurance.cover_required
+  - cpi.export.controls.sanctions
+  - cpi.incident.loss.damage.reporting
+  - cpi.marking.tracking.required
+  - cpi.no_lien.required
+  - cpi.receipt.notice_window.latent
+  - cpi.register.exhaustive_list
+  - cpi.storage.lifting.loler_puwer
+  - cpi.use.only.for.project
+  - cpi.waste.disposal.duty_of_care
+  - dispute_resolution
+  - export_hmrc
+  - force_majeure
+  - gl_england_wales
+  - governing_law
+  - governing_law_basic
+  - hse_life_saving
+  - ic.agency.no_authority_to_bind
+  - ic.awr.agency_workers_equal_treatment
+  - ic.hse.carveout.required
+  - ic.ir35.offpayroll.sds_process
+  - ic.medical.data.minimisation
+  - ic.mutuality.moo.minimum_hours
+  - ic.removal.right.objective_non_discrimination
+  - ic.status.control.methods
+  - ic.substitution.absent_or_personal_service
+  - ic.vicarious.liability.supervision_language
+  - insurance_noncompliance
+  - ip_rights
+  - ip_rights_basic
+  - ipr.agreement_docs_title.company
+  - ipr.bg.licence.conflict
+  - ipr.brand.use.prohibition
+  - ipr.fg.licence.scope
+  - ipr.further_assurances.poa
+  - ipr.indemnity.remedies
+  - ipr.moral_rights.waiver
+  - ipr.oss.guardrails
+  - ipr.source_code.escrow
+  - ipr.supplied_software.definition
+  - jurisdiction_basic
+  - liability_cap
+  - liability_cap_basic
+  - notices
+  - payment_terms_basic
+  - placeholder_police
+  - pricing_payment
+  - quality.audit.iso19011
+  - quality.company.rights.reject_nonconforming
+  - quality.costs.not_ready_or_repeat
+  - quality.equipment.certificates_pre_dispatch
+  - quality.equipment.site_tests_swl
+  - quality.hidden_work_prove_compliance
+  - quality.itp.hw_notice_5d
+  - quality.itp.required
+  - quality.moc.qms_changes
+  - quality.no_ship_without_final_inspection
+  - quality.qms.iso_required
+  - quality.qp.iso10005.required
+  - risk_structure
+  - subcontracts
+  - subcontracts.ban_pay_when_paid
+  - subcontracts.copies_audit_rights
+  - subcontracts.data_protection_art28
+  - subcontracts.flowdown_minimum_set
+  - subcontracts.prior_consent
+  - subcontracts.step_in_third_party_alignment
+  - termination_cause
+  - termination_convenience
+  - termination_notice_basic
+  - third_party_rights
+  - title.clean.free_of_liens
+  - title.commingling.bulk_processing
+  - title.customs.ior_alignment
+  - title.delivery_up.access_right
+  - title.embedded_software.perpetual_licence
+  - title.marking.register.audit
+  - title.rejection.return_reversion
+  - title.risk.cross_reference
+  - title.vesting.early_wip_offsite
+  - title.waivers.third_party_liens
+  - uk.def.indemnify.controls_and_negligence
+  - uk.def.ipclaim.mechanics_and_carveouts
+  - uk.def.iprights.coverage_and_moral_rights
+  - uk.def.legal_fault.fm_indemnities_consistency
+  - uk.def.personal_injury.scope_and_el_insurance
+  - uk.def.personnel.coverage_ir35_awr
+  - uk.def.property.exclusions_title_risk
+  - uk.def.site.ownership_access_risk
+  - uk.def.subcontractor.flowdown_audit
+  - uk.def.worksite.inclusion_exclusions
+  - uk.s3.order.channels_align_29
+  - uk.s3.po.exclude_supplier_terms
+  - uk.s3.po.per_entity_responsibility
+  - uk.s4.hse.stop_work_authority
+  - uk.s4.reps.notice_channels_alignment
+  - universal.inform.deemed_laws_change
+  - universal.inform.deemed_pricing_voeot
+  - universal.inform.deemed_scope_clarity
+  - universal.inform.discrepancy_notice_timebar
+  - universal.inform.employer_corrects_variation
+  - universal.inform.employer_info_nonreliance
+  - universal.inform.implied_scope_limit
+  - universal.inform.notice_formalities
+  - universal.inform.physical_conditions_unforeseen
+  - universal.inform.resources_breakdown_carveouts
+  - universal.inform.stop_work_on_conflict
+  - universal.inform.transport_employer_items
+  - universal.performance.cooperate_eot
+  - universal.performance.document_control_handover
+  - universal.performance.exhibits_policies_conflicts
+  - universal.performance.goods_software_incoterms
+  - universal.performance.inspection_acceptance_window
+  - universal.performance.instructions_variation_gate
+  - universal.performance.materials_management
+  - universal.performance.permits_rtw
+  - universal.performance.rental_equipment
+  - universal.performance.reporting_early_warning
+  - universal.performance.resources_sufficiency
+  - universal.performance.rsc_vs_ffp_priority
+  - universal.performance.schedule_recovery
+  - universal.performance.site_ptw_partial_occupation
+  - universal.performance.working_hours_overtime
+  - variations
+  - warranty
+  weight: 1.0
+  required: false
+- zone_id: force_majeure
+  zone_name: Force Majeure
+  description: Force majeure events, mitigation, suspension rights and continuity
+    planning.
+  label_selectors:
+    any:
+    - backup_restore
+    - business_continuity_bcp
+    - disaster_recovery
+    - force_majeure
+    - step_in_rights
+    - suspension
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - force_majeure
+  - uk.def.legal_fault.fm_indemnities_consistency
+  - universal.inform.resources_breakdown_carveouts
+  weight: 1.0
+  required: true
+- zone_id: taxes
+  zone_name: Taxes & Withholding
+  description: Indirect taxes, gross-up mechanics and anti-avoidance obligations.
+  label_selectors:
+    any:
+    - anti_tax_evasion
+    - payment_terms
+    - price_changes_indexation
+    - set_off
+    - taxes_vat
+    all: []
+    none: []
+  entity_selectors:
+    amounts: true
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - P2.INVOICE_CONTENT_VAT
+  - P7.SETOFF_SCOPE
+  - P9.EINVOICE_PLATFORM_VAT_CONTROL
+  - VARIATIONS.CHANGE_IN_LAW_TAXES_BUSINESS_EXCLUDED
+  - ic.ir35.offpayroll.sds_process
+  - subcontracts.step_in_third_party_alignment
+  - uk.def.ior.calloff_requirements
+  - uk.def.key_personnel.list_ld_controls
+  - uk.def.personnel.coverage_ir35_awr
+  - uk.def.tariff_code.classification
+  - uk.def.taxes.matrix_withholding_grossup
+  - uk.def.trade_tariff.source_recency
+  - uk.def.vat.registration_place_of_supply_zero_rating
+  - uk.def.work.scope_boundary_interfaces
+  - uk.s3.editorial.typos_numbering_block
+  - uk.s3.ld.only_remedy_gates
+  - uk.s3.ld.parameters_case_law
+  weight: 1.0
+  required: true
+- zone_id: assignment
+  zone_name: Assignment
+  description: Assignment restrictions, consent requirements and transfers.
+  label_selectors:
+    any:
+    - assignment
+    - joa_assignment_consent
+    - tenancy_assignment_underlet
+    - third_party_rights
+    - title_retention_rot
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - P12.RECEIVABLES_ASSIGNMENT_PERMITTED
+  - assignment
+  - subcontracts.prior_consent
+  - uk.def.indemnify.controls_and_negligence
+  - uk.def.ior.calloff_requirements
+  - uk.def.iprights.coverage_and_moral_rights
+  - uk.def.key_personnel.list_ld_controls
+  - uk.int.2_2_1h.approvals_in_writing_by_reps
+  - uk.s4.ctr.change_consent_sla
+  - universal.inform.transport_employer_items
+  weight: 1.0
+  required: false
+- zone_id: subcontracting
+  zone_name: Subcontracting & Flow-down
+  description: Subcontract approvals, flow-down obligations and sub-processor controls.
+  label_selectors:
+    any:
+    - dp_subprocessing
+    - staff_vetting
+    - subcontracting
+    - subprocessor_approval
+    - support_maintenance
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - subcontracts
+  - subcontracts.ban_pay_when_paid
+  - subcontracts.copies_audit_rights
+  - subcontracts.data_protection_art28
+  - subcontracts.flowdown_minimum_set
+  - subcontracts.prior_consent
+  - subcontracts.step_in_third_party_alignment
+  - title.waivers.third_party_liens
+  - uk.def.bribe.ukba_poca_fcpa
+  - uk.def.subcontractor.flowdown_audit
+  - uk.def.vor.process
+  - uk.int.2_2_1k.subcontracts_flowdown_audit
+  weight: 1.0
+  required: false
+- zone_id: order_of_precedence
+  zone_name: Order of Precedence
+  description: Hierarchy between contract documents and precedence clauses.
+  label_selectors:
+    any:
+    - entire_agreement
+    - remedies
+    - severance
+    - third_party_rights
+    - waiver
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - cpi.export.controls.sanctions
+  - gl_england_wales
+  - gl_jurisdiction_conflict
+  - governing_law
+  - governing_law_basic
+  - ipr.bg.licence.conflict
+  - subcontracts.copies_audit_rights
+  - uk.calloff.exclude_other_terms
+  - uk.calloff.formation_by_performance_controls
+  - uk.calloff.minimum_content
+  - uk.def.variation.gate
+  - uk.def.variation.order_contents
+  - uk.def.vor.process
+  - uk.int.2_2_1j.calloff_incorporates_msa
+  - uk.int.2_2_3.precedence_agreement_alpha_risk
+  - uk.int.2_2_4.precedence_calloff
+  - uk.int.2_2_5.ambiguity_pre_dr_checks
+  - uk.master.supplemental.priority
+  - uk.s3.nullity.foreign_terms_3_13
+  - uk.s3.order.acceptance_triggers_channels
+  - uk.s3.order.channels_align_29
+  - uk.s3.po.exclude_supplier_terms
+  - uk.s3.po.per_entity_responsibility
+  - uk.s4.cr.apparent_authority_controls
+  - uk.s4.governance.chain_of_command
+  - uk_company_address_conflict
+  - universal.inform.stop_work_on_conflict
+  - universal.performance.exhibits_policies_conflicts
+  weight: 1.0
+  required: false
+- zone_id: definitions
+  zone_name: Definitions
+  description: Defined terms, parties and interpretation aids.
+  label_selectors:
+    any:
+    - definitions
+    - entire_agreement
+    - interpretation
+    - parties
+    - remedies
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - gl_jurisdiction_conflict
+  - ipr.supplied_software.definition
+  - uk.def.bipr.perimeter_and_license
+  - uk.def.bribe.ukba_poca_fcpa
+  - uk.def.business_day.precision
+  - uk.def.indemnify.controls_and_negligence
+  - uk.def.invitee.scope_and_exclusions
+  - uk.def.ior.calloff_requirements
+  - uk.def.ipclaim.mechanics_and_carveouts
+  - uk.def.iprights.coverage_and_moral_rights
+  - uk.def.key_personnel.list_ld_controls
+  - uk.def.legal_fault.fm_indemnities_consistency
+  - uk.def.nonconformity.scope_and_priority
+  - uk.def.parties.calloff_specificity_crtpa
+  - uk.def.permit.authorisations_matrix
+  - uk.def.personal_injury.scope_and_el_insurance
+  - uk.def.personnel.coverage_ir35_awr
+  - uk.def.property.exclusions_title_risk
+  - uk.def.site.ownership_access_risk
+  - uk.def.specs.versioning_and_variations
+  - uk.def.subcontractor.flowdown_audit
+  - uk.def.supplied_software.scope_licence_escrow
+  - uk.def.tariff_code.classification
+  - uk.def.taxes.matrix_withholding_grossup
+  - uk.def.third_party.crtpa_alignment
+  - uk.def.trade_tariff.source_recency
+  - uk.def.tupe.eli_requirements
+  - uk.def.variation.gate
+  - uk.def.variation.order_contents
+  - uk.def.vat.registration_place_of_supply_zero_rating
+  - uk.def.vor.process
+  - uk.def.work.scope_boundary_interfaces
+  - uk.def.worksite.inclusion_exclusions
+  - uk.int.2_2_1a.xrefs_links_exist
+  - uk.int.2_2_1b.time_basis_calendar_vs_business
+  - uk.int.2_2_1c.number_gender_presumption
+  - uk.int.2_2_1d.including_is_without_limitation
+  - uk.int.2_2_1e.company_vs_Company_defined_term
+  - uk.int.2_2_1f.person_scope_broad
+  - uk.int.2_2_1g.dynamic_incorp_requires_variation
+  - uk.int.2_2_1h.approvals_in_writing_by_reps
+  - uk.int.2_2_1i.writing_email_esign_alignment
+  - uk.int.2_2_1j.calloff_incorporates_msa
+  - uk.int.2_2_1k.subcontracts_flowdown_audit
+  - uk.int.2_2_2.headings_no_effect
+  - uk.int.2_2_3.precedence_agreement_alpha_risk
+  - uk.int.2_2_4.precedence_calloff
+  - uk.int.2_2_5.ambiguity_pre_dr_checks
+  - uk.int.2_2_6.mutually_explanatory_scope_creep_guard
+  - uk.int.2_2_7.stringency_fitness_priority
+  - uk.master.term.extensions_notice
+  - uk.s3.order.channels_align_29
+  - uk.s4.reps.notice_channels_alignment
+  - uk_bribery_act_missing
+  - uk_ca_1985_outdated
+  - universal.inform.deemed_scope_clarity
+  weight: 1.0
+  required: false
+- zone_id: interpretation
+  zone_name: Interpretation
+  description: Rules of construction, severability, waiver and entire agreement boilerplate.
+  label_selectors:
+    any:
+    - entire_agreement
+    - interpretation
+    - remedies
+    - severance
+    - waiver
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - P6.CONSTRUCTION_PAY_NOTICES
+  - cpi.register.exhaustive_list
+  - gl_jurisdiction_conflict
+  - subcontracts.ban_pay_when_paid
+  - uk.int.2_2_1a.xrefs_links_exist
+  - uk.int.2_2_1b.time_basis_calendar_vs_business
+  - uk.int.2_2_1c.number_gender_presumption
+  - uk.int.2_2_1d.including_is_without_limitation
+  - uk.int.2_2_1e.company_vs_Company_defined_term
+  - uk.int.2_2_1f.person_scope_broad
+  - uk.int.2_2_1g.dynamic_incorp_requires_variation
+  - uk.int.2_2_1h.approvals_in_writing_by_reps
+  - uk.int.2_2_1i.writing_email_esign_alignment
+  - uk.int.2_2_1j.calloff_incorporates_msa
+  - uk.int.2_2_1k.subcontracts_flowdown_audit
+  - uk.int.2_2_2.headings_no_effect
+  - uk.int.2_2_3.precedence_agreement_alpha_risk
+  - uk.int.2_2_4.precedence_calloff
+  - uk.int.2_2_5.ambiguity_pre_dr_checks
+  - uk.int.2_2_6.mutually_explanatory_scope_creep_guard
+  - uk.int.2_2_7.stringency_fitness_priority
+  - uk.master.recitals.no_operational_shall
+  - uk.s3.nullity.foreign_terms_3_13
+  - uk.s3.order.channels_align_29
+  - uk.s4.reps.notice_channels_alignment
+  weight: 1.0
+  required: false
+- zone_id: acceptance
+  zone_name: Acceptance & Testing
+  description: Acceptance testing, inspection rights and rejection procedures.
+  label_selectors:
+    any:
+    - acceptance_it
+    - acceptance_testing
+    - quality_control_qc
+    - service_levels_sla
+    - warranty_conformity
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - 13.AUDIT.ISO19011
+  - 13.COST.NOSHOW_FAIL
+  - 13.EQUIP.CERT.LOLER_PUWER
+  - 13.HIDDEN.WORKS
+  - 13.INSPECT.NO_WAIVER
+  - 13.ITP.EXISTS
+  - 13.ITP.NOTICE
+  - 13.LAB.ISO17025
+  - 13.MARKING.UKCA_CE
+  - 13.MOC.FORMAL
+  - 13.QMS.ISO9001
+  - 13.QP.REQUIRED
+  - 13.SHIP.BLOCK
+  - ic.mutuality.moo.minimum_hours
+  - quality.costs.not_ready_or_repeat
+  - quality.equipment.certificates_pre_dispatch
+  - quality.equipment.site_tests_swl
+  - quality.no_ship_without_final_inspection
+  - title.rejection.return_reversion
+  - uk.def.indemnify.controls_and_negligence
+  - uk.def.nonconformity.scope_and_priority
+  - uk.def.property.exclusions_title_risk
+  - uk.s3.calloff.unacceptable_conditions_3_11
+  - uk.s3.order.acceptance_triggers_channels
+  - uk.s3.order.start_as_acceptance_guard
+  - universal.inform.physical_conditions_unforeseen
+  - universal.performance.document_control_handover
+  - universal.performance.inspection_acceptance_window
+  - universal.performance.site_ptw_partial_occupation
+  weight: 1.0
+  required: false
+- zone_id: delivery
+  zone_name: Delivery & Performance
+  description: Delivery logistics, risk transfer and packaging obligations.
+  label_selectors:
+    any:
+    - delivery
+    - delivery_terms_incoterms
+    - lead_times
+    - packaging_labelling
+    - risk_and_title
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - 13.SHIP.BLOCK
+  - VARIATIONS.TIMEBAR_IMMEDIATE_OFFSHORE_3D
+  - cpi.ccc.insurance.cover_required
+  - ic.status.control.methods
+  - ic.substitution.absent_or_personal_service
+  - ipr.agreement_docs_title.company
+  - quality.no_ship_without_final_inspection
+  - risk_structure
+  - subcontracts.flowdown_minimum_set
+  - title.clean.free_of_liens
+  - title.commingling.bulk_processing
+  - title.customs.ior_alignment
+  - title.delivery_up.access_right
+  - title.embedded_software.perpetual_licence
+  - title.marking.register.audit
+  - title.rejection.return_reversion
+  - title.risk.cross_reference
+  - title.vesting.early_wip_offsite
+  - title.waivers.third_party_liens
+  - uk.def.bipr.perimeter_and_license
+  - uk.def.indemnify.controls_and_negligence
+  - uk.def.ipclaim.mechanics_and_carveouts
+  - uk.def.iprights.coverage_and_moral_rights
+  - uk.def.property.exclusions_title_risk
+  - uk.def.site.ownership_access_risk
+  - uk.def.subcontractor.flowdown_audit
+  - uk.def.supplied_software.scope_licence_escrow
+  - uk.def.taxes.matrix_withholding_grossup
+  - uk.def.variation.order_contents
+  - uk.def.vor.process
+  - uk.def.worksite.inclusion_exclusions
+  - uk.int.2_2_1i.writing_email_esign_alignment
+  - uk.int.2_2_3.precedence_agreement_alpha_risk
+  - uk.master.term.extensions_notice
+  - universal.inform.physical_conditions_unforeseen
+  - universal.inform.resources_breakdown_carveouts
+  - universal.inform.transport_employer_items
+  - universal.performance.goods_software_incoterms
+  - universal.performance.inspection_acceptance_window
+  - universal.performance.materials_management
+  - universal.performance.rental_equipment
+  - universal.performance.reporting_early_warning
+  weight: 1.0
+  required: false
+- zone_id: service_levels
+  zone_name: Service Levels & Credits
+  description: Service level metrics, uptime, support and service credits.
+  label_selectors:
+    any:
+    - quality_control_qc
+    - saas_uptime
+    - service_credits
+    - service_levels_sla
+    - support_maintenance
+    all: []
+    none: []
+  entity_selectors:
+    amounts: true
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - ic.mutuality.moo.minimum_hours
+  - uk.calloff.formation_by_performance_controls
+  - uk.s3.order.acceptance_triggers_channels
+  - uk.s3.order.start_as_acceptance_guard
+  - uk.s3.po.exclude_supplier_terms
+  - uk.s3.po.per_entity_responsibility
+  - uk.s4.ctr.change_consent_sla
+  - universal.inform.deemed_scope_clarity
+  - universal.inform.implied_scope_limit
+  - universal.performance.cooperate_eot
+  - universal.performance.document_control_handover
+  - universal.performance.exhibits_policies_conflicts
+  - universal.performance.goods_software_incoterms
+  - universal.performance.inspection_acceptance_window
+  - universal.performance.instructions_variation_gate
+  - universal.performance.materials_management
+  - universal.performance.permits_rtw
+  - universal.performance.rental_equipment
+  - universal.performance.reporting_early_warning
+  - universal.performance.resources_sufficiency
+  - universal.performance.rsc_vs_ffp_priority
+  - universal.performance.schedule_recovery
+  - universal.performance.site_ptw_partial_occupation
+  - universal.performance.working_hours_overtime
+  weight: 1.0
+  required: false
+- zone_id: price_adjustment
+  zone_name: Price Adjustments
+  description: Indexation, benchmarking, open book pricing and most favoured terms.
+  label_selectors:
+    any:
+    - most_favoured_customer
+    - open_book_pricing
+    - price_changes_indexation
+    - rate_card
+    - usage_limits
+    all: []
+    none: []
+  entity_selectors:
+    amounts: true
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - P1.ALL_INCLUSIVE_RATES
+  - VARIATIONS.RATE_IMMUTABILITY_BASELINE
+  - VARIATIONS.RATE_PARITY_CPA
+  - uk.calloff.minimum_content
+  - uk.def.variation.gate
+  - uk.def.variation.order_contents
+  - uk.int.2_2_1j.calloff_incorporates_msa
+  - uk.s3.calloff.minimum_contents
+  - uk.s3.ld.parameters_case_law
+  - uk.s4.instructions.trigger_vo
+  - universal.inform.deemed_pricing_voeot
+  - universal.performance.cooperate_eot
+  weight: 1.0
+  required: false
+- zone_id: interest_late
+  zone_name: Late Payment Interest
+  description: Interest regimes, statutory remedies and payment enforcement.
+  label_selectors:
+    any:
+    - late_payment_interest
+    - payment_terms
+    - service_credits
+    - set_off
+    - taxes_vat
+    all: []
+    none: []
+  entity_selectors:
+    amounts: true
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - 13.EQUIP.CERT.LOLER_PUWER
+  - P11.NO_PAY_IDLE_EFFICIENCY
+  - P12.RECEIVABLES_ASSIGNMENT_PERMITTED
+  - P3.LATE_INVOICE_TIMEBAR
+  - P4.PAYMENT_TERMS_AND_INTEREST
+  - P5.PUBLIC_30DAYS_CASCADE
+  - P6.CONSTRUCTION_PAY_NOTICES
+  - P7.SETOFF_SCOPE
+  - P8.PAY_UNDISPUTED
+  - cpi.receipt.notice_window.latent
+  - gl_jurisdiction_conflict
+  - payment_terms_basic
+  - subcontracts.data_protection_art28
+  - subcontracts.step_in_third_party_alignment
+  - uk.def.invitee.scope_and_exclusions
+  - uk.def.nonconformity.scope_and_priority
+  - uk.def.trade_tariff.source_recency
+  - uk.int.2_2_1g.dynamic_incorp_requires_variation
+  - uk.int.2_2_1h.approvals_in_writing_by_reps
+  - uk.master.supplemental.priority
+  - uk.s3.calloff.contract_execution_authority
+  - uk.s3.nullity.foreign_terms_3_13
+  - uk.s4.instructions.trigger_vo
+  - uk_ca_1985_outdated
+  - uk_dpa_1998_outdated
+  - uk_poca_tipping_off
+  - universal.inform.physical_conditions_unforeseen
+  - universal.performance.document_control_handover
+  - universal.performance.schedule_recovery
+  weight: 1.0
+  required: true
+- zone_id: change_control
+  zone_name: Change Control
+  description: Change request procedures, variation mechanics and approvals.
+  label_selectors:
+    any:
+    - change_control
+    - change_management_it
+    - construction_programme
+    - construction_variations
+    - variation
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - 13.ITP.EXISTS
+  - 13.LAB.ISO17025
+  - 13.MOC.FORMAL
+  - VARIATIONS.CHANGE_IN_LAW_TAXES_BUSINESS_EXCLUDED
+  - VARIATIONS.CONTRACTOR_INITIATED_LIMITED
+  - VARIATIONS.DISAGREE_PROCEED_NO_COND_SIGN
+  - VARIATIONS.MITIGATION_DUTY
+  - VARIATIONS.NOM_ONLY
+  - VARIATIONS.RATE_IMMUTABILITY_BASELINE
+  - VARIATIONS.RATE_PARITY_CPA
+  - VARIATIONS.TIMEBAR_IMMEDIATE_OFFSHORE_3D
+  - VARIATIONS.VOR_5BD
+  - VARIATIONS.WAIVER_CUMULATIVE_CARDINAL
+  - cpi.export.controls.sanctions
+  - cpi.use.only.for.project
+  - cpi.waste.disposal.duty_of_care
+  - ic.hse.carveout.required
+  - ic.ir35.offpayroll.sds_process
+  - ic.removal.right.objective_non_discrimination
+  - ipr.source_code.escrow
+  - quality.moc.qms_changes
+  - subcontracts.prior_consent
+  - subcontracts.step_in_third_party_alignment
+  - uk.def.legal_fault.fm_indemnities_consistency
+  - uk.def.parties.calloff_specificity_crtpa
+  - uk.def.specs.versioning_and_variations
+  - uk.def.supplied_software.scope_licence_escrow
+  - uk.def.third_party.crtpa_alignment
+  - uk.def.variation.gate
+  - uk.def.variation.order_contents
+  - uk.def.vor.process
+  - uk.def.work.scope_boundary_interfaces
+  - uk.int.2_2_1a.xrefs_links_exist
+  - uk.int.2_2_1c.number_gender_presumption
+  - uk.int.2_2_1g.dynamic_incorp_requires_variation
+  - uk.int.2_2_1i.writing_email_esign_alignment
+  - uk.int.2_2_6.mutually_explanatory_scope_creep_guard
+  - uk.int.2_2_7.stringency_fitness_priority
+  - uk.master.exhibitj.deed_formalities
+  - uk.master.incorp.dynamic_refs_change_control
+  - uk.s3.coventurers.agent_model_cap
+  - uk.s3.editorial.typos_numbering_block
+  - uk.s3.ld.parameters_case_law
+  - uk.s3.po.per_entity_responsibility
+  - uk.s4.cr.appointment_and_scope
+  - uk.s4.cr.nom_shield
+  - uk.s4.ctr.change_consent_sla
+  - uk.s4.instructions.trigger_vo
+  - uk.s4.reps.notice_channels_alignment
+  - universal.inform.deemed_laws_change
+  - universal.inform.deemed_pricing_voeot
+  - universal.inform.discrepancy_notice_timebar
+  - universal.inform.employer_corrects_variation
+  - universal.inform.implied_scope_limit
+  - universal.inform.notice_formalities
+  - universal.inform.physical_conditions_unforeseen
+  - universal.inform.stop_work_on_conflict
+  - universal.performance.instructions_variation_gate
+  - variations
+  weight: 1.0
+  required: false
+- zone_id: audit_records
+  zone_name: Audit & Records
+  description: Audit rights, record keeping and back-to-back compliance.
+  label_selectors:
+    any:
+    - audit_rights
+    - dp_audit
+    - dp_back_to_back
+    - dp_records_of_processing
+    - records_retention
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - 13.AUDIT.ISO19011
+  - 13.COST.NOSHOW_FAIL
+  - 13.EQUIP.CERT.LOLER_PUWER
+  - 13.HIDDEN.WORKS
+  - 13.INSPECT.NO_WAIVER
+  - 13.ITP.EXISTS
+  - 13.ITP.NOTICE
+  - 13.LAB.ISO17025
+  - 13.MARKING.UKCA_CE
+  - 13.MOC.FORMAL
+  - 13.QMS.ISO9001
+  - 13.QP.REQUIRED
+  - 13.SHIP.BLOCK
+  - audit
+  - ic.medical.data.minimisation
+  - quality.audit.iso19011
+  - quality.no_ship_without_final_inspection
+  - subcontracts.copies_audit_rights
+  - subcontracts.flowdown_minimum_set
+  - title.delivery_up.access_right
+  - uk.def.bribe.ukba_poca_fcpa
+  - uk.def.site.ownership_access_risk
+  - uk.def.subcontractor.flowdown_audit
+  - uk.int.2_2_1k.subcontracts_flowdown_audit
+  - universal.performance.inspection_acceptance_window
+  weight: 1.0
+  required: false
+- zone_id: survival
+  zone_name: Survival & Exit
+  description: Clauses surviving termination, exit assistance and post-termination
+    obligations.
+  label_selectors:
+    any:
+    - dp_retention_deletion
+    - records_retention
+    - return_or_destruction
+    - survival
+    - termination_assistance
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - termination_cause
+  - termination_convenience
+  - termination_notice_basic
+  - title.embedded_software.perpetual_licence
+  - uk.def.bribe.ukba_poca_fcpa
+  - uk.master.term.extensions_notice
+  - uk.s3.ld.parameters_case_law
+  - uk.s3.po.exclude_supplier_terms
+  - uk.s3.po.per_entity_responsibility
+  weight: 1.0
+  required: false
+- zone_id: personnel
+  zone_name: Personnel & Conduct
+  description: Key personnel, onboarding, vetting and conduct expectations.
+  label_selectors:
+    any:
+    - conflicts_of_interest
+    - equality_diversity
+    - modern_slavery
+    - nhs_safeguarding
+    - onboarding_migration
+    - staff_vetting
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - ic.removal.right.objective_non_discrimination
+  - ic.status.control.methods
+  - ic.substitution.absent_or_personal_service
+  - ipr.bg.licence.conflict
+  - uk.def.key_personnel.list_ld_controls
+  - uk.def.personnel.coverage_ir35_awr
+  - uk.def.tupe.eli_requirements
+  - uk_dpa_1998_outdated
+  - universal.inform.resources_breakdown_carveouts
+  - universal.performance.resources_sufficiency
+  - universal.personnel.gdpr_personnel_data
+  weight: 1.0
+  required: false
+- zone_id: cross_refs
+  zone_name: Cross References
+  description: References to other documents, transparency and publication duties.
+  label_selectors:
+    any:
+    - entire_agreement
+    - foi
+    - remedies
+    - third_party_rights
+    - transparency_publication
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - cpi.storage.lifting.loler_puwer
+  - uk.calloff.exclude_other_terms
+  - uk.calloff.minimum_content
+  - uk.def.variation.gate
+  - uk.def.variation.order_contents
+  - uk.int.2_2_1a.xrefs_links_exist
+  - uk.s3.calloff.minimum_contents
+  - uk.s3.ld.parameters_case_law
+  - uk.s4.instructions.trigger_vo
+  - universal.inform.deemed_scope_clarity
+  - universal.performance.cooperate_eot
+  - universal.performance.exhibits_policies_conflicts
+  - universal.performance.schedule_recovery
+  weight: 1.0
+  required: false
+- zone_id: warranties
+  zone_name: Warranties
+  description: Warranty scope, remedies, IP non-infringement and DOA/RMA processes.
+  label_selectors:
+    any:
+    - quality_control_qc
+    - remedies
+    - warranty_conformity
+    - warranty_doas_rma
+    - warranty_ip_noninfringe
+    - warranty_performance
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - 13.INSPECT.NO_WAIVER
+  - cpi.receipt.notice_window.latent
+  - subcontracts.step_in_third_party_alignment
+  - uk.def.nonconformity.scope_and_priority
+  - uk.def.variation.order_contents
+  - uk.s3.editorial.typos_numbering_block
+  - uk.s3.ld.only_remedy_gates
+  - universal.performance.materials_management
+  - warranty
+  weight: 1.0
+  required: false
+- zone_id: quality
+  zone_name: Quality & Standards
+  description: Quality assurance, inspections, programme management and technical
+    standards.
+  label_selectors:
+    any:
+    - construction_defects_liability
+    - construction_eot
+    - construction_programme
+    - construction_retention
+    - construction_variations
+    - quality_control_qc
+    - spares_obsolescence
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - 13.AUDIT.ISO19011
+  - 13.COST.NOSHOW_FAIL
+  - 13.EQUIP.CERT.LOLER_PUWER
+  - 13.HIDDEN.WORKS
+  - 13.INSPECT.NO_WAIVER
+  - 13.ITP.EXISTS
+  - 13.ITP.NOTICE
+  - 13.LAB.ISO17025
+  - 13.MARKING.UKCA_CE
+  - 13.MOC.FORMAL
+  - 13.QMS.ISO9001
+  - 13.QP.REQUIRED
+  - 13.SHIP.BLOCK
+  - cpi.receipt.notice_window.latent
+  - quality.audit.iso19011
+  - quality.company.rights.reject_nonconforming
+  - quality.costs.not_ready_or_repeat
+  - quality.equipment.certificates_pre_dispatch
+  - quality.equipment.site_tests_swl
+  - quality.hidden_work_prove_compliance
+  - quality.itp.hw_notice_5d
+  - quality.itp.required
+  - quality.moc.qms_changes
+  - quality.no_ship_without_final_inspection
+  - quality.qms.iso_required
+  - quality.qp.iso10005.required
+  - uk.def.nonconformity.scope_and_priority
+  - uk.s3.editorial.typos_numbering_block
+  - universal.performance.inspection_acceptance_window
+  weight: 1.0
+  required: false
+- zone_id: health_safety
+  zone_name: Health & Safety
+  description: Health and safety duties, hazardous materials controls and serious
+    incident handling.
+  label_selectors:
+    any:
+    - construction_health_safety_cdm
+    - hazardous_substances
+    - health_and_safety
+    - nhs_safeguarding
+    - nhs_serious_incident
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - cpi.incident.loss.damage.reporting
+  - uk.s4.hse.stop_work_authority
+  - universal.inform.implied_scope_limit
+  - universal.inform.stop_work_on_conflict
+  weight: 1.0
+  required: false
+- zone_id: compliance_abac
+  zone_name: Compliance & ABAC
+  description: Anti-bribery, tax evasion, modern slavery and ethical compliance.
+  label_selectors:
+    any:
+    - anti_bribery
+    - anti_tax_evasion
+    - conflicts_of_interest
+    - equality_diversity
+    - modern_slavery
+    - sanctions_export_controls
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - ic.mutuality.moo.minimum_hours
+  - quality.hidden_work_prove_compliance
+  - subcontracts.flowdown_minimum_set
+  - uk.def.bribe.ukba_poca_fcpa
+  - uk.def.ior.calloff_requirements
+  - uk.def.permit.authorisations_matrix
+  - uk.def.subcontractor.flowdown_audit
+  - uk.int.2_2_1k.subcontracts_flowdown_audit
+  - uk_bribery_act_missing
+  - universal.inform.deemed_laws_change
+  - universal.inform.stop_work_on_conflict
+  - universal.performance.materials_management
+  weight: 1.0
+  required: false
+- zone_id: change_of_control
+  zone_name: Change of Control
+  description: Change of control triggers, operator provisions and joint operating
+    agreement controls.
+  label_selectors:
+    any:
+    - joa_default_nonconsent
+    - joa_marketing
+    - joa_opcom
+    - joa_operator
+    - joa_work_program_budget
+    - termination_change_of_control
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt: []
+  weight: 1.0
+  required: false
+- zone_id: background_ip
+  zone_name: Background IP
+  description: Pre-existing IP rights, tooling and retained ownership provisions.
+  label_selectors:
+    any:
+    - joa_authorisation_for_expenditure
+    - joa_work_program_budget
+    - license_grant
+    - title_retention_rot
+    - tooling
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - ipr.bg.licence.conflict
+  weight: 1.0
+  required: false
+- zone_id: foreground_ip
+  zone_name: Foreground IP
+  description: Developed IP ownership, indemnities and allocation in joint ventures.
+  label_selectors:
+    any:
+    - ip_indemnity
+    - ip_ownership
+    - joa_joint_accounting
+    - joa_marketing
+    - joa_operator
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - ipr.fg.licence.scope
+  - subcontracts.flowdown_minimum_set
+  - uk.def.bipr.perimeter_and_license
+  - uk.def.indemnify.controls_and_negligence
+  - uk.def.ipclaim.mechanics_and_carveouts
+  - uk.def.iprights.coverage_and_moral_rights
+  - uk.def.subcontractor.flowdown_audit
+  - uk.def.supplied_software.scope_licence_escrow
+  - uk.def.work.scope_boundary_interfaces
+  - uk.s3.po.per_entity_responsibility
+  - universal.performance.rsc_vs_ffp_priority
+  weight: 1.0
+  required: false
+- zone_id: records_retention
+  zone_name: Records & Retention
+  description: Retention periods, localisation and destruction routines for records.
+  label_selectors:
+    any:
+    - dp_localisation
+    - dp_records_of_processing
+    - dp_retention_deletion
+    - records_retention
+    - return_or_destruction
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - ic.medical.data.minimisation
+  - subcontracts.flowdown_minimum_set
+  weight: 1.0
+  required: false
+- zone_id: limitation_periods
+  zone_name: Limitation Periods
+  description: Limitation periods, carve outs and long-stop dates for claims.
+  label_selectors:
+    any:
+    - liability_cap_amount
+    - liability_carveouts
+    - limitation_of_liability
+    - liquidated_damages
+    - remedies
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - P3.LATE_INVOICE_TIMEBAR
+  - VARIATIONS.TIMEBAR_IMMEDIATE_OFFSHORE_3D
+  - VARIATIONS.WAIVER_CUMULATIVE_CARDINAL
+  - cpi.no_lien.required
+  - liability_cap
+  - uk.def.ipclaim.mechanics_and_carveouts
+  - uk.s4.cr.apparent_authority_controls
+  - uk_fraud_exclusion_invalid
+  - uk_ucta_2_1_invalid
+  - universal.inform.discrepancy_notice_timebar
+  - universal.inform.employer_info_nonreliance
+  - universal.inform.notice_formalities
+  weight: 1.0
+  required: false
+- zone_id: setoff_withholding
+  zone_name: Set-off & Withholding
+  description: Rights to set-off, netting and withholding across accounts.
+  label_selectors:
+    any:
+    - anti_tax_evasion
+    - payment_security
+    - payment_terms
+    - set_off
+    - taxes_vat
+    all: []
+    none: []
+  entity_selectors:
+    amounts: true
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - P10.REIMBURSABLES_NET_OF_REBATES
+  - P7.SETOFF_SCOPE
+  - uk.def.key_personnel.list_ld_controls
+  - uk.def.taxes.matrix_withholding_grossup
+  - uk.def.work.scope_boundary_interfaces
+  - uk.s3.editorial.typos_numbering_block
+  - uk.s3.ld.only_remedy_gates
+  - uk.s3.ld.parameters_case_law
+  weight: 1.0
+  required: false
+- zone_id: export_controls_sanctions
+  zone_name: Export Controls & Sanctions
+  description: Sanctions screening, export controls and trade compliance.
+  label_selectors:
+    any:
+    - anti_bribery
+    - anti_tax_evasion
+    - foi
+    - modern_slavery
+    - sanctions_export_controls
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - cpi.export.controls.sanctions
+  - export_hmrc
+  - subcontracts.flowdown_minimum_set
+  - uk.def.subcontractor.flowdown_audit
+  - uk.def.tariff_code.classification
+  - uk.def.trade_tariff.source_recency
+  - uk.s3.po.exclude_supplier_terms
+  - uk.s3.po.per_entity_responsibility
+  weight: 1.0
+  required: false
+- zone_id: escrow_source_code
+  zone_name: Source Code Escrow
+  description: Escrow arrangements, release events and contingency tooling.
+  label_selectors:
+    any:
+    - backup_restore
+    - business_continuity_bcp
+    - disaster_recovery
+    - escrow
+    - tooling
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - ipr.source_code.escrow
+  - uk.def.supplied_software.scope_licence_escrow
+  - uk.s3.po.exclude_supplier_terms
+  - uk.s3.po.per_entity_responsibility
+  weight: 1.0
+  required: false
+- zone_id: step_in_rights
+  zone_name: Step-in Rights
+  description: Step-in triggers, remediation and continuity of services.
+  label_selectors:
+    any:
+    - business_continuity_bcp
+    - disaster_recovery
+    - nhs_step_in
+    - step_in_rights
+    - support_maintenance
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - subcontracts.step_in_third_party_alignment
+  - uk.s3.ld.only_remedy_gates
+  weight: 1.0
+  required: false
+- zone_id: novation
+  zone_name: Novation & Transfer
+  description: Novation mechanics, consents and successor obligations.
+  label_selectors:
+    any:
+    - assignment
+    - joa_assignment_consent
+    - tenancy_assignment_underlet
+    - termination_change_of_control
+    - third_party_rights
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: false
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - P12.RECEIVABLES_ASSIGNMENT_PERMITTED
+  - assignment
+  - subcontracts.step_in_third_party_alignment
+  - uk.def.ior.calloff_requirements
+  - uk.def.iprights.coverage_and_moral_rights
+  - uk.def.vat.registration_place_of_supply_zero_rating
+  - universal.inform.transport_employer_items
+  weight: 1.0
+  required: false
+- zone_id: non_solicit_non_compete
+  zone_name: Non-solicit & Non-compete
+  description: Non-solicitation, restrictive covenants and safeguarding obligations.
+  label_selectors:
+    any:
+    - conflicts_of_interest
+    - equality_diversity
+    - nhs_safeguarding
+    - non_solicitation
+    - staff_vetting
+    all: []
+    none: []
+  entity_selectors:
+    amounts: false
+    durations: true
+    jurisdiction: false
+    law: false
+  rule_ids_opt:
+  - uk.s3.po.exclude_supplier_terms
+  - uk.s3.po.per_entity_responsibility
+  weight: 1.0
+  required: false

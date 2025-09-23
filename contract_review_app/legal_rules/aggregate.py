@@ -1,190 +1,143 @@
-"""Utilities for deterministic aggregation of rule findings."""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, MutableMapping, Sequence, Set, Tuple
+import os
+from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
 
 from contract_review_app.analysis.agenda import (
-    agenda_sort_key,
-    coerce_int,
-    extract_span,
+    AGENDA_ORDER,
+    DEFAULT_SALIENCE,
+    SALIENCE_MAX,
+    SALIENCE_MIN,
     map_to_agenda_group,
-    resolve_salience,
+    span_iou,
+    stronger,
 )
 
 __all__ = ["apply_merge_policy", "apply_legacy_merge_policy"]
-
-@dataclass
-class _EnrichedFinding:
-    finding: MutableMapping[str, Any]
-    index: int
-    group: str
-    salience: int
-    span: Tuple[int, int] | None
-    sort_key: Tuple[int, int, int, str]
-    entity_keys: Set[str]
 
 
 def apply_merge_policy(
     findings: Iterable[Dict[str, Any]],
     *,
-    strict_merge: bool = False,
+    use_agenda: bool = True,
 ) -> List[Dict[str, Any]]:
-    """Apply agenda-based ordering and overlap resolution to ``findings``."""
+    """Merge findings using agenda ordering and overlap resolution."""
 
-    items: List[MutableMapping[str, Any]] = [
-        f for f in findings if isinstance(f, MutableMapping)
+    items: List[Dict[str, Any]] = [
+        f for f in findings if isinstance(f, dict)
     ]
     if not items:
         return []
 
-    enriched: List[_EnrichedFinding] = []
-    for idx, finding in enumerate(items):
+    if not use_agenda:
+        return apply_legacy_merge_policy(items)
+
+    strict_merge = os.getenv("FEATURE_AGENDA_STRICT_MERGE", "0") == "1"
+    groups: List[str] = []
+    spans: List[Tuple[int, int] | None] = []
+    sort_keys: List[Tuple[int, int, int, str]] = []
+
+    for finding in items:
         group = map_to_agenda_group(finding)
-        salience = resolve_salience(finding, group=group)
+        salience = _resolve_salience(finding, group)
+        anchor = finding.get("anchor") or {}
+        start_val = _coerce_int(anchor.get("start"))
+        end_val = _coerce_int(anchor.get("end"))
+        if start_val is not None and end_val is not None and end_val > start_val:
+            span = (start_val, end_val)
+            start = start_val
+        else:
+            span = _extract_span(finding)
+            start = start_val if start_val is not None else 0
+        rid = str(finding.get("rule_id") or "")
+        groups.append(group)
+        spans.append(span)
+        sort_keys.append((AGENDA_ORDER.get(group, 999), -salience, start, rid))
         finding["salience"] = salience
-        span = extract_span(finding)
-        start = span[0] if span is not None else None
-        sort_key = agenda_sort_key(finding, group=group, salience=salience, start=start)
-        entity_keys = _entity_key_set(finding)
-        enriched.append(
-            _EnrichedFinding(
-                finding=finding,
-                index=idx,
-                group=group,
-                salience=salience,
-                span=span,
-                sort_key=sort_key,
-                entity_keys=entity_keys,
-            )
-        )
 
-    survivors = _select_survivors(enriched, strict_merge=strict_merge)
-    survivors.sort(key=lambda item: (item.sort_key, item.index))
-    return [entry.finding for entry in survivors]
+    order = sorted(range(len(items)), key=lambda idx: sort_keys[idx])
 
+    survivors: List[int] = []
 
-def _select_survivors(
-    candidates: Sequence[_EnrichedFinding],
-    *,
-    strict_merge: bool,
-) -> List[_EnrichedFinding]:
-    ordered = sorted(candidates, key=lambda entry: (entry.sort_key, entry.index))
-    survivors: List[_EnrichedFinding] = []
-    for candidate in ordered:
-        span = candidate.span
+    for idx in order:
+        span = spans[idx]
         if span is None:
-            survivors.append(candidate)
+            survivors.append(idx)
             continue
 
-        keep = True
-        for existing in survivors:
-            other_span = existing.span
-            if other_span is None:
+        should_add = True
+        ptr = len(survivors) - 1
+        while ptr >= 0:
+            existing_idx = survivors[ptr]
+            existing_span = spans[existing_idx]
+            if existing_span is None:
+                ptr -= 1
                 continue
-            if not _spans_overlap(span, other_span):
+            if existing_span[1] <= span[0]:
+                break
+            if not strict_merge and groups[idx] != groups[existing_idx]:
+                ptr -= 1
                 continue
-            if not _should_eliminate(existing, candidate, strict_merge=strict_merge):
+            if span_iou(existing_span, span) >= 0.6:
+                champion = stronger(items[idx], items[existing_idx])
+                if champion is items[existing_idx]:
+                    should_add = False
+                    break
+                survivors.pop(ptr)
+            ptr -= 1
+
+        if not should_add:
+            continue
+
+        survivors.append(idx)
+
+    return [items[i] for i in survivors]
+
+
+def _extract_span(finding: Mapping[str, Any]) -> Tuple[int, int] | None:
+    anchor = finding.get("anchor")
+    if isinstance(anchor, Mapping):
+        start = _coerce_int(anchor.get("start"))
+        end = _coerce_int(anchor.get("end"))
+        if start is not None and end is not None and end > start:
+            return (start, end)
+
+    start = _coerce_int(finding.get("start"))
+    end = _coerce_int(finding.get("end"))
+    if start is not None and end is not None and end > start:
+        return (start, end)
+
+    anchors = finding.get("anchors")
+    if isinstance(anchors, Sequence):
+        for candidate in anchors:
+            if not isinstance(candidate, Mapping):
                 continue
-            keep = False
-            break
-        if keep:
-            survivors.append(candidate)
-    return survivors
+            span = candidate.get("span")
+            if isinstance(span, Sequence) and len(span) == 2:
+                c_start = _coerce_int(span[0])
+                c_end = _coerce_int(span[1])
+                if c_start is not None and c_end is not None and c_end > c_start:
+                    return (c_start, c_end)
+            c_start = _coerce_int(candidate.get("start"))
+            c_end = _coerce_int(candidate.get("end"))
+            if c_start is not None and c_end is not None and c_end > c_start:
+                return (c_start, c_end)
+    return None
 
 
-def _spans_overlap(lhs: Tuple[int, int], rhs: Tuple[int, int]) -> bool:
-    start_a, end_a = lhs
-    start_b, end_b = rhs
-    if end_a is None or end_b is None:
-        return False
-    if end_a <= start_a or end_b <= start_b:
-        return False
-
-    intersection = min(end_a, end_b) - max(start_a, start_b)
-    if intersection <= 0:
-        return False
-
-    union = max(end_a, end_b) - min(start_a, start_b)
-    if union <= 0:
-        return False
-
-    iou = intersection / union
-    if iou >= 0.6:
-        return True
-
-    span_a = end_a - start_a
-    span_b = end_b - start_b
-    smaller = min(span_a, span_b)
-    return intersection >= smaller
-
-
-def _should_eliminate(
-    existing: _EnrichedFinding,
-    candidate: _EnrichedFinding,
-    *,
-    strict_merge: bool,
-) -> bool:
-    if strict_merge:
-        return True
-    if existing.group != candidate.group:
-        return False
-    if not existing.entity_keys or not candidate.entity_keys:
-        return False
-    return bool(existing.entity_keys & candidate.entity_keys)
-
-
-def _entity_key_set(finding: Mapping[str, Any]) -> Set[str]:
-    tokens: Set[str] = set()
-
-    def _add(value: Any) -> None:
-        token = _normalize_entity_token(value)
-        if token:
-            tokens.add(token)
-
-    _add(finding.get("rule_id"))
-    for key in (
-        "entity",
-        "entity_key",
-        "legal_entity",
-        "topic",
-        "issue_id",
-        "canonical_name",
-    ):
-        _add(finding.get(key))
-
-    meta = finding.get("meta")
-    if isinstance(meta, Mapping):
-        for key in (
-            "entity_id",
-            "entity",
-            "entity_key",
-            "legal_entity",
-            "legal_issue",
-            "topic",
-            "subtopic",
-            "issue_id",
-        ):
-            _add(meta.get(key))
-
-    return tokens
-
-
-def _normalize_entity_token(value: Any) -> str | None:
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
-        return str(value)
-    if isinstance(value, str):
-        token = value.strip().lower()
-        return token or None
-    try:
-        token = str(value).strip().lower()
-    except Exception:
-        return None
-    return token or None
+def _resolve_salience(finding: Mapping[str, Any], group: str) -> int:
+    for key in ("salience", "_spec_salience"):
+        if key not in finding:
+            continue
+        value = _coerce_int(finding.get(key))
+        if value is None:
+            continue
+        if value < SALIENCE_MIN:
+            return SALIENCE_MIN
+        if value > SALIENCE_MAX:
+            return SALIENCE_MAX
+        return value
+    return DEFAULT_SALIENCE.get(group, 50)
 
 
 # Legacy prioritisation ----------------------------------------------------
@@ -331,4 +284,13 @@ def _span_length(finding: Dict[str, Any]) -> int:
 
 
 def _coerce_int(value: Any) -> int | None:
-    return coerce_int(value)
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    if value is None:
+        return None
+    try:
+        return int(str(value))
+    except Exception:
+        return None

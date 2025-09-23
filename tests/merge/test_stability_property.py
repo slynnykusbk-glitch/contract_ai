@@ -1,43 +1,32 @@
 from __future__ import annotations
 
 import copy
-import itertools
+import random
 
 from contract_review_app.legal_rules.aggregate import apply_merge_policy
 
 
+GROUPS = ["presence", "substantive", "policy", "law", "drafting"]
+
 BASE_FINDINGS = [
     {
-        "rule_id": "presence-1",
-        "channel": "presence",
-        "salience": 95,
-        "anchor": {"start": 10, "end": 20},
-    },
-    {
-        "rule_id": "substantive-1",
-        "channel": "substantive",
-        "salience": 80,
-        "anchor": {"start": 200, "end": 220},
-    },
-    {
-        "rule_id": "policy-1",
-        "channel": "policy",
-        "salience": 70,
-        "anchor": {"start": 400, "end": 410},
-    },
-    {
-        "rule_id": "presence-2",
-        "channel": "presence",
-        "salience": 90,
-        "anchor": {"start": 50, "end": 60},
-    },
+        "rule_id": f"{group}-{idx}",
+        "channel": group,
+        "salience": 90 - idx,
+        "anchor": {"start": idx * 50 + order * 5, "end": idx * 50 + order * 5 + 12},
+    }
+    for idx in range(10)
+    for order, group in enumerate(GROUPS)
 ]
 
 
 def test_permutation_stability():
-    expected = apply_merge_policy(copy.deepcopy(BASE_FINDINGS))
+    expected = apply_merge_policy(copy.deepcopy(BASE_FINDINGS), use_agenda=True)
     expected_order = [f["rule_id"] for f in expected]
 
-    for perm in itertools.permutations(BASE_FINDINGS):
-        result = apply_merge_policy(copy.deepcopy(list(perm)))
+    rng = random.Random(42)
+    for _ in range(5):
+        permuted = copy.deepcopy(BASE_FINDINGS)
+        rng.shuffle(permuted)
+        result = apply_merge_policy(permuted, use_agenda=True)
         assert [f["rule_id"] for f in result] == expected_order

@@ -11,10 +11,10 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from functools import lru_cache
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Literal
 
 import yaml
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, conint
 
 # Новая нормализация при intake: кавычки/дефисы -> ASCII, сжатие пробелов, сохранение \n
 from ..intake.normalization import normalize_for_intake
@@ -138,6 +138,8 @@ class RuleSchema(BaseModel):
     always_on: bool = False
     generic: bool = False
     applies_to: Optional[AppliesToSchema] = None
+    channel: Optional[Literal["presence", "substantive", "policy", "drafting", "fixup"]] = None
+    salience: Optional[conint(ge=0, le=100)] = 50
 
     @field_validator("severity")
     @classmethod
@@ -313,6 +315,11 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
                         if kinds_norm:
                             applies_to_spec["segment_kind"] = kinds_norm
 
+                    channel = raw.get("channel")
+                    salience = raw.get("salience")
+                    if salience is None:
+                        salience = 50
+
                     spec = {
                         "id": rid,
                         "rule_id": rid,
@@ -349,6 +356,8 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
                         "deprecated": deprecated,
                         "always_on": bool(raw.get("always_on")),
                         "generic": bool(raw.get("generic")),
+                        "channel": channel,
+                        "salience": salience,
                     }
                     if applies_to_spec:
                         spec["applies_to"] = applies_to_spec
@@ -372,6 +381,8 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
                                 "always_on": spec["always_on"],
                                 "generic": spec["generic"],
                                 "applies_to": applies_to_spec,
+                                "channel": channel,
+                                "salience": salience,
                             }
                         )
                     except ValidationError:

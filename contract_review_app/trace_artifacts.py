@@ -543,6 +543,28 @@ def _extract_gate_value(gates: Any, key: str) -> Any:
     return getattr(gates, key, None)
 
 
+def _coerce_channel_value(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        return value or None
+    text = str(value).strip()
+    return text or None
+
+
+def _coerce_salience_value(value: Any) -> int | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        salience = int(value)
+    except (TypeError, ValueError):
+        return None
+    if 0 <= salience <= 100:
+        return salience
+    return None
+
+
 def build_dispatch(
     rules_loaded: int,
     evaluated: int,
@@ -566,6 +588,8 @@ def build_dispatch(
             matched_entries = candidate.get("matched") or []
             reason = candidate.get("reason_not_triggered")
             raw_reasons = candidate.get("reasons")
+            raw_channel = candidate.get("channel")
+            raw_salience = candidate.get("salience")
         else:
             rule_id = getattr(candidate, "rule_id", None)
             gates = getattr(candidate, "gates", None)
@@ -574,6 +598,8 @@ def build_dispatch(
             matched_entries = getattr(candidate, "matched", [])
             reason = getattr(candidate, "reason", None)
             raw_reasons = getattr(candidate, "reasons", None)
+            raw_channel = getattr(candidate, "channel", None)
+            raw_salience = getattr(candidate, "salience", None)
 
         gates_payload = {
             "packs": _extract_gate_value(gates, "packs"),
@@ -602,27 +628,33 @@ def build_dispatch(
                 if max_reasons > 0 and len(serialized_reasons) >= max_reasons:
                     break
 
-        candidates_payload.append(
-            {
-                "rule_id": str(rule_id) if rule_id is not None else "",
-                "gates": gates_payload,
-                "gates_passed": bool(gates_passed),
-                "triggers": {
-                    "expected_any": list(expected_any or []),
-                    "matched": [
-                        coerced
-                        for entry in matches
-                        if entry is not None
-                        for coerced in (_coerce_match_entry(entry),)
-                        if coerced
-                    ],
-                },
-                "reasons": serialized_reasons,
-                "reason_not_triggered": str(reason)
-                if reason is not None
-                else None,
-            }
-        )
+        candidate_payload: dict[str, Any] = {
+            "rule_id": str(rule_id) if rule_id is not None else "",
+            "gates": gates_payload,
+            "gates_passed": bool(gates_passed),
+            "triggers": {
+                "expected_any": list(expected_any or []),
+                "matched": [
+                    coerced
+                    for entry in matches
+                    if entry is not None
+                    for coerced in (_coerce_match_entry(entry),)
+                    if coerced
+                ],
+            },
+            "reasons": serialized_reasons,
+            "reason_not_triggered": str(reason) if reason is not None else None,
+        }
+
+        channel_value = _coerce_channel_value(raw_channel)
+        if channel_value is not None:
+            candidate_payload["channel"] = channel_value
+
+        salience_value = _coerce_salience_value(raw_salience)
+        if salience_value is not None:
+            candidate_payload["salience"] = salience_value
+
+        candidates_payload.append(candidate_payload)
 
     return {
         "ruleset": {

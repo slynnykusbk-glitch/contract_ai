@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from tests.integration.test_trace_flag_bootstrap import (
     _build_client,
@@ -37,9 +38,25 @@ def _assert_reason_offsets(reasons: list[dict], bucket_key: str) -> None:
     assert seen_offsets, f"expected offsets in {bucket_key} entries"
 
 
+def _assert_pattern_offsets(candidates: list[dict[str, Any]]) -> None:
+    for candidate in candidates:
+        reasons = candidate.get("reasons") or []
+        for reason in reasons:
+            patterns = reason.get("patterns") or []
+            for pattern in patterns:
+                offsets = pattern.get("offsets")
+                assert isinstance(offsets, list)
+                for span in offsets:
+                    assert isinstance(span, list)
+                    assert len(span) == 2
+                    assert all(isinstance(value, int) for value in span)
+
+
 def test_trace_dispatch_reason_offsets_in_buckets():
     previous_flag = os.environ.get("FEATURE_LX_ENGINE")
+    previous_reason_flag = os.environ.get("FEATURE_REASON_OFFSETS")
     os.environ["FEATURE_LX_ENGINE"] = "1"
+    os.environ["FEATURE_REASON_OFFSETS"] = "1"
     client, modules = _build_client("1")
     try:
         payload = {
@@ -52,6 +69,11 @@ def test_trace_dispatch_reason_offsets_in_buckets():
         response = client.post("/api/analyze", headers=_headers(), json=payload)
         assert response.status_code == 200
 
+        body = response.json()
+        timings = ((body.get("meta") or {}).get("timings_ms") or {})
+        assert "dispatch_ms" in timings
+        assert isinstance(timings["dispatch_ms"], (int, float))
+
         cid = response.headers.get("x-cid")
         assert cid
 
@@ -62,6 +84,8 @@ def test_trace_dispatch_reason_offsets_in_buckets():
         dispatch = trace_body.get("dispatch") or {}
         candidates = dispatch.get("candidates") or []
         assert candidates, "expected dispatch candidates"
+
+        _assert_pattern_offsets(candidates)
 
         amount_reasons = _reasons_with_label(candidates, "amount")
         duration_reasons = _reasons_with_label(candidates, "duration")
@@ -78,4 +102,8 @@ def test_trace_dispatch_reason_offsets_in_buckets():
             os.environ.pop("FEATURE_LX_ENGINE", None)
         else:
             os.environ["FEATURE_LX_ENGINE"] = previous_flag
+        if previous_reason_flag is None:
+            os.environ.pop("FEATURE_REASON_OFFSETS", None)
+        else:
+            os.environ["FEATURE_REASON_OFFSETS"] = previous_reason_flag
 

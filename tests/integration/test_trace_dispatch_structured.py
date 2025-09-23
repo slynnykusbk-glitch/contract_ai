@@ -84,3 +84,32 @@ def test_dispatch_trace_limits_and_reason_shape(monkeypatch):
         monkeypatch.delenv("DISPATCH_MAX_CANDIDATES_PER_SEGMENT", raising=False)
         monkeypatch.delenv("DISPATCH_MAX_REASONS_PER_RULE", raising=False)
         importlib.reload(trace_mod)
+
+
+def test_dispatch_reason_offsets_toggle():
+    from contract_review_app import trace_artifacts as trace_mod
+
+    reason = _make_reason(2, 1)
+    candidate = _DummyCandidate(3, (reason,))
+
+    with_offsets = trace_mod.build_dispatch(
+        1, 1, 1, (candidate,), include_reason_offsets=True
+    )
+    candidates = with_offsets.get("candidates") or []
+    assert candidates
+    reasons = candidates[0].get("reasons") or []
+    assert reasons
+    patterns = reasons[0].get("patterns") or []
+    assert patterns and isinstance(patterns[0].get("offsets"), list)
+    assert patterns[0]["offsets"] == [[1, 4]]
+
+    without_offsets = trace_mod.build_dispatch(
+        1, 1, 1, (candidate,), include_reason_offsets=False
+    )
+    candidates_no = without_offsets.get("candidates") or []
+    assert candidates_no
+    reasons_no = candidates_no[0].get("reasons") or []
+    assert reasons_no
+    patterns_no = reasons_no[0].get("patterns") or []
+    assert patterns_no
+    assert "offsets" not in patterns_no[0]

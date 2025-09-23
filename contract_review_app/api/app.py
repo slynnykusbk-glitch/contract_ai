@@ -2289,6 +2289,8 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     dispatch_segments: List[Dict[str, Any]] = []
     dispatch_reasons_by_rule: Dict[str, Dict[Any, Any]] = {}
     dispatch_candidates: List[Dict[str, Any]] = []
+    dispatch_start = time.perf_counter()
+    dispatch_duration = 0.0
     evaluated_rule_ids: Set[str] = set()
     triggered_rule_ids: Set[str] = set()
     active_pack_set: Set[str] = set()
@@ -2396,6 +2398,8 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             )
         except Exception:
             pass
+
+    dispatch_duration = max(time.perf_counter() - dispatch_start, 0.0)
 
     jurisdiction = getattr(snap, "jurisdiction", "") or ""
 
@@ -2969,6 +2973,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
         "classify_ms": round((t2 - t1) * 1000, 2),
         "load_rules_ms": round(load_duration * 1000, 2),
         "run_rules_ms": round(run_duration * 1000, 2),
+        "dispatch_ms": round(dispatch_duration * 1000, 2),
     }
 
     debug_meta = {

@@ -17,14 +17,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
       - run: python -m pip install -U pip
       - run: pip install -r requirements-dev.txt
-      - run: pytest -q contract_review_app/tests/corpus --maxfail=1 --disable-warnings -p no:cov
+      - name: Diagnostics
+        run: |
+          python -V
+          pip --version
+          pip freeze | head -n 50
+          pre-commit --version || python -m pre_commit --version || true
+      - name: Prepare artifact dirs
+        run: mkdir -p TRACE trace timings reports
+      - name: Run corpus tests
+        run: |
+          pytest -q contract_review_app/tests/corpus \
+            --maxfail=1 --disable-warnings -p no:cov \
+            --junitxml=reports/pytest.xml
+      - name: Upload pytest report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: corpus-pytest-report
+          path: reports/pytest.xml
+          if-no-files-found: ignore
       - run: python -m contract_review_app.corpus.ingest --dir data/corpus_demo > corpus_demo_report.txt
       - name: Upload demo corpus report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: corpus_demo_report

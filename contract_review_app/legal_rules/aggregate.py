@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Sequence, Set, Tuple
 
 from contract_review_app.analysis.agenda import (
     AGENDA_ORDER,
@@ -35,6 +35,7 @@ def apply_merge_policy(
     groups: List[str] = []
     spans: List[Tuple[int, int] | None] = []
     sort_keys: List[Tuple[int, int, int, str]] = []
+    entity_keys: List[Set[str]] = []
 
     # precompute sort keys, spans, groups; inject resolved salience into finding
     for finding in items:
@@ -57,6 +58,7 @@ def apply_merge_policy(
         groups.append(group)
         spans.append(span)
         sort_keys.append((AGENDA_ORDER.get(group, 999), -salience, start, rid))
+        entity_keys.append(_entity_key_set(finding))
 
         # persist salience for downstream consumers (non-breaking)
         finding["salience"] = salience
@@ -84,9 +86,20 @@ def apply_merge_policy(
                 break
 
             # when strict_merge=0 we only collapse overlaps within the same agenda group
-            if not strict_merge and groups[idx] != groups[existing_idx]:
-                ptr -= 1
-                continue
+            if not strict_merge:
+                if groups[idx] != groups[existing_idx]:
+                    ptr -= 1
+                    continue
+
+                current_entities = entity_keys[idx]
+                existing_entities = entity_keys[existing_idx]
+                if (
+                    current_entities
+                    and existing_entities
+                    and not (current_entities & existing_entities)
+                ):
+                    ptr -= 1
+                    continue
 
             if span_iou(existing_span, span) >= 0.6:
                 champion = stronger(items[idx], items[existing_idx])
@@ -150,6 +163,59 @@ def _resolve_salience(finding: Mapping[str, Any], group: str) -> int:
             return SALIENCE_MAX
         return value
     return DEFAULT_SALIENCE.get(group, 50)
+
+
+def _entity_key_set(finding: Mapping[str, Any]) -> Set[str]:
+    tokens: Set[str] = set()
+
+    def _add(value: Any) -> None:
+        token = _normalize_entity_token(value)
+        if token:
+            tokens.add(token)
+
+    _add(finding.get("rule_id"))
+    for key in (
+        "entity",
+        "entity_key",
+        "legal_entity",
+        "topic",
+        "issue_id",
+        "canonical_name",
+    ):
+        _add(finding.get(key))
+
+    meta = finding.get("meta")
+    if isinstance(meta, Mapping):
+        for key in (
+            "entity_id",
+            "entity",
+            "entity_key",
+            "legal_entity",
+            "legal_issue",
+            "topic",
+            "subtopic",
+            "issue_id",
+        ):
+            _add(meta.get(key))
+
+    return tokens
+
+
+def _normalize_entity_token(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        token = value.strip().lower()
+        return token or None
+    try:
+        token = str(value).strip().lower()
+    except Exception:
+        return None
+    return token or None
 
 
 # ----------------------- Legacy prioritisation (for rollback) ----------------

@@ -3503,13 +3503,182 @@ async def gpt_draft(inp: DraftRequest):
     return DraftResponse(draft=draft_text)
 
 
+def _unwrap_legacy_payload(payload: MappingABC[str, Any]) -> dict[str, Any]:
+    """Return a shallow copy of the payload, flattening ``payload`` wrappers."""
+
+    data = dict(payload)
+    inner = data.get("payload")
+    if isinstance(inner, MappingABC):
+        merged: dict[str, Any] = dict(inner)
+        for key, value in data.items():
+            if key == "payload":
+                continue
+            merged.setdefault(key, value)
+        return merged
+    return data
+
+
+def _normalize_mode(raw_mode: Any) -> str:
+    if isinstance(raw_mode, str):
+        mode = raw_mode.strip().lower()
+        if mode in {"friendly", "strict"}:
+            return mode
+    return "friendly"
+
+
+def _ensure_clause_text(raw_text: Any) -> tuple[str, str]:
+    text = raw_text if isinstance(raw_text, str) else ""
+    stripped = text.strip()
+    if not stripped:
+        stripped = "Legacy clause placeholder ensuring minimum detail."
+    if len(stripped) < 20:
+        stripped = f"{stripped} Legacy clause context.".strip()
+    if len(stripped) < 20:
+        stripped = (stripped + " Legacy clause context.").strip()
+    return stripped, text.strip()
+
+
+def _normalize_context(raw_ctx: Any, fallback: MappingABC[str, Any]) -> dict[str, str]:
+    ctx = dict(raw_ctx) if isinstance(raw_ctx, MappingABC) else {}
+    law = str(ctx.get("law") or fallback.get("law") or "UK").strip() or "UK"
+    language = str(ctx.get("language") or fallback.get("language") or "en-GB").strip() or "en-GB"
+    contract_type = (
+        ctx.get("contractType")
+        or ctx.get("contract_type")
+        or fallback.get("contractType")
+        or fallback.get("contract_type")
+        or fallback.get("clause_type")
+        or "unknown"
+    )
+    contract_type = str(contract_type or "").strip() or "unknown"
+    return {
+        "law": law,
+        "language": language,
+        "contractType": contract_type,
+    }
+
+
+def _normalize_findings(raw_findings: Any, fallback_text: str) -> list[dict[str, str]]:
+    if not isinstance(raw_findings, list):
+        return []
+    findings: list[dict[str, str]] = []
+    for idx, item in enumerate(raw_findings):
+        if not isinstance(item, MappingABC):
+            continue
+        fid = str(item.get("id") or item.get("rule_id") or item.get("code") or f"legacy-{idx}")
+        title = str(item.get("title") or item.get("rule_name") or item.get("code") or fid)
+        text = str(item.get("text") or item.get("snippet") or fallback_text).strip()
+        if not text:
+            text = fallback_text
+        findings.append({"id": fid, "title": title, "text": text})
+    return findings
+
+
+def _normalize_selection(raw_selection: Any, fallback: MappingABC[str, Any]) -> dict[str, int] | None:
+    candidate = raw_selection if isinstance(raw_selection, MappingABC) else {}
+    start = candidate.get("start") if isinstance(candidate, MappingABC) else None
+    end = candidate.get("end") if isinstance(candidate, MappingABC) else None
+    if start is None and end is None:
+        start = fallback.get("start")
+        end = fallback.get("end")
+
+    def _to_int(value: Any) -> int | None:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    s = _to_int(start)
+    e = _to_int(end)
+    if s is None or e is None or e <= s or s < 0:
+        return None
+    return {"start": s, "end": e}
+
+
+def _coerce_legacy_request(payload: MappingABC[str, Any]) -> tuple[DraftRequest, dict[str, Any]]:
+    clause_value = payload.get("clause") or payload.get("text")
+    clause, original = _ensure_clause_text(clause_value)
+    context = _normalize_context(payload.get("context"), payload)
+    findings = _normalize_findings(payload.get("findings"), clause)
+    selection = _normalize_selection(payload.get("selection"), payload)
+    mode = _normalize_mode(payload.get("mode"))
+
+    data: dict[str, Any] = {
+        "mode": mode,
+        "clause": clause,
+        "context": context,
+        "findings": findings,
+    }
+    if selection:
+        data["selection"] = selection
+
+    req = DraftRequest.model_validate(data)
+    meta = {
+        "original_text": original or clause,
+        "clause_type": str(payload.get("clause_type") or context.get("contractType") or "") or None,
+        "verification_status": payload.get("verification_status"),
+    }
+    return req, meta
+
+
+def _normalize_alias_payload(raw_payload: Any) -> tuple[DraftRequest, dict[str, Any]]:
+    if not isinstance(raw_payload, MappingABC):
+        raise RequestValidationError(
+            [
+                {
+                    "type": "type_error.dict",
+                    "loc": ("body",),
+                    "msg": "Input should be a valid dictionary",
+                    "input": raw_payload,
+                }
+            ]
+        )
+
+    payload = _unwrap_legacy_payload(raw_payload)
+    try:
+        req = DraftRequest.model_validate(payload)
+        clause = payload.get("clause")
+        original = clause.strip() if isinstance(clause, str) and clause.strip() else req.clause
+        context = payload.get("context")
+        clause_type = None
+        if isinstance(context, MappingABC):
+            clause_type = context.get("contractType") or context.get("contract_type")
+        if not clause_type:
+            clause_type = payload.get("clause_type")
+        meta = {
+            "original_text": original,
+            "clause_type": str(clause_type) if clause_type else None,
+            "verification_status": payload.get("verification_status"),
+        }
+        return req, meta
+    except ValidationError:
+        return _coerce_legacy_request(payload)
+
+
 @router.post(
     "/api/gpt-draft",
-    response_model=DraftResponse,
     responses={422: {"model": ProblemDetail}},
 )
-async def gpt_draft_alias(req: DraftRequest):
-    return await gpt_draft(req)
+async def gpt_draft_alias(response: Response, payload: dict[str, Any] = Body(default_factory=dict)):
+    try:
+        req, meta = _normalize_alias_payload(payload)
+    except ValidationError as exc:  # pragma: no cover - forwarded as validation error
+        raise RequestValidationError(exc.errors()) from exc
+
+    resp = await gpt_draft(req)
+    response.headers["x-schema-version"] = SCHEMA_VERSION
+
+    return {
+        "clause_type": meta.get("clause_type"),
+        "original_text": meta.get("original_text") or req.clause,
+        "draft_text": resp.draft,
+        "explanation": "",
+        "score": 0,
+        "status": "ok",
+        "title": None,
+        "verification_status": meta.get("verification_status"),
+        "schema": SCHEMA_VERSION,
+    }
 
 
 @router.post(

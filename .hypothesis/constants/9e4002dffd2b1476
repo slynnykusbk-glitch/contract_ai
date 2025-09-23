@@ -1,4 +1,0 @@
-# file: C:\Users\Ludmila\contract_ai\contract_review_app\legal_rules\jurisdiction.py
-# hypothesis_version: 6.136.7
-
-[120, '1.0.0', '; ', 'FAIL', 'JUR_MISSING', 'JUR_NON_EXCL', 'JUR_NO_SERVICE', 'OK', 'WARN', '\\s+', 'citations', 'code', 'evidence', 'high', 'jurisdiction', 'low', 'medium', 'message', 'rule', 'rule_version', 'severity', 'trace']

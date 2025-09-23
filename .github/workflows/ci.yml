@@ -34,33 +34,8 @@ jobs:
           pip --version
           pip freeze | head -n 50
           pre-commit --version || python -m pre_commit --version || true
-      - name: Pre-commit and lint
-        shell: bash
-        run: |
-          set -eo pipefail
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          else
-            BASE_SHA="$(git rev-parse HEAD^ || echo "")"
-          fi
-
-          # Пытаемся получить список изменённых файлов относительно BASE_SHA
-          if [ -n "$BASE_SHA" ] && git merge-base --is-ancestor "$BASE_SHA" HEAD 2>/dev/null; then
-            CHANGED="$(git diff --name-only "$BASE_SHA"...HEAD || true)"
-          else
-            CHANGED=""
-          fi
-
-          if [ -n "$CHANGED" ]; then
-            echo "Running pre-commit on changed files:"
-            echo "$CHANGED"
-            python -m pre_commit run --files $CHANGED
-          else
-            echo "No merge-base or no changed files, running pre-commit on all files"
-            python -m pre_commit run -a
-          fi
-
-          npm --prefix word_addin_dev run lint
+      - name: Pre-commit (check only)
+        run: pre-commit run --all-files --show-diff-on-failure --color always
       - name: Prepare artifact dirs
         run: mkdir -p TRACE trace timings reports
       - name: Build add-in

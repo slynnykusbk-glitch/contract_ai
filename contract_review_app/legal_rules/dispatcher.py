@@ -445,6 +445,7 @@ def _make_reason(
         offsets: Tuple[Tuple[int, int], ...] = ()
         if pattern_offsets:
             collected: list[Tuple[int, int]] = []
+            seen: set[Tuple[int, int]] = set()
             for start, end in pattern_offsets:
                 try:
                     start_int = int(start)
@@ -453,7 +454,11 @@ def _make_reason(
                     continue
                 if end_int < start_int:
                     continue
-                collected.append((start_int, end_int))
+                span = (start_int, end_int)
+                if span in seen:
+                    continue
+                seen.add(span)
+                collected.append(span)
             if collected:
                 offsets = tuple(sorted(collected))
         patterns = (ReasonPattern(kind=pattern_kind, offsets=offsets),)
@@ -521,6 +526,11 @@ def select_candidate_rules(
     if clause_type:
         labels.add(clause_type)
 
+    amount_entries = _reason_amounts(feats)
+    duration_entries = _reason_durations(feats)
+    law_entries = _reason_codes(feats, "law")
+    jurisdiction_entries = _reason_codes(feats, "jurisdiction")
+
     for label in sorted(labels):
         clause_targets = _LABEL_TO_CLAUSES.get(label, set())
         if clause_targets:
@@ -541,10 +551,10 @@ def select_candidate_rules(
                 reasons,
             )
 
-    if feats.durations:
+    if feats.durations or duration_entries:
         duration_reason = _make_reason(
             labels={"duration"},
-            durations=_reason_durations(feats),
+            durations=duration_entries,
         )
         _collect_from_index(
             token_index,
@@ -553,10 +563,10 @@ def select_candidate_rules(
             reasons,
         )
 
-    if feats.amounts:
+    if feats.amounts or amount_entries:
         amount_reason = _make_reason(
             labels={"amount"},
-            amounts=_reason_amounts(feats),
+            amounts=amount_entries,
         )
         _collect_from_index(
             token_index,
@@ -565,25 +575,29 @@ def select_candidate_rules(
             reasons,
         )
 
+    law_tokens: Set[str] = set()
     for signal in feats.law_signals or []:
-        tokens = _tokenize(signal)
+        law_tokens.update(_tokenize(signal))
+    for entry in law_entries:
+        law_tokens.update(_tokenize(entry.code))
+    if law_tokens:
         law_reason = _make_reason(
             labels={"law"},
             pattern_kind="keyword",
-            law=_reason_codes(feats, "law"),
+            law=law_entries,
         )
-        _collect_from_index(
-            token_index,
-            tokens,
-            lambda _token: law_reason,
-            reasons,
-        )
+        _collect_from_index(token_index, law_tokens, lambda _token: law_reason, reasons)
 
+    juris_tokens: Set[str] = set()
     if feats.jurisdiction:
-        juris_tokens = {feats.jurisdiction.lower()} | _tokenize(feats.jurisdiction)
+        juris_tokens.update({feats.jurisdiction.lower()})
+        juris_tokens.update(_tokenize(feats.jurisdiction))
+    for entry in jurisdiction_entries:
+        juris_tokens.update(_tokenize(entry.code))
+    if juris_tokens:
         juris_reason = _make_reason(
             labels={"jurisdiction"},
-            jurisdiction=_reason_codes(feats, "jurisdiction"),
+            jurisdiction=jurisdiction_entries,
         )
         _collect_from_index(
             jurisdiction_index,

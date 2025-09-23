@@ -80,6 +80,9 @@ _shared_catalog/manifest.xml
 junit.xml
 test-results/
 reports/
+!/reports/
+!/reports/garbage_report.md
+!/reports/garbage_report.json
 
 # ==== Служебные ====
 .DS_Store

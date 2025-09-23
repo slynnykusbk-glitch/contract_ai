@@ -58,3 +58,7 @@ retrieval-eval:
 .PHONY: openapi
 openapi:
 	python scripts/gen_openapi.py
+
+.PHONY: sweep
+sweep:
+	python tools/garbage_sweep.py

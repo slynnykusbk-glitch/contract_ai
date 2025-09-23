@@ -98,6 +98,10 @@ def _spans_overlap(lhs: Tuple[int, int], rhs: Tuple[int, int]) -> bool:
     start_b, end_b = rhs
     if end_a is None or end_b is None:
         return False
+    if start_a is None or start_b is None:
+        return False
+    if end_a == start_a and end_b == start_b:
+        return start_a == start_b
     if end_a <= start_a or end_b <= start_b:
         return False
 

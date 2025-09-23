@@ -2,11 +2,13 @@
 
 ## Summary
 
-- Generated at: ``2025-09-23T20:17:49.091433Z``
-- Total findings: **170**
-- Confidence levels: Medium: 113, High: 41, Low: 16
+- Generated at: ``2025-09-23T21:03:29.203727Z``
+- Total findings: **149**
+- Confidence levels: Medium: 98, High: 35, Low: 16
 
 ## Unused exports (TypeScript)
+
+- _Note_: ts-prune stderr: npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
 
 | Path | Type | Reason | Evidence | Suggested action | Confidence |
 | --- | --- | --- | --- | --- | --- |
@@ -85,31 +87,12 @@
 ## Unused dependencies (TS/Python)
 
 - _Note_: depcheck exited with 255, continuing with parsed stdout
+- _Note_: vulture reported no unused Python symbols at >=65% confidence.
+- _Note_: pip-chill is not available; skipped Python dependency sweep.
 
 | Path | Type | Reason | Evidence | Suggested action | Confidence |
 | --- | --- | --- | --- | --- | --- |
-| word_addin_dev/package.json | npm-devDependency | Dev dependency 'prettier' is not referenced by code or scripts (depcheck). | depcheck unused devDependencies: prettier | Drop from devDependencies or add the missing usage. | High |
-| _deprecated/serve_https_panel.py | python-unused | 383: unused variable 'frame' (100% confidence) | _deprecated/serve_https_panel.py:383: unused variable 'frame' (100% confidence) | Remove dead code or mark it as intentionally retained (e.g., via noqa). | High |
-| _deprecated/serve_https_panel.py | python-unused | 383: unused variable 'signum' (100% confidence) | _deprecated/serve_https_panel.py:383: unused variable 'signum' (100% confidence) | Remove dead code or mark it as intentionally retained (e.g., via noqa). | High |
-| contract_review_app/api/app.py | python-unused | 540: unused import 'run_qa_recheck' (90% confidence) | contract_review_app/api/app.py:540: unused import 'run_qa_recheck' (90% confidence) | Remove dead code or mark it as intentionally retained (e.g., via noqa). | Medium |
-| contract_review_app/core/schemas.py | python-unused | 807: unreachable code after 'return' (100% confidence) | contract_review_app/core/schemas.py:807: unreachable code after 'return' (100% confidence) | Remove dead code or mark it as intentionally retained (e.g., via noqa). | High |
-| contract_review_app/learning/adaptor.py | python-unused | 22: unused import 'errno' (90% confidence) | contract_review_app/learning/adaptor.py:22: unused import 'errno' (90% confidence) | Remove dead code or mark it as intentionally retained (e.g., via noqa). | Medium |
-| contract_review_app/learning/replay_io.py | python-unused | 56: unused variable 'retention_days' (100% confidence) | contract_review_app/learning/replay_io.py:56: unused variable 'retention_days' (100% confidence) | Remove dead code or mark it as intentionally retained (e.g., via noqa). | High |
-| contract_review_app/legal_rules/constraints.py | python-unused | 1382: unused variable '__context' (100% confidence) | contract_review_app/legal_rules/constraints.py:1382: unused variable '__context' (100% confidence) | Remove dead code or mark it as intentionally retained (e.g., via noqa). | High |
-| contract_review_app/reportpdf.py | python-unused | 73: unused variable 'capture_output' (100% confidence) | contract_review_app/reportpdf.py:73: unused variable 'capture_output' (100% confidence) | Remove dead code or mark it as intentionally retained (e.g., via noqa). | High |
-| requirements.txt | python-dependency | Package 'black' is installed but no imports were found (modules: black). | ripgrep found no import hits | Confirm the dependency is needed; consider moving to optional or removing it. | Medium |
-| requirements.txt | python-dependency | Package 'httptools' is installed but no imports were found (modules: httptools). | ripgrep found no import hits | Confirm the dependency is needed; consider moving to optional or removing it. | Medium |
-| requirements.txt | python-dependency | Package 'isort' is installed but no imports were found (modules: isort). | ripgrep found no import hits | Confirm the dependency is needed; consider moving to optional or removing it. | Medium |
-| requirements.txt | python-dependency | Package 'mypy' is installed but no imports were found (modules: edfc647aaf02b20aa651__mypyc, mypy, mypyc). | ripgrep found no import hits | Confirm the dependency is needed; consider moving to optional or removing it. | Medium |
-| requirements.txt | python-dependency | Package 'pipdeptree' is installed but no imports were found (modules: pipdeptree). | ripgrep found no import hits | Confirm the dependency is needed; consider moving to optional or removing it. | Medium |
-| requirements.txt | python-dependency | Package 'pyright' is installed but no imports were found (modules: pyright). | ripgrep found no import hits | Confirm the dependency is needed; consider moving to optional or removing it. | Medium |
-| requirements.txt | python-dependency | Package 'pytest-cov' is installed but no imports were found (modules: pytest_cov). | ripgrep found no import hits | Confirm the dependency is needed; consider moving to optional or removing it. | Medium |
-| requirements.txt | python-dependency | Package 'ruff' is installed but no imports were found (modules: ruff). | ripgrep found no import hits | Confirm the dependency is needed; consider moving to optional or removing it. | Medium |
-| requirements.txt | python-dependency | Package 'uvicorn' is installed but no imports were found (modules: uvicorn). | ripgrep found no import hits | Confirm the dependency is needed; consider moving to optional or removing it. | Medium |
-| requirements.txt | python-dependency | Package 'uvloop' is installed but no imports were found (modules: uvloop). | ripgrep found no import hits | Confirm the dependency is needed; consider moving to optional or removing it. | Medium |
-| requirements.txt | python-dependency | Package 'vulture' is installed but no imports were found (modules: vulture). | ripgrep found no import hits | Confirm the dependency is needed; consider moving to optional or removing it. | Medium |
-| requirements.txt | python-dependency | Package 'watchfiles' is installed but no imports were found (modules: watchfiles). | ripgrep found no import hits | Confirm the dependency is needed; consider moving to optional or removing it. | Medium |
-| requirements.txt | python-dependency | Package 'websockets' is installed but no imports were found (modules: websockets). | ripgrep found no import hits | Confirm the dependency is needed; consider moving to optional or removing it. | Medium |
+| word_addin_dev/package.json | npm-devDependency | Dev dependency 'ts-prune' is not referenced by code or scripts (depcheck). | depcheck unused devDependencies: ts-prune | Drop from devDependencies or add the missing usage. | High |
 
 ## Orphan tests & snapshots
 
@@ -203,10 +186,10 @@
 
 | Path | Type | Reason | Evidence | Suggested action | Confidence |
 | --- | --- | --- | --- | --- | --- |
-| contract_ai_tree.txt | large-file | File size 1.10 MB | last_modified=2025-09-17, name references=1 | Confirm this belongs to active sources; otherwise move to _archive/. | Medium |
+| contract_ai_tree.txt | large-file | File size 1.10 MB | last_modified=2025-09-18, name references=1 | Confirm this belongs to active sources; otherwise move to _archive/. | Medium |
+| contract.docx | doc-asset | Office/PDF fixture stored at repository root. | Consider relocating to tests/fixtures or _archive. | Move to tests/fixtures or _archive/YYYY-MM for clarity. | Medium |
 | бокова панель AI.docx | doc-asset | Office/PDF fixture stored at repository root. | Consider relocating to tests/fixtures or _archive. | Move to tests/fixtures or _archive/YYYY-MM for clarity. | Medium |
 | ~$ntract.docx | doc-asset | Office/PDF fixture stored at repository root. | Consider relocating to tests/fixtures or _archive. | Move to tests/fixtures or _archive/YYYY-MM for clarity. | Medium |
-| contract.docx | doc-asset | Office/PDF fixture stored at repository root. | Consider relocating to tests/fixtures or _archive. | Move to tests/fixtures or _archive/YYYY-MM for clarity. | Medium |
 
 ## Fragile tests
 

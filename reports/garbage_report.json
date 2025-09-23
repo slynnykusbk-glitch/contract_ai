@@ -1,15 +1,15 @@
 {
   "summary": {
-    "generated_at": "2025-09-23T20:17:49.091433Z",
-    "total_findings": 170,
+    "generated_at": "2025-09-23T21:03:29.203727Z",
+    "total_findings": 149,
     "confidence_breakdown": {
-      "Medium": 113,
-      "High": 41,
+      "Medium": 98,
+      "High": 35,
       "Low": 16
     },
     "sections": {
       "unused_exports": 71,
-      "unused_dependencies": 22,
+      "unused_dependencies": 1,
       "orphan_tests_and_snapshots": 64,
       "orphan_assets": 2,
       "workflows": 5,
@@ -874,7 +874,9 @@
           }
         }
       ],
-      "notes": []
+      "notes": [
+        "ts-prune stderr: npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm."
+      ]
     },
     "unused_dependencies": {
       "title": "Unused dependencies (TS/Python)",
@@ -882,182 +884,16 @@
         {
           "path": "word_addin_dev/package.json",
           "type": "npm-devDependency",
-          "reason": "Dev dependency 'prettier' is not referenced by code or scripts (depcheck).",
-          "evidence": "depcheck unused devDependencies: prettier",
+          "reason": "Dev dependency 'ts-prune' is not referenced by code or scripts (depcheck).",
+          "evidence": "depcheck unused devDependencies: ts-prune",
           "suggested_action": "Drop from devDependencies or add the missing usage.",
           "confidence": "High"
-        },
-        {
-          "path": "_deprecated/serve_https_panel.py",
-          "type": "python-unused",
-          "reason": "383: unused variable 'frame' (100% confidence)",
-          "evidence": "_deprecated/serve_https_panel.py:383: unused variable 'frame' (100% confidence)",
-          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
-          "confidence": "High"
-        },
-        {
-          "path": "_deprecated/serve_https_panel.py",
-          "type": "python-unused",
-          "reason": "383: unused variable 'signum' (100% confidence)",
-          "evidence": "_deprecated/serve_https_panel.py:383: unused variable 'signum' (100% confidence)",
-          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
-          "confidence": "High"
-        },
-        {
-          "path": "contract_review_app/api/app.py",
-          "type": "python-unused",
-          "reason": "540: unused import 'run_qa_recheck' (90% confidence)",
-          "evidence": "contract_review_app/api/app.py:540: unused import 'run_qa_recheck' (90% confidence)",
-          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
-          "confidence": "Medium"
-        },
-        {
-          "path": "contract_review_app/core/schemas.py",
-          "type": "python-unused",
-          "reason": "807: unreachable code after 'return' (100% confidence)",
-          "evidence": "contract_review_app/core/schemas.py:807: unreachable code after 'return' (100% confidence)",
-          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
-          "confidence": "High"
-        },
-        {
-          "path": "contract_review_app/learning/adaptor.py",
-          "type": "python-unused",
-          "reason": "22: unused import 'errno' (90% confidence)",
-          "evidence": "contract_review_app/learning/adaptor.py:22: unused import 'errno' (90% confidence)",
-          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
-          "confidence": "Medium"
-        },
-        {
-          "path": "contract_review_app/learning/replay_io.py",
-          "type": "python-unused",
-          "reason": "56: unused variable 'retention_days' (100% confidence)",
-          "evidence": "contract_review_app/learning/replay_io.py:56: unused variable 'retention_days' (100% confidence)",
-          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
-          "confidence": "High"
-        },
-        {
-          "path": "contract_review_app/legal_rules/constraints.py",
-          "type": "python-unused",
-          "reason": "1382: unused variable '__context' (100% confidence)",
-          "evidence": "contract_review_app/legal_rules/constraints.py:1382: unused variable '__context' (100% confidence)",
-          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
-          "confidence": "High"
-        },
-        {
-          "path": "contract_review_app/reportpdf.py",
-          "type": "python-unused",
-          "reason": "73: unused variable 'capture_output' (100% confidence)",
-          "evidence": "contract_review_app/reportpdf.py:73: unused variable 'capture_output' (100% confidence)",
-          "suggested_action": "Remove dead code or mark it as intentionally retained (e.g., via noqa).",
-          "confidence": "High"
-        },
-        {
-          "path": "requirements.txt",
-          "type": "python-dependency",
-          "reason": "Package 'black' is installed but no imports were found (modules: black).",
-          "evidence": "ripgrep found no import hits",
-          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
-          "confidence": "Medium"
-        },
-        {
-          "path": "requirements.txt",
-          "type": "python-dependency",
-          "reason": "Package 'httptools' is installed but no imports were found (modules: httptools).",
-          "evidence": "ripgrep found no import hits",
-          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
-          "confidence": "Medium"
-        },
-        {
-          "path": "requirements.txt",
-          "type": "python-dependency",
-          "reason": "Package 'isort' is installed but no imports were found (modules: isort).",
-          "evidence": "ripgrep found no import hits",
-          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
-          "confidence": "Medium"
-        },
-        {
-          "path": "requirements.txt",
-          "type": "python-dependency",
-          "reason": "Package 'mypy' is installed but no imports were found (modules: edfc647aaf02b20aa651__mypyc, mypy, mypyc).",
-          "evidence": "ripgrep found no import hits",
-          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
-          "confidence": "Medium"
-        },
-        {
-          "path": "requirements.txt",
-          "type": "python-dependency",
-          "reason": "Package 'pipdeptree' is installed but no imports were found (modules: pipdeptree).",
-          "evidence": "ripgrep found no import hits",
-          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
-          "confidence": "Medium"
-        },
-        {
-          "path": "requirements.txt",
-          "type": "python-dependency",
-          "reason": "Package 'pyright' is installed but no imports were found (modules: pyright).",
-          "evidence": "ripgrep found no import hits",
-          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
-          "confidence": "Medium"
-        },
-        {
-          "path": "requirements.txt",
-          "type": "python-dependency",
-          "reason": "Package 'pytest-cov' is installed but no imports were found (modules: pytest_cov).",
-          "evidence": "ripgrep found no import hits",
-          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
-          "confidence": "Medium"
-        },
-        {
-          "path": "requirements.txt",
-          "type": "python-dependency",
-          "reason": "Package 'ruff' is installed but no imports were found (modules: ruff).",
-          "evidence": "ripgrep found no import hits",
-          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
-          "confidence": "Medium"
-        },
-        {
-          "path": "requirements.txt",
-          "type": "python-dependency",
-          "reason": "Package 'uvicorn' is installed but no imports were found (modules: uvicorn).",
-          "evidence": "ripgrep found no import hits",
-          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
-          "confidence": "Medium"
-        },
-        {
-          "path": "requirements.txt",
-          "type": "python-dependency",
-          "reason": "Package 'uvloop' is installed but no imports were found (modules: uvloop).",
-          "evidence": "ripgrep found no import hits",
-          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
-          "confidence": "Medium"
-        },
-        {
-          "path": "requirements.txt",
-          "type": "python-dependency",
-          "reason": "Package 'vulture' is installed but no imports were found (modules: vulture).",
-          "evidence": "ripgrep found no import hits",
-          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
-          "confidence": "Medium"
-        },
-        {
-          "path": "requirements.txt",
-          "type": "python-dependency",
-          "reason": "Package 'watchfiles' is installed but no imports were found (modules: watchfiles).",
-          "evidence": "ripgrep found no import hits",
-          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
-          "confidence": "Medium"
-        },
-        {
-          "path": "requirements.txt",
-          "type": "python-dependency",
-          "reason": "Package 'websockets' is installed but no imports were found (modules: websockets).",
-          "evidence": "ripgrep found no import hits",
-          "suggested_action": "Confirm the dependency is needed; consider moving to optional or removing it.",
-          "confidence": "Medium"
         }
       ],
       "notes": [
-        "depcheck exited with 255, continuing with parsed stdout"
+        "depcheck exited with 255, continuing with parsed stdout",
+        "vulture reported no unused Python symbols at >=65% confidence.",
+        "pip-chill is not available; skipped Python dependency sweep."
       ]
     },
     "orphan_tests_and_snapshots": {
@@ -1655,8 +1491,16 @@
           "path": "contract_ai_tree.txt",
           "type": "large-file",
           "reason": "File size 1.10 MB",
-          "evidence": "last_modified=2025-09-17, name references=1",
+          "evidence": "last_modified=2025-09-18, name references=1",
           "suggested_action": "Confirm this belongs to active sources; otherwise move to _archive/.",
+          "confidence": "Medium"
+        },
+        {
+          "path": "contract.docx",
+          "type": "doc-asset",
+          "reason": "Office/PDF fixture stored at repository root.",
+          "evidence": "Consider relocating to tests/fixtures or _archive.",
+          "suggested_action": "Move to tests/fixtures or _archive/YYYY-MM for clarity.",
           "confidence": "Medium"
         },
         {
@@ -1669,14 +1513,6 @@
         },
         {
           "path": "~$ntract.docx",
-          "type": "doc-asset",
-          "reason": "Office/PDF fixture stored at repository root.",
-          "evidence": "Consider relocating to tests/fixtures or _archive.",
-          "suggested_action": "Move to tests/fixtures or _archive/YYYY-MM for clarity.",
-          "confidence": "Medium"
-        },
-        {
-          "path": "contract.docx",
           "type": "doc-asset",
           "reason": "Office/PDF fixture stored at repository root.",
           "evidence": "Consider relocating to tests/fixtures or _archive.",

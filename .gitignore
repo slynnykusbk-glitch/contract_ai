@@ -87,6 +87,11 @@ _shared_catalog/manifest.xml
 # ==== Артефакты тестов/отчётов ====
 junit.xml
 test-results/
+.hypothesis/
+**/.hypothesis/
+.pytest_cache/
+**/.pytest_cache/
+
 reports/**
 !reports/
 !/reports/garbage_report.md

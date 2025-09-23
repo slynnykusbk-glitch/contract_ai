@@ -45,21 +45,22 @@ jobs:
           pytest -q \
             tests/test_analyze_api.py tests/panel/test_panel_analyze_smoke.py \
             --junitxml=reports/pytest.xml || exit 1
+
       - name: Upload pytest report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pytest-report
           path: reports/pytest.xml
-          if-no-files-found: ignore
+
       - name: Upload TRACE artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: trace-artifacts
           path: |
-            TRACE/**
-            trace/**
-            timings/**
+
+            TRACE
+            trace
+            timings
           if-no-files-found: ignore
-          retention-days: 7

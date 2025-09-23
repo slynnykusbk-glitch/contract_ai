@@ -38,4 +38,23 @@ jobs:
       - name: Build panel
         run: npm run build:panel
       - name: Run tests
-        run: pytest -q tests/test_analyze_api.py tests/panel/test_panel_analyze_smoke.py
+        run: |
+          mkdir -p reports
+          pytest -q tests/test_analyze_api.py tests/panel/test_panel_analyze_smoke.py \
+            --junitxml=reports/pytest.xml
+      - name: Upload pytest report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-report
+          path: reports/pytest.xml
+      - name: Upload TRACE artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trace-artifacts
+          path: |
+            TRACE
+            trace
+            timings
+          if-no-files-found: ignore

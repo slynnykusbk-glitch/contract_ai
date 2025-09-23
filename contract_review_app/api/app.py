@@ -2306,6 +2306,8 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     candidate_rules_by_segment: Dict[int, Set[str]] = {}
     dispatcher_mod = None
     features_by_segment: Dict[int, LxFeatureSet] = {}
+    if lx_features is not None:
+        features_by_segment = getattr(lx_features, "by_segment", {}) or {}
     coverage_segments: List[Dict[str, Any]] = []
     coverage_candidates_by_segment: List[Set[str]] = []
     if FEATURE_LX_ENGINE and lx_features is not None:
@@ -2315,7 +2317,6 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
             dispatcher_mod = None
         else:
             dispatcher_mod = _dispatcher_mod
-            features_by_segment = getattr(lx_features, "by_segment", {}) or {}
 
     for idx, seg in enumerate(parsed.segments):
         seg_id = int(seg.get("id", 0) or 0)

@@ -32,11 +32,7 @@ def test_segment_label_mapping_is_stable():
         return {sid: list(fs.labels) for sid, fs in doc_features.by_segment.items()}
 
     def _collect_doc_labels(doc_features: LxDocFeatures) -> set[str]:
-        return {
-            label
-            for fs in doc_features.by_segment.values()
-            for label in fs.labels
-        }
+        return {label for fs in doc_features.by_segment.values() for label in fs.labels}
 
     assert _collect_doc_labels(original_features) == _collect_doc_labels(
         reordered_features

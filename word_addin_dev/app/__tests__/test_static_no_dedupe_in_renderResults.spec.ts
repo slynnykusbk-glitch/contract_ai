@@ -5,10 +5,7 @@ import { dirname, resolve } from 'path';
 
 describe('renderResults static guard', () => {
   it('does not dedupe or sort findings', () => {
-    const filePath = resolve(
-      dirname(fileURLToPath(import.meta.url)),
-      '../assets/taskpane.ts'
-    );
+    const filePath = resolve(dirname(fileURLToPath(import.meta.url)), '../assets/taskpane.ts');
     const text = readFileSync(filePath, 'utf-8');
     const start = text.indexOf('export function renderResults');
     expect(start).toBeGreaterThan(-1);

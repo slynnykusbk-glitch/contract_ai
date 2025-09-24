@@ -27,9 +27,11 @@ def _normalize(value: str) -> str:
     normalized = unicodedata.normalize("NFC", value)
     for src, dst in SMART_REPLACEMENTS.items():
         normalized = normalized.replace(src, dst)
-    normalized = normalized.replace("\u00A0", " ")
-    normalized = normalized.replace("\u200D", "")
-    normalized = re.sub(r"\biso\s*\(\s*27001\s*\)", "iso 27001", normalized, flags=re.IGNORECASE)
+    normalized = normalized.replace("\u00a0", " ")
+    normalized = normalized.replace("\u200d", "")
+    normalized = re.sub(
+        r"\biso\s*\(\s*27001\s*\)", "iso 27001", normalized, flags=re.IGNORECASE
+    )
     normalized = normalized.lower()
     normalized = re.sub(r"\s+", " ", normalized)
     return normalized.strip()
@@ -98,7 +100,11 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": set(),
     },
     "interpretation": {
-        "high_priority_synonyms": ["interpretation", "construction", "rules of interpretation"],
+        "high_priority_synonyms": [
+            "interpretation",
+            "construction",
+            "rules of interpretation",
+        ],
         "regex": [],
         "domains": set(),
     },
@@ -113,17 +119,30 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": set(),
     },
     "termination_convenience": {
-        "high_priority_synonyms": ["termination for convenience", "without cause", "no-fault termination"],
+        "high_priority_synonyms": [
+            "termination for convenience",
+            "without cause",
+            "no-fault termination",
+        ],
         "regex": [],
         "domains": set(),
     },
     "termination_breach": {
-        "high_priority_synonyms": ["termination for breach", "material breach", "cure period"],
+        "high_priority_synonyms": [
+            "termination for breach",
+            "material breach",
+            "cure period",
+        ],
         "regex": [],
         "domains": set(),
     },
     "termination_insolvency": {
-        "high_priority_synonyms": ["insolvency", "bankruptcy", "winding-up", "administration"],
+        "high_priority_synonyms": [
+            "insolvency",
+            "bankruptcy",
+            "winding-up",
+            "administration",
+        ],
         "regex": [],
         "domains": set(),
     },
@@ -152,7 +171,11 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": set(),
     },
     "jurisdiction": {
-        "high_priority_synonyms": ["jurisdiction", "exclusive jurisdiction", "non-exclusive jurisdiction"],
+        "high_priority_synonyms": [
+            "jurisdiction",
+            "exclusive jurisdiction",
+            "non-exclusive jurisdiction",
+        ],
         "regex": [],
         "domains": set(),
     },
@@ -195,7 +218,11 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": set(),
     },
     "variation": {
-        "high_priority_synonyms": ["variation", "amendment", "change to this agreement"],
+        "high_priority_synonyms": [
+            "variation",
+            "amendment",
+            "change to this agreement",
+        ],
         "regex": [],
         "domains": set(),
     },
@@ -215,17 +242,28 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": set(),
     },
     "third_party_rights": {
-        "high_priority_synonyms": ["third party rights", "contracts (rights of third parties) act 1999"],
+        "high_priority_synonyms": [
+            "third party rights",
+            "contracts (rights of third parties) act 1999",
+        ],
         "regex": [],
         "domains": set(),
     },
     "confidentiality": {
-        "high_priority_synonyms": ["confidentiality", "confidential information", "non-disclosure"],
+        "high_priority_synonyms": [
+            "confidentiality",
+            "confidential information",
+            "non-disclosure",
+        ],
         "regex": [],
         "domains": set(),
     },
     "permitted_disclosures": {
-        "high_priority_synonyms": ["permitted disclosure", "required by law", "regulator"],
+        "high_priority_synonyms": [
+            "permitted disclosure",
+            "required by law",
+            "regulator",
+        ],
         "regex": [],
         "domains": set(),
     },
@@ -321,7 +359,13 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": set(),
     },
     "price_changes_indexation": {
-        "high_priority_synonyms": ["indexation", "rpi", "cpi", "price increase", "price adjustment"],
+        "high_priority_synonyms": [
+            "indexation",
+            "rpi",
+            "cpi",
+            "price increase",
+            "price adjustment",
+        ],
         "regex": [],
         "domains": set(),
     },
@@ -341,7 +385,11 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": set(),
     },
     "change_control": {
-        "high_priority_synonyms": ["change control", "change procedure", "variation form"],
+        "high_priority_synonyms": [
+            "change control",
+            "change procedure",
+            "variation form",
+        ],
         "regex": [],
         "domains": set(),
     },
@@ -387,7 +435,11 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": set(),
     },
     "risk_and_title": {
-        "high_priority_synonyms": ["risk and title", "passing of risk", "title transfer"],
+        "high_priority_synonyms": [
+            "risk and title",
+            "passing of risk",
+            "title transfer",
+        ],
         "regex": [],
         "domains": set(),
     },
@@ -421,7 +473,12 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": set(),
     },
     "security_information": {
-        "high_priority_synonyms": ["information security", "security requirements", "iso27001", "cyber essentials"],
+        "high_priority_synonyms": [
+            "information security",
+            "security requirements",
+            "iso27001",
+            "cyber essentials",
+        ],
         "regex": SECURITY_INFORMATION_REGEXES,
         "domains": {"it", "dp"},
     },
@@ -441,7 +498,12 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": {"public"},
     },
     "ip_ownership": {
-        "high_priority_synonyms": ["intellectual property", "ownership of ipr", "background ip", "foreground ip"],
+        "high_priority_synonyms": [
+            "intellectual property",
+            "ownership of ipr",
+            "background ip",
+            "foreground ip",
+        ],
         "regex": [],
         "domains": {"ip"},
     },
@@ -466,12 +528,19 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": {"it"},
     },
     "return_or_destruction": {
-        "high_priority_synonyms": ["return and destruction", "return/delete", "upon termination return"],
+        "high_priority_synonyms": [
+            "return and destruction",
+            "return/delete",
+            "upon termination return",
+        ],
         "regex": [],
         "domains": set(),
     },
     "modern_slavery": {
-        "high_priority_synonyms": ["modern slavery act", "slavery and human trafficking"],
+        "high_priority_synonyms": [
+            "modern slavery act",
+            "slavery and human trafficking",
+        ],
         "regex": [],
         "domains": {"compliance"},
     },
@@ -481,7 +550,11 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": {"compliance"},
     },
     "anti_tax_evasion": {
-        "high_priority_synonyms": ["criminal finances act", "facilitation of tax evasion", "anti-tax evasion"],
+        "high_priority_synonyms": [
+            "criminal finances act",
+            "facilitation of tax evasion",
+            "anti-tax evasion",
+        ],
         "regex": [],
         "domains": {"compliance"},
     },
@@ -536,7 +609,10 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": {"dp"},
     },
     "dp_instructions": {
-        "high_priority_synonyms": ["process only on instructions", "documented instructions"],
+        "high_priority_synonyms": [
+            "process only on instructions",
+            "documented instructions",
+        ],
         "regex": [],
         "domains": {"dp"},
     },
@@ -546,7 +622,11 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": {"dp"},
     },
     "dp_security_measures": {
-        "high_priority_synonyms": ["security measures", "technical and organisational", "tom"],
+        "high_priority_synonyms": [
+            "security measures",
+            "technical and organisational",
+            "tom",
+        ],
         "regex": [],
         "domains": {"dp"},
     },
@@ -561,7 +641,12 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": {"dp"},
     },
     "dp_dsr": {
-        "high_priority_synonyms": ["data subject rights", "access", "rectification", "erasure"],
+        "high_priority_synonyms": [
+            "data subject rights",
+            "access",
+            "rectification",
+            "erasure",
+        ],
         "regex": [],
         "domains": {"dp"},
     },
@@ -596,17 +681,30 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": {"dp"},
     },
     "dp_international_transfers": {
-        "high_priority_synonyms": ["international transfer", "idta", "sccs", "restricted transfer"],
+        "high_priority_synonyms": [
+            "international transfer",
+            "idta",
+            "sccs",
+            "restricted transfer",
+        ],
         "regex": [],
         "domains": {"dp"},
     },
     "dp_localisation": {
-        "high_priority_synonyms": ["data residency", "data localisation", "localization"],
+        "high_priority_synonyms": [
+            "data residency",
+            "data localisation",
+            "localization",
+        ],
         "regex": [],
         "domains": {"dp"},
     },
     "dp_security_reviews": {
-        "high_priority_synonyms": ["security reviews", "review dates", "review frequency"],
+        "high_priority_synonyms": [
+            "security reviews",
+            "review dates",
+            "review frequency",
+        ],
         "regex": [],
         "domains": {"dp"},
     },
@@ -666,12 +764,19 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": {"it"},
     },
     "nhs_safeguarding": {
-        "high_priority_synonyms": ["safeguarding", "vulnerable adults", "vulnerable children"],
+        "high_priority_synonyms": [
+            "safeguarding",
+            "vulnerable adults",
+            "vulnerable children",
+        ],
         "regex": [],
         "domains": {"nhs"},
     },
     "nhs_patient_confidentiality": {
-        "high_priority_synonyms": ["patient confidentiality", "clinical confidentiality"],
+        "high_priority_synonyms": [
+            "patient confidentiality",
+            "clinical confidentiality",
+        ],
         "regex": [],
         "domains": {"nhs"},
     },
@@ -736,12 +841,20 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": {"procurement"},
     },
     "most_favoured_customer": {
-        "high_priority_synonyms": ["most favoured customer", "most favoured buyer", "mfn"],
+        "high_priority_synonyms": [
+            "most favoured customer",
+            "most favoured buyer",
+            "mfn",
+        ],
         "regex": [],
         "domains": {"procurement"},
     },
     "open_book_pricing": {
-        "high_priority_synonyms": ["open-book", "cost transparency", "open book pricing"],
+        "high_priority_synonyms": [
+            "open-book",
+            "cost transparency",
+            "open book pricing",
+        ],
         "regex": [],
         "domains": {"procurement"},
     },
@@ -776,7 +889,11 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": {"real_estate"},
     },
     "tenancy_repairs": {
-        "high_priority_synonyms": ["repairs", "landlord obligations", "tenant obligations"],
+        "high_priority_synonyms": [
+            "repairs",
+            "landlord obligations",
+            "tenant obligations",
+        ],
         "regex": [],
         "domains": {"real_estate"},
     },
@@ -851,7 +968,10 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": {"construction"},
     },
     "construction_health_safety_cdm": {
-        "high_priority_synonyms": ["cdm regulations", "construction design and management"],
+        "high_priority_synonyms": [
+            "cdm regulations",
+            "construction design and management",
+        ],
         "regex": [],
         "domains": {"construction"},
     },
@@ -915,12 +1035,20 @@ LABELS_CANON: dict[str, dict[str, object]] = {
         "domains": {"energy"},
     },
     "payment_security": {
-        "high_priority_synonyms": ["performance bond", "parent guarantee", "payment security"],
+        "high_priority_synonyms": [
+            "performance bond",
+            "parent guarantee",
+            "payment security",
+        ],
         "regex": [],
         "domains": {"finance"},
     },
     "insurance_types_limits": {
-        "high_priority_synonyms": ["employers' liability", "public liability", "professional indemnity"],
+        "high_priority_synonyms": [
+            "employers' liability",
+            "public liability",
+            "professional indemnity",
+        ],
         "regex": [],
         "domains": {"finance"},
     },
@@ -977,4 +1105,3 @@ def resolve_labels(text: str, heading: str | None) -> set[str]:
                 break
 
     return resolved
-

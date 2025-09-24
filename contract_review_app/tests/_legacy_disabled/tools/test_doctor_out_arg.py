@@ -33,4 +33,3 @@ def test_prefix_mode(tmp_path):
     data = json.loads(f.read_text(encoding="utf-8"))
     assert "generated_at_utc" in data
     assert (prefix.parent / "state.log").exists()
-

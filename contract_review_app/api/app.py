@@ -248,9 +248,9 @@ class NormalizeAndTraceMiddleware(BaseHTTPMiddleware):
                             nth_value = scope.get("nth")
                             if unit_lower == "sentence" and nth_value is not None:
                                 method = "nth"
-                                if isinstance(nth_value, (int, float)) and not isinstance(
-                                    nth_value, bool
-                                ):
+                                if isinstance(
+                                    nth_value, (int, float)
+                                ) and not isinstance(nth_value, bool):
                                     anchor_nth = int(nth_value)
                                 else:
                                     try:
@@ -787,7 +787,6 @@ register_error_handlers(app)
 
 # --- begin minimal patch for /catalog ---
 from pathlib import Path
-from fastapi.staticfiles import StaticFiles
 
 
 def _resolve_catalog_dir() -> Path:
@@ -800,7 +799,9 @@ def _resolve_catalog_dir() -> Path:
     here = Path(__file__).resolve()
     candidates = [
         here.parents[2] / "_shared_catalog",  # <repo>\_shared_catalog
-        Path.home() / "contract_ai" / "_shared_catalog",  # %USERPROFILE%\contract_ai\_shared_catalog
+        Path.home()
+        / "contract_ai"
+        / "_shared_catalog",  # %USERPROFILE%\contract_ai\_shared_catalog
     ]
     for p in candidates:
         try:
@@ -2142,6 +2143,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                 continue
             payload[key_str] = value
         return payload
+
     try:
         req = AnalyzeRequest.model_validate(data)
     except ValidationError as e:
@@ -2351,7 +2353,9 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                     dispatch_entities = _l0_entities_snapshot(feats)
                     limited_refs = list(refs)
                     if DISPATCH_MAX_CANDIDATES_PER_SEGMENT > 0:
-                        limited_refs = limited_refs[:DISPATCH_MAX_CANDIDATES_PER_SEGMENT]
+                        limited_refs = limited_refs[
+                            :DISPATCH_MAX_CANDIDATES_PER_SEGMENT
+                        ]
                     segment_candidates: list[Dict[str, Any]] = []
                     for ref in limited_refs:
                         reasons_list = list(ref.reasons)
@@ -2543,7 +2547,10 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     run_duration = 0.0
     rule_lookup: Dict[str, Dict[str, Any]] = {}
     try:
-        from contract_review_app.legal_rules import loader as yaml_loader, engine as yaml_engine
+        from contract_review_app.legal_rules import (
+            loader as yaml_loader,
+            engine as yaml_engine,
+        )
 
         # --- YAML rule engine integration (HF-0 + L1 merged) ---
         need_load = False
@@ -2588,9 +2595,7 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
 
         # 2) Candidate narrowing and per-segment evaluation
         doc_type_val = (
-            getattr(snap, "doc_type", None)
-            or getattr(snap, "type", "")
-            or ""
+            getattr(snap, "doc_type", None) or getattr(snap, "type", "") or ""
         )
 
         for seg_id, seg_text, seg_start, seg in segments_for_yaml:
@@ -2760,7 +2765,9 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                                 "lang": lang_gate,
                                 "doctypes": doctypes_gate,
                             },
-                            "gates_passed": bool(packs_gate and lang_gate and doctypes_gate),
+                            "gates_passed": bool(
+                                packs_gate and lang_gate and doctypes_gate
+                            ),
                             "channel": rule_spec.get("channel"),
                             "salience": rule_spec.get("salience"),
                             "expected_any": expected_any,
@@ -2773,10 +2780,11 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
                                             str(rule_id), {}
                                         ).values()
                                     )[
-                                        :
-                                        DISPATCH_MAX_REASONS_PER_RULE
-                                        if DISPATCH_MAX_REASONS_PER_RULE > 0
-                                        else None
+                                        : (
+                                            DISPATCH_MAX_REASONS_PER_RULE
+                                            if DISPATCH_MAX_REASONS_PER_RULE > 0
+                                            else None
+                                        )
                                     ]
                                 )
                             ],
@@ -2949,7 +2957,9 @@ def api_analyze(request: Request, body: dict = Body(..., example={"text": "Hello
     if FEATURE_LX_ENGINE and LX_L2_CONSTRAINTS:
         try:
             pg = constraints.build_param_graph(snap, parsed.segments, lx_features)
-            l2_results, constraint_checks_iter = constraints.eval_constraints(pg, findings)
+            l2_results, constraint_checks_iter = constraints.eval_constraints(
+                pg, findings
+            )
             constraint_checks_populated = True
             l2_internal = [
                 item for item in l2_results if isinstance(item, InternalFinding)
@@ -3622,7 +3632,10 @@ def _ensure_clause_text(raw_text: Any) -> tuple[str, str]:
 def _normalize_context(raw_ctx: Any, fallback: MappingABC[str, Any]) -> dict[str, str]:
     ctx = dict(raw_ctx) if isinstance(raw_ctx, MappingABC) else {}
     law = str(ctx.get("law") or fallback.get("law") or "UK").strip() or "UK"
-    language = str(ctx.get("language") or fallback.get("language") or "en-GB").strip() or "en-GB"
+    language = (
+        str(ctx.get("language") or fallback.get("language") or "en-GB").strip()
+        or "en-GB"
+    )
     contract_type = (
         ctx.get("contractType")
         or ctx.get("contract_type")
@@ -3646,8 +3659,12 @@ def _normalize_findings(raw_findings: Any, fallback_text: str) -> list[dict[str,
     for idx, item in enumerate(raw_findings):
         if not isinstance(item, MappingABC):
             continue
-        fid = str(item.get("id") or item.get("rule_id") or item.get("code") or f"legacy-{idx}")
-        title = str(item.get("title") or item.get("rule_name") or item.get("code") or fid)
+        fid = str(
+            item.get("id") or item.get("rule_id") or item.get("code") or f"legacy-{idx}"
+        )
+        title = str(
+            item.get("title") or item.get("rule_name") or item.get("code") or fid
+        )
         text = str(item.get("text") or item.get("snippet") or fallback_text).strip()
         if not text:
             text = fallback_text
@@ -3655,7 +3672,9 @@ def _normalize_findings(raw_findings: Any, fallback_text: str) -> list[dict[str,
     return findings
 
 
-def _normalize_selection(raw_selection: Any, fallback: MappingABC[str, Any]) -> dict[str, int] | None:
+def _normalize_selection(
+    raw_selection: Any, fallback: MappingABC[str, Any]
+) -> dict[str, int] | None:
     candidate = raw_selection if isinstance(raw_selection, MappingABC) else {}
     start = candidate.get("start") if isinstance(candidate, MappingABC) else None
     end = candidate.get("end") if isinstance(candidate, MappingABC) else None
@@ -3676,7 +3695,9 @@ def _normalize_selection(raw_selection: Any, fallback: MappingABC[str, Any]) -> 
     return {"start": s, "end": e}
 
 
-def _coerce_legacy_request(payload: MappingABC[str, Any]) -> tuple[DraftRequest, dict[str, Any]]:
+def _coerce_legacy_request(
+    payload: MappingABC[str, Any],
+) -> tuple[DraftRequest, dict[str, Any]]:
     clause_value = payload.get("clause") or payload.get("text")
     clause, original = _ensure_clause_text(clause_value)
     context = _normalize_context(payload.get("context"), payload)
@@ -3696,7 +3717,10 @@ def _coerce_legacy_request(payload: MappingABC[str, Any]) -> tuple[DraftRequest,
     req = DraftRequest.model_validate(data)
     meta = {
         "original_text": original or clause,
-        "clause_type": str(payload.get("clause_type") or context.get("contractType") or "") or None,
+        "clause_type": str(
+            payload.get("clause_type") or context.get("contractType") or ""
+        )
+        or None,
         "verification_status": payload.get("verification_status"),
     }
     return req, meta
@@ -3719,7 +3743,9 @@ def _normalize_alias_payload(raw_payload: Any) -> tuple[DraftRequest, dict[str, 
     try:
         req = DraftRequest.model_validate(payload)
         clause = payload.get("clause")
-        original = clause.strip() if isinstance(clause, str) and clause.strip() else req.clause
+        original = (
+            clause.strip() if isinstance(clause, str) and clause.strip() else req.clause
+        )
         context = payload.get("context")
         clause_type = None
         if isinstance(context, MappingABC):
@@ -3751,7 +3777,9 @@ def _extract_candidate_text(payload: MappingABC[str, Any]) -> str | None:
     "/api/gpt-draft",
     responses={422: {"model": ProblemDetail}},
 )
-async def gpt_draft_alias(response: Response, payload: dict[str, Any] = Body(default_factory=dict)):
+async def gpt_draft_alias(
+    response: Response, payload: dict[str, Any] = Body(default_factory=dict)
+):
     text_candidate: str | None = None
     if isinstance(payload, MappingABC):
         text_candidate = _extract_candidate_text(payload)

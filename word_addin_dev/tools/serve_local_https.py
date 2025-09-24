@@ -1,30 +1,42 @@
-﻿import http.server, ssl, os
+﻿import http.server
+import ssl
+import os
 from urllib.parse import unquote
 
-ROOT  = r"C:\Users\Ludmila\contract_ai\word_addin_dev"
-PANEL = os.path.join(ROOT, "panel")      # здесь taskpane.html, commands.html и /assets
-CRT   = r"C:\Users\Ludmila\contract_ai\dev\localhost.crt"
-KEY   = r"C:\Users\Ludmila\contract_ai\dev\localhost.key"
+ROOT = r"C:\Users\Ludmila\contract_ai\word_addin_dev"
+PANEL = os.path.join(ROOT, "panel")  # здесь taskpane.html, commands.html и /assets
+CRT = r"C:\Users\Ludmila\contract_ai\dev\localhost.crt"
+KEY = r"C:\Users\Ludmila\contract_ai\dev\localhost.key"
+
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         p = unquote(self.path)
         if p == "/health":
-            self.send_response(200); self.end_headers(); self.wfile.write(b"OK"); return
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"OK")
+            return
         if p in ("/", "/panel", "/panel/"):
             p = "/panel/taskpane.html"
-        if p.startswith("/panel/") or p.startswith("/assets/") or p.startswith("/api-client/"):
+        if (
+            p.startswith("/panel/")
+            or p.startswith("/assets/")
+            or p.startswith("/api-client/")
+        ):
             rel = p.lstrip("/")
             path = os.path.join(ROOT, rel)
             if not os.path.exists(path):
-                path = os.path.join(PANEL, rel.replace("panel/",""))
+                path = os.path.join(PANEL, rel.replace("panel/", ""))
             if os.path.isdir(path):
                 path = os.path.join(path, "index.html")
             if not os.path.exists(path):
-                self.send_error(404, "Not Found"); return
+                self.send_error(404, "Not Found")
+                return
             self.path = path
             return http.server.SimpleHTTPRequestHandler.do_GET(self)
         self.send_error(404, "Not Found")
+
 
 if __name__ == "__main__":
     os.chdir(ROOT)

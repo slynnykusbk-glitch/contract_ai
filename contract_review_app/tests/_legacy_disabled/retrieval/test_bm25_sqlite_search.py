@@ -21,11 +21,11 @@ def session(tmp_path):
     SessionLocal.configure(bind=engine)
     session = SessionLocal()
     repo = Repo(session)
-    demo_dir = Path('data/corpus_demo')
-    for p in demo_dir.glob('*.yaml'):
-        with open(p, 'r', encoding='utf-8') as fh:
+    demo_dir = Path("data/corpus_demo")
+    for p in demo_dir.glob("*.yaml"):
+        with open(p, "r", encoding="utf-8") as fh:
             data = yaml.safe_load(fh)
-            for item in data['items']:
+            for item in data["items"]:
                 repo.upsert(item)
     rebuild_index(session)
     yield session
@@ -35,27 +35,27 @@ def session(tmp_path):
 def test_search_gdpr_article5(session):
     searcher = BM25Search(session)
     res = searcher.search("transparent processing", jurisdiction="UK")
-    assert any(r['act_code'] == 'UK_GDPR' and r['section_code'] == 'Art.5' for r in res)
+    assert any(r["act_code"] == "UK_GDPR" and r["section_code"] == "Art.5" for r in res)
 
 
 def test_filters_work(session):
     searcher = BM25Search(session)
     res = searcher.search("pollution")
-    assert any(r['act_code'] == 'OGUK_MODEL' for r in res)
+    assert any(r["act_code"] == "OGUK_MODEL" for r in res)
     res2 = searcher.search("pollution", source="legislation.gov.uk")
-    assert all(r['act_code'] != 'OGUK_MODEL' for r in res2)
+    assert all(r["act_code"] != "OGUK_MODEL" for r in res2)
 
 
 def test_deterministic_ordering(session):
     searcher = BM25Search(session)
     r1 = searcher.search("data")
     r2 = searcher.search("data")
-    assert [x['id'] for x in r1] == [x['id'] for x in r2]
+    assert [x["id"] for x in r1] == [x["id"] for x in r2]
 
 
 def test_span_bounds(session):
     searcher = BM25Search(session)
     res = searcher.search("data", jurisdiction="UK")
     for r in res:
-        doc = session.get(CorpusDoc, r['corpus_id'])
-        assert 0 <= r['start'] < r['end'] <= len(doc.text)
+        doc = session.get(CorpusDoc, r["corpus_id"])
+        assert 0 <= r["start"] < r["end"] <= len(doc.text)

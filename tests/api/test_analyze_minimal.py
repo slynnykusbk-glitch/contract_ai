@@ -26,8 +26,11 @@ def test_analyze_minimal():
 
 @settings(deadline=None, max_examples=25)
 @given(
-    st.text(min_size=1, max_size=100, alphabet=st.characters(blacklist_categories=["Cs", "Cc"]))
-    .filter(lambda s: s.strip() != "")
+    st.text(
+        min_size=1,
+        max_size=100,
+        alphabet=st.characters(blacklist_categories=["Cs", "Cc"]),
+    ).filter(lambda s: s.strip() != "")
 )
 def test_analyze_any_text(text):
     resp = client.post(

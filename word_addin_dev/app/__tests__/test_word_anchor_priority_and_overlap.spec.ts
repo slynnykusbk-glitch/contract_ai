@@ -28,7 +28,9 @@ describe('annotateFindingsIntoWord anchor priority', () => {
     vi.clearAllMocks();
     anchorByOffsetsMock.mockReset();
     findAnchorsMock.mockReset();
-    dom = new JSDOM(`<!doctype html><html><body><input id="cai-dry-run-annotate" type="checkbox" /></body></html>`);
+    dom = new JSDOM(
+      `<!doctype html><html><body><input id="cai-dry-run-annotate" type="checkbox" /></body></html>`
+    );
     (globalThis as any).window = dom.window as any;
     (globalThis as any).document = dom.window.document as any;
     (globalThis as any).HTMLElement = dom.window.HTMLElement;

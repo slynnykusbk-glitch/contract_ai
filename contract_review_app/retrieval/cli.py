@@ -26,7 +26,11 @@ def main() -> None:
                 cache_dir=cfg["vector"]["cache_dir"],
                 emb_ver=cfg["vector"]["embedding_version"],
             )
-        out = {"built": not from_cache, "from_cache": from_cache, "count": int(len(ids))}
+        out = {
+            "built": not from_cache,
+            "from_cache": from_cache,
+            "count": int(len(ids)),
+        }
         print(json.dumps(out))
 
 

@@ -27,8 +27,13 @@ _PATTERNS = {
 }
 
 
-def _substitute(text: str, pattern: re.Pattern[str], token_prefix: str, pii_map: Dict[str, str],
-                counters: Dict[str, int]) -> str:
+def _substitute(
+    text: str,
+    pattern: re.Pattern[str],
+    token_prefix: str,
+    pii_map: Dict[str, str],
+    counters: Dict[str, int],
+) -> str:
     def repl(match: re.Match[str]) -> str:
         token = f"<{token_prefix}_{counters[token_prefix]}>"
         counters[token_prefix] += 1

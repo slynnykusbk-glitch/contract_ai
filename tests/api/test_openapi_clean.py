@@ -9,5 +9,10 @@ def test_no_duplicate_paths_or_operation_ids():
     assert "/api/gpt_draft" not in paths
     assert "/gpt-draft" not in paths
     assert "/api/citations/resolve" not in paths
-    ids = [op.get("operationId") for p in spec["paths"].values() for op in p.values() if "operationId" in op]
+    ids = [
+        op.get("operationId")
+        for p in spec["paths"].values()
+        for op in p.values()
+        if "operationId" in op
+    ]
     assert len(ids) == len(set(ids))

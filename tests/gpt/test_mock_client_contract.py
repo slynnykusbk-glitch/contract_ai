@@ -2,6 +2,7 @@ import os
 import sys
 import types
 import pathlib
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 from contract_review_app.gpt.interfaces import (
     BaseClient,

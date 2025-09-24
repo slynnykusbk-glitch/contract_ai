@@ -22,10 +22,13 @@ def test_gpt_draft_accepts_text_aliases():
         assert r.status_code == 200
 
 
-@pytest.mark.parametrize("bad_payload", [
-    {"text": ""},
-    {"clause": " "},
-])
+@pytest.mark.parametrize(
+    "bad_payload",
+    [
+        {"text": ""},
+        {"clause": " "},
+    ],
+)
 def test_gpt_draft_validation_errors(bad_payload):
     r = client.post("/api/gpt-draft", json=bad_payload, headers=HEADERS)
     assert r.status_code == 422

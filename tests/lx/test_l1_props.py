@@ -6,7 +6,9 @@ from contract_review_app.legal_rules import dispatcher
 FIXTURE_DIR = Path("fixtures/lx")
 
 
-def _segment_and_features(name: str, labels: list[str]) -> tuple[LxSegment, LxFeatureSet]:
+def _segment_and_features(
+    name: str, labels: list[str]
+) -> tuple[LxSegment, LxFeatureSet]:
     text = (FIXTURE_DIR / name).read_text(encoding="utf-8")
     segment = LxSegment(segment_id=99, heading="Test", text=text)
     features = LxFeatureSet(labels=labels)

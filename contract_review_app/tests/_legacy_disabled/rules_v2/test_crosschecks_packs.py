@@ -118,7 +118,10 @@ checks: []
     conf_rule = next(r for r in rules if r.id == "conf_gdpr")
     assert conf_rule.type == "hybrid"
 
-    ctx_glaw_conflict = {"text": "Any", "meta": {"governing_law": "UK", "jurisdiction": "US"}}
+    ctx_glaw_conflict = {
+        "text": "Any",
+        "meta": {"governing_law": "UK", "jurisdiction": "US"},
+    }
     ctx_pd_missing = {"text": "Includes personal data", "meta": {"data_terms": False}}
 
     glaw_rules = [r for r in rules if r.pack == "governing_law_vs_jurisdiction"]

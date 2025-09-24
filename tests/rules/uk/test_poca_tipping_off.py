@@ -13,7 +13,5 @@ def test_poca_tipping_off_detects_missing_carveout():
 
 
 def test_poca_tipping_off_not_triggered_with_carveout():
-    text = (
-        "The Parties shall keep all information confidential and shall not disclose it to any person except as required by law or by a regulator."
-    )
+    text = "The Parties shall keep all information confidential and shall not disclose it to any person except as required by law or by a regulator."
     assert not _hit(text)

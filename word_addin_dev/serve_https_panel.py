@@ -12,7 +12,6 @@ import argparse
 import os
 import sys
 import ssl
-import socket
 import signal
 import datetime
 import mimetypes
@@ -44,6 +43,7 @@ def _ensure_cryptography() -> None:
     """
     try:
         import cryptography  # noqa: F401
+
         return
     except Exception:
         pass
@@ -56,7 +56,10 @@ def _ensure_cryptography() -> None:
         )
     except Exception as e:
         print(f"failed to install cryptography: {e}", file=sys.stderr)
-        print("please install with: python -m pip install 'cryptography>=42'", file=sys.stderr)
+        print(
+            "please install with: python -m pip install 'cryptography>=42'",
+            file=sys.stderr,
+        )
         sys.exit(3)
 
     # Retry import
@@ -67,7 +70,9 @@ def _ensure_cryptography() -> None:
         sys.exit(3)
 
 
-def _generate_self_signed(cert_path: Path, key_path: Path, hostnames: list[str]) -> None:
+def _generate_self_signed(
+    cert_path: Path, key_path: Path, hostnames: list[str]
+) -> None:
     """
     Generate a self-signed certificate using cryptography.
     Auto-installs cryptography if missing.
@@ -89,16 +94,20 @@ def _generate_self_signed(cert_path: Path, key_path: Path, hostnames: list[str])
             x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "England"),
             x509.NameAttribute(NameOID.LOCALITY_NAME, "London"),
             x509.NameAttribute(NameOID.ORGANIZATION_NAME, "ContractAI"),
-            x509.NameAttribute(NameOID.COMMON_NAME, hostnames[0] if hostnames else "127.0.0.1"),
+            x509.NameAttribute(
+                NameOID.COMMON_NAME, hostnames[0] if hostnames else "127.0.0.1"
+            ),
         ]
     )
 
     # Subject Alternative Names for loopback development (with proper IPAddress entries)
-    sans = x509.SubjectAlternativeName([
-        x509.DNSName("127.0.0.1"),
-        x509.IPAddress(IPv4Address("127.0.0.1")),
-        x509.IPAddress(IPv6Address("::1")),
-    ])
+    sans = x509.SubjectAlternativeName(
+        [
+            x509.DNSName("127.0.0.1"),
+            x509.IPAddress(IPv4Address("127.0.0.1")),
+            x509.IPAddress(IPv6Address("::1")),
+        ]
+    )
 
     now = datetime.datetime.utcnow()
     cert = (
@@ -160,9 +169,7 @@ def _try_trust_windows_root(cert_path: Path) -> None:
             print(f"auto-trust: {msg}", file=sys.stderr)
         else:
             # Non-zero: print hint, do not terminate
-            hint = (
-                "auto-trust failed; you may need to trust the certificate manually or continue and accept the TLS warning in the browser."
-            )
+            hint = "auto-trust failed; you may need to trust the certificate manually or continue and accept the TLS warning in the browser."
             print(
                 f"auto-trust warning (exit={proc.returncode}): {hint}\nstdout: {proc.stdout}\nstderr: {proc.stderr}",
                 file=sys.stderr,
@@ -248,7 +255,10 @@ class NoCacheHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         # Log full Request-URL for debugging
         try:
-            host = self.headers.get("Host") or f"{self.server.server_address[0]}:{self.server.server_address[1]}"
+            host = (
+                self.headers.get("Host")
+                or f"{self.server.server_address[0]}:{self.server.server_address[1]}"
+            )
             sys.stderr.write(f"[REQ] https://{host}{self.path}\n")
             sys.stderr.flush()
         except Exception:
@@ -315,9 +325,7 @@ def _build_ssl_context(cert_file: Path, key_file: Path) -> ssl.SSLContext:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     try:
-        ctx.set_ciphers(
-            "ECDHE+AESGCM:ECDHE+CHACHA20:RSA+AESGCM:!aNULL:!MD5:!DSS"
-        )
+        ctx.set_ciphers("ECDHE+AESGCM:ECDHE+CHACHA20:RSA+AESGCM:!aNULL:!MD5:!DSS")
     except Exception:
         # use defaults if cipher set fails on older OpenSSL
         pass
@@ -335,7 +343,11 @@ def _bind_https_server(host: str, port: int, handler_cls, ssl_ctx: ssl.SSLContex
     except OSError as e:
         # Port busy or permission denied
         msg = str(e).lower()
-        if "address already in use" in msg or "permission denied" in msg or getattr(e, "winerror", None) in (10013, 10048):
+        if (
+            "address already in use" in msg
+            or "permission denied" in msg
+            or getattr(e, "winerror", None) in (10013, 10048)
+        ):
             print(f"port {port} busy", file=sys.stderr)
             sys.exit(2)
         raise
@@ -346,14 +358,36 @@ def _bind_https_server(host: str, port: int, handler_cls, ssl_ctx: ssl.SSLContex
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="HTTPS static server for Office Taskpane panel (dev)")
-    parser.add_argument("--host", default="127.0.0.1", help="Bind host (default 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=3000, help="Bind port (default 3000)")
+    parser = argparse.ArgumentParser(
+        description="HTTPS static server for Office Taskpane panel (dev)"
+    )
+    parser.add_argument(
+        "--host", default="127.0.0.1", help="Bind host (default 127.0.0.1)"
+    )
+    parser.add_argument(
+        "--port", type=int, default=3000, help="Bind port (default 3000)"
+    )
     default_root = Path(__file__).resolve().parent
-    parser.add_argument("--root", default=str(default_root), help="Static root (default: script directory)")
-    parser.add_argument("--cert", default=str(default_root / "certs" / "panel-cert.pem"), help="Path to certificate PEM")
-    parser.add_argument("--key", default=str(default_root / "certs" / "panel-key.pem"), help="Path to private key PEM")
-    parser.add_argument("--regen-cert", action="store_true", help="Force regenerate self-signed certificate")
+    parser.add_argument(
+        "--root",
+        default=str(default_root),
+        help="Static root (default: script directory)",
+    )
+    parser.add_argument(
+        "--cert",
+        default=str(default_root / "certs" / "panel-cert.pem"),
+        help="Path to certificate PEM",
+    )
+    parser.add_argument(
+        "--key",
+        default=str(default_root / "certs" / "panel-key.pem"),
+        help="Path to private key PEM",
+    )
+    parser.add_argument(
+        "--regen-cert",
+        action="store_true",
+        help="Force regenerate self-signed certificate",
+    )
     args = parser.parse_args(argv)
 
     host = args.host
@@ -380,7 +414,10 @@ def main(argv=None):
         ssl_ctx = _build_ssl_context(cert_path, key_path)
     except Exception as e:
         if not args.regen_cert:
-            print(f"certificate or key invalid. Run with --regen-cert to recreate. Details: {e}", file=sys.stderr)
+            print(
+                f"certificate or key invalid. Run with --regen-cert to recreate. Details: {e}",
+                file=sys.stderr,
+            )
         else:
             print(f"failed to load regenerated certificate/key: {e}", file=sys.stderr)
         sys.exit(1)
@@ -395,7 +432,10 @@ def main(argv=None):
         raise
     except Exception as e:
         msg = str(e).lower()
-        if "address already in use" in msg or getattr(e, "winerror", None) in (10013, 10048):
+        if "address already in use" in msg or getattr(e, "winerror", None) in (
+            10013,
+            10048,
+        ):
             print(f"port {port} busy", file=sys.stderr)
             sys.exit(2)
         print(f"failed to bind HTTPS server: {e}", file=sys.stderr)

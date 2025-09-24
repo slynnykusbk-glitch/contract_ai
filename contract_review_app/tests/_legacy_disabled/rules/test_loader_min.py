@@ -27,4 +27,3 @@ def test_match_text_payment_terms():
     text = "Customer shall pay all invoices within 30 days of receipt."
     findings = match_text(text)
     assert any(f.get("rule_id") == "payment_terms_basic" for f in findings)
-

@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from typing import Any, Optional, Dict
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, Response
 from contract_review_app.api.models import ProblemDetail
 from pydantic import BaseModel
 
 # Спробуємо підтягнути типи, але не ламаємося, якщо їх немає
 try:
-    from contract_review_app.core.schemas import AnalysisOutput, SCHEMA_VERSION  # Pydantic-модель
+    from contract_review_app.core.schemas import (
+        AnalysisOutput,
+        SCHEMA_VERSION,
+    )  # Pydantic-модель
 except Exception:
     AnalysisOutput = Any  # fallback для type hints
     SCHEMA_VERSION = "1.4"
@@ -31,6 +34,7 @@ except Exception:
 
 router = APIRouter()
 
+
 # --- DTO для нового контракту (UI) ---
 class GPTDraftResponse(BaseModel):
     clause_type: Optional[str] = None
@@ -42,6 +46,7 @@ class GPTDraftResponse(BaseModel):
     title: Optional[str] = None
     verification_status: Optional[str] = None
     schema: str = SCHEMA_VERSION
+
 
 # Для нового формату: передаємо вже готовий analysis усередині
 class GPTDraftRequest(BaseModel):
@@ -76,12 +81,20 @@ def _coerce_to_analysis_output(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _merge_gpt_into_analysis(analysis: Dict[str, Any], gpt_result: Dict[str, Any]) -> Dict[str, Any]:
+def _merge_gpt_into_analysis(
+    analysis: Dict[str, Any], gpt_result: Dict[str, Any]
+) -> Dict[str, Any]:
     """
     Перетворює GPTDraftResponse-like у AnalysisOutput-like: замінює text, підвищує score, додає пояснення.
     """
-    new_text = gpt_result.get("draft_text") or gpt_result.get("draft") or analysis.get("text", "")
-    new_score = max(int(analysis.get("score", 0) or 0), int(gpt_result.get("score", 0) or 0))
+    new_text = (
+        gpt_result.get("draft_text")
+        or gpt_result.get("draft")
+        or analysis.get("text", "")
+    )
+    new_score = max(
+        int(analysis.get("score", 0) or 0), int(gpt_result.get("score", 0) or 0)
+    )
     # перенесемо explanation або як рекомендацію, або в diagnostics
     explanation = gpt_result.get("explanation") or ""
     recs = list(analysis.get("recommendations") or [])
@@ -118,7 +131,10 @@ def _fallback_redraft(
 
     # Забезпечимо наявність ключового слова для тесту
     if "confiden" in ct and "confidential" not in draft.lower():
-        draft = draft + " Confidential information shall not be disclosed to any third party."
+        draft = (
+            draft
+            + " Confidential information shall not be disclosed to any third party."
+        )
 
     score = int(analysis.get("score", 0) or 0)
     new_score = max(score, min(score + 10, 95))  # акуратне підвищення, але без 100
@@ -152,7 +168,9 @@ def api_gpt_draft_analysis_output(payload: Dict[str, Any], response: Response) -
             gpt_req = {"analysis": analysis, "model": payload.get("model", "gpt-4")}
             result = run_gpt_drafting_pipeline(gpt_req)
             # якщо це GPTDraftResponse-like -> мерджимо; якщо AnalysisOutput -> віддаємо
-            if isinstance(result, dict) and ("draft_text" in result or "draft" in result):
+            if isinstance(result, dict) and (
+                "draft_text" in result or "draft" in result
+            ):
                 return _merge_gpt_into_analysis(analysis, result)
             if isinstance(result, dict) and "text" in result:
                 return result
@@ -176,7 +194,9 @@ def api_gpt_draft_analysis_output(payload: Dict[str, Any], response: Response) -
     response_model=GPTDraftResponse,
     responses={422: {"model": ProblemDetail}, 500: {"model": ProblemDetail}},
 )
-def api_gpt_draft_gptdto(payload: Dict[str, Any], response: Response) -> GPTDraftResponse:
+def api_gpt_draft_gptdto(
+    payload: Dict[str, Any], response: Response
+) -> GPTDraftResponse:
     """
     НОВИЙ контракт для UI-панелі: приймає або {analysis: ...}, або legacy {clause_type,text}
     Повертає GPTDraftResponse.
@@ -190,11 +210,16 @@ def api_gpt_draft_gptdto(payload: Dict[str, Any], response: Response) -> GPTDraf
         try:
             gpt_req = {"analysis": analysis, "model": payload.get("model", "gpt-4")}
             result = run_gpt_drafting_pipeline(gpt_req)
-            if isinstance(result, dict) and ("draft_text" in result or "draft" in result):
+            if isinstance(result, dict) and (
+                "draft_text" in result or "draft" in result
+            ):
                 resp = GPTDraftResponse(
                     clause_type=analysis.get("clause_type"),
                     original_text=analysis.get("text"),
-                    draft_text=result.get("draft_text") or result.get("draft") or analysis.get("text") or "",
+                    draft_text=result.get("draft_text")
+                    or result.get("draft")
+                    or analysis.get("text")
+                    or "",
                     explanation=result.get("explanation") or "",
                     score=int(result.get("score") or analysis.get("score") or 0),
                     status=str(result.get("status") or "ok"),
@@ -221,7 +246,10 @@ def api_gpt_draft_gptdto(payload: Dict[str, Any], response: Response) -> GPTDraf
                     resp = GPTDraftResponse(
                         clause_type=analysis.get("clause_type"),
                         original_text=analysis.get("text"),
-                        draft_text=res.get("draft_text") or res.get("draft") or analysis.get("text") or "",
+                        draft_text=res.get("draft_text")
+                        or res.get("draft")
+                        or analysis.get("text")
+                        or "",
                         explanation=res.get("explanation") or "",
                         score=int(res.get("score") or analysis.get("score") or 0),
                         status=str(res.get("status") or "ok"),

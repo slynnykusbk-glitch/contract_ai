@@ -3,6 +3,7 @@ from contract_review_app.api.app import app
 
 client = TestClient(app)
 
+
 def test_redlines_minimal_ok():
     payload = {"before_text": "a", "after_text": "b"}
     r = client.post("/api/panel/redlines", json=payload)

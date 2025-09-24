@@ -1,8 +1,10 @@
 from __future__ import annotations
-import re, json, pathlib
+import re
+import pathlib
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 import yaml
+
 
 @dataclass
 class Finding:
@@ -14,6 +16,7 @@ class Finding:
     captures: Dict[str, Any] = field(default_factory=dict)
     advice: Optional[str] = None
 
+
 @dataclass
 class Rule:
     id: str
@@ -24,6 +27,7 @@ class Rule:
     advice: Optional[str] = None
     extractors: Dict[str, re.Pattern] = field(default_factory=dict)
 
+
 @dataclass
 class Pack:
     pack_id: str
@@ -31,8 +35,10 @@ class Pack:
     jurisdiction: str
     rules: List[Rule]
 
+
 def _compile_regex(rx: str) -> re.Pattern:
     return re.compile(rx, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+
 
 def load_pack(path: str | pathlib.Path) -> Pack:
     data = yaml.safe_load(pathlib.Path(path).read_text(encoding="utf-8"))
@@ -49,7 +55,7 @@ def load_pack(path: str | pathlib.Path) -> Pack:
             Rule(
                 id=r["id"],
                 title=r["title"],
-                severity=str(r.get("severity","low")).lower(),
+                severity=str(r.get("severity", "low")).lower(),
                 tags=[*r.get("tags", [])],
                 patterns=pats,
                 advice=r.get("advice"),
@@ -57,18 +63,19 @@ def load_pack(path: str | pathlib.Path) -> Pack:
             )
         )
     return Pack(
-        pack_id=data.get("pack_id","pack"),
-        language=data.get("language","en"),
-        jurisdiction=data.get("jurisdiction",""),
-        rules=compiled_rules
+        pack_id=data.get("pack_id", "pack"),
+        language=data.get("language", "en"),
+        jurisdiction=data.get("jurisdiction", ""),
+        rules=compiled_rules,
     )
+
 
 def evaluate(text: str, pack: Pack) -> List[Finding]:
     findings: List[Finding] = []
     for rule in pack.rules:
         for pat in rule.patterns:
             m = pat.search(text or "")
-            if not m: 
+            if not m:
                 continue
             start = m.start()
             end = m.end()
@@ -77,10 +84,16 @@ def evaluate(text: str, pack: Pack) -> List[Finding]:
                 em = rx.search(text or "")
                 if em:
                     caps[name] = em.group(1) if em.groups() else em.group(0)
-            findings.append(Finding(
-                rule_id=rule.id, title=rule.title, severity=rule.severity,
-                tags=list(rule.tags), span={"start": int(start), "length": int(end-start)},
-                captures=caps, advice=rule.advice
-            ))
+            findings.append(
+                Finding(
+                    rule_id=rule.id,
+                    title=rule.title,
+                    severity=rule.severity,
+                    tags=list(rule.tags),
+                    span={"start": int(start), "length": int(end - start)},
+                    captures=caps,
+                    advice=rule.advice,
+                )
+            )
             break  # one hit is enough per rule in MVP
     return findings

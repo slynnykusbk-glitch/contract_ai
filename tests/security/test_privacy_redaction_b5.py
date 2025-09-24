@@ -5,13 +5,12 @@ client = TestClient(app)
 
 
 def test_privacy_redaction_and_scrub():
-    text = (
-        "Contact John Smith at john@example.com or +44 1234 567890. "
-        "NI AB123456C."
-    )
+    text = "Contact John Smith at john@example.com or +44 1234 567890. " "NI AB123456C."
     r_an = client.post("/api/analyze", json={"text": text})
     cid = r_an.headers.get("x-cid")
-    r = client.post("/api/gpt-draft", json={"clause_id": cid, "text": text, "mode": "friendly"})
+    r = client.post(
+        "/api/gpt-draft", json={"clause_id": cid, "text": text, "mode": "friendly"}
+    )
     assert r.status_code == 200
     data = r.json()
     sensitive = ["John Smith", "john@example.com", "+44 1234 567890", "AB123456C"]

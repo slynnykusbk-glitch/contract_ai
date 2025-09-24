@@ -6,7 +6,6 @@ import re
 import unicodedata
 from hashlib import sha256
 from datetime import datetime, timezone
-from typing import Iterable
 
 
 SPACE_RE = re.compile(r"\s+")
@@ -22,7 +21,7 @@ def normalize_text(s: str) -> str:
     if s is None:
         return ""
     s = unicodedata.normalize("NFKC", s)
-    s = s.replace("\u00A0", " ")
+    s = s.replace("\u00a0", " ")
     s = s.replace("“", '"').replace("”", '"').replace("’", "'").replace("‘", "'")
     s = SPACE_RE.sub(" ", s)
     return s.strip()

@@ -5,7 +5,7 @@ index 957558d..7b10fc4 100644
 @@ -730,6 +730,45 @@ async def lifespan(app: FastAPI):
  )
  register_error_handlers(app)
- 
+
 +# --- begin minimal patch for /catalog ---
 +from pathlib import Path
 +from fastapi.staticfiles import StaticFiles
@@ -50,10 +50,9 @@ index 957558d..7b10fc4 100644
      panel_app = FastAPI()
 @@ -779,7 +818,7 @@ async def panel_app(scope, receive, send):  # type: ignore[override]
  app.mount("/panel", panel_app, name="panel")
- 
+
  # Локальный каталог с манифестом
 -if CATALOG_DIR.is_dir():
 +if CATALOG_DIR.is_dir() and not _CATALOG_MOUNTED:
      log.info("[CATALOG] mount /catalog -> %s", CATALOG_DIR.resolve())
      app.mount("/catalog", StaticFiles(directory=str(CATALOG_DIR)), name="catalog")
- 

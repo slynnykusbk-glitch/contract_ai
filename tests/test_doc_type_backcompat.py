@@ -9,6 +9,7 @@ from contract_review_app.api.models import SCHEMA_VERSION
 client = TestClient(app, headers={"x-schema-version": SCHEMA_VERSION})
 SAMPLE = "CONFIDENTIALITY AGREEMENT\nThis Agreement is made..."
 
+
 def test_analyze_has_both_flat_and_legacy_type():
     r = client.post("/api/analyze", json={"text": SAMPLE})
     assert r.status_code == 200

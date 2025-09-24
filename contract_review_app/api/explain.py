@@ -8,7 +8,12 @@ from typing import List, Optional
 from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
 
-from contract_review_app.core.schemas import ExplainRequest, ExplainResponse, Citation, Evidence
+from contract_review_app.core.schemas import (
+    ExplainRequest,
+    ExplainResponse,
+    Citation,
+    Evidence,
+)
 from contract_review_app.core.citation_resolver import resolve_citation
 from contract_review_app.core.privacy import redact_pii, scrub_llm_output
 from contract_review_app.corpus.db import SessionLocal
@@ -70,7 +75,9 @@ _RULE_HINTS = {
 
 def _deterministic_reasoning(finding, citation: Optional[Citation]) -> str:
     info = _RULE_HINTS.get(getattr(finding, "code", ""), {})
-    instrument = (citation.instrument if citation else info.get("instrument", "")) or "Unknown"
+    instrument = (
+        citation.instrument if citation else info.get("instrument", "")
+    ) or "Unknown"
     section = (citation.section if citation else info.get("section", "")) or ""
     why = info.get("why", "Potential legal non-compliance.")
     fix = info.get("fix", "Review and amend the clause accordingly.")
@@ -89,13 +96,19 @@ def _gather_evidence(citations: List[Citation]) -> List[Evidence]:
                 rows = search_corpus(session, query, top=3)
                 for r in rows[:3]:
                     snippet = (r.get("snippet") or r.get("text") or "")[:320]
-                    evidence.append(Evidence(text=snippet, source=cit.instrument, link=cit.url))
+                    evidence.append(
+                        Evidence(text=snippet, source=cit.instrument, link=cit.url)
+                    )
     except Exception:
         return []
     return evidence
 
 
-@router.post("/explain", response_model=ExplainResponse, dependencies=[Depends(require_api_key_and_schema)])
+@router.post(
+    "/explain",
+    response_model=ExplainResponse,
+    dependencies=[Depends(require_api_key_and_schema)],
+)
 async def api_explain(body: ExplainRequest, request: Request) -> JSONResponse:
     started = time.perf_counter()
     cid = getattr(request.state, "cid", compute_cid(request))
@@ -122,7 +135,9 @@ async def api_explain(body: ExplainRequest, request: Request) -> JSONResponse:
 
     redacted_context, pii_map = redact_pii(context)
 
-    grounding = make_grounding_pack(finding.message, redacted_context, [c.model_dump() for c in citations])
+    grounding = make_grounding_pack(
+        finding.message, redacted_context, [c.model_dump() for c in citations]
+    )
 
     use_llm = _env_truthy("FEATURE_LLM_EXPLAIN")
     reasoning = ""
@@ -137,18 +152,26 @@ async def api_explain(body: ExplainRequest, request: Request) -> JSONResponse:
                 top_p=1.0,
             )
             llm_reasoning = scrub_llm_output(res.get("content", ""), pii_map)
-            v = verify_output_contains_citations(llm_reasoning, grounding.get("evidence", []))
+            v = verify_output_contains_citations(
+                llm_reasoning, grounding.get("evidence", [])
+            )
             if v == "verified":
                 reasoning = llm_reasoning
                 verification_status = "ok"
             else:
                 verification_status = "missing_citations"
-                reasoning = _deterministic_reasoning(finding, citations[0] if citations else None)
+                reasoning = _deterministic_reasoning(
+                    finding, citations[0] if citations else None
+                )
         except Exception:
             verification_status = "invalid"
-            reasoning = _deterministic_reasoning(finding, citations[0] if citations else None)
+            reasoning = _deterministic_reasoning(
+                finding, citations[0] if citations else None
+            )
     else:
-        reasoning = _deterministic_reasoning(finding, citations[0] if citations else None)
+        reasoning = _deterministic_reasoning(
+            finding, citations[0] if citations else None
+        )
 
     reasoning = scrub_llm_output(reasoning, pii_map)
 

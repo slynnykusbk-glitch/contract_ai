@@ -14,7 +14,9 @@ from contract_review_app.api.models import SCHEMA_VERSION
 
 from tests.contract.normalizer import normalize_for_diff
 
-SCHEMA_PATH = Path(__file__).resolve().parent / "schema" / "analyze_response_v1_4.schema.json"
+SCHEMA_PATH = (
+    Path(__file__).resolve().parent / "schema" / "analyze_response_v1_4.schema.json"
+)
 SCHEMA = json.loads(SCHEMA_PATH.read_text())
 VALIDATOR = Draft202012Validator(SCHEMA)
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
@@ -50,7 +52,9 @@ def _load_expected(name: str) -> dict:
 
 
 @pytest.mark.parametrize("fixture_name", TEST_CASES)
-def test_analyze_contract_contract(analyze_client: TestClient, analyze_headers: dict[str, str], fixture_name: str) -> None:
+def test_analyze_contract_contract(
+    analyze_client: TestClient, analyze_headers: dict[str, str], fixture_name: str
+) -> None:
     response = analyze_client.post(
         "/api/analyze",
         json={"text": _load_text(fixture_name)},
@@ -85,7 +89,12 @@ def _sample_payload() -> dict:
         "governing_law": None,
         "jurisdiction": None,
         "signatures": [],
-        "liability": {"has_cap": False, "cap_value": None, "cap_currency": None, "notes": None},
+        "liability": {
+            "has_cap": False,
+            "cap_value": None,
+            "cap_currency": None,
+            "notes": None,
+        },
         "exclusivity": None,
         "currency": None,
         "carveouts": {},
@@ -168,7 +177,13 @@ def _sample_payload() -> dict:
         ],
         "pipeline_id": "abc123",
         "timings_ms": {"parse_ms": 1.2},
-        "debug": {"pipeline": "abc123", "packs": ["alpha"], "rules_loaded": 2, "rules_evaluated": 2, "rules_triggered": 2},
+        "debug": {
+            "pipeline": "abc123",
+            "packs": ["alpha"],
+            "rules_loaded": 2,
+            "rules_evaluated": 2,
+            "rules_triggered": 2,
+        },
     }
     payload = {
         "status": "ok",

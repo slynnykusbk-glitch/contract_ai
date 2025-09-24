@@ -83,9 +83,7 @@ def test_agency_flag():
 
 def test_no_authority_ok():
     spec = _load("ic.agency.no_authority_to_bind")
-    t = (
-        "Supplier has no authority to bind the Company; any portal access is administrative only."
-    )
+    t = "Supplier has no authority to bind the Company; any portal access is administrative only."
     out = run_rule(spec, AI(t, "authority"))
     assert not out or len(out.findings) == 0
 
@@ -196,4 +194,3 @@ def test_medical_minimised_ok():
     )
     out = run_rule(spec, AI(t, "privacy"))
     assert not out or len(out.findings) == 0
-

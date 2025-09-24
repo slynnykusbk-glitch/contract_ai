@@ -1,5 +1,6 @@
 from contract_review_app.core.schemas import Finding
 
+
 def score_from_findings(findings: list[Finding]) -> int:
     """
     Обчислює ризикову оцінку (0–100) на підставі рівнів severity у findings.

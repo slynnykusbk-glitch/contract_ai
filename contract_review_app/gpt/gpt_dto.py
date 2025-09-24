@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Any
+from typing import Optional
 from pydantic import BaseModel
 from contract_review_app.core.schemas import (
     GPTDraftResponse as CoreGPTDraftResponse,
@@ -34,5 +34,6 @@ class GPTDraftRequest(BaseModel):
     """
     Запит на генерацію GPT-драфту (передаємо результат аналізу).
     """
+
     analysis: dict  # dict-подібний AnalysisOutput
     model: Optional[str] = "gpt-4"

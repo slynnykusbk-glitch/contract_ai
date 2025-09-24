@@ -4,6 +4,7 @@ from contract_review_app.api.app import app, SCHEMA_VERSION
 
 client = TestClient(app)
 
+
 def test_health_has_status_schema_and_header():
     r = client.get("/health")
     assert r.status_code == 200

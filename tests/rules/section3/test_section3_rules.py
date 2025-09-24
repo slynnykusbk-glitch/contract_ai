@@ -4,8 +4,9 @@ from core.schemas import AnalysisInput
 
 
 def AI(text, clause="section3", doc="MSA"):
-    return AnalysisInput(clause_type=clause, text=text,
-                         metadata={"jurisdiction":"UK","doc_type":doc})
+    return AnalysisInput(
+        clause_type=clause, text=text, metadata={"jurisdiction": "UK", "doc_type": doc}
+    )
 
 
 # 01 battle of forms

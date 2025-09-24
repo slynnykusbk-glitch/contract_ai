@@ -1,16 +1,20 @@
 # tools/fix_indentation_app.py
 from __future__ import annotations
-import re, sys, io, os
+import sys
+import os
 
-P = os.path.join("contract_review_app","api","app.py")
+P = os.path.join("contract_review_app", "api", "app.py")
+
 
 def load() -> list[str]:
     with open(P, "r", encoding="utf-8", errors="replace") as f:
         return f.read().splitlines()
 
+
 def save(lines: list[str]) -> None:
     with open(P, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
+
 
 def indent_block(lines: list[str], start_idx: int, end_token: str) -> None:
     """
@@ -35,6 +39,7 @@ def indent_block(lines: list[str], start_idx: int, end_token: str) -> None:
             lines[i] = " " * (base_indent + 4) + s.lstrip()
         i += 1
 
+
 def fix_except_finally(lines: list[str]) -> int:
     """
     Виправляє тіло 'except' у middleware cid_bodylimit_middleware:
@@ -55,6 +60,7 @@ def fix_except_finally(lines: list[str]) -> int:
                     cnt += 1
     return cnt
 
+
 def fix_try_json_blocks(lines: list[str]) -> int:
     """
     Для відомих ендпойнтів вирівнює тіло після 'try:' (body = await req.json()).
@@ -63,10 +69,10 @@ def fix_try_json_blocks(lines: list[str]) -> int:
     cnt = 0
     # індекси початків функцій (приблизно; шукаємо сигнатури)
     fn_markers = [
-        "async def analyze_doc",      # /api/analyze handler
-        "async def gpt_draft",        # /api/gpt-draft handler
-        "async def suggest_edits",    # /api/suggest_edits handler
-        "async def qa_recheck",       # /api/qa-recheck handler
+        "async def analyze_doc",  # /api/analyze handler
+        "async def gpt_draft",  # /api/gpt-draft handler
+        "async def suggest_edits",  # /api/suggest_edits handler
+        "async def qa_recheck",  # /api/qa-recheck handler
     ]
     # проходимо файл і виправляємо 'try:' які без тіла
     for i, s in enumerate(lines):
@@ -94,6 +100,7 @@ def fix_try_json_blocks(lines: list[str]) -> int:
                     cnt += 1
     return cnt
 
+
 def detab_and_trim(lines: list[str]) -> list[str]:
     out = []
     for s in lines:
@@ -102,6 +109,7 @@ def detab_and_trim(lines: list[str]) -> list[str]:
         s = s.rstrip()
         out.append(s)
     return out
+
 
 def main():
     lines = load()
@@ -118,6 +126,7 @@ def main():
     except SyntaxError as e:
         print("[fail] syntax:", e)
         sys.exit(2)
+
 
 if __name__ == "__main__":
     main()

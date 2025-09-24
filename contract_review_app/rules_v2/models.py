@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Literal
+from typing import Any, Dict, List, Literal
 
 from dataclasses import field
 from pydantic import field_validator
@@ -61,7 +61,8 @@ class FindingV2:
 
     def has_locale(self, locale: str) -> bool:
         return all(
-            locale in d for d in (self.title, self.message, self.explain, self.suggestion)
+            locale in d
+            for d in (self.title, self.message, self.explain, self.suggestion)
         )
 
     def localize(self, prefer: str = "en") -> Dict[str, str]:

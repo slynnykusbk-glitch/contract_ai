@@ -22,7 +22,9 @@ def test_parse_docx(tmp_path: Path):
     assert len(parsed.segments) >= 8
     for seg in parsed.segments:
         assert 0 <= seg["start"] < seg["end"] <= len(parsed.normalized_text)
-    assert any(seg["kind"] == "heading" and seg.get("number") for seg in parsed.segments)
+    assert any(
+        seg["kind"] == "heading" and seg.get("number") for seg in parsed.segments
+    )
 
 
 def test_parse_docx_multiline(tmp_path: Path) -> None:

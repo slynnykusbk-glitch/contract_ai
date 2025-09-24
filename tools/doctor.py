@@ -521,7 +521,9 @@ def render_html_report(data: dict) -> str:
     )
 
 
-def _write_reports(out_arg: str, data: dict, write_json: bool, write_html: bool) -> None:
+def _write_reports(
+    out_arg: str, data: dict, write_json: bool, write_html: bool
+) -> None:
     """Write JSON/HTML and state.log next to them; preserves legacy directory behaviour."""
     out_dir, prefix = _resolve_out_prefix(out_arg)
     out_dir.mkdir(parents=True, exist_ok=True)

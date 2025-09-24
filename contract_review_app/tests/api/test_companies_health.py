@@ -12,10 +12,12 @@ def _client(monkeypatch, feature: str | None, key: str | None):
     if key is not None:
         monkeypatch.setenv("CH_API_KEY", key)
     import contract_review_app.config as config
+
     importlib.reload(config)
     import contract_review_app.api.integrations as integrations
     import contract_review_app.api.app as app_module
     import contract_review_app.integrations.companies_house.client as ch_client
+
     importlib.reload(ch_client)
     ch_client.KEY = os.getenv("CH_API_KEY") or os.getenv("COMPANIES_HOUSE_API_KEY", "")
     importlib.reload(integrations)

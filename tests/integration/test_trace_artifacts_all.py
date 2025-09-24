@@ -91,7 +91,9 @@ def test_trace_artifacts_all_invariants():
         analysis = trace_body.get("analysis") or {}
         findings = analysis.get("findings") or []
         assert findings
-        first_anchor = findings[0].get("anchor") if isinstance(findings[0], dict) else None
+        first_anchor = (
+            findings[0].get("anchor") if isinstance(findings[0], dict) else None
+        )
         assert isinstance(first_anchor, dict)
         assert first_anchor.get("method") in {"nth", "token", "text"}
     finally:

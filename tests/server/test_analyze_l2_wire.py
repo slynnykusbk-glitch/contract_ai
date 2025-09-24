@@ -72,7 +72,9 @@ def test_l2_constraints_toggle(monkeypatch):
     checks = constraints_payload.get("checks") or []
     assert checks, "expected constraint checks in trace payload"
     assert all(
-        (check.get("result") in {"pass", "fail", "skip"}) for check in checks if isinstance(check, dict)
+        (check.get("result") in {"pass", "fail", "skip"})
+        for check in checks
+        if isinstance(check, dict)
     )
     assert any(
         isinstance(check, dict)

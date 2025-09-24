@@ -15,8 +15,9 @@ try:
     from contract_review_app.gpt.gpt_prompt_builder import (
         build_gpt_prompt,
         build_prompt as legacy_build_prompt,  # legacy shim retained
-        build_prompt_text,    # convenient single-string format
+        build_prompt_text,  # convenient single-string format
     )
+
     _HAS_BUILDER = True
 except Exception:
     _HAS_BUILDER = False
@@ -24,6 +25,7 @@ except Exception:
 # GPT proxy (may be absent in local dev)
 try:
     from contract_review_app.gpt.gpt_proxy_api import call_gpt_api  # type: ignore
+
     _HAS_PROXY = True
 except Exception:
     _HAS_PROXY = False
@@ -31,6 +33,7 @@ except Exception:
 # Rule-based fallback synthesizer
 try:
     from contract_review_app.engine.pipeline import synthesize_draft  # type: ignore
+
     _HAS_RULE_FALLBACK = True
 except Exception:
     _HAS_RULE_FALLBACK = False
@@ -39,6 +42,7 @@ except Exception:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def run_draft(
     analysis: Dict[str, Any],
@@ -68,7 +72,12 @@ def run_draft(
     # 1) Prefer rule-provided proposed_text
     proposed = (a.get("proposed_text") or "").strip()
     if proposed:
-        cleaned, actions, removed = _apply_guardrails(text=proposed, allowed_sources=allowed_sources, mode=mode, findings=a.get("findings") or [])
+        cleaned, actions, removed = _apply_guardrails(
+            text=proposed,
+            allowed_sources=allowed_sources,
+            mode=mode,
+            findings=a.get("findings") or [],
+        )
         return _draft_out(
             draft_text=cleaned or proposed,
             mode=mode,
@@ -253,6 +262,7 @@ _DISCLAIMER_RX = (
 )
 _MARKDOWN_TOKENS = ("```", "# ", "## ", "**", "* ", "> ", "- [", "[SYSTEM]", "[USER]")
 
+
 def _extract_allowed_sources(citations: List[Any]) -> List[str]:
     out: List[str] = []
     seen = set()
@@ -264,6 +274,7 @@ def _extract_allowed_sources(citations: List[Any]) -> List[str]:
             seen.add(s)
             out.append(s)
     return out
+
 
 def _prepare_prompt_string(analysis: Dict[str, Any], mode: str) -> str:
     """
@@ -291,6 +302,7 @@ def _prepare_prompt_string(analysis: Dict[str, Any], mode: str) -> str:
     # Last-resort simple prompt
     base = (analysis.get("proposed_text") or analysis.get("text") or "").strip()
     return f"Rewrite conservatively for a contract clause. Return only clause text.\n---\n{base}\n---"
+
 
 def _apply_guardrails(
     text: str,
@@ -330,7 +342,14 @@ def _apply_guardrails(
     # Remove/neutralize citations not in allowed list (simple heuristic)
     if allowed_sources:
         # naive patterns: words like "Act", "Regulation", "Directive" and numbers/sections
-        suspicious_tokens = (" act", " regulation", " directive", " code", " section ", " article ")
+        suspicious_tokens = (
+            " act",
+            " regulation",
+            " directive",
+            " code",
+            " section ",
+            " article ",
+        )
         if any(tok in low for tok in suspicious_tokens):
             # Keep only allowed names by simple inclusion test; drop unknown brackets
             for line in t.splitlines():
@@ -368,6 +387,7 @@ def _apply_guardrails(
 
     return t.strip(), actions, removed_sources
 
+
 def _neutralize_unknown_sources(text: str, allowed: List[str]) -> (str, List[str]):
     """
     Remove simple source-like patterns that are not in the allowed list.
@@ -387,7 +407,17 @@ def _neutralize_unknown_sources(text: str, allowed: List[str]) -> (str, List[str
                 chunk = s[i : j + 1]
                 chunk_low = chunk.lower()
                 # if this chunk mentions a legal-looking term but is not allowed, drop it
-                if any(tok in chunk_low for tok in ("act", "regulation", "directive", "code", "article", "section")):
+                if any(
+                    tok in chunk_low
+                    for tok in (
+                        "act",
+                        "regulation",
+                        "directive",
+                        "code",
+                        "article",
+                        "section",
+                    )
+                ):
                     if not any(src.lower() in chunk_low for src in (allowed or [])):
                         removed.append(chunk)
                         i = j + 1
@@ -396,13 +426,18 @@ def _neutralize_unknown_sources(text: str, allowed: List[str]) -> (str, List[str
         i += 1
     return "".join(out), removed
 
+
 def _soften_obligations(t: str) -> str:
     # Replace "shall" with "should" in non-critical contexts (simple heuristic)
     return t.replace(" shall ", " should ")
 
+
 def _ensure_shall_once(t: str) -> str:
     # Insert a single "shall" obligation sentence if absent
-    return (t.rstrip() + " The parties shall perform their obligations as specified.").strip()
+    return (
+        t.rstrip() + " The parties shall perform their obligations as specified."
+    ).strip()
+
 
 def _fallback_rule_based(analysis: Dict[str, Any], mode: str) -> str:
     if _HAS_RULE_FALLBACK:
@@ -415,6 +450,7 @@ def _fallback_rule_based(analysis: Dict[str, Any], mode: str) -> str:
     if base:
         return f"Suggested edit ({mode}): {base}"
     return f"Drafted clause ({mode})."
+
 
 def _draft_out(
     draft_text: str,
@@ -442,6 +478,7 @@ def _draft_out(
         "verification_status": verification_status,
     }
 
+
 _ATTR_ALIASES = {"draft_text": ["draft"]}
 
 
@@ -458,6 +495,7 @@ def _get_attr(obj: Any, name: str, default: Any = None) -> Any:
         if hasattr(obj, n):
             return getattr(obj, n)
     return default
+
 
 def _best_effort_to_dict(obj: Any) -> Dict[str, Any]:
     """

@@ -9,7 +9,9 @@ import yaml
 GOLD_DIR = Path("data/metrics/gold")
 
 
-def load_rule_gold(dir_path: Path | None = None) -> Tuple[Dict[str, bool], Dict[str, bool]]:
+def load_rule_gold(
+    dir_path: Path | None = None,
+) -> Tuple[Dict[str, bool], Dict[str, bool]]:
     """Load gold and predicted flags for rules from YAML files.
 
     Two formats are supported:

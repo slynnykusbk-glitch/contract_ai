@@ -6,7 +6,7 @@ client = TestClient(app)
 
 
 def _norm(s: str) -> str:
-    return s.replace('\r\n', '\n').replace('\r', '\n')
+    return s.replace("\r\n", "\n").replace("\r", "\n")
 
 
 def test_analyze_offsets_match_snippets():
@@ -14,7 +14,12 @@ def test_analyze_offsets_match_snippets():
     r = client.post("/api/analyze", json={"text": text})
     assert r.status_code == 200
     data = r.json()
-    findings = data.get("analysis", {}).get("findings") or data.get("findings") or data.get("issues") or []
+    findings = (
+        data.get("analysis", {}).get("findings")
+        or data.get("findings")
+        or data.get("issues")
+        or []
+    )
     norm = _norm(text)
     for f in findings:
         start = f.get("start")

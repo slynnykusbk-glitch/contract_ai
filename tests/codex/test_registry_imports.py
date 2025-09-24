@@ -1,7 +1,9 @@
 import pytest
 
+
 def test_registry_is_exposed_and_aliases():
     from contract_review_app.legal_rules.rules import registry, normalize_clause_type
+
     assert isinstance(registry, dict)
     # базові ключі
     for k in [

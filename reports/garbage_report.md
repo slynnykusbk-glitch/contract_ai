@@ -197,4 +197,3 @@
 | --- | --- | --- | --- | --- | --- |
 | word_addin_dev/app/__tests__/bundle_no_raw_comments.test.ts | fragile-test | Test asserts hard-coded counts of Office comment API usage in built bundle. | Counts insertComment/comments.add occurrences; bundle changes will break expectation. | Check for behavior-based assertions (e.g., stub notifier) instead of raw regex counts. | Medium |
 | word_addin_dev/app/__tests__/requirement.sets.spec.ts | fragile-test | Test enforces specific disabled=true DOM state for mocked requirement sets. | Global Office mocks + direct DOM queries can desync from production behavior. | Assert high-level capability toggles rather than individual button.disabled flags. | Medium |
-

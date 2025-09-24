@@ -4,7 +4,7 @@ import csv
 import io
 import json
 from pathlib import Path
-from typing import Dict, Iterable, List, Set
+from typing import Dict, List, Set
 
 from datetime import datetime
 
@@ -117,7 +117,9 @@ def collect_metrics() -> MetricsResponse:
     inventory = set(gold.keys())
     fired = {m.rule_id for m in rule_metrics if m.tp or m.fp}
     coverage = compute_coverage(inventory, fired)
-    acceptance = load_acceptance(Path("contract_review_app/learning/replay_buffer.jsonl"))
+    acceptance = load_acceptance(
+        Path("contract_review_app/learning/replay_buffer.jsonl")
+    )
     perf = measure_perf([])
     qm = QualityMetrics(
         rules=rule_metrics,

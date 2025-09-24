@@ -1,4 +1,5 @@
 """Utilities for retrieving UK legal references for contract analysis."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -22,7 +23,9 @@ class UKRegulationRetriever:
         with open(data_file, "r", encoding="utf-8") as fh:
             self.entries: List[Dict[str, Any]] = yaml.safe_load(fh) or []
 
-    def retrieve(self, topic: str, source_types: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    def retrieve(
+        self, topic: str, source_types: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
         """Return entries matching ``topic`` and optional ``source_types``.
 
         Parameters

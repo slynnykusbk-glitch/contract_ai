@@ -23,22 +23,22 @@ def client(tmp_path, monkeypatch):
     SessionLocal.configure(bind=engine)
     sess = SessionLocal()
     repo = Repo(sess)
-    demo_dir = Path('data/corpus_demo')
-    for p in demo_dir.glob('*.yaml'):
-        with open(p, 'r', encoding='utf-8') as fh:
+    demo_dir = Path("data/corpus_demo")
+    for p in demo_dir.glob("*.yaml"):
+        with open(p, "r", encoding="utf-8") as fh:
             data = yaml.safe_load(fh)
-            for item in data['items']:
+            for item in data["items"]:
                 repo.upsert(item)
     rebuild_index(sess)
-    cache_dir = tmp_path / 'cache'
-    monkeypatch.setenv('RETRIEVAL_CACHE_DIR', str(cache_dir))
+    cache_dir = tmp_path / "cache"
+    monkeypatch.setenv("RETRIEVAL_CACHE_DIR", str(cache_dir))
     cfg = load_config()
-    embedder = HashingEmbedder(cfg['vector']['embedding_dim'])
+    embedder = HashingEmbedder(cfg["vector"]["embedding_dim"])
     ensure_vector_cache(
         sess,
         embedder=embedder,
-        cache_dir=cfg['vector']['cache_dir'],
-        emb_ver=cfg['vector']['embedding_version'],
+        cache_dir=cfg["vector"]["cache_dir"],
+        emb_ver=cfg["vector"]["embedding_version"],
     )
     app = FastAPI()
     app.include_router(router)
@@ -54,11 +54,13 @@ def test_search_returns_snippet_and_span(client):
     assert r.status_code == 200
     results = r.json()["hits"]
     assert results
+
     def stem(w: str) -> str:
         for suf in ("ing", "ed", "es", "s"):
             if w.endswith(suf) and len(w) - len(suf) >= 3:
                 return w[: -len(suf)]
         return w
+
     stems = {stem(w) for w in {"principles", "processing"}}
     for item in results:
         assert isinstance(item.get("snippet"), str) and len(item["snippet"]) > 0

@@ -1,6 +1,6 @@
-from starlette.responses import Response
 import json
 from typing import Tuple
+
 
 async def capture_response(response) -> Tuple[bytes, dict, str]:
     chunks = []
@@ -10,6 +10,7 @@ async def capture_response(response) -> Tuple[bytes, dict, str]:
     headers = dict(response.headers)
     headers.pop("content-length", None)
     return body, headers, response.media_type or "application/octet-stream"
+
 
 def normalize_status_if_json(body: bytes, media_type: str) -> bytes:
     if not body or not media_type.startswith("application/json"):

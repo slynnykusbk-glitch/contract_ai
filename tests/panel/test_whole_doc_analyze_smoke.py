@@ -6,9 +6,24 @@ from pathlib import Path
 TEXT = Path("tests/fixtures/quality_clause13.txt").read_text().strip()
 SNIPPETS = [s.strip() for s in TEXT.split(".") if s.strip()]
 FINDINGS = [
-    {"snippet": SNIPPETS[0], "rule_id": "13.ITP.EXISTS", "severity": "high", "start": 0},
-    {"snippet": SNIPPETS[1], "rule_id": "13.SHIP.BLOCK", "severity": "high", "start": len(SNIPPETS[0]) + 2},
-    {"snippet": SNIPPETS[2], "rule_id": "13.EQUIP.CERT.LOLER_PUWER", "severity": "high", "start": len(SNIPPETS[0]) + len(SNIPPETS[1]) + 4},
+    {
+        "snippet": SNIPPETS[0],
+        "rule_id": "13.ITP.EXISTS",
+        "severity": "high",
+        "start": 0,
+    },
+    {
+        "snippet": SNIPPETS[1],
+        "rule_id": "13.SHIP.BLOCK",
+        "severity": "high",
+        "start": len(SNIPPETS[0]) + 2,
+    },
+    {
+        "snippet": SNIPPETS[2],
+        "rule_id": "13.EQUIP.CERT.LOLER_PUWER",
+        "severity": "high",
+        "start": len(SNIPPETS[0]) + len(SNIPPETS[1]) + 4,
+    },
 ]
 
 DOC_TEXT = json.dumps(TEXT)
@@ -91,14 +106,13 @@ setTimeout(() => {
 }, 0);
 """
 
-JS = JS_TEMPLATE.replace('__TEXT__', DOC_TEXT).replace('__FINDINGS__', FINDINGS_JSON)
+JS = JS_TEMPLATE.replace("__TEXT__", DOC_TEXT).replace("__FINDINGS__", FINDINGS_JSON)
 
 
 def test_whole_doc_analyze_smoke(tmp_path):
     """Analyze must trigger auto-annotation with non-empty findings."""
     result = subprocess.run(
-        ["node", "-e", textwrap.dedent(JS)],
-        capture_output=True, text=True, check=True
+        ["node", "-e", textwrap.dedent(JS)], capture_output=True, text=True, check=True
     )
     last_line = result.stdout.strip().splitlines()[-1]
     data = json.loads(last_line)

@@ -1,7 +1,7 @@
 # contract_review_app/engine/patterns_oilgas.py
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict
 
 # Deterministic patterns for UK Oil & Gas Master Services Agreements (MSA) and Call-Offs.
 # Each clause_type maps to a structure:
@@ -100,7 +100,11 @@ CLAUSE_PATTERNS: Dict[str, dict] = {
             "HSE REQUIREMENTS",
             "SAFETY AND ENVIRONMENT",
         ],
-        "aliases": ["health_safety_environment", "safety_environment", "hse_requirements"],
+        "aliases": [
+            "health_safety_environment",
+            "safety_environment",
+            "hse_requirements",
+        ],
     },
     "quality": {
         "keywords": [

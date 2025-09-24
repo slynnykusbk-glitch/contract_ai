@@ -10,7 +10,7 @@
   - `taskpane.html` + `taskpane.bundle.js` (папка `word_addin_dev/` або корінь веб-серверу).
   - Працює проти бекенда за HTTPS.
 - **Backend (FastAPI):**
-  - Ендпойнти: 
+  - Ендпойнти:
     - `GET /health` — стан і список правил.
     - `POST /api/analyze` — аналіз клаузули/документа.
     - `POST /api/gpt/draft` — безпечна заглушка для кнопки “Get AI Draft”.

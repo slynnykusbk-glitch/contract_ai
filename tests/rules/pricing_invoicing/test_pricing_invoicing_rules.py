@@ -20,7 +20,9 @@ def _common_checks(f):
 
 
 def test_all_inclusive_rates():
-    text = "Rates are all-inclusive; no additional charges shall be payable unless listed."
+    text = (
+        "Rates are all-inclusive; no additional charges shall be payable unless listed."
+    )
     f = _common_checks(_find("P1.ALL_INCLUSIVE_RATES", text))
     assert f["severity"] == "medium"
 
@@ -32,7 +34,9 @@ def test_invoice_vat_requirements():
 
 
 def test_late_invoice_timebar_flag():
-    text = "No payment for invoices submitted later than ninety (90) days after delivery."
+    text = (
+        "No payment for invoices submitted later than ninety (90) days after delivery."
+    )
     f = _common_checks(_find("P3.LATE_INVOICE_TIMEBAR", text))
     assert f["severity"] == "high"
     assert "manual_review" in f.get("ops", [])
@@ -99,9 +103,17 @@ def test_negative_cases():
     loader.load_rule_packs()
     ids = {f["rule_id"] for f in loader.match_text(neutral)}
     for rid in [
-        "P1.ALL_INCLUSIVE_RATES", "P2.INVOICE_CONTENT_VAT", "P3.LATE_INVOICE_TIMEBAR",
-        "P4.PAYMENT_TERMS_AND_INTEREST", "P5.PUBLIC_30DAYS_CASCADE", "P6.CONSTRUCTION_PAY_NOTICES",
-        "P7.SETOFF_SCOPE", "P8.PAY_UNDISPUTED", "P9.EINVOICE_PLATFORM_VAT_CONTROL",
-        "P10.REIMBURSABLES_NET_OF_REBATES", "P11.NO_PAY_IDLE_EFFICIENCY", "P12.RECEIVABLES_ASSIGNMENT_PERMITTED",
+        "P1.ALL_INCLUSIVE_RATES",
+        "P2.INVOICE_CONTENT_VAT",
+        "P3.LATE_INVOICE_TIMEBAR",
+        "P4.PAYMENT_TERMS_AND_INTEREST",
+        "P5.PUBLIC_30DAYS_CASCADE",
+        "P6.CONSTRUCTION_PAY_NOTICES",
+        "P7.SETOFF_SCOPE",
+        "P8.PAY_UNDISPUTED",
+        "P9.EINVOICE_PLATFORM_VAT_CONTROL",
+        "P10.REIMBURSABLES_NET_OF_REBATES",
+        "P11.NO_PAY_IDLE_EFFICIENCY",
+        "P12.RECEIVABLES_ASSIGNMENT_PERMITTED",
     ]:
         assert rid not in ids

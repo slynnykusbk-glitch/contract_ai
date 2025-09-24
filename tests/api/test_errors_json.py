@@ -20,11 +20,13 @@ def test_summary_bad_json():
     resp = client.post(
         "/api/summary",
         data="{not json}",
-        headers={"x-schema-version": SCHEMA_VERSION, "Content-Type": "application/json"},
+        headers={
+            "x-schema-version": SCHEMA_VERSION,
+            "Content-Type": "application/json",
+        },
     )
     assert resp.status_code == 400
     body = resp.json()
     assert body.get("error_code") == "bad_json"
     assert resp.headers.get("x-cid")
     assert resp.headers.get("content-type", "").startswith("application/problem+json")
-

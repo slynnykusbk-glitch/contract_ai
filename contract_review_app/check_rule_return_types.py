@@ -3,6 +3,7 @@ import re
 
 RULES_DIR = "contract_review_app/legal_rules/rules"
 
+
 def check_rule_return_types():
     flagged_files = []
 
@@ -27,9 +28,12 @@ def check_rule_return_types():
     if not flagged_files:
         print("✅ All rule functions return AnalysisOutput properly.")
     else:
-        print("⚠️ The following rule files may return a dict instead of AnalysisOutput:\n")
+        print(
+            "⚠️ The following rule files may return a dict instead of AnalysisOutput:\n"
+        )
         for filename, line in flagged_files:
             print(f"📄 {filename}: {line}")
+
 
 if __name__ == "__main__":
     check_rule_return_types()

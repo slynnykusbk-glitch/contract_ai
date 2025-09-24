@@ -3,6 +3,7 @@ from typing import Any
 
 from contract_review_app.api.models import SCHEMA_VERSION
 
+
 def _reset_trace(trace_store: Any) -> None:
     trace_store._data.clear()
     trace_store._weights.clear()

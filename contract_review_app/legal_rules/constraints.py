@@ -7,7 +7,18 @@ from dataclasses import dataclass
 import json
 import re
 from types import SimpleNamespace
-from typing import Any, Dict, FrozenSet, Iterable, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    FrozenSet,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from contract_review_app.analysis.extract_summary import (
     _extract_cure_days,
@@ -42,7 +53,9 @@ __all__ = [
 ]
 
 
-_ANNEX_RE = re.compile(r"\b(?P<prefix>annex|schedule)\s+(?P<label>[A-Z0-9]+)\b", re.IGNORECASE)
+_ANNEX_RE = re.compile(
+    r"\b(?P<prefix>annex|schedule)\s+(?P<label>[A-Z0-9]+)\b", re.IGNORECASE
+)
 _LAW_PATTERN = re.compile(r"governed\s+by\s+the\s+law", re.IGNORECASE)
 _JUR_PATTERN = re.compile(r"jurisdiction", re.IGNORECASE)
 _CAP_PATTERN = re.compile(r"liability|cap", re.IGNORECASE)
@@ -206,12 +219,18 @@ def _annex_refs(full_text: str) -> List[str]:
     for match in _ANNEX_RE.finditer(full_text or ""):
         prefix = match.group("prefix") or "annex"
         label = match.group("label") or ""
-        formatted = f"{prefix.title()} {label.upper()}" if label.isalpha() else f"{prefix.title()} {label}"
+        formatted = (
+            f"{prefix.title()} {label.upper()}"
+            if label.isalpha()
+            else f"{prefix.title()} {label}"
+        )
         refs.add(formatted)
     return sorted(refs)
 
 
-def _first_segment_matching(segments: Sequence[Any], pattern: re.Pattern[str]) -> Optional[Any]:
+def _first_segment_matching(
+    segments: Sequence[Any], pattern: re.Pattern[str]
+) -> Optional[Any]:
     for seg in segments:
         combined = _combined_text(seg)
         if combined and pattern.search(combined):
@@ -395,7 +414,9 @@ def build_param_graph(
 
     seg_cross = _first_segment_matching(segments_list, _CROSS_PATTERN)
     if cross_refs and seg_cross:
-        sources["cross_refs"] = _make_source(seg_cross, note=f"{len(cross_refs)} cross-ref(s)")
+        sources["cross_refs"] = _make_source(
+            seg_cross, note=f"{len(cross_refs)} cross-ref(s)"
+        )
 
     seg_annex = _first_segment_matching(segments_list, _ANNEX_RE)
     if annex_refs and seg_annex:
@@ -416,7 +437,9 @@ def build_param_graph(
                 seg_numbering = seg
                 break
         if seg_numbering:
-            sources["numbering_gaps"] = _make_source(seg_numbering, note=", ".join(map(str, numbering_gaps)))
+            sources["numbering_gaps"] = _make_source(
+                seg_numbering, note=", ".join(map(str, numbering_gaps))
+            )
 
     if parties:
         seg_parties = None
@@ -521,7 +544,12 @@ class _Tokenizer:
             if ch.isdigit():
                 tokens.append(self._read_number())
                 continue
-            if self.text.startswith("<=", self.pos) or self.text.startswith(">=", self.pos) or self.text.startswith("==", self.pos) or self.text.startswith("!=", self.pos):
+            if (
+                self.text.startswith("<=", self.pos)
+                or self.text.startswith(">=", self.pos)
+                or self.text.startswith("==", self.pos)
+                or self.text.startswith("!=", self.pos)
+            ):
                 op = self.text[self.pos : self.pos + 2]
                 tokens.append(Token("OP", op))
                 self.pos += 2
@@ -565,7 +593,7 @@ class _Tokenizer:
                 self.pos += 1
                 continue
             break
-        return Token("IDENT", self.text[start:self.pos])
+        return Token("IDENT", self.text[start : self.pos])
 
     def _read_number(self) -> Token:
         start = self.pos
@@ -581,7 +609,7 @@ class _Tokenizer:
                 self.pos += 1
                 continue
             break
-        return Token("NUMBER", self.text[start:self.pos])
+        return Token("NUMBER", self.text[start : self.pos])
 
 
 class _Parser:
@@ -620,7 +648,9 @@ class _Parser:
             values: List[str] = []
             if not self._check("}"):
                 while True:
-                    token = self._consume("STRING", "Expected string literal inside set")
+                    token = self._consume(
+                        "STRING", "Expected string literal inside set"
+                    )
                     values.append(token.value)
                     if not self._match({","}):
                         break
@@ -747,7 +777,9 @@ def _collect_identifiers(node: ExprNode, bucket: set[str]) -> None:
             _collect_identifiers(arg, bucket)
 
 
-def _get_accessor_value(pg: ParamGraph, accessor: _Accessor) -> Union[EvalValue, object]:
+def _get_accessor_value(
+    pg: ParamGraph, accessor: _Accessor
+) -> Union[EvalValue, object]:
     value = getattr(pg, accessor.attr, None)
     if accessor.kind == "duration":
         if isinstance(value, Duration) and isinstance(value.days, int):
@@ -764,7 +796,11 @@ def _get_accessor_value(pg: ParamGraph, accessor: _Accessor) -> Union[EvalValue,
                 return EvalValue("string_set", filtered)
         return _MISSING
     if accessor.kind == "money":
-        if isinstance(value, Money) and isinstance(value.amount, Decimal) and isinstance(value.currency, str):
+        if (
+            isinstance(value, Money)
+            and isinstance(value.amount, Decimal)
+            and isinstance(value.currency, str)
+        ):
             return EvalValue("money", value)
         return _MISSING
     if accessor.kind == "money_amount":
@@ -780,7 +816,9 @@ def _get_accessor_value(pg: ParamGraph, accessor: _Accessor) -> Union[EvalValue,
 
 def _ensure_kind(value: EvalValue, expected: str) -> EvalValue:
     if value.kind != expected:
-        raise ConstraintEvaluationError(f"Expected value of kind '{expected}', got '{value.kind}'")
+        raise ConstraintEvaluationError(
+            f"Expected value of kind '{expected}', got '{value.kind}'"
+        )
     return value
 
 
@@ -793,29 +831,45 @@ def _combine_duration(left: EvalValue, right: EvalValue, op: str) -> EvalValue:
     left_days = _duration_days(left)
     right_days = _duration_days(right)
     days = left_days + right_days if op == "+" else left_days - right_days
-    kind = getattr(left.value, "kind", "calendar") if isinstance(left.value, Duration) else "calendar"
+    kind = (
+        getattr(left.value, "kind", "calendar")
+        if isinstance(left.value, Duration)
+        else "calendar"
+    )
     return EvalValue("duration", Duration(days=days, kind=kind))
 
 
 def _combine_decimal(left: EvalValue, right: EvalValue, op: str) -> EvalValue:
     left_val = _ensure_kind(left, "decimal").value
     right_val = _ensure_kind(right, "decimal").value
-    return EvalValue("decimal", left_val + right_val if op == "+" else left_val - right_val)
+    return EvalValue(
+        "decimal", left_val + right_val if op == "+" else left_val - right_val
+    )
 
 
 def _combine_money(left: EvalValue, right: EvalValue, op: str) -> EvalValue:
     money_left = _ensure_kind(left, "money").value
     money_right = _ensure_kind(right, "money").value
     if money_left.currency != money_right.currency:
-        raise ConstraintEvaluationError("Cannot combine money values with different currencies")
-    amount = money_left.amount + money_right.amount if op == "+" else money_left.amount - money_right.amount
+        raise ConstraintEvaluationError(
+            "Cannot combine money values with different currencies"
+        )
+    amount = (
+        money_left.amount + money_right.amount
+        if op == "+"
+        else money_left.amount - money_right.amount
+    )
     return EvalValue("money", Money(amount=amount, currency=money_left.currency))
 
 
 def _format_eval_value(value: EvalValue) -> str:
     if value.kind == "duration":
         duration: Duration = value.value
-        suffix = f" {duration.kind}" if getattr(duration, "kind", "calendar") != "calendar" else ""
+        suffix = (
+            f" {duration.kind}"
+            if getattr(duration, "kind", "calendar") != "calendar"
+            else ""
+        )
         return f"{duration.days} days{suffix}"
     if value.kind == "money":
         money: Money = value.value
@@ -848,7 +902,10 @@ def _eval_value_to_payload(value: EvalValue) -> Dict[str, Any]:
     payload: Dict[str, Any] = {"kind": value.kind, "display": _format_eval_value(value)}
     raw = value.value
     if value.kind == "duration" and isinstance(raw, Duration):
-        payload["value"] = {"days": getattr(raw, "days", None), "kind": getattr(raw, "kind", None)}
+        payload["value"] = {
+            "days": getattr(raw, "days", None),
+            "kind": getattr(raw, "kind", None),
+        }
     elif value.kind == "money" and isinstance(raw, Money):
         payload["value"] = {
             "amount": str(getattr(raw, "amount", "")),
@@ -962,7 +1019,11 @@ class _Evaluator:
         for signature in self.pg.signatures:
             if not isinstance(signature, dict):
                 continue
-            entity = signature.get("entity") or signature.get("for") or signature.get("on_behalf_of")
+            entity = (
+                signature.get("entity")
+                or signature.get("for")
+                or signature.get("on_behalf_of")
+            )
             if not entity:
                 continue
             if _normalize_company_name(entity) not in normalized_parties:
@@ -1005,7 +1066,9 @@ class _Evaluator:
             return True
         if law_region == jur_region:
             return True
-        if law_region == "england and wales" and ("england" in jur_region or "wales" in jur_region or "london" in jur_region):
+        if law_region == "england and wales" and (
+            "england" in jur_region or "wales" in jur_region or "london" in jur_region
+        ):
             return True
         return False
 
@@ -1042,7 +1105,9 @@ class _Evaluator:
         return bool(self.pg.order_of_precedence)
 
     def _no_undefined_terms(self) -> bool:
-        return not (self.pg.undefined_terms or self._get_flag("undefined_terms_present"))
+        return not (
+            self.pg.undefined_terms or self._get_flag("undefined_terms_present")
+        )
 
     def _numbering_coherent(self) -> bool:
         if self.pg.numbering_gaps:
@@ -1077,13 +1142,17 @@ class _Evaluator:
             if value is _MISSING:
                 return None, details
             if value.kind != "bool":
-                raise ConstraintEvaluationError("Function did not produce a boolean result")
+                raise ConstraintEvaluationError(
+                    "Function did not produce a boolean result"
+                )
             return bool(value.value), details
         value = self._eval_value(node)
         if value is _MISSING:
             return None, EvaluationDetails()
         if not isinstance(value, EvalValue) or value.kind != "bool":
-            raise ConstraintEvaluationError("Constraint expression must evaluate to a boolean")
+            raise ConstraintEvaluationError(
+                "Constraint expression must evaluate to a boolean"
+            )
         return bool(value.value), EvaluationDetails()
 
     def _eval_value(self, node: ExprNode) -> Union[EvalValue, object]:
@@ -1106,7 +1175,9 @@ class _Evaluator:
             if left is _MISSING or right is _MISSING:
                 return _MISSING
             if not isinstance(left, EvalValue) or not isinstance(right, EvalValue):
-                raise ConstraintEvaluationError("Invalid operands for arithmetic operator")
+                raise ConstraintEvaluationError(
+                    "Invalid operands for arithmetic operator"
+                )
             if left.kind == "duration" and right.kind == "duration":
                 return _combine_duration(left, right, node.op)
             if left.kind == "decimal" and right.kind == "decimal":
@@ -1165,11 +1236,23 @@ class _Evaluator:
             money_left: Money = left.value
             money_right: Money = right.value
             if op == "==":
-                return money_left.currency == money_right.currency and money_left.amount == money_right.amount
-            return money_left.currency != money_right.currency or money_left.amount != money_right.amount
+                return (
+                    money_left.currency == money_right.currency
+                    and money_left.amount == money_right.amount
+                )
+            return (
+                money_left.currency != money_right.currency
+                or money_left.amount != money_right.amount
+            )
         if left.kind in {"string", "decimal", "bool", "string_set"}:
-            return (left.value == right.value) if op == "==" else (left.value != right.value)
-        raise ConstraintEvaluationError(f"Equality not supported for kind '{left.kind}'")
+            return (
+                (left.value == right.value)
+                if op == "=="
+                else (left.value != right.value)
+            )
+        raise ConstraintEvaluationError(
+            f"Equality not supported for kind '{left.kind}'"
+        )
 
     def _compare_order(self, op: str, left: EvalValue, right: EvalValue) -> bool:
         if left.kind == "duration" and right.kind == "duration":
@@ -1182,7 +1265,9 @@ class _Evaluator:
             money_left: Money = left.value
             money_right: Money = right.value
             if money_left.currency != money_right.currency:
-                raise ConstraintEvaluationError("Cannot compare money values with different currencies")
+                raise ConstraintEvaluationError(
+                    "Cannot compare money values with different currencies"
+                )
             lval = money_left.amount
             rval = money_right.amount
         else:
@@ -1201,68 +1286,96 @@ class _Evaluator:
 
     def _compare_membership(self, op: str, left: EvalValue, right: EvalValue) -> bool:
         if right.kind != "string_set":
-            raise ConstraintEvaluationError("Membership requires a set of strings on the right-hand side")
+            raise ConstraintEvaluationError(
+                "Membership requires a set of strings on the right-hand side"
+            )
         if left.kind != "string":
-            raise ConstraintEvaluationError("Membership is only supported for string values")
+            raise ConstraintEvaluationError(
+                "Membership is only supported for string values"
+            )
         membership = left.value in right.value
         return membership if op == "∈" else not membership
 
-    def _call_function(self, name: str, args: List[Optional[EvalValue]]) -> Union[EvalValue, object]:
+    def _call_function(
+        self, name: str, args: List[Optional[EvalValue]]
+    ) -> Union[EvalValue, object]:
         lname = name.lower()
         if lname == "present":
             if len(args) != 1:
-                raise ConstraintEvaluationError("present() expects exactly one argument")
+                raise ConstraintEvaluationError(
+                    "present() expects exactly one argument"
+                )
             arg = args[0]
             if arg is None:
                 return EvalValue("bool", False)
             return EvalValue("bool", self._is_present(arg))
         if lname == "same_currency":
             if len(args) != 2:
-                raise ConstraintEvaluationError("same_currency() expects exactly two arguments")
+                raise ConstraintEvaluationError(
+                    "same_currency() expects exactly two arguments"
+                )
             if any(arg is None for arg in args):
                 return _MISSING
-            currencies = {self._extract_currency(arg) for arg in args if arg is not None}
+            currencies = {
+                self._extract_currency(arg) for arg in args if arg is not None
+            }
             return EvalValue("bool", len(currencies) <= 1)
         if lname == "non_negative":
             if len(args) != 1:
-                raise ConstraintEvaluationError("non_negative() expects exactly one argument")
+                raise ConstraintEvaluationError(
+                    "non_negative() expects exactly one argument"
+                )
             arg = args[0]
             if arg is None:
                 return _MISSING
             return EvalValue("bool", self._is_non_negative(arg))
         if lname == "all_present":
             if not args:
-                raise ConstraintEvaluationError("all_present() expects at least one argument")
+                raise ConstraintEvaluationError(
+                    "all_present() expects at least one argument"
+                )
             if any(arg is None for arg in args):
                 return EvalValue("bool", False)
             return EvalValue("bool", all(self._is_present(arg) for arg in args))
         if lname == "implies":
             if len(args) != 2:
-                raise ConstraintEvaluationError("implies() expects exactly two arguments")
+                raise ConstraintEvaluationError(
+                    "implies() expects exactly two arguments"
+                )
             if any(arg is None for arg in args):
                 return _MISSING
             left, right = args
             if left.kind != "bool" or right.kind != "bool":
-                raise ConstraintEvaluationError("implies() arguments must be boolean expressions")
+                raise ConstraintEvaluationError(
+                    "implies() arguments must be boolean expressions"
+                )
             return EvalValue("bool", (not bool(left.value)) or bool(right.value))
         if lname == "party_ch_consistent":
             if len(args) != 1:
-                raise ConstraintEvaluationError("party_ch_consistent() expects one argument")
+                raise ConstraintEvaluationError(
+                    "party_ch_consistent() expects one argument"
+                )
             index = self._arg_to_int(args[0])
             if index is None:
                 return EvalValue("bool", True)
             return EvalValue("bool", self._party_ch_consistent(index))
         if lname == "addresses_coherent":
             if args:
-                raise ConstraintEvaluationError("addresses_coherent() expects no arguments")
+                raise ConstraintEvaluationError(
+                    "addresses_coherent() expects no arguments"
+                )
             return EvalValue("bool", self._addresses_coherent())
         if lname == "signatures_match_parties":
             if args:
-                raise ConstraintEvaluationError("signatures_match_parties() expects no arguments")
+                raise ConstraintEvaluationError(
+                    "signatures_match_parties() expects no arguments"
+                )
             return EvalValue("bool", self._signatures_match_parties())
         if lname == "signatures_dated":
             if args:
-                raise ConstraintEvaluationError("signatures_dated() expects no arguments")
+                raise ConstraintEvaluationError(
+                    "signatures_dated() expects no arguments"
+                )
             return EvalValue("bool", self._signatures_dated())
         if lname == "flag_absent":
             if len(args) != 1:
@@ -1271,7 +1384,9 @@ class _Evaluator:
             if flag_name is None:
                 return EvalValue("bool", True)
             if flag_name.kind != "string":
-                raise ConstraintEvaluationError("flag_absent() expects a string argument")
+                raise ConstraintEvaluationError(
+                    "flag_absent() expects a string argument"
+                )
             return EvalValue("bool", self._flag_absent(flag_name.value))
         if lname == "flag_present":
             if len(args) != 1:
@@ -1280,45 +1395,67 @@ class _Evaluator:
             if flag_name is None:
                 return EvalValue("bool", False)
             if flag_name.kind != "string":
-                raise ConstraintEvaluationError("flag_present() expects a string argument")
+                raise ConstraintEvaluationError(
+                    "flag_present() expects a string argument"
+                )
             return EvalValue("bool", self._flag_present(flag_name.value))
         if lname == "governing_law_coherent":
             if args:
-                raise ConstraintEvaluationError("governing_law_coherent() expects no arguments")
+                raise ConstraintEvaluationError(
+                    "governing_law_coherent() expects no arguments"
+                )
             return EvalValue("bool", self._governing_law_matches_jurisdiction())
         if lname == "no_mixed_exclusivity":
             if args:
-                raise ConstraintEvaluationError("no_mixed_exclusivity() expects no arguments")
+                raise ConstraintEvaluationError(
+                    "no_mixed_exclusivity() expects no arguments"
+                )
             return EvalValue("bool", self._no_mixed_exclusivity())
         if lname == "jurisdiction_requires_law":
             if args:
-                raise ConstraintEvaluationError("jurisdiction_requires_law() expects no arguments")
+                raise ConstraintEvaluationError(
+                    "jurisdiction_requires_law() expects no arguments"
+                )
             return EvalValue("bool", self._jurisdiction_requires_governing_law())
         if lname == "jurisdiction_has_no_placeholder":
             if args:
-                raise ConstraintEvaluationError("jurisdiction_has_no_placeholder() expects no arguments")
+                raise ConstraintEvaluationError(
+                    "jurisdiction_has_no_placeholder() expects no arguments"
+                )
             return EvalValue("bool", self._jurisdiction_has_no_placeholder())
         if lname == "no_mixed_day_kinds":
             if args:
-                raise ConstraintEvaluationError("no_mixed_day_kinds() expects no arguments")
+                raise ConstraintEvaluationError(
+                    "no_mixed_day_kinds() expects no arguments"
+                )
             return EvalValue("bool", self._no_mixed_day_kinds())
         if lname == "annexes_have_order":
             if args:
-                raise ConstraintEvaluationError("annexes_have_order() expects no arguments")
+                raise ConstraintEvaluationError(
+                    "annexes_have_order() expects no arguments"
+                )
             return EvalValue("bool", self._annexes_have_order_of_precedence())
         if lname == "no_undefined_terms":
             if args:
-                raise ConstraintEvaluationError("no_undefined_terms() expects no arguments")
+                raise ConstraintEvaluationError(
+                    "no_undefined_terms() expects no arguments"
+                )
             return EvalValue("bool", self._no_undefined_terms())
         if lname == "numbering_coherent":
             if args:
-                raise ConstraintEvaluationError("numbering_coherent() expects no arguments")
+                raise ConstraintEvaluationError(
+                    "numbering_coherent() expects no arguments"
+                )
             return EvalValue("bool", self._numbering_coherent())
         if lname == "survival_baseline_complete":
             if args:
-                raise ConstraintEvaluationError("survival_baseline_complete() expects no arguments")
+                raise ConstraintEvaluationError(
+                    "survival_baseline_complete() expects no arguments"
+                )
             return EvalValue("bool", self._survival_baseline_complete())
-        raise ConstraintEvaluationError(f"Unknown function '{name}' in constraint expression")
+        raise ConstraintEvaluationError(
+            f"Unknown function '{name}' in constraint expression"
+        )
 
     def _is_present(self, value: EvalValue) -> bool:
         if value.kind in {"duration", "money"}:
@@ -1521,112 +1658,112 @@ def load_constraints() -> List[Constraint]:
         },
         {
             "id": "L2-032",
-            "expr": "flag_absent(\"indemnity_unlimited_no_carveout\")",
+            "expr": 'flag_absent("indemnity_unlimited_no_carveout")',
             "severity": "high",
             "message_tmpl": "Unlimited indemnity without carve-outs detected.",
             "anchors": ["indemnity"],
         },
         {
             "id": "L2-033",
-            "expr": "flag_absent(\"fraud_exclusion_detected\")",
+            "expr": 'flag_absent("fraud_exclusion_detected")',
             "severity": "critical",
             "message_tmpl": "Liability carve-outs improperly exclude fraud.",
             "anchors": ["liability"],
         },
         {
             "id": "L2-034",
-            "expr": "flag_absent(\"cap_amount_missing\")",
+            "expr": 'flag_absent("cap_amount_missing")',
             "severity": "medium",
             "message_tmpl": "Liability cap referenced without a stated amount.",
             "anchors": ["cap"],
         },
         {
             "id": "L2-040",
-            "expr": "flag_absent(\"public_domain_by_recipient\")",
+            "expr": 'flag_absent("public_domain_by_recipient")',
             "severity": "medium",
             "message_tmpl": "Confidentiality exception allows disclosures caused by the recipient.",
             "anchors": ["confidentiality"],
         },
         {
             "id": "L2-041",
-            "expr": "flag_absent(\"illegal_possession_exception\")",
+            "expr": 'flag_absent("illegal_possession_exception")',
             "severity": "medium",
             "message_tmpl": "Exception for information illegally in the recipient's possession is present.",
             "anchors": ["confidentiality"],
         },
         {
             "id": "L2-042",
-            "expr": "flag_absent(\"purpose_overbreadth\")",
+            "expr": 'flag_absent("purpose_overbreadth")',
             "severity": "medium",
-            "message_tmpl": "Purpose clause allows \"any other purpose whatsoever\".",
+            "message_tmpl": 'Purpose clause allows "any other purpose whatsoever".',
             "anchors": ["confidentiality"],
         },
         {
             "id": "L2-043",
-            "expr": "flag_absent(\"return_delete_broken_ref\")",
+            "expr": 'flag_absent("return_delete_broken_ref")',
             "severity": "medium",
             "message_tmpl": "Return/delete obligations reference missing or broken cross-references.",
             "anchors": ["confidentiality"],
         },
         {
             "id": "L2-044",
-            "expr": "flag_absent(\"missing_return_timeline\")",
+            "expr": 'flag_absent("missing_return_timeline")',
             "severity": "medium",
             "message_tmpl": "Confidential information return or destruction lacks a defined timeline.",
             "anchors": ["confidentiality"],
         },
         {
             "id": "L2-050",
-            "expr": "flag_absent(\"notify_notwithstanding_law\")",
+            "expr": 'flag_absent("notify_notwithstanding_law")',
             "severity": "critical",
             "message_tmpl": "Obligation to notify regulators applies even when prohibited by law.",
             "anchors": ["regulatory"],
         },
         {
             "id": "L2-051",
-            "expr": "flag_absent(\"overbroad_regulator_disclosure\")",
+            "expr": 'flag_absent("overbroad_regulator_disclosure")',
             "severity": "high",
             "message_tmpl": "Regulator disclosure not limited to the minimum necessary information.",
             "anchors": ["regulatory"],
         },
         {
             "id": "L2-052",
-            "expr": "flag_absent(\"regulator_notice_requires_consent\")",
+            "expr": 'flag_absent("regulator_notice_requires_consent")',
             "severity": "medium",
             "message_tmpl": "Regulatory disclosures require prior consent, impeding compliance.",
             "anchors": ["regulatory"],
         },
         {
             "id": "L2-053",
-            "expr": "flag_absent(\"aml_obligations_missing\")",
+            "expr": 'flag_absent("aml_obligations_missing")',
             "severity": "medium",
             "message_tmpl": "AML obligations missing despite regulatory triggers.",
             "anchors": ["aml"],
         },
         {
             "id": "L2-060",
-            "expr": "flag_absent(\"fm_no_payment_carveout\")",
+            "expr": 'flag_absent("fm_no_payment_carveout")',
             "severity": "medium",
             "message_tmpl": "Force majeure clause lacks a payment obligation carve-out.",
             "anchors": ["force_majeure"],
         },
         {
             "id": "L2-061",
-            "expr": "flag_absent(\"fm_financial_hardship\")",
+            "expr": 'flag_absent("fm_financial_hardship")',
             "severity": "medium",
             "message_tmpl": "Force majeure excuses performance for financial hardship or internal failures.",
             "anchors": ["force_majeure"],
         },
         {
             "id": "L2-070",
-            "expr": "flag_absent(\"pd_without_dp_obligations\")",
+            "expr": 'flag_absent("pd_without_dp_obligations")',
             "severity": "high",
             "message_tmpl": "Personal data processing mentioned without UK GDPR obligations.",
             "anchors": ["data_protection"],
         },
         {
             "id": "L2-071",
-            "expr": "flag_absent(\"data_transfer_without_safeguards\")",
+            "expr": 'flag_absent("data_transfer_without_safeguards")',
             "severity": "high",
             "message_tmpl": "International data transfers lack safeguard obligations.",
             "anchors": ["data_protection"],
@@ -1654,49 +1791,49 @@ def load_constraints() -> List[Constraint]:
         },
         {
             "id": "L2-083",
-            "expr": "flag_absent(\"annex_reference_unresolved\")",
+            "expr": 'flag_absent("annex_reference_unresolved")',
             "severity": "medium",
             "message_tmpl": "Schedule or annex references cannot be resolved.",
             "anchors": ["annexes"],
         },
         {
             "id": "L2-084",
-            "expr": "flag_absent(\"broken_cross_references\")",
+            "expr": 'flag_absent("broken_cross_references")',
             "severity": "high",
             "message_tmpl": "Broken internal cross-references detected.",
             "anchors": ["cross_refs"],
         },
         {
             "id": "L2-090",
-            "expr": "flag_absent(\"companies_act_1985_reference\")",
+            "expr": 'flag_absent("companies_act_1985_reference")',
             "severity": "medium",
             "message_tmpl": "Contract cites the Companies Act 1985 instead of the 2006 Act.",
             "anchors": ["statutes"],
         },
         {
             "id": "L2-091",
-            "expr": "flag_absent(\"outdated_ico_reference\")",
+            "expr": 'flag_absent("outdated_ico_reference")',
             "severity": "low",
             "message_tmpl": "Outdated UK data protection authority name detected.",
             "anchors": ["statutes"],
         },
         {
             "id": "L2-092",
-            "expr": "flag_absent(\"outdated_fsa_reference\")",
+            "expr": 'flag_absent("outdated_fsa_reference")',
             "severity": "medium",
             "message_tmpl": "Outdated UK regulator name (e.g., FSA) referenced.",
             "anchors": ["statutes"],
         },
         {
             "id": "L2-100",
-            "expr": "flag_absent(\"fee_for_nda\")",
+            "expr": 'flag_absent("fee_for_nda")',
             "severity": "medium",
             "message_tmpl": "Fee-for-NDA commercial anomaly detected.",
             "anchors": ["commercial"],
         },
         {
             "id": "L2-101",
-            "expr": "flag_absent(\"shall_be_avoided_wording\")",
+            "expr": 'flag_absent("shall_be_avoided_wording")',
             "severity": "low",
             "message_tmpl": "Clause uses 'shall be avoided' where 'void' or 'invalid' is expected.",
             "anchors": ["commercial"],

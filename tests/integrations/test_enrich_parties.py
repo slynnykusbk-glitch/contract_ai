@@ -25,7 +25,9 @@ def setup_function():
 
 @respx.mock
 def test_party_with_number():
-    respx.get(f"{BASE}/company/123").respond(json={"company_name": "ACME LTD", "company_number": "123"})
+    respx.get(f"{BASE}/company/123").respond(
+        json={"company_name": "ACME LTD", "company_number": "123"}
+    )
     p = Party(name="Acme Ltd", company_number="123")
     res = enrich_parties_with_companies_house([p])
     assert res[0].registry and res[0].registry.name == "ACME LTD"
@@ -34,9 +36,12 @@ def test_party_with_number():
 @respx.mock
 def test_party_without_number_best_match():
     respx.get(f"{BASE}/search/companies").respond(
-        json={"items": [{"title": "ACME LTD", "company_number": "555"}]}, headers={"ETag": "s1"}
+        json={"items": [{"title": "ACME LTD", "company_number": "555"}]},
+        headers={"ETag": "s1"},
     )
-    respx.get(f"{BASE}/company/555").respond(json={"company_name": "ACME LTD", "company_number": "555"})
+    respx.get(f"{BASE}/company/555").respond(
+        json={"company_name": "ACME LTD", "company_number": "555"}
+    )
     p = Party(name="Acme Ltd")
     res = enrich_parties_with_companies_house([p])
     assert res[0].registry and res[0].registry.number_or_duns == "555"
@@ -45,7 +50,9 @@ def test_party_without_number_best_match():
 
 @respx.mock
 def test_audit_has_no_pii():
-    respx.get(f"{BASE}/search/companies").respond(json={"items": []}, headers={"ETag": "e1"})
+    respx.get(f"{BASE}/search/companies").respond(
+        json={"items": []}, headers={"ETag": "e1"}
+    )
     enrich_parties_with_companies_house([Party(name="Secret Corp")])
     with open("var/audit.log", "r", encoding="utf-8") as fh:
         data = fh.read()
@@ -63,7 +70,9 @@ def test_build_companies_meta():
             "registered_office_address": {"postal_code": "EC1A1AA"},
         }
     )
-    respx.get(f"{BASE}/company/123/officers?items_per_page=1").respond(json={"total_results": 5})
+    respx.get(f"{BASE}/company/123/officers?items_per_page=1").respond(
+        json={"total_results": 5}
+    )
     respx.get(
         f"{BASE}/company/123/persons-with-significant-control?items_per_page=1"
     ).respond(json={"total_results": 1})
@@ -76,7 +85,8 @@ def test_build_companies_meta():
 @respx.mock
 def test_build_companies_meta_preserves_doc_data():
     respx.get(f"{BASE}/search/companies").respond(
-        json={"items": [{"title": "ACME LTD", "company_number": "555"}]}, headers={"ETag": "s1"}
+        json={"items": [{"title": "ACME LTD", "company_number": "555"}]},
+        headers={"ETag": "s1"},
     )
     respx.get(f"{BASE}/company/555").respond(
         json={
@@ -85,7 +95,9 @@ def test_build_companies_meta_preserves_doc_data():
             "company_status": "active",
         }
     )
-    respx.get(f"{BASE}/company/555/officers?items_per_page=1").respond(json={"total_results": 3})
+    respx.get(f"{BASE}/company/555/officers?items_per_page=1").respond(
+        json={"total_results": 3}
+    )
     respx.get(
         f"{BASE}/company/555/persons-with-significant-control?items_per_page=1"
     ).respond(json={"total_results": 2})
@@ -98,9 +110,13 @@ def test_build_companies_meta_preserves_doc_data():
 
 @respx.mock
 def test_blackrock_verdict_ok():
-    fix = json.loads(open("tests/fixtures/ch_blackrock_profile.json", "r", encoding="utf-8").read())
+    fix = json.loads(
+        open("tests/fixtures/ch_blackrock_profile.json", "r", encoding="utf-8").read()
+    )
     respx.get(f"{BASE}/company/02022650").respond(json=fix)
-    respx.get(f"{BASE}/company/02022650/officers?items_per_page=1").respond(json={"total_results": 1})
+    respx.get(f"{BASE}/company/02022650/officers?items_per_page=1").respond(
+        json={"total_results": 1}
+    )
     respx.get(
         f"{BASE}/company/02022650/persons-with-significant-control?items_per_page=1"
     ).respond(json={"total_results": 0})

@@ -2,6 +2,7 @@ import pytest
 from contract_review_app.core.schemas import AnalysisInput
 from contract_review_app.legal_rules.rules import indemnity as ind
 
+
 def test_indemnity_strong_clause_ok():
     text = """
     INDEMNITY. The Supplier shall indemnify and hold harmless the Customer against all direct losses,
@@ -15,6 +16,7 @@ def test_indemnity_strong_clause_ok():
     assert out.risk_level == "low"
     assert out.score >= 85
     assert not any(f.severity == "high" for f in out.findings)
+
 
 def test_indemnity_weak_clause_warn():
     text = """

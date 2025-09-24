@@ -123,13 +123,13 @@ def test_checksum_normalization(tmp_path):
         "version": "2024-06",
         "updated_at": "2024-06-01T00:00:00Z",
         "rights": "Open Government Licence v3.0",
-        "text": "Data must be processed lawfully\u00A0and “fairly”.",
+        "text": "Data must be processed lawfully\u00a0and “fairly”.",
     }
     dto1 = to_repo_dto(item)
     repo.upsert(dto1)
 
     item2 = dict(item)
-    item2["text"] = "Data must be processed lawfully and \"fairly\"."
+    item2["text"] = 'Data must be processed lawfully and "fairly".'
     dto2 = to_repo_dto(item2)
     assert dto1["checksum"] == dto2["checksum"]
     repo.upsert(dto2)

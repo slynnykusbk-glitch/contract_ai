@@ -16,7 +16,11 @@ def test_api_analyze_returns_type():
     data = resp.json()
     summary = data.get("summary", {})
     assert isinstance(summary.get("type"), str)
-    assert summary.get("doc_type", {}).get("source") in {"title", "keywords", "classifier"}
+    assert summary.get("doc_type", {}).get("source") in {
+        "title",
+        "keywords",
+        "classifier",
+    }
     rc = data.get("rules_coverage", {})
     assert rc.get("doc_type", {}).get("value") == summary.get("type")
     assert any(r.get("status") == "doc_type_mismatch" for r in rc.get("rules", []))

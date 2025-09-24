@@ -68,10 +68,10 @@ setTimeout(() => {
 }, 0);
 """
 
+
 def test_risk_threshold_filter(tmp_path):
     result = subprocess.run(
-        ["node", "-e", textwrap.dedent(JS)],
-        capture_output=True, text=True, check=True
+        ["node", "-e", textwrap.dedent(JS)], capture_output=True, text=True, check=True
     )
     last_line = result.stdout.strip().splitlines()[-1]
     data = json.loads(last_line)

@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _to_iso(date_str: str) -> str:
     """Best effort normalisation of date strings to ISO format."""
     if not date_str:
@@ -18,20 +19,33 @@ def _to_iso(date_str: str) -> str:
             continue
     return cleaned
 
+
 # ---------------------------------------------------------------------------
 # Contract classification
 # ---------------------------------------------------------------------------
 
 _CONTRACT_PATTERNS = [
-    (re.compile(r"\b(?:non-disclosure|confidentiality) agreement\b|\bNDA\b", re.I), "NDA", 10),
-    (re.compile(r"\bmaster\s+(?:services|supply)\s+agreement\b", re.I), "Master Services Agreement", 9),
+    (
+        re.compile(r"\b(?:non-disclosure|confidentiality) agreement\b|\bNDA\b", re.I),
+        "NDA",
+        10,
+    ),
+    (
+        re.compile(r"\bmaster\s+(?:services|supply)\s+agreement\b", re.I),
+        "Master Services Agreement",
+        9,
+    ),
     (re.compile(r"\bstatement of work\b|\bSOW\b", re.I), "Statement of Work", 8),
     (re.compile(r"\blicen[cs]e\b", re.I), "License", 7),
     (re.compile(r"\bconsultancy\b", re.I), "Consultancy", 6),
     (re.compile(r"\b(?:purchase|sale) of goods\b", re.I), "Purchase/Sale of Goods", 5),
     (re.compile(r"\bsubcontract\b", re.I), "Subcontract", 4),
     (re.compile(r"\bframework agreement\b", re.I), "Framework Agreement", 3),
-    (re.compile(r"\bdata processing agreement\b", re.I), "Data Processing Agreement", 2),
+    (
+        re.compile(r"\bdata processing agreement\b", re.I),
+        "Data Processing Agreement",
+        2,
+    ),
     (re.compile(r"\bservice level agreement\b", re.I), "Service Level Agreement", 1),
 ]
 
@@ -50,6 +64,7 @@ def classify_contract(text: str) -> Dict[str, Any]:
                 best_weight = weight
     confidence = best_weight / 10 if best_weight else 0.0
     return {"type": best_type, "confidence": round(confidence, 2), "hints": hints}
+
 
 # ---------------------------------------------------------------------------
 # Party extraction
@@ -88,6 +103,7 @@ def extract_parties(text: str) -> List[Dict[str, Optional[str]]]:
         parties.extend([part_a, part_b])
     return [p for p in parties if p.get("name")]
 
+
 # ---------------------------------------------------------------------------
 # Date extraction
 # ---------------------------------------------------------------------------
@@ -99,7 +115,12 @@ _SIGN_RE = re.compile(r"Signed[^\n]*?on\s+(\d{1,2}\s+\w+\s+20\d{2})", re.I)
 
 
 def extract_dates(text: str) -> Dict[str, Any]:
-    res: Dict[str, Any] = {"dated": None, "effective": None, "commencement": None, "signatures": []}
+    res: Dict[str, Any] = {
+        "dated": None,
+        "effective": None,
+        "commencement": None,
+        "signatures": [],
+    }
     if m := _DATED_RE.search(text or ""):
         res["dated"] = _to_iso(m.group(1))
     if m := _EFFECTIVE_RE.search(text or ""):
@@ -109,6 +130,7 @@ def extract_dates(text: str) -> Dict[str, Any]:
     for sm in _SIGN_RE.finditer(text or ""):
         res["signatures"].append({"party": None, "date": _to_iso(sm.group(1))})
     return res
+
 
 # ---------------------------------------------------------------------------
 # Term extraction
@@ -121,7 +143,12 @@ _END_ON_RE = re.compile(r"terminate[s]? on\s+(\d{1,2}\s+\w+\s+20\d{2})", re.I)
 
 
 def extract_term(text: str) -> Dict[str, Any]:
-    res: Dict[str, Any] = {"mode": "unknown", "start": None, "end": None, "renew_notice_days": None}
+    res: Dict[str, Any] = {
+        "mode": "unknown",
+        "start": None,
+        "end": None,
+        "renew_notice_days": None,
+    }
     if m := _COMMENCE_ON_RE.search(text or ""):
         res["start"] = _to_iso(m.group(1))
     if m := _END_ON_RE.search(text or ""):
@@ -132,6 +159,7 @@ def extract_term(text: str) -> Dict[str, Any]:
     elif _DURATION_RE.search(text or ""):
         res["mode"] = "fixed"
     return res
+
 
 # ---------------------------------------------------------------------------
 # Law & jurisdiction
@@ -151,6 +179,7 @@ def extract_law_jurisdiction(text: str) -> Dict[str, Any]:
         juris = m.group(1).strip()
     exclusive = bool(_EXCLUSIVE_RE.search(text or "")) if juris else None
     return {"law": law, "jurisdiction": juris, "exclusive": exclusive}
+
 
 # ---------------------------------------------------------------------------
 # Liability
@@ -203,6 +232,7 @@ def extract_liability(text: str) -> Dict[str, Any]:
         "carveouts": carveouts,
     }
 
+
 # ---------------------------------------------------------------------------
 # Conditions vs warranties
 # ---------------------------------------------------------------------------
@@ -210,13 +240,10 @@ def extract_liability(text: str) -> Dict[str, Any]:
 _COND_RE = re.compile(
     r"(shall be a condition|time is of the essence|condition precedent)", re.I
 )
-_WARR_RE = re.compile(
-    r"(represents and warrants|warrants that|warranty)", re.I
-)
+_WARR_RE = re.compile(r"(represents and warrants|warrants that|warranty)", re.I)
 
 
 def extract_conditions_warranties(text: str) -> Dict[str, Any]:
     conditions = [m.group(1) for m in _COND_RE.finditer(text or "")]
     warranties = [m.group(1) for m in _WARR_RE.finditer(text or "")]
     return {"conditions": conditions, "warranties": warranties}
-

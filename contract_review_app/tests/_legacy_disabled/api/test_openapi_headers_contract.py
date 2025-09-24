@@ -14,6 +14,9 @@ def test_openapi_headers_contract():
     for path in ["/api/analyze", "/api/gpt-draft"]:
         op = schema["paths"][path]["post"]
         resp_headers = op["responses"]["200"]["headers"]
-        assert resp_headers["x-schema-version"]["$ref"] == "#/components/headers/XSchemaVersion"
+        assert (
+            resp_headers["x-schema-version"]["$ref"]
+            == "#/components/headers/XSchemaVersion"
+        )
         assert resp_headers["x-latency-ms"]["$ref"] == "#/components/headers/XLatencyMs"
         assert resp_headers["x-cid"]["$ref"] == "#/components/headers/XCid"

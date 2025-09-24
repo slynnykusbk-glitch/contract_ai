@@ -14,6 +14,7 @@ def _client(monkeypatch, feature: str | None, key: str | None) -> TestClient:
     import contract_review_app.api.integrations as integrations
     import contract_review_app.api.app as app_module
     import contract_review_app.integrations.companies_house.client as ch_client
+
     importlib.reload(config)
     importlib.reload(ch_client)
     ch_client.KEY = os.getenv("CH_API_KEY") or os.getenv("COMPANIES_HOUSE_API_KEY", "")

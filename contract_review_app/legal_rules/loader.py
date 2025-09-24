@@ -138,7 +138,9 @@ class RuleSchema(BaseModel):
     always_on: bool = False
     generic: bool = False
     applies_to: Optional[AppliesToSchema] = None
-    channel: Optional[Literal["presence", "substantive", "policy", "drafting", "fixup"]] = None
+    channel: Optional[
+        Literal["presence", "substantive", "policy", "drafting", "fixup"]
+    ] = None
     salience: Optional[conint(ge=0, le=100)] = 50
 
     @field_validator("severity")
@@ -307,9 +309,7 @@ def load_rule_packs(roots: Iterable[str | Path] | None = None) -> None:
                     applies_to_raw = raw.get("applies_to") or {}
                     applies_to_spec: Dict[str, List[str]] = {}
                     if isinstance(applies_to_raw, dict):
-                        labels_norm = _normalize_str_list(
-                            applies_to_raw.get("labels")
-                        )
+                        labels_norm = _normalize_str_list(applies_to_raw.get("labels"))
                         kinds_norm = _normalize_str_list(
                             applies_to_raw.get("segment_kind")
                         )

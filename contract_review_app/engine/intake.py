@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 # SSOT типи (Pydantic v2)
 try:
@@ -60,8 +60,10 @@ TYPE_KEYWORDS = [
 
 # -------------------------- Хеші / ідентифікатори --------------------------
 
+
 def _sha256_str(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
 
 def _siphash64(data: bytes, key: bytes) -> str:
     """
@@ -71,11 +73,13 @@ def _siphash64(data: bytes, key: bytes) -> str:
     try:
         # pysiphash: pip install siphash
         from siphash import siphash
+
         h = siphash(key, data)
         return f"{int(h):016x}"
     except Exception:
         h = hashlib.blake2b(data, digest_size=8, key=key).hexdigest()
         return h
+
 
 def _stable_clause_id(start: int, length: int, fragment_hash: str) -> str:
     # Ключ для keyed-hash (стала сіль для детермінізму; у проді можна зберігати в конфігу)
@@ -83,16 +87,20 @@ def _stable_clause_id(start: int, length: int, fragment_hash: str) -> str:
     payload = f"{start}|{length}|{fragment_hash}".encode("utf-8")
     return _siphash64(payload, key)
 
+
 def _anchor_hash(s: str) -> str:
     # Якорі короткі: достатньо 16 hex (64 біти) для переприв’язки
     return _sha256_str(s)[:16]
 
+
 # -------------------------- Утіліти сегментації --------------------------
+
 
 def _normalize_newlines(text: str) -> str:
     if not text:
         return ""
     return text.replace("\r\n", "\n").replace("\r", "\n")
+
 
 def _detect_type(header_text: str, body_text: str) -> str:
     src = f"{header_text}\n{body_text}".lower()
@@ -100,6 +108,7 @@ def _detect_type(header_text: str, body_text: str) -> str:
         if key in src:
             return t
     return "paragraph"
+
 
 def _dedupe_sorted(points: List[int], n: int) -> List[int]:
     pts = sorted(p for p in points if 0 <= p < n)
@@ -111,7 +120,9 @@ def _dedupe_sorted(points: List[int], n: int) -> List[int]:
             last = p
     return out
 
+
 # -------------------------- Основна функція --------------------------
+
 
 def segment_document(text: str, language: Optional[str] = None) -> DocIndex:
     """
@@ -147,13 +158,15 @@ def segment_document(text: str, language: Optional[str] = None) -> DocIndex:
             blocks.append((last, n))
     else:
         # формуємо блоки від заголовка до наступного заголовка/кінця
-        boundaries = _dedupe_sorted(header_starts + [n], n+1)
-        blocks = [(boundaries[i], boundaries[i+1]) for i in range(len(boundaries)-1)]
+        boundaries = _dedupe_sorted(header_starts + [n], n + 1)
+        blocks = [
+            (boundaries[i], boundaries[i + 1]) for i in range(len(boundaries) - 1)
+        ]
         # фільтр: прибрати «порожні»/дуже короткі (менше 2 символів)
         blocks = [(s, e) for (s, e) in blocks if e - s >= 2]
 
     clauses: List[Clause] = []
-    for (s, e) in blocks:
+    for s, e in blocks:
         frag = raw[s:e]
 
         # Визначити заголовок у межах блоку (перший рядок, що схожий на заголовок)

@@ -31,6 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _as_list(value: Iterable | None) -> List[str]:
     if not value:
         return []
@@ -97,7 +98,9 @@ def _collect_from_yaml(path: Path) -> List[Dict]:
             raw.get("doc_types") or (raw.get("scope", {}) or {}).get("doc_types")
         )
         trig = _extract_triggers(raw.get("triggers") or {})
-        requires = _as_list(raw.get("requires_clause") or raw.get("requires_clause_hit"))
+        requires = _as_list(
+            raw.get("requires_clause") or raw.get("requires_clause_hit")
+        )
         # many legacy rules use ``scope.clauses`` to signal required clause
         if not requires:
             requires = _as_list((raw.get("scope", {}) or {}).get("clauses"))
@@ -154,6 +157,7 @@ def _collect_from_python(path: Path) -> List[Dict]:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def collect_rules() -> List[Dict]:
     """Collect rule metadata from YAML packs and Python modules."""
 
@@ -188,9 +192,10 @@ def main() -> None:
     data = collect_rules()
     out_path = ROOT / "docs" / "rules_inventory.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    out_path.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover - manual invocation
     main()
-

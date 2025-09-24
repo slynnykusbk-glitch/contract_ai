@@ -6,7 +6,7 @@ import os
 import re
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Any, Callable, Dict, Iterable, List, Mapping, MutableMapping
+from typing import Any, Dict, Iterable, List, Mapping, MutableMapping
 
 from contract_review_app.legal_rules import loader
 
@@ -17,7 +17,9 @@ from contract_review_app.legal_rules import loader
 log = logging.getLogger(__name__)
 
 
-_L0_HOOK_CTX: ContextVar[Dict[str, Any] | None] = ContextVar("_L0_HOOK_CTX", default=None)
+_L0_HOOK_CTX: ContextVar[Dict[str, Any] | None] = ContextVar(
+    "_L0_HOOK_CTX", default=None
+)
 _L0_HOOK_GLOBAL: Dict[str, Any] | None = None
 _L0_TRACE_PENDING: Dict[str, Dict[str, Dict[str, Any]]] = {}
 _TRACE_PATCHED = False
@@ -325,6 +327,4 @@ def classify_segments(segments: List[Dict]) -> None:
         # type.  The loader returns findings already structured with ``scope``
         # and ``occurrences`` fields, which we keep untouched.
         findings = loader.match_text(text)
-        seg["findings"] = [
-            f for f in findings if f.get("clause_type") == clause_type
-        ]
+        seg["findings"] = [f for f in findings if f.get("clause_type") == clause_type]

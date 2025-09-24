@@ -18,7 +18,9 @@ describe('QA merge deduplication', () => {
         <div class="muted">Results</div>
       </section>
     `;
-    dom = new JSDOM(`<!doctype html><html><body>${html}</body></html>`, { url: 'https://panel.test' });
+    dom = new JSDOM(`<!doctype html><html><body>${html}</body></html>`, {
+      url: 'https://panel.test',
+    });
     (globalThis as any).window = dom.window as any;
     (globalThis as any).document = dom.window.document as any;
     (globalThis as any).HTMLElement = dom.window.HTMLElement;

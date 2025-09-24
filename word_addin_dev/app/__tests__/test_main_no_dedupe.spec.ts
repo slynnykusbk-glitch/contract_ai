@@ -25,7 +25,9 @@ describe('main findings list preserves backend ordering', () => {
       <span id="resFindingsCount" data-role="findings-count"></span>
       <pre id="rawJson" data-role="raw-json"></pre>
     `;
-    dom = new JSDOM(`<!doctype html><html><body>${html}</body></html>`, { url: 'https://panel.test' });
+    dom = new JSDOM(`<!doctype html><html><body>${html}</body></html>`, {
+      url: 'https://panel.test',
+    });
     globalThis.window = dom.window as any;
     globalThis.document = dom.window.document as any;
     (globalThis as any).HTMLElement = dom.window.HTMLElement;

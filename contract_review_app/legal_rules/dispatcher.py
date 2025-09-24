@@ -107,8 +107,20 @@ class ReasonPayload:
         gates_key = tuple(sorted(self.gates))
         data_key = tuple(
             [
-                ("amounts", tuple((entry.currency, entry.value, entry.offsets) for entry in self.amounts)),
-                ("durations", tuple((entry.unit, entry.value, entry.offsets) for entry in self.durations)),
+                (
+                    "amounts",
+                    tuple(
+                        (entry.currency, entry.value, entry.offsets)
+                        for entry in self.amounts
+                    ),
+                ),
+                (
+                    "durations",
+                    tuple(
+                        (entry.unit, entry.value, entry.offsets)
+                        for entry in self.durations
+                    ),
+                ),
                 ("law", tuple((entry.code, entry.offsets) for entry in self.law)),
                 (
                     "jurisdiction",
@@ -194,7 +206,9 @@ def _coerce_offsets(entry: Mapping[str, Any]) -> Tuple[Tuple[int, int], ...]:
     return ((start, end),)
 
 
-def _entity_entries(feats: Optional[LxFeatureSet], key: str) -> Sequence[Mapping[str, Any]]:
+def _entity_entries(
+    feats: Optional[LxFeatureSet], key: str
+) -> Sequence[Mapping[str, Any]]:
     if feats is None:
         return ()
     entities = getattr(feats, "entities", None)
@@ -232,7 +246,9 @@ def _reason_amounts(feats: Optional[LxFeatureSet]) -> Tuple[ReasonAmount, ...]:
         entries.append(ReasonAmount(currency=currency, value=amount, offsets=offsets))
     if not entries:
         return ()
-    return tuple(sorted(entries, key=lambda item: (item.offsets, item.currency, item.value)))
+    return tuple(
+        sorted(entries, key=lambda item: (item.offsets, item.currency, item.value))
+    )
 
 
 def _reason_durations(feats: Optional[LxFeatureSet]) -> Tuple[ReasonDuration, ...]:
@@ -269,12 +285,12 @@ def _reason_durations(feats: Optional[LxFeatureSet]) -> Tuple[ReasonDuration, ..
         entries.append(ReasonDuration(unit=unit, value=number, offsets=offsets))
     if not entries:
         return ()
-    return tuple(sorted(entries, key=lambda item: (item.offsets, item.unit, item.value)))
+    return tuple(
+        sorted(entries, key=lambda item: (item.offsets, item.unit, item.value))
+    )
 
 
-def _reason_codes(
-    feats: Optional[LxFeatureSet], key: str
-) -> Tuple[ReasonCodeRef, ...]:
+def _reason_codes(feats: Optional[LxFeatureSet], key: str) -> Tuple[ReasonCodeRef, ...]:
     entries: list[ReasonCodeRef] = []
     for entry in _entity_entries(feats, key):
         offsets = _coerce_offsets(entry)
@@ -439,7 +455,9 @@ def _make_reason(
     law: Optional[Iterable[ReasonCodeRef]] = None,
     jurisdiction: Optional[Iterable[ReasonCodeRef]] = None,
 ) -> ReasonPayload:
-    label_items = tuple(sorted({str(lbl).strip() for lbl in labels if str(lbl).strip()}))
+    label_items = tuple(
+        sorted({str(lbl).strip() for lbl in labels if str(lbl).strip()})
+    )
     patterns: Tuple[ReasonPattern, ...] = ()
     if pattern_kind is not None:
         offsets: Tuple[Tuple[int, int], ...] = ()
@@ -464,7 +482,9 @@ def _make_reason(
         patterns = (ReasonPattern(kind=pattern_kind, offsets=offsets),)
     gate_items: Tuple[Tuple[str, bool], ...] = ()
     if gates:
-        gate_items = tuple((str(name), bool(value)) for name, value in sorted(gates.items()))
+        gate_items = tuple(
+            (str(name), bool(value)) for name, value in sorted(gates.items())
+        )
     amount_items = tuple(amounts) if amounts else ()
     duration_items = tuple(durations) if durations else ()
     law_items = tuple(law) if law else ()
@@ -521,7 +541,7 @@ def select_candidate_rules(
 
     reasons: Dict[str, Dict[Tuple[Any, ...], ReasonPayload]] = {}
 
-    labels = { _normalize_token(lbl) for lbl in (feats.labels or []) }
+    labels = {_normalize_token(lbl) for lbl in (feats.labels or [])}
     clause_type = _normalize_token(segment.clause_type or "")
     if clause_type:
         labels.add(clause_type)

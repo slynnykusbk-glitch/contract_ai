@@ -19,9 +19,7 @@ def test_ok_england_and_wales_with_conflict_exclusion():
         "WARN",
     }  # should be OK; WARN if medium-severity findings are present
     assert out.status == "OK"
-    assert any(
-        "reference to governing law" in f.message.lower() for f in out.findings
-    )
+    assert any("reference to governing law" in f.message.lower() for f in out.findings)
     assert out.diagnostics.get("rule") == gl.RULE_NAME
     assert len(out.diagnostics.get("citations", [])) > 0
 

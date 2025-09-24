@@ -41,4 +41,3 @@ def test_internal_error_style():
     r = client.get("/__err/boom")
     assert r.status_code == 500
     assert r.json() == {"detail": "internal error"}
-

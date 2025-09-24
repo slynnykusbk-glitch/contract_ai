@@ -35,6 +35,8 @@ jobs:
           pip freeze | head -n 50
           pre-commit --version || python -m pre_commit --version || true
       - name: Pre-commit (check only)
+        env:
+          SKIP: lint-staged
         run: pre-commit run --all-files --show-diff-on-failure --color always
       - name: Prepare artifact dirs
         run: mkdir -p TRACE trace timings reports

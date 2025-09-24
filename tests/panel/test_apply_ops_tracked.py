@@ -2,7 +2,8 @@ import json
 import subprocess
 import textwrap
 
-JS = textwrap.dedent('''
+JS = textwrap.dedent(
+    """
 const vm = require('vm');
 const fs = require('fs');
 let code = fs.readFileSync('word_addin_dev/taskpane.bundle.js', 'utf-8');
@@ -38,11 +39,15 @@ vm.runInContext(code, sandbox);
   await sandbox.applyOpsTracked([{start:4,end:7,replacement:'XYZ'}]);
   console.log(JSON.stringify(sandbox.inserts));
 })();
-''')
+"""
+)
+
 
 def test_apply_ops_nth_occurrence(tmp_path):
-    script = tmp_path / 'run.js'
+    script = tmp_path / "run.js"
     script.write_text(JS)
-    result = subprocess.run(['node', str(script)], capture_output=True, text=True, check=True)
+    result = subprocess.run(
+        ["node", str(script)], capture_output=True, text=True, check=True
+    )
     data = json.loads(result.stdout.strip())
-    assert data == [{'idx': 1, 'txt': 'XYZ'}]
+    assert data == [{"idx": 1, "txt": "XYZ"}]

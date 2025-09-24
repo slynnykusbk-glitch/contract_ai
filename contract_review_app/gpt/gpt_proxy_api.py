@@ -31,9 +31,7 @@ def call_gpt_api(
         else "UPDATED: \nREVISED based on recommendation:"
     )
 
-    explanation = (
-        "Suggested revision based on issues identified during rule analysis."
-    )
+    explanation = "Suggested revision based on issues identified during rule analysis."
 
     return GPTDraftResponse(
         draft_text=draft_text,

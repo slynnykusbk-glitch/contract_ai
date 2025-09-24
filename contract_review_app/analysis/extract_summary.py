@@ -31,14 +31,20 @@ _COMMENCE_RE = re.compile(r"commencement date[:\s]*?(\d{1,2}\s+\w+\s+20\d{2})", 
 _SIGN_RE = re.compile(r"SIGNED by[^\n]*", re.I)
 
 # Term patterns
-_AUTO_RENEW_RE = re.compile(r"auto[-\s]?renew|unless either party gives\s+(\d+)\s+days'? notice", re.I)
+_AUTO_RENEW_RE = re.compile(
+    r"auto[-\s]?renew|unless either party gives\s+(\d+)\s+days'? notice", re.I
+)
 _COMMENCE_ON_RE = re.compile(r"commence[s]? on\s+(\d{1,2}\s+\w+\s+20\d{2})", re.I)
 _END_ON_RE = re.compile(r"terminate[s]? on\s+(\d{1,2}\s+\w+\s+20\d{2})", re.I)
 _PERIOD_RE = re.compile(r"for a period of\s+(\d+\s+\w+)", re.I)
 
 # Law / jurisdiction
-_LAW_RE = re.compile(r"governed by the laws? of ([^.,\n]+?)(?=\s+and\s+parties|\.|,|\n)", re.I)
-_JURIS_RE = re.compile(r"jurisdiction of the courts? of ([A-Za-z\s]+?)(?:\.|,|\n)", re.I)
+_LAW_RE = re.compile(
+    r"governed by the laws? of ([^.,\n]+?)(?=\s+and\s+parties|\.|,|\n)", re.I
+)
+_JURIS_RE = re.compile(
+    r"jurisdiction of the courts? of ([A-Za-z\s]+?)(?:\.|,|\n)", re.I
+)
 _EXCLUSIVE_RE = re.compile(r"\bexclusive jurisdiction\b", re.I)
 _NONEXCLUSIVE_RE = re.compile(r"\bnon-exclusive\b", re.I)
 
@@ -63,11 +69,16 @@ _CURRENCY_MAP = {"£": "GBP", "$": "USD", "€": "EUR"}
 
 _SUBJECT_SECTIONS = ("purpose", "scope", "services", "background", "recitals")
 _SUBJECT_PATTERNS: Tuple[Tuple[str, re.Pattern[str]], ...] = tuple(
-    (sec, re.compile(rf"^\s*{sec}\b[\s:]*\n(.{{0,400}})", re.I | re.M)) for sec in _SUBJECT_SECTIONS
+    (sec, re.compile(rf"^\s*{sec}\b[\s:]*\n(.{{0,400}})", re.I | re.M))
+    for sec in _SUBJECT_SECTIONS
 )
 
 
-def _iter_segments(segments: Iterable[Any]) -> Iterable[Tuple[int, str, Optional[str], Optional[int], Optional[int], Optional[str]]]:
+def _iter_segments(
+    segments: Iterable[Any],
+) -> Iterable[
+    Tuple[int, str, Optional[str], Optional[int], Optional[int], Optional[str]]
+]:
     """Yield normalized segment information from dicts/objects."""
 
     for seg in segments or []:  # type: ignore[truthy-bool]
@@ -85,7 +96,9 @@ def _iter_segments(segments: Iterable[Any]) -> Iterable[Tuple[int, str, Optional
             start = getattr(seg, "start", None)
             end = getattr(seg, "end", None)
             number = getattr(seg, "number", None)
-        yield seg_id, text, heading, start, end, number if isinstance(number, str) else None
+        yield seg_id, text, heading, start, end, (
+            number if isinstance(number, str) else None
+        )
 
 
 _DURATION_IN_DAYS_RE = re.compile(
@@ -134,7 +147,9 @@ def _extract_duration_from_text(text: str) -> Optional[Duration]:
     return None
 
 
-def _extract_payment_term_days(parsed: Any, segments: Sequence[Any]) -> Optional[Duration]:
+def _extract_payment_term_days(
+    parsed: Any, segments: Sequence[Any]
+) -> Optional[Duration]:
     text = getattr(parsed, "normalized_text", "") or ""
     if m := _NET_TERM_RE.search(text):
         try:
@@ -229,6 +244,7 @@ def _detect_numbering_gaps(parsed: Any, segments: Sequence[Any]) -> List[int]:
     gaps = [n for n in range(start, end + 1) if n not in top_numbers]
     return gaps
 
+
 def _extract_parties(text: str, hints: List[str]) -> List[Party]:
     parties: List[Party] = []
     m = _BETWEEN_RE.search(text)
@@ -281,7 +297,9 @@ def _extract_term(text: str, hints: List[str]) -> TermInfo:
     return TermInfo(mode=mode, start=start, end=end, renew_notice=notice)
 
 
-def _extract_law_juris(text: str, hints: List[str]) -> tuple[Optional[str], Optional[str], Optional[bool]]:
+def _extract_law_juris(
+    text: str, hints: List[str]
+) -> tuple[Optional[str], Optional[str], Optional[bool]]:
     law = juris = None
     exclusivity: Optional[bool] = None
     if m := _LAW_RE.search(text):
@@ -316,7 +334,9 @@ def _extract_liability(text: str, hints: List[str]) -> LiabilityInfo:
                 cap_value = None
             cap_currency = _CURRENCY_MAP.get(sym, sym)
             hints.append(money.group(0))
-    return LiabilityInfo(has_cap=has_cap, cap_value=cap_value, cap_currency=cap_currency)
+    return LiabilityInfo(
+        has_cap=has_cap, cap_value=cap_value, cap_currency=cap_currency
+    )
 
 
 def _extract_carveouts(text: str, hints: List[str]) -> dict:
@@ -396,6 +416,7 @@ def extract_document_snapshot(text: str) -> DocumentSnapshot:
 
     try:
         from contract_review_app.legal_rules import registry as rules_registry  # type: ignore
+
         rules_count = len(getattr(rules_registry, "rules", []))
     except Exception:
         rules_count = 0
@@ -427,7 +448,9 @@ def extract_document_snapshot(text: str) -> DocumentSnapshot:
     try:
         debug_top = [
             {"type": slug_to_display(s), "score": round(v, 3)}
-            for s, v in sorted(score_map.items(), key=lambda kv: kv[1], reverse=True)[:5]
+            for s, v in sorted(score_map.items(), key=lambda kv: kv[1], reverse=True)[
+                :5
+            ]
         ]
         if debug_top:
             object.__setattr__(snapshot, "debug", {"doctype_top": debug_top})

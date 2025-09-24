@@ -1,10 +1,11 @@
 # contract_review_app/legal_rules/runner.py
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple, Optional
+from typing import List, Tuple, Optional
 
 from core.schemas import Finding, Citation
 from contract_review_app.legal_rules.registry import get_checker_for_clause
+
 
 def run_rule_for_clause(
     clause_type: str,

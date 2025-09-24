@@ -1,4 +1,5 @@
 """Rule matching engine with sentence/subclause anchoring and aggregation."""
+
 from __future__ import annotations
 
 import re
@@ -60,7 +61,9 @@ def split_into_blocks(text: str) -> List[Block]:
             continue
         if _SUBCLAUSE_RE.match(line_txt):
             nth["subclause"] += 1
-            blocks.append(Block("subclause", line_start, line_end, line_txt, nth["subclause"]))
+            blocks.append(
+                Block("subclause", line_start, line_end, line_txt, nth["subclause"])
+            )
             continue
         for m in _SENTENCE_RE.finditer(line_txt):
             sent = m.group(0).strip()
@@ -186,4 +189,3 @@ def analyze(text: str, rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     elapsed_ms = (perf_counter() - start) * 1000
     meta.setdefault("timings_ms", {})["run_rules_ms"] = round(max(elapsed_ms, 0.0), 4)
     return result
-

@@ -1,10 +1,13 @@
 import os
 
+
 def fix_indents_in_file(filepath):
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    fixed_lines = [line.replace("\t", "    ") for line in lines]  # табуляція → 4 пробіли
+    fixed_lines = [
+        line.replace("\t", "    ") for line in lines
+    ]  # табуляція → 4 пробіли
     if lines == fixed_lines:
         return False  # нічого не змінено
 
@@ -18,6 +21,7 @@ def fix_indents_in_file(filepath):
         f.writelines(fixed_lines)
 
     return True
+
 
 def run_on_legal_rules_folder():
     base_path = os.path.join("contract_review_app", "legal_rules")
@@ -36,6 +40,7 @@ def run_on_legal_rules_folder():
             print(" -", f)
     else:
         print("✅ No files needed fixing.")
+
 
 if __name__ == "__main__":
     run_on_legal_rules_folder()

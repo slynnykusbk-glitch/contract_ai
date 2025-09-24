@@ -12,4 +12,7 @@ def test_companies_act_1985_flag():
 
 
 def test_dpa_1998_flag():
-    assert _hit("uk_dpa_1998_outdated", "The Supplier complies with the Data Protection Act 1998.")
+    assert _hit(
+        "uk_dpa_1998_outdated",
+        "The Supplier complies with the Data Protection Act 1998.",
+    )

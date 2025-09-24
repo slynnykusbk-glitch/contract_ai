@@ -7,8 +7,8 @@ client = TestClient(app)
 
 def _apply_ops(text: str, ops):
     result = text
-    for op in sorted(ops, key=lambda o: o['start'], reverse=True):
-        result = result[:op['start']] + op['replacement'] + result[op['end']:]
+    for op in sorted(ops, key=lambda o: o["start"], reverse=True):
+        result = result[: op["start"]] + op["replacement"] + result[op["end"] :]
     return result
 
 

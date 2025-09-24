@@ -82,7 +82,9 @@ class CoverageZoneSchema(BaseModel):
     zone_name: str
     description: Optional[str] = None
     label_selectors: LabelSelectorsSchema
-    entity_selectors: EntitySelectorsSchema = Field(default_factory=EntitySelectorsSchema)
+    entity_selectors: EntitySelectorsSchema = Field(
+        default_factory=EntitySelectorsSchema
+    )
     rule_ids_opt: List[str] = Field(default_factory=list)
     weight: Optional[float] = None
     required: bool = False
@@ -201,7 +203,9 @@ def _build_zone(schema: CoverageZoneSchema) -> CoverageZone:
     label_all = _normalize_selector_values(schema.label_selectors.all)
     label_none = _normalize_selector_values(schema.label_selectors.none)
 
-    entity_selectors = {key: bool(getattr(schema.entity_selectors, key)) for key in ENTITY_KEYS}
+    entity_selectors = {
+        key: bool(getattr(schema.entity_selectors, key)) for key in ENTITY_KEYS
+    }
 
     rule_ids = {rid for rid in schema.rule_ids_opt}
 
@@ -219,7 +223,9 @@ def _build_zone(schema: CoverageZoneSchema) -> CoverageZone:
     )
 
 
-def _build_indexes(zones: Sequence[CoverageZone]) -> tuple[Dict[str, Set[str]], Dict[str, Set[str]]]:
+def _build_indexes(
+    zones: Sequence[CoverageZone],
+) -> tuple[Dict[str, Set[str]], Dict[str, Set[str]]]:
     label_index: Dict[str, Set[str]] = {}
     rule_index: Dict[str, Set[str]] = {}
     for zone in zones:
@@ -371,7 +377,9 @@ def _segment_index(segment: Any, default: int) -> int:
     return default
 
 
-def _sanitize_rule_list(rules: Iterable[str], rule_lookup: Mapping[str, Any]) -> List[str]:
+def _sanitize_rule_list(
+    rules: Iterable[str], rule_lookup: Mapping[str, Any]
+) -> List[str]:
     seen: Set[str] = set()
     sanitized: List[str] = []
     for rule in rules:
@@ -385,7 +393,9 @@ def _sanitize_rule_list(rules: Iterable[str], rule_lookup: Mapping[str, Any]) ->
     return sanitized
 
 
-def sanitize_coverage_payload(payload: Optional[Mapping[str, Any]]) -> Optional[Dict[str, Any]]:
+def sanitize_coverage_payload(
+    payload: Optional[Mapping[str, Any]],
+) -> Optional[Dict[str, Any]]:
     if not payload:
         return None
     details_raw = list(payload.get("details", []) or [])
@@ -420,7 +430,11 @@ def sanitize_coverage_payload(payload: Optional[Mapping[str, Any]]) -> Optional[
                     segment_index = int(segment_index)
                 except (TypeError, ValueError):
                     segment_index = None
-            span = _coerce_span(segment.get("span")) if isinstance(segment, Mapping) else None
+            span = (
+                _coerce_span(segment.get("span"))
+                if isinstance(segment, Mapping)
+                else None
+            )
             if segment_index is None or span is None:
                 continue
             segments_sanitized.append({"index": segment_index, "span": span})
@@ -530,18 +544,23 @@ def build_coverage(
                 continue
 
             state["status"] = "present"
-            matched_labels = (
-                zone.label_any.union(zone.label_all).intersection(segment_labels)
+            matched_labels = zone.label_any.union(zone.label_all).intersection(
+                segment_labels
             )
             if matched_labels:
                 state["matched_labels"].update(sorted(matched_labels))
 
-            if span is not None and len(state["segments"]) < COVERAGE_MAX_SEGMENTS_PER_ZONE:
+            if (
+                span is not None
+                and len(state["segments"]) < COVERAGE_MAX_SEGMENTS_PER_ZONE
+            ):
                 state["segments"].append({"index": segment_index, "span": span})
 
             for key in ENTITY_KEYS:
                 if zone.entity_selectors.get(key):
-                    state["matched_entities"][key] += _extract_entities_count(entities, key)
+                    state["matched_entities"][key] += _extract_entities_count(
+                        entities, key
+                    )
 
             if zone.rule_ids:
                 matched_candidates = {rid for rid in candidates if rid in zone.rule_ids}
@@ -588,7 +607,9 @@ def build_coverage(
 
         matched_labels = sorted(state["matched_labels"])
         matched_entities = state["matched_entities"]
-        candidate_rules = _sanitize_rule_list(state["candidate_rules"], valid_rule_lookup)
+        candidate_rules = _sanitize_rule_list(
+            state["candidate_rules"], valid_rule_lookup
+        )
         fired_rules_list = _sanitize_rule_list(state["fired_rules"], valid_rule_lookup)
         missing_rules = []
         if zone.rule_ids:
@@ -621,4 +642,3 @@ def build_coverage(
         "details": details,
     }
     return sanitize_coverage_payload(payload)
-

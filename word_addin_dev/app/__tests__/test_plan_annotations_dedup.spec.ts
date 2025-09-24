@@ -13,11 +13,39 @@ describe('planAnnotations dedupe and overlap handling', () => {
   it('deduplicates identical findings and skips overlapping ranges', () => {
     const findings = [
       { rule_id: 'A', snippet: 'alpha', start: 0, end: 5, severity: 'high', advice: 'alpha-high' },
-      { rule_id: 'A', snippet: 'alpha', start: 0, end: 5, severity: 'medium', advice: 'alpha-medium' },
-      { rule_id: 'B', snippet: 'beta', start: 6, end: 10, severity: 'medium', advice: 'beta-advice' },
-      { rule_id: 'C', snippet: 'beta gamma', start: 8, end: 18, severity: 'critical', advice: 'overlap-advice' },
+      {
+        rule_id: 'A',
+        snippet: 'alpha',
+        start: 0,
+        end: 5,
+        severity: 'medium',
+        advice: 'alpha-medium',
+      },
+      {
+        rule_id: 'B',
+        snippet: 'beta',
+        start: 6,
+        end: 10,
+        severity: 'medium',
+        advice: 'beta-advice',
+      },
+      {
+        rule_id: 'C',
+        snippet: 'beta gamma',
+        start: 8,
+        end: 18,
+        severity: 'critical',
+        advice: 'overlap-advice',
+      },
       { rule_id: 'D', snippet: 'delta', start: 20, end: 25, severity: 'low', advice: 'delta-low' },
-      { rule_id: 'D', snippet: 'delta', start: 20, end: 25, severity: 'critical', advice: 'delta-critical' },
+      {
+        rule_id: 'D',
+        snippet: 'delta',
+        start: 20,
+        end: 25,
+        severity: 'critical',
+        advice: 'delta-critical',
+      },
     ];
 
     const plan = planAnnotations(findings as any);

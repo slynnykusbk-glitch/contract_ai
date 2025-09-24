@@ -12,7 +12,7 @@ Each key maps to pattern data:
 }
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 DOC_TYPE_PATTERNS: Dict[str, Dict[str, Any]] = {
     "nda": {
@@ -232,4 +232,3 @@ DOC_TYPE_PATTERNS: Dict[str, Dict[str, Any]] = {
         ],
     },
 }
-

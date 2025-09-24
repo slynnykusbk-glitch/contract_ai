@@ -42,7 +42,9 @@ def test_qa_recheck_mixed_dict_and_object(monkeypatch):
     def fake_analyze_document(text):
         return _fake_doc()
 
-    monkeypatch.setattr(orchestrator, "_engine", SimpleNamespace(analyze_document=fake_analyze_document))
+    monkeypatch.setattr(
+        orchestrator, "_engine", SimpleNamespace(analyze_document=fake_analyze_document)
+    )
     body = {"text": "Hello", "applied_changes": []}
     r = client.post("/api/qa-recheck", content=json.dumps(body))
     assert r.status_code == 200

@@ -127,8 +127,6 @@ def _cosine_search(
     return results
 
 
-
-
 def search_corpus(
     session: Session,
     query: str,
@@ -187,9 +185,13 @@ def search_corpus(
         )
         scores: dict[int, float] = {}
         for rank, i in enumerate(bm25_ids, 1):
-            scores[i] = scores.get(i, 0.0) + cfg["fusion"]["weights"]["bm25"] / (k + rank)
+            scores[i] = scores.get(i, 0.0) + cfg["fusion"]["weights"]["bm25"] / (
+                k + rank
+            )
         for rank, i in enumerate(vec_ids, 1):
-            scores[i] = scores.get(i, 0.0) + cfg["fusion"]["weights"]["vector"] / (k + rank)
+            scores[i] = scores.get(i, 0.0) + cfg["fusion"]["weights"]["vector"] / (
+                k + rank
+            )
     else:
         order = rrf(bm25_ids, vec_ids, k)
         scores = {}

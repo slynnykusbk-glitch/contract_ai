@@ -21,6 +21,7 @@ def _with_timeout(timeout_s: float):
 
     return decorator
 
+
 # Prefer YAML/runtime rule registry when available
 try:
     from contract_review_app.legal_rules import registry as _reg  # type: ignore
@@ -43,6 +44,7 @@ except Exception:  # pragma: no cover
 try:
     from contract_review_app.engine import pipeline as _engine  # type: ignore
 except Exception:
+
     class _DummyEngine:  # minimal SSOT-compatible fallback
         @staticmethod
         def analyze_document(text: str) -> Dict[str, Any]:
@@ -63,6 +65,7 @@ except Exception:
 
 try:
     from contract_review_app.engine import pipeline_compat as _compat  # type: ignore
+
     _to_panel_shape = getattr(_compat, "to_panel_shape", None)
 except Exception:
     _to_panel_shape = None
@@ -113,7 +116,14 @@ def _pick_headline(analyses: List[Any]) -> Optional[Dict[str, Any]]:
     return max(
         items,
         key=lambda a: (
-            _risk_to_ord(str(a.get("risk_level") or a.get("risk") or a.get("severity") or "medium")),
+            _risk_to_ord(
+                str(
+                    a.get("risk_level")
+                    or a.get("risk")
+                    or a.get("severity")
+                    or "medium"
+                )
+            ),
             len(a.get("findings") or []),
             -int(a.get("score") or 0),
             str(a.get("clause_type") or a.get("type") or ""),
@@ -130,8 +140,25 @@ def _aggregate_results(analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
     out: Dict[str, Any] = {}
     for ctype in sorted(buckets.keys(), key=lambda s: s.lower()):
         items = buckets[ctype]
-        worst_risk = max((_risk_to_ord(str(i.get("risk_level") or i.get("risk") or i.get("severity") or "medium")) for i in items), default=1)
-        scores = [int(i.get("score") or 0) for i in items if isinstance(i.get("score"), (int, float, str))]
+        worst_risk = max(
+            (
+                _risk_to_ord(
+                    str(
+                        i.get("risk_level")
+                        or i.get("risk")
+                        or i.get("severity")
+                        or "medium"
+                    )
+                )
+                for i in items
+            ),
+            default=1,
+        )
+        scores = [
+            int(i.get("score") or 0)
+            for i in items
+            if isinstance(i.get("score"), (int, float, str))
+        ]
         avg_score = int(round(sum(scores) / len(scores))) if scores else 0
         findings: List[Any] = []
         for i in items:
@@ -146,19 +173,25 @@ def _aggregate_results(analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
     return out
 
 
-def _fallback_panel(doc: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]]]:
+def _fallback_panel(
+    doc: Dict[str, Any],
+) -> Tuple[Dict[str, Any], Dict[str, Any], List[Dict[str, Any]]]:
     analyses = list(doc.get("analyses") or [])
     headline = _pick_headline(analyses) or {}
     analysis = {
         "status": headline.get("status") or doc.get("summary_status") or "OK",
-        "risk_level": headline.get("risk_level") or headline.get("risk") or doc.get("summary_risk") or "medium",
+        "risk_level": headline.get("risk_level")
+        or headline.get("risk")
+        or doc.get("summary_risk")
+        or "medium",
         "score": int(headline.get("score") or doc.get("summary_score") or 0),
         "findings": list(islice((headline.get("findings") or []), 5)),
     }
     results = _aggregate_results(analyses)
 
-    idx = (doc.get("index") or {})
+    idx = doc.get("index") or {}
     clauses_raw = list(idx.get("clauses") or [])
+
     # deterministic ordering: by start asc, then title
     def _key(c: Dict[str, Any]) -> Tuple[int, str]:
         sp = c.get("span") or {}
@@ -166,13 +199,16 @@ def _fallback_panel(doc: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]
 
     clauses: List[Dict[str, Any]] = []
     for c in sorted(clauses_raw, key=_key):
-        sp = (c.get("span") or {})
+        sp = c.get("span") or {}
         clauses.append(
             {
                 "id": c.get("id"),
                 "type": c.get("type") or c.get("clause_type") or "clause",
                 "title": c.get("title") or "",
-                "span": {"start": int(sp.get("start") or 0), "length": int(sp.get("length") or 0)},
+                "span": {
+                    "start": int(sp.get("start") or 0),
+                    "length": int(sp.get("length") or 0),
+                },
             }
         )
     return analysis, results, clauses
@@ -309,7 +345,13 @@ def _norm_suggestion(s: Any) -> Dict[str, Any]:
     d = _safe_dump(s)
     msg = d.get("message")
     if not msg:
-        msg = d.get("text") or d.get("proposed_text") or d.get("proposed") or d.get("reason") or ""
+        msg = (
+            d.get("text")
+            or d.get("proposed_text")
+            or d.get("proposed")
+            or d.get("reason")
+            or ""
+        )
     action = d.get("action") or "replace"
     rng = d.get("range")
     if not isinstance(rng, dict):
@@ -365,7 +407,12 @@ async def run_analyze(inp: "AnalyzeIn") -> Dict[str, Any]:
             analysis["findings"].extend(_integrity.run(text))
         except Exception:
             pass
-    return {"analysis": analysis, "results": results, "clauses": clauses, "document": doc}
+    return {
+        "analysis": analysis,
+        "results": results,
+        "clauses": clauses,
+        "document": doc,
+    }
 
 
 @_with_timeout(DRAFT_TIMEOUT_S)
@@ -396,7 +443,11 @@ async def run_gpt_draft(inp: "DraftIn") -> Dict[str, Any]:
         out = {
             "draft_text": draft_text,
             "alternatives": out.get("alternatives") or [{"draft_text": draft_text}],
-            "meta": {"model": "rule-based", "clause_type": clause_type or "unknown", "title": clause_type or "Clause"},
+            "meta": {
+                "model": "rule-based",
+                "clause_type": clause_type or "unknown",
+                "title": clause_type or "Clause",
+            },
             "model": "rule-based",
         }
     else:
@@ -416,7 +467,12 @@ async def run_suggest_edits(inp: "SuggestIn") -> Dict[str, Any]:
     clause_id = getattr(inp, "clause_id", None)
     clause_type = getattr(inp, "clause_type", None)
     mode = getattr(inp, "mode", None)
-    req = {"text": text, "clause_id": clause_id, "clause_type": clause_type, "mode": mode}
+    req = {
+        "text": text,
+        "clause_id": clause_id,
+        "clause_type": clause_type,
+        "mode": mode,
+    }
 
     payload = None
     try:
@@ -433,7 +489,7 @@ async def run_suggest_edits(inp: "SuggestIn") -> Dict[str, Any]:
         src_list = dump.get("suggestions")
         if not isinstance(src_list, list):
             src_list = dump.get("edits") or dump.get("items") or []
-        for s in (src_list or []):
+        for s in src_list or []:
             suggestions.append(_norm_suggestion(s))
 
     if not suggestions:
@@ -491,11 +547,22 @@ async def run_qa_recheck(inp: "QARecheckIn") -> Dict[str, Any]:
     findings = [_safe_dump(f) for f in list(headline.get("findings") or [])]
 
     def _sev_ord(f: Dict[str, Any]) -> int:
-        return _risk_to_ord(str(f.get("severity") or f.get("risk") or f.get("severity_level") or "medium"))
+        return _risk_to_ord(
+            str(
+                f.get("severity")
+                or f.get("risk")
+                or f.get("severity_level")
+                or "medium"
+            )
+        )
 
     findings_sorted = sorted(
         findings,
-        key=lambda f: (_sev_ord(f), str(f.get("code") or ""), str(f.get("message") or "")),
+        key=lambda f: (
+            _sev_ord(f),
+            str(f.get("code") or ""),
+            str(f.get("message") or ""),
+        ),
         reverse=True,
     )
 
@@ -505,7 +572,9 @@ async def run_qa_recheck(inp: "QARecheckIn") -> Dict[str, Any]:
             {
                 "code": f.get("code"),
                 "message": f.get("message"),
-                "severity": f.get("severity") or f.get("risk") or f.get("severity_level"),
+                "severity": f.get("severity")
+                or f.get("risk")
+                or f.get("severity_level"),
             }
         )
 

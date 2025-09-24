@@ -36,7 +36,9 @@ class AnthropicClient(BaseClient):
             "anthropic-version": self._version,
         }
         try:
-            r = httpx.post(f"{self._base}/messages", json=payload, headers=headers, timeout=timeout)
+            r = httpx.post(
+                f"{self._base}/messages", json=payload, headers=headers, timeout=timeout
+            )
         except httpx.TimeoutException:
             raise ProviderTimeoutError(self.provider, timeout)
         if r.status_code in (401, 403):
@@ -45,7 +47,9 @@ class AnthropicClient(BaseClient):
             raise ProviderConfigError(self.provider, r.text)
         return r.json()
 
-    def draft(self, prompt: str, max_tokens: int, temperature: float, timeout: float) -> DraftResult:
+    def draft(
+        self, prompt: str, max_tokens: int, temperature: float, timeout: float
+    ) -> DraftResult:
         data = self._post(
             {
                 "model": self.model,
@@ -57,18 +61,48 @@ class AnthropicClient(BaseClient):
         )
         text = data.get("content", [{}])[0].get("text", "")
         usage = data.get("usage") or {}
-        return DraftResult(text=text, meta={"provider": self.provider, "model": self.model, "mode": self.mode, "usage": usage})
+        return DraftResult(
+            text=text,
+            meta={
+                "provider": self.provider,
+                "model": self.model,
+                "mode": self.mode,
+                "usage": usage,
+            },
+        )
 
     def suggest_edits(self, prompt: str, timeout: float) -> SuggestResult:
-        data = self._post({"model": self.model, "messages": [{"role": "user", "content": prompt}]}, timeout)
+        data = self._post(
+            {"model": self.model, "messages": [{"role": "user", "content": prompt}]},
+            timeout,
+        )
         text = data.get("content", [{}])[0].get("text", "")
         usage = data.get("usage") or {}
         items = [{"text": text}]
-        return SuggestResult(items=items, meta={"provider": self.provider, "model": self.model, "mode": self.mode, "usage": usage})
+        return SuggestResult(
+            items=items,
+            meta={
+                "provider": self.provider,
+                "model": self.model,
+                "mode": self.mode,
+                "usage": usage,
+            },
+        )
 
     def qa_recheck(self, prompt: str, timeout: float) -> QAResult:
-        data = self._post({"model": self.model, "messages": [{"role": "user", "content": prompt}]}, timeout)
+        data = self._post(
+            {"model": self.model, "messages": [{"role": "user", "content": prompt}]},
+            timeout,
+        )
         text = data.get("content", [{}])[0].get("text", "")
         usage = data.get("usage") or {}
         items = [text]
-        return QAResult(items=items, meta={"provider": self.provider, "model": self.model, "mode": self.mode, "usage": usage})
+        return QAResult(
+            items=items,
+            meta={
+                "provider": self.provider,
+                "model": self.model,
+                "mode": self.mode,
+                "usage": usage,
+            },
+        )

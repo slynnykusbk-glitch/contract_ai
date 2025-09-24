@@ -10,7 +10,9 @@ from typing import Any, Dict, Optional
 from contract_review_app.security.secure_store import secure_write
 
 
-def audit(event: str, user: Optional[str], doc_hash: Optional[str], details: Dict[str, Any]) -> None:
+def audit(
+    event: str, user: Optional[str], doc_hash: Optional[str], details: Dict[str, Any]
+) -> None:
     """Write audit entry as encrypted JSON line."""
 
     os.makedirs("var", exist_ok=True)
@@ -18,9 +20,13 @@ def audit(event: str, user: Optional[str], doc_hash: Optional[str], details: Dic
         "ts": datetime.utcnow().isoformat() + "Z",
         "event": event,
         "user": user,
-        "hash_doc": hashlib.blake2b((doc_hash or "").encode("utf-8"), digest_size=16).hexdigest()
-        if doc_hash
-        else None,
+        "hash_doc": (
+            hashlib.blake2b(
+                (doc_hash or "").encode("utf-8"), digest_size=16
+            ).hexdigest()
+            if doc_hash
+            else None
+        ),
         "pii_present": bool(details.pop("pii_present", False)),
         "redaction_policy": "auto",
     }

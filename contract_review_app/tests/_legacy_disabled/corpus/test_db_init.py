@@ -14,4 +14,3 @@ def test_corpus_init_sqlite(tmp_path, monkeypatch):
     with e.connect() as c:
         cnt = c.execute(text("SELECT COUNT(*) FROM legal_corpus")).scalar()
         assert cnt in (0, int(cnt))
-

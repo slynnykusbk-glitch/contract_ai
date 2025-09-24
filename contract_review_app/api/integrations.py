@@ -107,7 +107,9 @@ async def companies_health():
     if FEATURE_COMPANIES_HOUSE not in {"1", "true", "True"}:
         return JSONResponse({"status": "disabled"}, status_code=403)
     if not CH_API_KEY:
-        return JSONResponse({"error": "companies_house_api_key_missing"}, status_code=400)
+        return JSONResponse(
+            {"error": "companies_house_api_key_missing"}, status_code=400
+        )
     return {"status": "ok"}
 
 

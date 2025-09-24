@@ -18,7 +18,9 @@ from typing import Iterable, Sequence
 import re
 
 ROOT = Path(__file__).resolve().parent
-TOKEN_FILE_REL = Path("contract_review_app/contract_review_app/static/panel/.build-token")
+TOKEN_FILE_REL = Path(
+    "contract_review_app/contract_review_app/static/panel/.build-token"
+)
 PLACEHOLDER = "__BUILD_TS__"
 TOKEN_PATTERN = re.compile(r"build-\d{8}-\d{6}|__BUILD_TS__")
 
@@ -55,10 +57,14 @@ def bump_build(root: Path | None = None, paths: Sequence[Path] | None = None) ->
     repo = root or ROOT
     token = datetime.utcnow().strftime("build-%Y%m%d-%H%M%S")
 
-    targets = list(paths) if paths is not None else [
-        repo / "word_addin_dev",
-        repo / "contract_review_app" / "contract_review_app" / "static" / "panel",
-    ]
+    targets = (
+        list(paths)
+        if paths is not None
+        else [
+            repo / "word_addin_dev",
+            repo / "contract_review_app" / "contract_review_app" / "static" / "panel",
+        ]
+    )
     for path in _iter_files(targets):
         try:
             text = path.read_text(encoding="utf-8")

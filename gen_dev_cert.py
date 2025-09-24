@@ -13,10 +13,12 @@ KEY_PATH = r"C:\certs\dev.key"
 key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
 # 2) створюємо самопідписаний сертифікат із SAN: лише 127.0.0.1
-subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, u"127.0.0.1")])
-san = x509.SubjectAlternativeName([
-    x509.IPAddress(ipaddress.IPv4Address("127.0.0.1")),
-])
+subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "127.0.0.1")])
+san = x509.SubjectAlternativeName(
+    [
+        x509.IPAddress(ipaddress.IPv4Address("127.0.0.1")),
+    ]
+)
 
 cert = (
     x509.CertificateBuilder()

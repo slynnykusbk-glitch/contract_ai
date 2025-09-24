@@ -1,4 +1,5 @@
 """Utilities for building deterministic edit operations for API responses."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -60,7 +61,9 @@ def _extract_span(candidate: Any) -> Optional[Tuple[int, int]]:
     return None
 
 
-def build_edits(text: str, clause_type: str, findings: Iterable[Any], mode: str) -> List[Dict[str, Any]]:
+def build_edits(
+    text: str, clause_type: str, findings: Iterable[Any], mode: str
+) -> List[Dict[str, Any]]:
     """Construct a list of edit operations for the given clause type.
 
     Ranges are character-based indices on the provided ``text``.

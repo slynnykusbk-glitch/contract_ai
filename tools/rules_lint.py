@@ -134,9 +134,7 @@ def _valid_salience(value: object) -> bool:
 
 
 def lint_rules(roots: Sequence[str | Path] | None = None) -> LintResult:
-    records, missing_rule_id = _gather_records(
-        roots, allowed_exts=DEFAULT_ALLOWED_EXTS
-    )
+    records, missing_rule_id = _gather_records(roots, allowed_exts=DEFAULT_ALLOWED_EXTS)
     channel_count = 0
     salience_count = 0
     missing_channel: List[RuleRecord] = []
@@ -208,10 +206,7 @@ def render_report(result: LintResult, stream: TextIO) -> None:
     _write_section(
         stream,
         "Missing channel",
-        (
-            f"{rec.rule_id} ({_format_path(rec.path)})"
-            for rec in result.missing_channel
-        ),
+        (f"{rec.rule_id} ({_format_path(rec.path)})" for rec in result.missing_channel),
     )
     _write_section(
         stream,

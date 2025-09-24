@@ -34,7 +34,9 @@ def test_coverage_summary_useful():
     try:
         for name, paths in FIXTURES.items():
             text = _load_text(paths)
-            response = client.post("/api/analyze", headers=_headers(), json={"text": text})
+            response = client.post(
+                "/api/analyze", headers=_headers(), json={"text": text}
+            )
             assert response.status_code == 200, name
             cid = response.headers.get("x-cid")
             assert cid, name

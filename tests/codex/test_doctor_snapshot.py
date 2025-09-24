@@ -20,7 +20,9 @@ def test_doctor_sections_shape(tmp_path, monkeypatch):
     rc = subprocess.call(cmd)
     assert rc == 0
     data = json.loads((out_dir / "analysis.json").read_text(encoding="utf-8"))
-    sections = {name: _shape(data[name]) for name in ["git", "llm", "addin", "inventory"]}
+    sections = {
+        name: _shape(data[name]) for name in ["git", "llm", "addin", "inventory"]
+    }
     snapshot_path = Path(__file__).with_name("doctor_sections_snapshot.json")
     expected = json.loads(snapshot_path.read_text(encoding="utf-8"))
     assert sections == expected

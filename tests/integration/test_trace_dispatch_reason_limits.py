@@ -47,9 +47,7 @@ def test_trace_dispatch_reason_offsets_are_limited(monkeypatch):
                 ReasonDuration(unit="days", value=30, offsets=_make_offsets(5, 200)),
             ),
             law=(ReasonCodeRef(code="US", offsets=_make_offsets(5, 400)),),
-            jurisdiction=(
-                ReasonCodeRef(code="US", offsets=_make_offsets(5, 600)),
-            ),
+            jurisdiction=(ReasonCodeRef(code="US", offsets=_make_offsets(5, 600)),),
         )
 
         dispatch = trace_mod.build_dispatch(1, 1, 1, (_DummyCandidate(reason),))
@@ -89,4 +87,3 @@ def test_trace_dispatch_reason_offsets_are_limited(monkeypatch):
     finally:
         monkeypatch.delenv("TRACE_REASON_MAX_OFFSETS_PER_TYPE", raising=False)
         importlib.reload(trace_mod)
-

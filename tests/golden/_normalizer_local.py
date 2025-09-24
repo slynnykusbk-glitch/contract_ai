@@ -90,10 +90,12 @@ def _sort_fired_rules(items: Iterable[Mapping[str, Any]]) -> List[Dict[str, Any]
             ordered_pos = []
             for pos in positions:
                 if isinstance(pos, Mapping):
-                    ordered_pos.append({
-                        "start": int(pos.get("start", 0) or 0),
-                        "end": int(pos.get("end", 0) or 0),
-                    })
+                    ordered_pos.append(
+                        {
+                            "start": int(pos.get("start", 0) or 0),
+                            "end": int(pos.get("end", 0) or 0),
+                        }
+                    )
             ordered_pos.sort(key=lambda p: (p.get("start", 0), p.get("end", 0)))
             item["positions"] = ordered_pos
             item.pop("trigger_positions", None)
@@ -232,7 +234,12 @@ def _citation_sort_key(item: Mapping[str, Any]) -> Tuple[str, str, str, str, str
 
 def _name_key(item: Any) -> str:
     if isinstance(item, Mapping):
-        candidate = item.get("name") or item.get("rule_id") or item.get("id") or item.get("pack")
+        candidate = (
+            item.get("name")
+            or item.get("rule_id")
+            or item.get("id")
+            or item.get("pack")
+        )
         if candidate is None:
             return ""
         return str(candidate)
@@ -250,7 +257,10 @@ def _coerce_int(value: Any) -> int:
 
 def _canonicalize(obj: Any) -> Any:
     if isinstance(obj, Mapping):
-        return {str(k): _canonicalize(v) for k, v in sorted(obj.items(), key=lambda kv: str(kv[0]))}
+        return {
+            str(k): _canonicalize(v)
+            for k, v in sorted(obj.items(), key=lambda kv: str(kv[0]))
+        }
     if isinstance(obj, list):
         return [_canonicalize(v) for v in obj]
     return obj
@@ -274,7 +284,9 @@ def normalize_response(payload: Mapping[str, Any]) -> Dict[str, Any]:
             _clean_summary_block(summary_block)
         res_analysis = results.get("analysis")
         if isinstance(res_analysis, MutableMapping):
-            res_analysis["findings"] = _sort_findings(res_analysis.get("findings") or [])
+            res_analysis["findings"] = _sort_findings(
+                res_analysis.get("findings") or []
+            )
 
     clauses = data.get("clauses")
     if isinstance(clauses, list):

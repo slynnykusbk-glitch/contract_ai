@@ -3,7 +3,10 @@ from jinja2 import Template
 import webbrowser
 from typing import Any, Mapping, Sequence
 
-def generate_report(results: list[AnalysisOutput], output_file: str = "contract_report.html") -> None:
+
+def generate_report(
+    results: list[AnalysisOutput], output_file: str = "contract_report.html"
+) -> None:
     """
     Генерує HTML-звіт і відкриває його у браузері.
     """

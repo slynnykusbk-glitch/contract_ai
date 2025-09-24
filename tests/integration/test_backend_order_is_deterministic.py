@@ -6,13 +6,21 @@ from contract_review_app.analysis.agenda import agenda_sort_key
 from contract_review_app.legal_rules.aggregate import apply_merge_policy
 
 
-def _fingerprint(findings: list[dict]) -> list[tuple[str | None, int | None, int | None]]:
+def _fingerprint(
+    findings: list[dict],
+) -> list[tuple[str | None, int | None, int | None]]:
     result: list[tuple[str | None, int | None, int | None]] = []
     for finding in findings:
         anchor = finding.get("anchor") or {}
         start = anchor.get("start") if isinstance(anchor, dict) else None
         end = anchor.get("end") if isinstance(anchor, dict) else None
-        result.append((finding.get("rule_id"), start if isinstance(start, int) else None, end if isinstance(end, int) else None))
+        result.append(
+            (
+                finding.get("rule_id"),
+                start if isinstance(start, int) else None,
+                end if isinstance(end, int) else None,
+            )
+        )
     return result
 
 
@@ -56,4 +64,6 @@ def test_backend_order_is_deterministic() -> None:
     reordered = apply_merge_policy(copy.deepcopy(shuffled), use_agenda=True)
 
     assert _fingerprint(ordered) == _fingerprint(reordered)
-    assert _fingerprint(ordered) == _fingerprint(sorted(copy.deepcopy(ordered), key=agenda_sort_key))
+    assert _fingerprint(ordered) == _fingerprint(
+        sorted(copy.deepcopy(ordered), key=agenda_sort_key)
+    )

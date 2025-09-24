@@ -16,5 +16,7 @@ def test_rules_packaged(tmp_path):
     )
     wheel = next(dist.glob("*.whl"))
     with zipfile.ZipFile(wheel) as zf:
-        files = [n for n in zf.namelist() if n.endswith(".yaml") and "policy_packs" in n]
+        files = [
+            n for n in zf.namelist() if n.endswith(".yaml") and "policy_packs" in n
+        ]
     assert files, "YAML rule packs missing in wheel"

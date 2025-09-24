@@ -58,7 +58,9 @@ def generate_disagreement_protocol(
         clause_id = clause.clause_id or clause.clause_type
         finding = clause.findings[0] if clause.findings else None
         issue = finding.message if finding else ""
-        reference = "; ".join(finding.legal_basis) if finding and finding.legal_basis else ""
+        reference = (
+            "; ".join(finding.legal_basis) if finding and finding.legal_basis else ""
+        )
         recommendation = (
             clause.recommendations[0]
             if clause.recommendations
@@ -105,4 +107,3 @@ def generate_disagreement_protocol(
         p.add_run("Статус: ").bold = True
         p.add_run(item["status"])
     doc.save(docx_path)
-

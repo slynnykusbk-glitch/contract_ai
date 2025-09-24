@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import time
 from pathlib import Path
-from typing import List
 
 RETENTION_DAYS = int(os.getenv("CR_RETENTION_DAYS", "30"))
 VAR_PATH = Path(__file__).resolve().parents[2] / "var"

@@ -1,4 +1,5 @@
 """Deterministic normalisation helpers for contract API responses."""
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -74,7 +75,9 @@ def _sanitize_parties(value: Any) -> Any:
     for party in value:
         if not isinstance(party, dict):
             continue
-        minimal = {k: party[k] for k in _PARTY_KEYS if k in party and party[k] is not None}
+        minimal = {
+            k: party[k] for k in _PARTY_KEYS if k in party and party[k] is not None
+        }
         if set(party.keys()) - _PARTY_KEYS:
             changed = True
         if minimal:

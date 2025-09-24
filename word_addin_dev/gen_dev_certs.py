@@ -6,7 +6,9 @@ from pathlib import Path
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives.serialization.pkcs12 import serialize_key_and_certificates
+from cryptography.hazmat.primitives.serialization.pkcs12 import (
+    serialize_key_and_certificates,
+)
 from cryptography.x509.oid import NameOID
 
 BASE = Path(__file__).resolve().parent
@@ -65,10 +67,14 @@ def main():
         key=key,
         cert=cert,
         cas=None,
-        encryption_algorithm=serialization.BestAvailableEncryption(PFX_PASSWORD.encode("utf-8")),
+        encryption_algorithm=serialization.BestAvailableEncryption(
+            PFX_PASSWORD.encode("utf-8")
+        ),
     )
     pfx_path.write_bytes(pfx)
-    print(f"[OK] Wrote:\n  {crt_path}\n  {key_path}\n  {pfx_path}\nPFX password: {PFX_PASSWORD}")
+    print(
+        f"[OK] Wrote:\n  {crt_path}\n  {key_path}\n  {pfx_path}\nPFX password: {PFX_PASSWORD}"
+    )
 
 
 if __name__ == "__main__":

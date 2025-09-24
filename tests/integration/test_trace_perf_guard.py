@@ -24,9 +24,7 @@ _TRACE_SIZE_LIMIT: Final[int] = 1_500_000
 _TRACE_FETCH_LIMIT_SECONDS: Final[float] = 1.5
 _TARGET_DOCUMENT_SIZE_CHARS: Final[int] = 120_000
 _TRACE_PER_ENTRY_LIMIT: Final[int] = 60_000
-_EMPTY_RULE_DIR: Final[Path] = (
-    Path(__file__).resolve().parent / "data" / "empty_rules"
-)
+_EMPTY_RULE_DIR: Final[Path] = Path(__file__).resolve().parent / "data" / "empty_rules"
 _EMPTY_RULE_DIR.mkdir(parents=True, exist_ok=True)
 
 _TEMPLATE_PARAGRAPHS: Final[tuple[str, ...]] = (
@@ -78,9 +76,7 @@ def _capture_trace_snapshot(document_text: str) -> dict[str, Any]:
     try:
         client, modules = _build_client("1")
         payload = {"text": document_text}
-        analyze_response = client.post(
-            "/api/analyze", headers=_headers(), json=payload
-        )
+        analyze_response = client.post("/api/analyze", headers=_headers(), json=payload)
         assert analyze_response.status_code == 200
 
         cid = analyze_response.headers.get("x-cid")
@@ -129,9 +125,7 @@ def test_trace_perf_guard() -> None:
         sys.modules.pop("contract_review_app.legal_rules.loader", None)
         client, modules = _build_client("1")
         payload = {"text": _make_long_document()}
-        analyze_response = client.post(
-            "/api/analyze", headers=_headers(), json=payload
-        )
+        analyze_response = client.post("/api/analyze", headers=_headers(), json=payload)
         assert analyze_response.status_code == 200
 
         cid = analyze_response.headers.get("x-cid")
@@ -146,7 +140,9 @@ def test_trace_perf_guard() -> None:
         trace_len = len(json.dumps(trace_body))
 
         _LOGGER.info(
-            "TRACE size/perf guard – chars: %s, fetch_time: %.3fs", trace_len, fetch_duration
+            "TRACE size/perf guard – chars: %s, fetch_time: %.3fs",
+            trace_len,
+            fetch_duration,
         )
         print(
             f"TRACE size/perf guard – chars: {trace_len}, fetch_time: {fetch_duration:.3f}s"
@@ -155,9 +151,7 @@ def test_trace_perf_guard() -> None:
         assert (
             trace_len <= _TRACE_SIZE_LIMIT
         ), f"Trace payload unexpectedly large: {trace_len} > {_TRACE_SIZE_LIMIT}"
-        assert (
-            fetch_duration <= _TRACE_FETCH_LIMIT_SECONDS
-        ), (
+        assert fetch_duration <= _TRACE_FETCH_LIMIT_SECONDS, (
             "Trace fetch slower than expected: "
             f"{fetch_duration:.3f}s > {_TRACE_FETCH_LIMIT_SECONDS:.3f}s"
         )
@@ -203,9 +197,7 @@ def test_trace_perf_guard_entry_limit() -> None:
             limited["dispatch_candidates"] < baseline["dispatch_candidates"]
             or limited["feature_segments"] < baseline["feature_segments"]
         )
-        assert (
-            limited["fetch_duration"] <= _TRACE_FETCH_LIMIT_SECONDS
-        ), (
+        assert limited["fetch_duration"] <= _TRACE_FETCH_LIMIT_SECONDS, (
             "Trace fetch slower than expected with entry limit: "
             f"{limited['fetch_duration']:.3f}s > {_TRACE_FETCH_LIMIT_SECONDS:.3f}s"
         )

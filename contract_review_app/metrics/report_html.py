@@ -6,7 +6,9 @@ from .schemas import MetricsResponse
 def render_metrics_html(resp: MetricsResponse) -> str:
     m = resp.metrics
     lines = ["<html><body>", "<h1>Quality metrics</h1>"]
-    lines.append("<table><tr><th>rule_id</th><th>tp</th><th>fp</th><th>fn</th><th>precision</th><th>recall</th><th>f1</th></tr>")
+    lines.append(
+        "<table><tr><th>rule_id</th><th>tp</th><th>fp</th><th>fn</th><th>precision</th><th>recall</th><th>f1</th></tr>"
+    )
     for r in m.rules:
         lines.append(
             f"<tr><td>{r.rule_id}</td><td>{r.tp}</td><td>{r.fp}</td><td>{r.fn}</td>"

@@ -1,5 +1,5 @@
-from docx import Document
 import re
+
 
 def extract_clauses(doc_text):
     """
@@ -12,7 +12,7 @@ def extract_clauses(doc_text):
 
     for line in lines:
         line = line.strip()
-        if re.match(r'^\d{1,2}\.', line):
+        if re.match(r"^\d{1,2}\.", line):
             current_clause = line
             clauses[current_clause] = line
         elif current_clause:
@@ -20,17 +20,20 @@ def extract_clauses(doc_text):
 
     return clauses
 
+
 def check_indemnity_clause(clause_text):
     """
     Checks if indemnity clause has key components.
     """
     required_keywords = [
-        "indemnifies", "loss", "liability", "costs", "breach", "non-performance"
+        "indemnifies",
+        "loss",
+        "liability",
+        "costs",
+        "breach",
+        "non-performance",
     ]
-    results = {
-        "status": "✅ Complete",
-        "missing": []
-    }
+    results = {"status": "✅ Complete", "missing": []}
     for kw in required_keywords:
         if kw.lower() not in clause_text.lower():
             results["missing"].append(kw)
@@ -39,6 +42,7 @@ def check_indemnity_clause(clause_text):
         results["status"] = "❌ Incomplete"
 
     return results
+
 
 def analyze_clauses(clauses):
     """

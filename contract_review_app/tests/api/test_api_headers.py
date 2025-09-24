@@ -51,5 +51,3 @@ def test_trace_uses_same_cid_and_latency(monkeypatch):
     resp = client.post("/api/analyze", json=payload, headers=HEADERS.copy())
 
     assert last["cid"] == resp.headers["x-cid"]
-
-

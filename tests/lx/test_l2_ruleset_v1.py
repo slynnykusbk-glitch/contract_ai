@@ -6,7 +6,10 @@ from typing import Callable, Dict
 import pytest
 
 from contract_review_app.core.lx_types import Duration, Money, ParamGraph, SourceRef
-from contract_review_app.legal_rules.constraints import eval_constraints, load_constraints
+from contract_review_app.legal_rules.constraints import (
+    eval_constraints,
+    load_constraints,
+)
 
 
 def _duration(days: int, kind: str = "calendar") -> Duration:
@@ -56,7 +59,12 @@ VIOLATION_FACTORIES: Dict[str, Callable[[], ParamGraph]] = {
         sources={"parties": _source("P1")},
     ),
     "L2-002": lambda: make_pg(
-        parties=[{"name": "Alpha Ltd", "addresses": [{"line1": "1 Main St", "city": "London"}]}],
+        parties=[
+            {
+                "name": "Alpha Ltd",
+                "addresses": [{"line1": "1 Main St", "city": "London"}],
+            }
+        ],
         sources={"parties": _source("P1"), "parties/addrs": _source("P1")},
     ),
     "L2-003": lambda: make_pg(
@@ -96,7 +104,11 @@ VIOLATION_FACTORIES: Dict[str, Callable[[], ParamGraph]] = {
         payment_term=_duration(90),
         contract_term=_duration(60),
         grace_period=_duration(0),
-        sources={"payment_term": _source("F1"), "contract_term": _source("T1"), "grace_period": _source("T1")},
+        sources={
+            "payment_term": _source("F1"),
+            "contract_term": _source("T1"),
+            "grace_period": _source("T1"),
+        },
     ),
     "L2-021": lambda: make_pg(
         notice_period=_duration(30),
@@ -125,33 +137,107 @@ VIOLATION_FACTORIES: Dict[str, Callable[[], ParamGraph]] = {
         contract_currency="GBP",
         sources={"cap": _source("L1"), "contract_currency": _source("CC")},
     ),
-    "L2-032": lambda: make_pg(doc_flags={"indemnity_unlimited_no_carveout": True}, sources={"indemnity": _source("I1")}),
-    "L2-033": lambda: make_pg(doc_flags={"fraud_exclusion_detected": True}, sources={"liability": _source("I2")}),
-    "L2-034": lambda: make_pg(doc_flags={"cap_amount_missing": True}, sources={"cap": _source("L1")}),
-    "L2-040": lambda: make_pg(doc_flags={"public_domain_by_recipient": True}, sources={"confidentiality": _source("C1")}),
-    "L2-041": lambda: make_pg(doc_flags={"illegal_possession_exception": True}, sources={"confidentiality": _source("C1")}),
-    "L2-042": lambda: make_pg(doc_flags={"purpose_overbreadth": True}, sources={"confidentiality": _source("C1")}),
-    "L2-043": lambda: make_pg(doc_flags={"return_delete_broken_ref": True}, sources={"confidentiality": _source("C1")}),
-    "L2-044": lambda: make_pg(doc_flags={"missing_return_timeline": True}, sources={"confidentiality": _source("C1")}),
-    "L2-050": lambda: make_pg(doc_flags={"notify_notwithstanding_law": True}, sources={"regulatory": _source("R1")}),
-    "L2-051": lambda: make_pg(doc_flags={"overbroad_regulator_disclosure": True}, sources={"regulatory": _source("R1")}),
-    "L2-052": lambda: make_pg(doc_flags={"regulator_notice_requires_consent": True}, sources={"regulatory": _source("R1")}),
-    "L2-053": lambda: make_pg(doc_flags={"aml_obligations_missing": True}, sources={"aml": _source("A1")}),
-    "L2-060": lambda: make_pg(doc_flags={"fm_no_payment_carveout": True}, sources={"force_majeure": _source("FM")}),
-    "L2-061": lambda: make_pg(doc_flags={"fm_financial_hardship": True}, sources={"force_majeure": _source("FM")}),
-    "L2-070": lambda: make_pg(doc_flags={"pd_without_dp_obligations": True}, sources={"data_protection": _source("DP")}),
-    "L2-071": lambda: make_pg(doc_flags={"data_transfer_without_safeguards": True}, sources={"data_protection": _source("DP")}),
-    "L2-080": lambda: make_pg(undefined_terms=["Effective Date"], sources={"definitions": _source("DEF")}),
-    "L2-081": lambda: make_pg(numbering_gaps=[5], doc_flags={}, sources={"definitions": _source("DEF")}),
-    "L2-082": lambda: make_pg(annex_refs=["Schedule 1"], order_of_precedence=False, sources={"annexes": _source("ANN")}),
-    "L2-083": lambda: make_pg(doc_flags={"annex_reference_unresolved": True}, sources={"annexes": _source("ANN")}),
-    "L2-084": lambda: make_pg(doc_flags={"broken_cross_references": True}, sources={"cross_refs": _source("CR")}),
-    "L2-090": lambda: make_pg(doc_flags={"companies_act_1985_reference": True}, sources={"statutes": _source("ST")}),
-    "L2-091": lambda: make_pg(doc_flags={"outdated_ico_reference": True}, sources={"statutes": _source("ST")}),
-    "L2-092": lambda: make_pg(doc_flags={"outdated_fsa_reference": True}, sources={"statutes": _source("ST")}),
-    "L2-100": lambda: make_pg(doc_flags={"fee_for_nda": True}, sources={"commercial": _source("COM")}),
-    "L2-101": lambda: make_pg(doc_flags={"shall_be_avoided_wording": True}, sources={"commercial": _source("COM")}),
-    "L2-102": lambda: make_pg(survival_items={"governing law"}, sources={"survival": _source("SUR")}),
+    "L2-032": lambda: make_pg(
+        doc_flags={"indemnity_unlimited_no_carveout": True},
+        sources={"indemnity": _source("I1")},
+    ),
+    "L2-033": lambda: make_pg(
+        doc_flags={"fraud_exclusion_detected": True},
+        sources={"liability": _source("I2")},
+    ),
+    "L2-034": lambda: make_pg(
+        doc_flags={"cap_amount_missing": True}, sources={"cap": _source("L1")}
+    ),
+    "L2-040": lambda: make_pg(
+        doc_flags={"public_domain_by_recipient": True},
+        sources={"confidentiality": _source("C1")},
+    ),
+    "L2-041": lambda: make_pg(
+        doc_flags={"illegal_possession_exception": True},
+        sources={"confidentiality": _source("C1")},
+    ),
+    "L2-042": lambda: make_pg(
+        doc_flags={"purpose_overbreadth": True},
+        sources={"confidentiality": _source("C1")},
+    ),
+    "L2-043": lambda: make_pg(
+        doc_flags={"return_delete_broken_ref": True},
+        sources={"confidentiality": _source("C1")},
+    ),
+    "L2-044": lambda: make_pg(
+        doc_flags={"missing_return_timeline": True},
+        sources={"confidentiality": _source("C1")},
+    ),
+    "L2-050": lambda: make_pg(
+        doc_flags={"notify_notwithstanding_law": True},
+        sources={"regulatory": _source("R1")},
+    ),
+    "L2-051": lambda: make_pg(
+        doc_flags={"overbroad_regulator_disclosure": True},
+        sources={"regulatory": _source("R1")},
+    ),
+    "L2-052": lambda: make_pg(
+        doc_flags={"regulator_notice_requires_consent": True},
+        sources={"regulatory": _source("R1")},
+    ),
+    "L2-053": lambda: make_pg(
+        doc_flags={"aml_obligations_missing": True}, sources={"aml": _source("A1")}
+    ),
+    "L2-060": lambda: make_pg(
+        doc_flags={"fm_no_payment_carveout": True},
+        sources={"force_majeure": _source("FM")},
+    ),
+    "L2-061": lambda: make_pg(
+        doc_flags={"fm_financial_hardship": True},
+        sources={"force_majeure": _source("FM")},
+    ),
+    "L2-070": lambda: make_pg(
+        doc_flags={"pd_without_dp_obligations": True},
+        sources={"data_protection": _source("DP")},
+    ),
+    "L2-071": lambda: make_pg(
+        doc_flags={"data_transfer_without_safeguards": True},
+        sources={"data_protection": _source("DP")},
+    ),
+    "L2-080": lambda: make_pg(
+        undefined_terms=["Effective Date"], sources={"definitions": _source("DEF")}
+    ),
+    "L2-081": lambda: make_pg(
+        numbering_gaps=[5], doc_flags={}, sources={"definitions": _source("DEF")}
+    ),
+    "L2-082": lambda: make_pg(
+        annex_refs=["Schedule 1"],
+        order_of_precedence=False,
+        sources={"annexes": _source("ANN")},
+    ),
+    "L2-083": lambda: make_pg(
+        doc_flags={"annex_reference_unresolved": True},
+        sources={"annexes": _source("ANN")},
+    ),
+    "L2-084": lambda: make_pg(
+        doc_flags={"broken_cross_references": True},
+        sources={"cross_refs": _source("CR")},
+    ),
+    "L2-090": lambda: make_pg(
+        doc_flags={"companies_act_1985_reference": True},
+        sources={"statutes": _source("ST")},
+    ),
+    "L2-091": lambda: make_pg(
+        doc_flags={"outdated_ico_reference": True}, sources={"statutes": _source("ST")}
+    ),
+    "L2-092": lambda: make_pg(
+        doc_flags={"outdated_fsa_reference": True}, sources={"statutes": _source("ST")}
+    ),
+    "L2-100": lambda: make_pg(
+        doc_flags={"fee_for_nda": True}, sources={"commercial": _source("COM")}
+    ),
+    "L2-101": lambda: make_pg(
+        doc_flags={"shall_be_avoided_wording": True},
+        sources={"commercial": _source("COM")},
+    ),
+    "L2-102": lambda: make_pg(
+        survival_items={"governing law"}, sources={"survival": _source("SUR")}
+    ),
 }
 
 
@@ -166,7 +252,9 @@ COMPLIANT_FACTORIES: Dict[str, Callable[[], ParamGraph]] = {
         parties=[
             {
                 "name": "Alpha Ltd",
-                "addresses": [{"line1": "1 Main St", "city": "London", "country": "UK"}],
+                "addresses": [
+                    {"line1": "1 Main St", "city": "London", "country": "UK"}
+                ],
             }
         ]
     ),
@@ -174,7 +262,9 @@ COMPLIANT_FACTORIES: Dict[str, Callable[[], ParamGraph]] = {
         parties=[{"name": "Alpha Limited"}],
         signatures=[{"entity": "Alpha Ltd", "date": "2024-01-01"}],
     ),
-    "L2-004": lambda: make_pg(signatures=[{"entity": "Alpha Limited", "date": "2024-01-01"}]),
+    "L2-004": lambda: make_pg(
+        signatures=[{"entity": "Alpha Limited", "date": "2024-01-01"}]
+    ),
     "L2-005": lambda: make_pg(
         parties=[
             {"name": "Alpha Ltd", "ch_number": "12345678", "ch_name": "Alpha Limited"},
@@ -185,12 +275,22 @@ COMPLIANT_FACTORIES: Dict[str, Callable[[], ParamGraph]] = {
         governing_law="England and Wales",
         jurisdiction="Courts of England and Wales",
     ),
-    "L2-011": lambda: make_pg(jurisdiction="The parties submit to the exclusive jurisdiction of the courts"),
-    "L2-012": lambda: make_pg(governing_law="England and Wales", jurisdiction="Courts of England"),
+    "L2-011": lambda: make_pg(
+        jurisdiction="The parties submit to the exclusive jurisdiction of the courts"
+    ),
+    "L2-012": lambda: make_pg(
+        governing_law="England and Wales", jurisdiction="Courts of England"
+    ),
     "L2-013": lambda: make_pg(jurisdiction="Courts of England"),
-    "L2-020": lambda: make_pg(payment_term=_duration(60), contract_term=_duration(90), grace_period=_duration(15)),
+    "L2-020": lambda: make_pg(
+        payment_term=_duration(60),
+        contract_term=_duration(90),
+        grace_period=_duration(15),
+    ),
     "L2-021": lambda: make_pg(notice_period=_duration(10), cure_period=_duration(15)),
-    "L2-022": lambda: make_pg(payment_term=_duration(30, "business"), cure_period=_duration(5, "business")),
+    "L2-022": lambda: make_pg(
+        payment_term=_duration(30, "business"), cure_period=_duration(5, "business")
+    ),
     "L2-023": lambda: make_pg(payment_term=_duration(30), contract_term=_duration(60)),
     "L2-024": lambda: make_pg(notice_period=_duration(10), cure_period=_duration(10)),
     "L2-030": lambda: make_pg(cap=_money("1000", "GBP")),
@@ -221,7 +321,9 @@ COMPLIANT_FACTORIES: Dict[str, Callable[[], ParamGraph]] = {
     "L2-092": lambda: make_pg(doc_flags={"outdated_fsa_reference": False}),
     "L2-100": lambda: make_pg(doc_flags={"fee_for_nda": False}),
     "L2-101": lambda: make_pg(doc_flags={"shall_be_avoided_wording": False}),
-    "L2-102": lambda: make_pg(survival_items={"Confidentiality", "Intellectual Property", "Liability"}),
+    "L2-102": lambda: make_pg(
+        survival_items={"Confidentiality", "Intellectual Property", "Liability"}
+    ),
 }
 
 

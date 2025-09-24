@@ -3,6 +3,7 @@
 This simple engine supports loading a YAML rule specification and
 executing basic regex based checks against input text.
 """
+
 from __future__ import annotations
 
 import re
@@ -33,6 +34,7 @@ class RuleResult:
 
     Only the fields accessed in tests are implemented.
     """
+
     findings: List[Finding]
     risk_level: str
 

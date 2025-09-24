@@ -109,7 +109,9 @@ def test_param_graph_extracts_core_parameters():
 
     assert pg.signatures and "John Doe" in pg.signatures[0]["raw"]
 
-    assert {"payment_term", "notice_period", "cure_period", "cap"}.issubset(pg.sources.keys())
+    assert {"payment_term", "notice_period", "cure_period", "cap"}.issubset(
+        pg.sources.keys()
+    )
     assert pg.sources["payment_term"].clause_id == "1"
 
 

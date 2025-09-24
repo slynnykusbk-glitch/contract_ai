@@ -11,7 +11,9 @@ from .chunker import chunk_text
 from .models import CorpusChunk
 
 
-def rebuild_index(session: Session, *, where_latest: bool = True, limit: int | None = None) -> int:
+def rebuild_index(
+    session: Session, *, where_latest: bool = True, limit: int | None = None
+) -> int:
     repo = Repo(session)
     docs = repo.list_latest() if where_latest else repo.find()
     if limit is not None:

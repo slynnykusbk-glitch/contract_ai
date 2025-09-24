@@ -21,10 +21,15 @@ def test_high_importance_zones_have_labels_and_entities():
     for zone_id in HIGH_IMPORTANCE_ZONES:
         assert zone_id in zone_lookup, f"zone '{zone_id}' missing from map"
         zone = zone_lookup[zone_id]
-        assert len(zone.label_any) >= 5, f"zone '{zone_id}' must have >=5 label selectors"
+        assert (
+            len(zone.label_any) >= 5
+        ), f"zone '{zone_id}' must have >=5 label selectors"
         expected_entities = ZONE_ENTITY_MATRIX.get(zone_id)
         if expected_entities is not None:
-            current = {key: bool(zone.entity_selectors.get(key, False)) for key in expected_entities}
+            current = {
+                key: bool(zone.entity_selectors.get(key, False))
+                for key in expected_entities
+            }
             expected = {key: bool(value) for key, value in expected_entities.items()}
             assert (
                 current == expected
@@ -57,4 +62,6 @@ def test_rule_ids_exist():
     }
     for zone in cmap.zones:
         for rule_id in zone.rule_ids:
-            assert rule_id in rule_ids, f"zone '{zone.zone_id}' references unknown rule '{rule_id}'"
+            assert (
+                rule_id in rule_ids
+            ), f"zone '{zone.zone_id}' references unknown rule '{rule_id}'"

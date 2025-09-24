@@ -46,6 +46,7 @@ class ProviderConfigError(ProviderError):
 
 class ProviderUnavailableError(ProviderError):
     """Raised when a provider is temporarily unavailable."""
+
     pass
 
 
@@ -55,13 +56,19 @@ class BaseClient(ABC):
     mode: str
 
     @abstractmethod
-    def draft(self, prompt: str, max_tokens: int, temperature: float, timeout: float) -> DraftResult:  # pragma: no cover - interface
+    def draft(
+        self, prompt: str, max_tokens: int, temperature: float, timeout: float
+    ) -> DraftResult:  # pragma: no cover - interface
         ...
 
     @abstractmethod
-    def suggest_edits(self, prompt: str, timeout: float) -> SuggestResult:  # pragma: no cover - interface
+    def suggest_edits(
+        self, prompt: str, timeout: float
+    ) -> SuggestResult:  # pragma: no cover - interface
         ...
 
     @abstractmethod
-    def qa_recheck(self, prompt: str, timeout: float) -> QAResult:  # pragma: no cover - interface
+    def qa_recheck(
+        self, prompt: str, timeout: float
+    ) -> QAResult:  # pragma: no cover - interface
         ...

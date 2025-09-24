@@ -42,4 +42,3 @@ def test_serialize_reason_entry_offsets_and_types():
             unwanted = {field.lower() for field in entry.keys()}
             assert "text" not in unwanted
             assert "raw" not in unwanted
-

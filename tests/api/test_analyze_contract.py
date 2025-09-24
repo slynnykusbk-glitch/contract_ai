@@ -30,4 +30,3 @@ def test_analyze_contract_empty_text():
     data = resp.json()
     assert isinstance(data.get("detail"), list)
     assert any("loc" in d and "msg" in d for d in data["detail"])
-

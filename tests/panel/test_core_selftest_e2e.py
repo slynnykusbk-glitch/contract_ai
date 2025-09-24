@@ -20,13 +20,23 @@ def test_core_selftest_e2e():
 
     assert client.get(f"/api/trace/{cid}.html", headers=_headers()).status_code == 200
     assert client.get(f"/api/report/{cid}.html", headers=_headers()).status_code == 200
-    assert client.post("/api/summary", json={"cid": cid}, headers=_headers()).status_code == 200
+    assert (
+        client.post("/api/summary", json={"cid": cid}, headers=_headers()).status_code
+        == 200
+    )
     assert client.get("/api/summary", headers=_headers()).status_code == 200
 
-    assert client.post("/api/gpt-draft", json={"text": "Example clause."}, headers=_headers()).status_code == 200
     assert (
         client.post(
-            "/api/suggest_edits", json={"text": "Hi", "findings": []}, headers=_headers()
+            "/api/gpt-draft", json={"text": "Example clause."}, headers=_headers()
+        ).status_code
+        == 200
+    )
+    assert (
+        client.post(
+            "/api/suggest_edits",
+            json={"text": "Hi", "findings": []},
+            headers=_headers(),
         ).status_code
         == 200
     )

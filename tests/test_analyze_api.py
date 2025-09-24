@@ -14,7 +14,9 @@ def _headers():
 
 
 def test_analyze_flat_ok():
-    resp = client.post("/api/analyze", json={"text": "Hello", "mode": "live"}, headers=_headers())
+    resp = client.post(
+        "/api/analyze", json={"text": "Hello", "mode": "live"}, headers=_headers()
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["schema_version"] == SCHEMA_VERSION

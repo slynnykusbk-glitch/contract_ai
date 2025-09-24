@@ -12,11 +12,13 @@ Indemnify means defend, indemnify, release, and hold harmless.
 Company shall not be deemed to have accepted any Goods until Company has had a reasonable time to inspect them following delivery.
 """
 
+
 def load_text():
     path = os.environ.get("CONTRACT_DOCX_PATH")
     if path and os.path.exists(path):
         return None, path
     return FALLBACK, None
+
 
 def test_integration_master_agreement_smoke():
     text, path = load_text()

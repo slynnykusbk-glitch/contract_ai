@@ -12,10 +12,10 @@ from contract_review_app.api.corpus_search import router
 
 def _setup_demo(session):
     repo = Repo(session)
-    for p in Path('data/corpus_demo').glob('*.yaml'):
-        with open(p, 'r', encoding='utf-8') as fh:
+    for p in Path("data/corpus_demo").glob("*.yaml"):
+        with open(p, "r", encoding="utf-8") as fh:
             data = yaml.safe_load(fh)
-            for item in data['items']:
+            for item in data["items"]:
                 repo.upsert(item)
 
 

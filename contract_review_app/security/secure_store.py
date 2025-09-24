@@ -60,4 +60,5 @@ def secure_read(path: str | Path) -> bytes:
             out.extend(cipher.decrypt(line))
     return bytes(out)
 
+
 __all__ = ["secure_write", "secure_read"]

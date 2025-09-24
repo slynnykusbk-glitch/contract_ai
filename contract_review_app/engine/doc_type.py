@@ -75,7 +75,9 @@ def _fallback_doc_type(title: str, body: str) -> str:
     return "unknown"
 
 
-def guess_doc_type(text: str, subject: str | None = None) -> Tuple[str, float, List[str], Dict[str, float], str]:
+def guess_doc_type(
+    text: str, subject: str | None = None
+) -> Tuple[str, float, List[str], Dict[str, float], str]:
     """Return (slug, confidence, evidence_strings, score_by_type, source)."""
     t = text or ""
     # normalize text
@@ -103,7 +105,11 @@ def guess_doc_type(text: str, subject: str | None = None) -> Tuple[str, float, L
             if phrase.lower() in lowered:
                 boost += float(weight)
                 boost_ev.append(phrase)
-        score = W_TITLE * title_hits + W_SUBJECT * subject_hits + W_BODY * (body_hits + boost)
+        score = (
+            W_TITLE * title_hits
+            + W_SUBJECT * subject_hits
+            + W_BODY * (body_hits + boost)
+        )
         must_any = cfg.get("must_have_any")
         if must_any and not any(m.lower() in lowered for m in must_any):
             score = 0.0
@@ -133,4 +139,3 @@ def guess_doc_type(text: str, subject: str | None = None) -> Tuple[str, float, L
             confidence = 0.5
             score_by_type = {fb: 1.0}
     return best_slug, round(confidence, 2), evidence, score_by_type, source
-

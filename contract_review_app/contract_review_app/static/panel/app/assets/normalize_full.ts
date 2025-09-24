@@ -137,4 +137,3 @@ export function normalizeTextFull(input: string | null | undefined): NormalizeTe
   const result: NormalizeTextFullResult = { text: normalized, map };
   return trimNormalized(result);
 }
-

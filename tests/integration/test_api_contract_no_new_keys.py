@@ -13,7 +13,9 @@ def test_api_contract_no_new_keys():
 
     client, modules = _build_client("1")
     try:
-        response = client.post("/api/analyze", headers=_headers(), json={"text": "Hello"})
+        response = client.post(
+            "/api/analyze", headers=_headers(), json={"text": "Hello"}
+        )
         assert response.status_code == 200
         payload = response.json()
         expected_keys = {

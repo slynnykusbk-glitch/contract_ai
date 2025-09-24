@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from string import Formatter
-from typing import Any, Dict, Optional, Set
+from typing import Any, Optional, Set
 
 from contract_review_app.api.limits import LLM_TIMEOUT_S
 

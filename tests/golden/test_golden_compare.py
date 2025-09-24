@@ -32,6 +32,7 @@ VALID_WITH_BASELINE = [
     p for p in ALL_VALID_DOCS if (BASELINE_DIR / f"{p.stem}.json").exists()
 ]
 
+
 @pytest.fixture(scope="session")
 def api_client() -> TestClient:
     os.environ.setdefault("AZURE_OPENAI_API_KEY", "local-test-key-123")
@@ -49,7 +50,9 @@ def _pages_for(path: Path) -> int:
     raise AssertionError(f"Unable to determine page count from file name: {path.name}")
 
 
-def _assert_schema_v14(payload: Dict[str, Any], *, require_provider: bool = False) -> None:
+def _assert_schema_v14(
+    payload: Dict[str, Any], *, require_provider: bool = False
+) -> None:
     assert payload.get("schema_version") == SCHEMA_VERSION
     assert isinstance(payload.get("status"), str)
 
@@ -124,6 +127,8 @@ def _is_subset(expected: Any, current: Any) -> bool:
                 return False
         return True
     return expected == current
+
+
 def _post_analyze(client: TestClient, text: str) -> Dict[str, Any]:
     response = client.post(
         "/api/analyze",
@@ -149,7 +154,9 @@ def test_normalizer_is_deterministic(api_client: TestClient) -> None:
 
 
 @pytest.mark.timeout(180)
-def test_suite_against_golden(api_client: TestClient, request: pytest.FixtureRequest) -> None:
+def test_suite_against_golden(
+    api_client: TestClient, request: pytest.FixtureRequest
+) -> None:
     if len(ALL_VALID_DOCS) < MIN_VALID:
         pytest.skip(
             f"Not enough valid DOCX ({len(ALL_VALID_DOCS)}<{MIN_VALID}); skipping."
@@ -204,9 +211,9 @@ def test_suite_against_golden(api_client: TestClient, request: pytest.FixtureReq
         _assert_schema_v14(golden_payload)
         golden_payload = normalize_response(golden_payload)
 
-        assert _is_subset(golden_payload, normalized), (
-            f"Golden snapshot for {doc_path.name} is not a subset of current response"
-        )
+        assert _is_subset(
+            golden_payload, normalized
+        ), f"Golden snapshot for {doc_path.name} is not a subset of current response"
 
         golden_canonical = canonical_json(golden_payload)
         if golden_canonical != golden_json:
@@ -214,9 +221,7 @@ def test_suite_against_golden(api_client: TestClient, request: pytest.FixtureReq
             golden_json = golden_canonical
 
         if golden_json == current_json:
-            report_sections.append(
-                f"<h2>{doc_path.name}</h2><p>No differences.</p>"
-            )
+            report_sections.append(f"<h2>{doc_path.name}</h2><p>No differences.</p>")
             continue
 
         diff_table = diff_builder.make_table(
@@ -227,9 +232,7 @@ def test_suite_against_golden(api_client: TestClient, request: pytest.FixtureReq
             context=True,
             numlines=4,
         )
-        report_sections.append(
-            f"<h2>{doc_path.name}</h2>" + diff_table
-        )
+        report_sections.append(f"<h2>{doc_path.name}</h2>" + diff_table)
         failures.append(doc_path.name)
 
     report_html = """
@@ -250,7 +253,9 @@ def test_suite_against_golden(api_client: TestClient, request: pytest.FixtureReq
   {sections}
 </body>
 </html>
-""".strip().format(sections="\n".join(report_sections))
+""".strip().format(
+        sections="\n".join(report_sections)
+    )
     (REPORT_DIR / "index.html").write_text(report_html, encoding="utf-8")
     if failures:
         raise AssertionError(

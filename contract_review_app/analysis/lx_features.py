@@ -272,7 +272,9 @@ def extract_l0_features(doc: Any, segments: Sequence[Any]) -> LxDocFeatures:
         feature_set.amounts = _summarize_amounts(entities.get("amounts", []))
         feature_set.durations = _summarize_durations(entities.get("durations", []))
         feature_set.law_signals = _summarize_law_signals(entities.get("law", []))
-        feature_set.jurisdiction = _summarize_jurisdiction(entities.get("jurisdiction", []))
+        feature_set.jurisdiction = _summarize_jurisdiction(
+            entities.get("jurisdiction", [])
+        )
 
         by_segment[seg_id] = feature_set
 

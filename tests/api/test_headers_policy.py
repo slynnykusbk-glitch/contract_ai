@@ -19,9 +19,7 @@ def test_post_analyze_missing_api_key():
 
 
 def test_post_analyze_missing_schema():
-    r = client.post(
-        "/api/analyze", json={"text": "hi"}, headers={"x-api-key": "k"}
-    )
+    r = client.post("/api/analyze", json={"text": "hi"}, headers={"x-api-key": "k"})
     assert r.status_code == 400
     assert r.json() == {"detail": "missing x-schema-version"}
 

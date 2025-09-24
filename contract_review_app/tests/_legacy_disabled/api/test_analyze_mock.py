@@ -26,4 +26,3 @@ def test_analyze_empty_text():
 def test_analyze_extra_field():
     resp = client.post("/api/analyze", json={"text": "hi", "extra": 1})
     assert resp.status_code == 422
-

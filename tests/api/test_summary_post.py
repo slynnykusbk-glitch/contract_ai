@@ -50,7 +50,11 @@ def test_summary_post_bad_body(client):
     r = client.post("/api/summary", json={})
     assert r.status_code == 422
     detail = r.json().get("detail")
-    msg = "".join(d.get("msg", "") for d in detail) if isinstance(detail, list) else str(detail)
+    msg = (
+        "".join(d.get("msg", "") for d in detail)
+        if isinstance(detail, list)
+        else str(detail)
+    )
     assert "cid" in msg and "hash" in msg
 
 
@@ -58,5 +62,9 @@ def test_summary_post_both_fields(client):
     r = client.post("/api/summary", json={"cid": "a", "hash": "b"})
     assert r.status_code == 422
     detail = r.json().get("detail")
-    msg = "".join(d.get("msg", "") for d in detail) if isinstance(detail, list) else str(detail)
+    msg = (
+        "".join(d.get("msg", "") for d in detail)
+        if isinstance(detail, list)
+        else str(detail)
+    )
     assert "one" in msg.lower() or "only" in msg.lower()

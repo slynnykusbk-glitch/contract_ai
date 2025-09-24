@@ -13,12 +13,17 @@ def _get_client(tmp_path, monkeypatch):
     monkeypatch.setenv("CR_ATREST_KEY", key)
     monkeypatch.setenv("CONTRACTAI_RATE_PER_MIN", "1")
     import contract_review_app.api.limits as limits_mod
+
     reload(limits_mod)
     import contract_review_app.api.dsar as dsar_module
+
     reload(dsar_module)
     dsar_module._DATA_DIR = tmp_path
-    secure_store.secure_write(tmp_path / "user@example.com.json", json.dumps({"audit": ["ok"]}))
+    secure_store.secure_write(
+        tmp_path / "user@example.com.json", json.dumps({"audit": ["ok"]})
+    )
     import contract_review_app.api.app as app_module
+
     reload(app_module)
     return TestClient(app_module.app)
 

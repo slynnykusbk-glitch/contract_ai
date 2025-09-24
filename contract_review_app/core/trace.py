@@ -63,7 +63,9 @@ class TraceStore:
         if not isinstance(body, dict):
             return
 
-        def _resolve_list(container: Dict[str, Any], path: tuple[str, ...]) -> list[Any] | None:
+        def _resolve_list(
+            container: Dict[str, Any], path: tuple[str, ...]
+        ) -> list[Any] | None:
             current: Any = container
             for key in path:
                 if not isinstance(current, dict):
@@ -183,7 +185,9 @@ class TraceStore:
             existing = self._data[cid]
             merged = dict(existing)
             merged.update(item)
-            body_existing = existing.get("body") if isinstance(existing.get("body"), dict) else None
+            body_existing = (
+                existing.get("body") if isinstance(existing.get("body"), dict) else None
+            )
             body_new = item.get("body") if isinstance(item.get("body"), dict) else None
             if body_existing or body_new:
                 merged_body: Dict[str, Any] = {}

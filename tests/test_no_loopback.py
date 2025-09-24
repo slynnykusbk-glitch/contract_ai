@@ -1,4 +1,5 @@
 """CI guard against accidental loopback host references."""
+
 from __future__ import annotations
 
 import subprocess

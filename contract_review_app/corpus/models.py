@@ -27,7 +27,9 @@ class CorpusDoc(Base):
     section_code: Mapped[str] = mapped_column(String(128), nullable=False)
     section_title: Mapped[str] = mapped_column(String(256), nullable=False)
     version: Mapped[str] = mapped_column(String(32), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     rights: Mapped[str] = mapped_column(String(128), nullable=False)
     lang: Mapped[str | None] = mapped_column(String(16), nullable=True)
@@ -35,7 +37,9 @@ class CorpusDoc(Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
     checksum: Mapped[str] = mapped_column(String(64), nullable=False)
     latest: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -45,4 +49,3 @@ class CorpusDoc(Base):
         Index("ix_act_title", "act_title"),
         Index("ix_section_title", "section_title"),
     )
-

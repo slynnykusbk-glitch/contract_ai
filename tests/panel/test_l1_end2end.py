@@ -23,12 +23,17 @@ def test_l1_end_to_end_dispatch(monkeypatch):
                 "x-api-key": "local-test-key-123",
             },
         ) as client:
-            text = Path("fixtures/contracts/mixed_sample.txt").read_text(encoding="utf-8")
+            text = Path("fixtures/contracts/mixed_sample.txt").read_text(
+                encoding="utf-8"
+            )
             resp = client.post("/api/analyze?debug=coverage", json={"text": text})
             assert resp.status_code == 200
 
             payload = resp.json()
-            fired = [item["rule_id"] for item in payload.get("meta", {}).get("fired_rules", [])]
+            fired = [
+                item["rule_id"]
+                for item in payload.get("meta", {}).get("fired_rules", [])
+            ]
             assert isinstance(fired, list)
 
             cid = resp.headers.get("x-cid", "")

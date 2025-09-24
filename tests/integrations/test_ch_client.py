@@ -15,7 +15,9 @@ def setup_function():
 
 @respx.mock
 def test_search_and_profile():
-    respx.get(f"{BASE}/search/companies").respond(json={"items": [{"title": "ACME", "company_number": "123"}]})
+    respx.get(f"{BASE}/search/companies").respond(
+        json={"items": [{"title": "ACME", "company_number": "123"}]}
+    )
     data = ch_client.search_companies("ACME")
     assert data["items"][0]["company_number"] == "123"
 
@@ -26,7 +28,9 @@ def test_search_and_profile():
 
 @respx.mock
 def test_officers_and_psc_counts():
-    respx.get(f"{BASE}/company/1/officers?items_per_page=1").respond(json={"total_results": 5})
+    respx.get(f"{BASE}/company/1/officers?items_per_page=1").respond(
+        json={"total_results": 5}
+    )
     assert ch_client.get_officers_count("1") == 5
 
     respx.get(

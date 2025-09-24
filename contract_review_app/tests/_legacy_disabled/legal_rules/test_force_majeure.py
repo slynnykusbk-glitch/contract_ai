@@ -3,7 +3,10 @@ from contract_review_app.legal_rules.rules import force_majeure as fm
 
 
 def test_fm_missing_clause_fail():
-    inp = AnalysisInput(clause_type="force_majeure", text="This agreement sets out the obligations of the parties.")
+    inp = AnalysisInput(
+        clause_type="force_majeure",
+        text="This agreement sets out the obligations of the parties.",
+    )
     out = fm.analyze(inp)
     assert out.status == "FAIL"
     assert out.score == 35

@@ -36,7 +36,9 @@ def enrich_parties_with_companies_house(parties: List[Party]) -> List[Party]:
                 addr_dict = data.get("registered_office_address") or {}
                 address = None
                 if isinstance(addr_dict, dict):
-                    address = ", ".join([str(v) for v in addr_dict.values() if v]) or None
+                    address = (
+                        ", ".join([str(v) for v in addr_dict.values() if v]) or None
+                    )
                 profile = CompanyProfile(
                     name=data.get("company_name") or data.get("title"),
                     number_or_duns=data.get("company_number"),
@@ -111,7 +113,9 @@ def _verdict_for_party(p: Party, data: Dict[str, Any] | None) -> Dict[str, Any]:
     return verdict
 
 
-def build_companies_meta(parties: List[Party], doc_parties: List[Party] | None = None) -> List[Dict[str, Any]]:
+def build_companies_meta(
+    parties: List[Party], doc_parties: List[Party] | None = None
+) -> List[Dict[str, Any]]:
     if os.getenv("FEATURE_COMPANIES_HOUSE", "0") != "1" or not ch_client.KEY:
         return []
     meta: List[Dict[str, Any]] = []
@@ -138,7 +142,9 @@ def build_companies_meta(parties: List[Party], doc_parties: List[Party] | None =
                     data = ch_client.get_company_profile(p.company_number)
             if data and p.company_number:
                 try:
-                    data["officers_count"] = ch_client.get_officers_count(p.company_number)
+                    data["officers_count"] = ch_client.get_officers_count(
+                        p.company_number
+                    )
                     data["psc_count"] = ch_client.get_psc_count(p.company_number)
                 except Exception:
                     pass
@@ -153,4 +159,3 @@ def build_companies_meta(parties: List[Party], doc_parties: List[Party] | None =
             verdict = "mismatch"
         meta.append({"from_document": doc, "matched": data, "verdict": verdict})
     return meta
-

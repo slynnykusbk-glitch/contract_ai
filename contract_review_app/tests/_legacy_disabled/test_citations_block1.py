@@ -118,7 +118,11 @@ def test_coerce_citations_mixed_and_invalid():
 
 def test_integration_with_finding_and_analysis_output():
     cit = Citation(system="UK", instrument="Act", section="1")
-    f = Finding(code="C", message="M", citations=["law", {"instrument": "Reg", "section": "s"}, cit])
+    f = Finding(
+        code="C",
+        message="M",
+        citations=["law", {"instrument": "Reg", "section": "s"}, cit],
+    )
     assert all(isinstance(c, Citation) for c in f.citations)
 
     ao = AnalysisOutput(
@@ -150,7 +154,12 @@ citation_dict_strategy = st.fixed_dictionaries(
 mixed_citation_strategy = st.one_of(
     st.text(min_size=1),
     citation_dict_strategy,
-    st.builds(Citation, system=st.sampled_from(["UK", "EU", "UA", "INT"]), instrument=st.text(min_size=1), section=st.text(min_size=1)),
+    st.builds(
+        Citation,
+        system=st.sampled_from(["UK", "EU", "UA", "INT"]),
+        instrument=st.text(min_size=1),
+        section=st.text(min_size=1),
+    ),
     st.integers(),
 )
 

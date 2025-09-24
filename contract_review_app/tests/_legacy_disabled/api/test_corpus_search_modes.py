@@ -22,22 +22,22 @@ def session(tmp_path, monkeypatch):
     SessionLocal.configure(bind=engine)
     sess = SessionLocal()
     repo = Repo(sess)
-    demo_dir = Path('data/corpus_demo')
-    for p in demo_dir.glob('*.yaml'):
-        with open(p, 'r', encoding='utf-8') as fh:
+    demo_dir = Path("data/corpus_demo")
+    for p in demo_dir.glob("*.yaml"):
+        with open(p, "r", encoding="utf-8") as fh:
             data = yaml.safe_load(fh)
-            for item in data['items']:
+            for item in data["items"]:
                 repo.upsert(item)
     rebuild_index(sess)
-    cache_dir = tmp_path / 'cache'
-    monkeypatch.setenv('RETRIEVAL_CACHE_DIR', str(cache_dir))
+    cache_dir = tmp_path / "cache"
+    monkeypatch.setenv("RETRIEVAL_CACHE_DIR", str(cache_dir))
     cfg = load_config()
-    embedder = HashingEmbedder(cfg['vector']['embedding_dim'])
+    embedder = HashingEmbedder(cfg["vector"]["embedding_dim"])
     ensure_vector_cache(
         sess,
         embedder=embedder,
-        cache_dir=cfg['vector']['cache_dir'],
-        emb_ver=cfg['vector']['embedding_version'],
+        cache_dir=cfg["vector"]["cache_dir"],
+        emb_ver=cfg["vector"]["embedding_version"],
     )
     yield sess
     sess.close()
@@ -54,30 +54,30 @@ def test_vector_and_hybrid_modes(session, monkeypatch):
         calls.append(from_cache)
         return vecs, ids, metas, from_cache
 
-    monkeypatch.setattr(rsearch, 'ensure_vector_cache', wrapper)
+    monkeypatch.setattr(rsearch, "ensure_vector_cache", wrapper)
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
-    r = client.post('/api/corpus/search', json={'q': 'data', 'method': 'vector'})
+    r = client.post("/api/corpus/search", json={"q": "data", "method": "vector"})
     assert r.status_code == 200
-    assert r.json()['hits']
-    r2 = client.post('/api/corpus/search', json={'q': 'data', 'method': 'hybrid'})
+    assert r.json()["hits"]
+    r2 = client.post("/api/corpus/search", json={"q": "data", "method": "hybrid"})
     assert r2.status_code == 200
-    assert r2.json()['hits']
+    assert r2.json()["hits"]
     assert calls == [True, True]
 
 
 def test_hybrid_weighted_has_rank_fusion(session, monkeypatch):
-    monkeypatch.setenv('RETRIEVAL_FUSION_METHOD', 'weighted')
-    monkeypatch.setenv('RETRIEVAL_WEIGHT_VECTOR', '0.6')
-    monkeypatch.setenv('RETRIEVAL_WEIGHT_BM25', '0.4')
+    monkeypatch.setenv("RETRIEVAL_FUSION_METHOD", "weighted")
+    monkeypatch.setenv("RETRIEVAL_WEIGHT_VECTOR", "0.6")
+    monkeypatch.setenv("RETRIEVAL_WEIGHT_BM25", "0.4")
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
-    r = client.post('/api/corpus/search', json={'q': 'data', 'method': 'hybrid'})
+    r = client.post("/api/corpus/search", json={"q": "data", "method": "hybrid"})
     assert r.status_code == 200
-    results = r.json()['hits']
+    results = r.json()["hits"]
     assert results
     for item in results:
-        assert isinstance(item.get('rank_fusion'), int)
-        assert 'bm25_score' in item and 'cosine_sim' in item
+        assert isinstance(item.get("rank_fusion"), int)
+        assert "bm25_score" in item and "cosine_sim" in item

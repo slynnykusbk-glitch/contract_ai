@@ -121,14 +121,18 @@ def _match_rules(
     hints: Sequence[str],
     rule_tokens: Mapping[str, Set[str]],
 ) -> Tuple[Set[str], Set[str]]:
-    normalized_hints = [_normalize_label(hint) for hint in hints if _normalize_label(hint)]
+    normalized_hints = [
+        _normalize_label(hint) for hint in hints if _normalize_label(hint)
+    ]
     matched: Set[str] = set()
     empty_hints: Set[str] = set()
     if not normalized_hints:
         empty_hints.update(hints)
     for rule_id, tokens in rule_tokens.items():
         for hint in normalized_hints:
-            if hint in tokens or any(hint in token or token in hint for token in tokens):
+            if hint in tokens or any(
+                hint in token or token in hint for token in tokens
+            ):
                 matched.add(rule_id)
                 break
     blacklist = ZONE_RULE_BLACKLIST.get(zone_id)
@@ -154,7 +158,9 @@ def build_seed() -> Tuple[Dict[str, object], Dict[str, object]]:
     missing_rule_hints: Dict[str, Set[str]] = defaultdict(set)
 
     for seed in ZONE_SEED_DATA:
-        labels_matched, missing = _match_labels(seed.zone_id, seed.label_hints, label_catalog)
+        labels_matched, missing = _match_labels(
+            seed.zone_id, seed.label_hints, label_catalog
+        )
         if missing:
             missing_labels_report[seed.zone_id].update(missing)
         rules_matched, empty = _match_rules(seed.zone_id, seed.rule_hints, rule_tokens)
@@ -193,7 +199,9 @@ def build_seed() -> Tuple[Dict[str, object], Dict[str, object]]:
         "rules_covered": len(covered_rules),
         "rules_total": len(rule_lookup),
         "missing_labels": {k: sorted(v) for k, v in missing_labels_report.items() if v},
-        "missing_rule_hints": {k: sorted(v) for k, v in missing_rule_hints.items() if v},
+        "missing_rule_hints": {
+            k: sorted(v) for k, v in missing_rule_hints.items() if v
+        },
         "unused_labels": unused_labels,
         "high_importance_zones": sorted(HIGH_IMPORTANCE_ZONES),
     }
@@ -253,7 +261,9 @@ def print_report(metrics: Mapping[str, object]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dry-run", action="store_true", help="Print YAML to stdout instead of writing")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print YAML to stdout instead of writing"
+    )
     args = parser.parse_args()
 
     payload, metrics = build_seed()

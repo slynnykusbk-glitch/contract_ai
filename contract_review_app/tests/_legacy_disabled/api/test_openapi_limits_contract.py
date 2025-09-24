@@ -19,7 +19,9 @@ def test_openapi_contains_limits_and_paging():
     assert any(p["name"] == "page" for p in params)
     assert any(p["name"] == "page_size" for p in params)
     assert "Paging" in schema["components"]["schemas"]
-    resp_ref = search_op["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
+    resp_ref = search_op["responses"]["200"]["content"]["application/json"]["schema"][
+        "$ref"
+    ]
     resp_name = resp_ref.split("/")[-1]
     resp_schema = schema["components"]["schemas"][resp_name]
     assert "paging" in resp_schema.get("properties", {})

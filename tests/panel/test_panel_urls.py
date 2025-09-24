@@ -18,7 +18,9 @@ def _ensure_catalog_manifest() -> Path:
 
 
 def test_panel_selftest_defaults():
-    html = (Path(__file__).resolve().parents[2] / "word_addin_dev" / "panel_selftest.html").read_text(encoding="utf-8")
+    html = (
+        Path(__file__).resolve().parents[2] / "word_addin_dev" / "panel_selftest.html"
+    ).read_text(encoding="utf-8")
     assert "https://127.0.0.1:9443" in html
     assert "/api/analyze" not in html
 
@@ -70,7 +72,9 @@ def test_https_endpoints_available(monkeypatch):
         )
         assert isinstance(process, _DummyProcess)
         assert recorded["cmd"][0].lower().endswith("powershell.exe")
-        assert str(launcher) in recorded["cmd"], "Expected launcher path in PowerShell command"
+        assert (
+            str(launcher) in recorded["cmd"]
+        ), "Expected launcher path in PowerShell command"
 
         with TestClient(app) as client:
             health = client.get("/health")

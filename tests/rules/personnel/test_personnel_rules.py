@@ -4,11 +4,13 @@ from core.schemas import AnalysisInput
 
 
 def AI(text, clause="privacy", doc="MSA"):
-    return AnalysisInput(clause_type=clause, text=text,
-                         metadata={"jurisdiction": "UK", "doc_type": doc})
+    return AnalysisInput(
+        clause_type=clause, text=text, metadata={"jurisdiction": "UK", "doc_type": doc}
+    )
 
 
 # --- 12 GDPR personnel data (updated) ---
+
 
 def test_gdpr_negative_missing_bases():
     spec = load_rule("core/rules/universal/personnel/12_gdpr_personnel_data.yaml")

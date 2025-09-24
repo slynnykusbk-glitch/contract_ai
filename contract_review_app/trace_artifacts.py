@@ -31,12 +31,11 @@ DISPATCH_MAX_CANDIDATES_PER_SEGMENT = _env_int(
     "DISPATCH_MAX_CANDIDATES_PER_SEGMENT", 50
 )
 DISPATCH_MAX_REASONS_PER_RULE = _env_int("DISPATCH_MAX_REASONS_PER_RULE", 12)
-TRACE_REASON_MAX_OFFSETS_PER_TYPE = _env_int(
-    "TRACE_REASON_MAX_OFFSETS_PER_TYPE", 4
-)
+TRACE_REASON_MAX_OFFSETS_PER_TYPE = _env_int("TRACE_REASON_MAX_OFFSETS_PER_TYPE", 4)
 
 if TYPE_CHECKING:  # pragma: no cover - imported for typing only
     from contract_review_app.core.lx_types import LxDocFeatures, LxFeatureSet
+
 
 def _coerce_labels(raw: Any) -> list[str]:
     if raw is None:
@@ -212,7 +211,9 @@ def _limit_reason_offsets(
         for span in offsets:
             if remaining <= 0:
                 break
-            if not isinstance(span, Sequence) or isinstance(span, (str, bytes, bytearray)):
+            if not isinstance(span, Sequence) or isinstance(
+                span, (str, bytes, bytearray)
+            ):
                 continue
             if len(span) < 2:
                 continue
@@ -273,7 +274,9 @@ def _coerce_int_value(value: Any) -> int | None:
     return int(number)
 
 
-def serialize_reason_entry(reason: Any, *, include_offsets: bool = True) -> dict[str, Any]:
+def serialize_reason_entry(
+    reason: Any, *, include_offsets: bool = True
+) -> dict[str, Any]:
     if isinstance(reason, ReasonPayload):
         payload = reason.to_json()
     elif isinstance(reason, Mapping):
@@ -340,7 +343,10 @@ def serialize_reason_entry(reason: Any, *, include_offsets: bool = True) -> dict
                 if not offsets:
                     continue
                 normalized_value: int | float = value_number
-                if isinstance(normalized_value, float) and normalized_value.is_integer():
+                if (
+                    isinstance(normalized_value, float)
+                    and normalized_value.is_integer()
+                ):
                     normalized_value = int(normalized_value)
                 amounts_payload.append(
                     {
@@ -374,7 +380,10 @@ def serialize_reason_entry(reason: Any, *, include_offsets: bool = True) -> dict
                     }
                 )
 
-        for key, target in (("law", law_payload), ("jurisdiction", jurisdiction_payload)):
+        for key, target in (
+            ("law", law_payload),
+            ("jurisdiction", jurisdiction_payload),
+        ):
             raw_entries = payload.get(key)
             if not isinstance(raw_entries, Iterable) or isinstance(
                 raw_entries, (str, bytes, bytearray)
@@ -601,6 +610,7 @@ def build_features(
     doc_payload["hints"] = _normalize_hints(hints)
     return payload
 
+
 def _sanitize_groups(groups: Any) -> Mapping[str, Any]:
     if not isinstance(groups, Mapping):
         return {}
@@ -617,20 +627,12 @@ def _sanitize_groups(groups: Any) -> Mapping[str, Any]:
             if isinstance(value, (str, int, float, bool)):
                 return value
             if isinstance(value, Mapping):
-                nested = {
-                    str(k): _clean(v)
-                    for k, v in value.items()
-                    if v is not None
-                }
+                nested = {str(k): _clean(v) for k, v in value.items() if v is not None}
                 return {k: v for k, v in nested.items() if v is not None}
             if isinstance(value, Iterable) and not isinstance(
                 value, (str, bytes, bytearray)
             ):
-                cleaned = [
-                    _clean(v)
-                    for v in value
-                    if v is not None
-                ]
+                cleaned = [_clean(v) for v in value if v is not None]
                 return [v for v in cleaned if v is not None]
             return str(value)
 
@@ -669,7 +671,9 @@ def _coerce_match_entry(item: Any) -> Mapping[str, Any]:
         if isinstance(value, Mapping):
             _add_offset_pair(pairs, value.get("start"), value.get("end"))
             return
-        if isinstance(value, Iterable) and not isinstance(value, (str, bytes, bytearray)):
+        if isinstance(value, Iterable) and not isinstance(
+            value, (str, bytes, bytearray)
+        ):
             normalized = _normalize_offsets(value)
             if normalized:
                 pairs.extend(normalized)
@@ -826,7 +830,9 @@ def build_dispatch(
         ):
             for entry in raw_reasons:
                 serialized_reasons.append(
-                    serialize_reason_entry(entry, include_offsets=include_reason_offsets)
+                    serialize_reason_entry(
+                        entry, include_offsets=include_reason_offsets
+                    )
                 )
                 if max_reasons > 0 and len(serialized_reasons) >= max_reasons:
                     break

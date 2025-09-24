@@ -46,7 +46,9 @@ def test_liability_dispatch_covers_caps():
         text=text,
         clause_type="liability",
     )
-    features = LxFeatureSet(labels=["Liability"], amounts=["100000"], liability_caps=["fees"])
+    features = LxFeatureSet(
+        labels=["Liability"], amounts=["100000"], liability_caps=["fees"]
+    )
 
     refs = dispatcher.select_candidate_rules(segment, features)
     ids = {ref.rule_id for ref in refs}

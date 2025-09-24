@@ -20,7 +20,9 @@ async def test_streaming_body_reader_no_content_length(monkeypatch):
             await asyncio.sleep(0)
 
     transport = httpx.ASGITransport(app=api_mod.app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
         response = await client.post(
             "/api/calloff/validate",
             content=gen(),

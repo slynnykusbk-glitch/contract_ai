@@ -64,11 +64,11 @@ describe('annotation without trace fallback', () => {
 
     const annotateMod = await import('../assets/annotate');
     const originalSafeInsert = annotateMod.safeInsertComment;
-    vi
-      .spyOn(annotateMod, 'safeInsertComment')
-      .mockImplementation(async (...args: Parameters<typeof annotateMod.safeInsertComment>) => {
+    vi.spyOn(annotateMod, 'safeInsertComment').mockImplementation(
+      async (...args: Parameters<typeof annotateMod.safeInsertComment>) => {
         return await originalSafeInsert(...args);
-      });
+      }
+    );
     vi.spyOn(annotateMod, 'fallbackAnnotateWithContentControl').mockResolvedValue({ ok: false });
 
     const findings = [

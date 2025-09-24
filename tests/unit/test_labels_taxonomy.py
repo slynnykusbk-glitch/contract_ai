@@ -70,7 +70,10 @@ def test_payment_terms_regex_variants() -> None:
     "text, expected_label",
     [
         ("Interest will be base rate + 4% until paid.", "late_payment_interest"),
-        ("The aggregate liability cap is £1,200,000 per Contract Year.", "liability_cap_amount"),
+        (
+            "The aggregate liability cap is £1,200,000 per Contract Year.",
+            "liability_cap_amount",
+        ),
         (
             "The applicable delivery terms follow the DDP Incoterm for 2020.",
             "delivery_terms_incoterms",
@@ -103,7 +106,7 @@ if st is not None:
 
         def mutate_char(ch: str) -> str:
             replacements = {
-                " ": [" ", "\u00A0"],
+                " ": [" ", "\u00a0"],
                 "-": ["-", "\u2013", "\u2014"],
                 "'": ["'", "\u2018", "\u2019"],
                 '"': ['"', "\u201c", "\u201d"],
@@ -117,7 +120,6 @@ if st is not None:
             mutated = re.sub(r"(\d+)", r"(\1)", mutated, count=1)
 
         return label, mutated
-
 
     @given(_typography_variants())
     def test_resolve_labels_typography_invariance(data: tuple[str, str]) -> None:

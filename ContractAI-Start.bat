@@ -10,7 +10,7 @@ if %rc% neq 0 (
   echo [ERR] Starter exited with code %rc%.
   pause
 ) else (
-  echo [OK] Uvicorn running (leave its console open). 
+  echo [OK] Uvicorn running (leave its console open).
   timeout /t 2 >nul
 )
 endlocal

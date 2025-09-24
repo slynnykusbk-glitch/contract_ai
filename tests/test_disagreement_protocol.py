@@ -15,10 +15,10 @@ def _sample_outputs():
             Finding(
                 code="missing.dp",
                 message="Отсутствует положение о защите данных",
-                legal_basis=["GDPR"]
+                legal_basis=["GDPR"],
             )
         ],
-        recommendations=["Добавить условие о защите данных"]
+        recommendations=["Добавить условие о защите данных"],
     )
     fixed = AnalysisOutput(
         clause_id="1",

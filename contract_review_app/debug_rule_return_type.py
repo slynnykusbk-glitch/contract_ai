@@ -11,7 +11,9 @@ contract_text = """
 print("🔍 analyze_document: Start")
 results = analyze_document(contract_text)
 
-print("🔍 Clauses extracted:", [r.metadata.get("clause_type", "unknown") for r in results])
+print(
+    "🔍 Clauses extracted:", [r.metadata.get("clause_type", "unknown") for r in results]
+)
 
 # 📝 Генерація HTML-звіту
 generate_report(results)  # ✅ Автоматично відкриває HTML-звіт

@@ -24,7 +24,11 @@ def test_app_has_analyze_hook(monkeypatch):
     assert hasattr(app_mod, "_analyze_document")
 
     def fake(text: str):
-        return {"status": "OK", "findings": [{"id": "X"}], "summary": {"len": len(text)}}
+        return {
+            "status": "OK",
+            "findings": [{"id": "X"}],
+            "summary": {"len": len(text)},
+        }
 
     monkeypatch.setattr(app_mod, "_analyze_document", fake, raising=True)
 

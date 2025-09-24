@@ -64,7 +64,9 @@ def test_yaml_channel_salience_smoke(monkeypatch):
         assert candidates, "expected dispatch candidates in trace payload"
 
         rule_id = first.get("rule_id")
-        candidate = next((entry for entry in candidates if entry.get("rule_id") == rule_id), None)
+        candidate = next(
+            (entry for entry in candidates if entry.get("rule_id") == rule_id), None
+        )
         assert candidate is not None, "expected matching candidate in trace dispatch"
         assert candidate.get("channel") == "policy"
         assert candidate.get("salience") == 70

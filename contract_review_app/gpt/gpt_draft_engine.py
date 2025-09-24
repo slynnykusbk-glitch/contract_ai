@@ -1,4 +1,3 @@
-from typing import Optional
 from contract_review_app.core.schemas import AnalysisOutput
 from contract_review_app.gpt.prompt_builder_utils import build_prompt
 from contract_review_app.gpt.gpt_proxy_api import call_gpt_api
@@ -8,7 +7,7 @@ from contract_review_app.gpt.gpt_dto import GPTDraftResponse
 def generate_clause_draft(output: AnalysisOutput) -> GPTDraftResponse:
     """
     ✅ Основна точка входу: генерує GPT-драфт клаузули на основі rule-based аналізу.
-    
+
     Args:
         output (AnalysisOutput): Результат rule-engine для однієї клаузули.
 
@@ -25,7 +24,10 @@ def generate_clause_draft(output: AnalysisOutput) -> GPTDraftResponse:
     )
 
     # Ensure explanation always mentions a suggested or revised draft.
-    if "suggested" not in response.explanation.lower() and "revised" not in response.explanation.lower():
+    if (
+        "suggested" not in response.explanation.lower()
+        and "revised" not in response.explanation.lower()
+    ):
         response.explanation = (
             "Suggested revision: this is a revised draft generated from the analysis."
         )

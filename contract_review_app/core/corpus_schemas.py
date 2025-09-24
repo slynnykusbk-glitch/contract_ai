@@ -55,9 +55,7 @@ class CorpusDocMeta(BaseModel):
 
     model_config = ConfigDict(extra="ignore", frozen=True)
 
-    @field_validator(
-        "source", "jurisdiction", "act", "section", "version", "rights"
-    )
+    @field_validator("source", "jurisdiction", "act", "section", "version", "rights")
     @classmethod
     def _trim_non_empty(cls, v: str) -> str:
         if not isinstance(v, str):

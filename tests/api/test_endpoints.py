@@ -104,17 +104,17 @@ async def run_analyze(model):
     text = model.text
     segments = []
     if text:
-        has_lat = any('a' <= ch.lower() <= 'z' for ch in text)
+        has_lat = any("a" <= ch.lower() <= "z" for ch in text)
         has_cyr = any(ord(ch) >= 0x0400 for ch in text)
         if has_lat:
-            segments.append({'lang': 'latin'})
+            segments.append({"lang": "latin"})
         if has_cyr:
-            segments.append({'lang': 'cyrillic'})
+            segments.append({"lang": "cyrillic"})
     return {
-        'analysis': {'issues': ['dummy'], 'segments': segments},
-        'results': {},
-        'clauses': [],
-        'document': {'text': text},
+        "analysis": {"issues": ["dummy"], "segments": segments},
+        "results": {},
+        "clauses": [],
+        "document": {"text": text},
     }
 
 

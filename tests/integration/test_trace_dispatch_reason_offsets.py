@@ -70,7 +70,7 @@ def test_trace_dispatch_reason_offsets_in_buckets():
         assert response.status_code == 200
 
         body = response.json()
-        timings = ((body.get("meta") or {}).get("timings_ms") or {})
+        timings = (body.get("meta") or {}).get("timings_ms") or {}
         assert "dispatch_ms" in timings
         assert isinstance(timings["dispatch_ms"], (int, float))
 
@@ -106,4 +106,3 @@ def test_trace_dispatch_reason_offsets_in_buckets():
             os.environ.pop("FEATURE_REASON_OFFSETS", None)
         else:
             os.environ["FEATURE_REASON_OFFSETS"] = previous_reason_flag
-

@@ -49,9 +49,7 @@ def _assert_section_clean(section: Any, allow_snippet: bool = False) -> None:
     errors: list[str] = []
     _walk_forbidden(section, tuple(), errors, allow_snippet)
     if errors:
-        pytest.fail(
-            "forbidden raw-text keys found: " + ", ".join(sorted(errors))
-        )
+        pytest.fail("forbidden raw-text keys found: " + ", ".join(sorted(errors)))
 
 
 def test_trace_no_raw_text_leaks():

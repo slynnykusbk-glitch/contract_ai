@@ -9,6 +9,7 @@ from contract_review_app.api.models import SCHEMA_VERSION
 def test_api_metrics_json_csv(monkeypatch):
     monkeypatch.setenv("FEATURE_METRICS", "1")
     import contract_review_app.api.app as api_app
+
     reload(api_app)
     client = TestClient(api_app.app)
 

@@ -22,9 +22,7 @@ def test_nom_only():
 
 
 def test_vor_5bd_cpa_rateparity():
-    text = (
-        "Contractor shall provide the duly completed Variation Order Request as soon as reasonably practicable and notify if unable to provide all requested information within five (5) business days; pricing shall use the same rates or demonstrably commensurate rates and time impact shall be supported by proper critical path analysis."
-    )
+    text = "Contractor shall provide the duly completed Variation Order Request as soon as reasonably practicable and notify if unable to provide all requested information within five (5) business days; pricing shall use the same rates or demonstrably commensurate rates and time impact shall be supported by proper critical path analysis."
     vor = _find("VARIATIONS.VOR_5BD", text)
     rate = _find("VARIATIONS.RATE_PARITY_CPA", text)
     assert vor and rate
@@ -35,9 +33,7 @@ def test_vor_5bd_cpa_rateparity():
 
 
 def test_disagree_proceed_and_no_conditional_sign():
-    text = (
-        "If Contractor disagrees with a Variation Order, Company may instruct Contractor to proceed immediately; Contractor shall not sign contingent upon changes."
-    )
+    text = "If Contractor disagrees with a Variation Order, Company may instruct Contractor to proceed immediately; Contractor shall not sign contingent upon changes."
     fs = _find("VARIATIONS.DISAGREE_PROCEED_NO_COND_SIGN", text)
     assert len(fs) == 1
     f = fs[0]
@@ -47,9 +43,7 @@ def test_disagree_proceed_and_no_conditional_sign():
 
 
 def test_timebar_offshore_and_3days():
-    text = (
-        "Contractor shall issue its request for a Variation Order immediately where the event relates to Work offshore, and in any other case as soon as possible and in any event not later than (3) days; failure to request within that period results in no entitlement."
-    )
+    text = "Contractor shall issue its request for a Variation Order immediately where the event relates to Work offshore, and in any other case as soon as possible and in any event not later than (3) days; failure to request within that period results in no entitlement."
     fs = _find("VARIATIONS.TIMEBAR_IMMEDIATE_OFFSHORE_3D", text)
     assert len(fs) == 1
     f = fs[0]
@@ -60,9 +54,7 @@ def test_timebar_offshore_and_3days():
 
 
 def test_change_in_law_excludes_taxes():
-    text = (
-        "Any Change in Law affecting Taxes or business in general does not entitle a Party to a Variation Order; strict enforcement of previously unenforced law does not constitute a Change in Law."
-    )
+    text = "Any Change in Law affecting Taxes or business in general does not entitle a Party to a Variation Order; strict enforcement of previously unenforced law does not constitute a Change in Law."
     fs = _find("VARIATIONS.CHANGE_IN_LAW_TAXES_BUSINESS_EXCLUDED", text)
     assert len(fs) == 1
     f = fs[0]

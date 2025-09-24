@@ -77,7 +77,13 @@ describe('trace offsets fallback', () => {
               {
                 rule_id: 'rule-1',
                 reasons: [
-                  { offsets: [{ start: 12, end: 22 }, { start: 12, end: 22 }, { start: 30, end: 40 }] },
+                  {
+                    offsets: [
+                      { start: 12, end: 22 },
+                      { start: 12, end: 22 },
+                      { start: 30, end: 40 },
+                    ],
+                  },
                 ],
               },
             ],

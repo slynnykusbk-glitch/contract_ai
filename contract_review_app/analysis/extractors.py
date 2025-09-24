@@ -81,22 +81,50 @@ _DURATION_PATTERN = re.compile(
 )
 
 _ISO_DATE_PATTERN = re.compile(r"\b(?P<iso>\d{4}-\d{2}-\d{2})\b")
-_UK_DATE_PATTERN = re.compile(r"\b(?P<day>\d{1,2})/(?P<month>\d{1,2})/(?P<year>\d{2,4})\b")
+_UK_DATE_PATTERN = re.compile(
+    r"\b(?P<day>\d{1,2})/(?P<month>\d{1,2})/(?P<year>\d{2,4})\b"
+)
 _TEXTUAL_DATE_PATTERN = re.compile(
     r"\b(?P<day>\d{1,2})(?:st|nd|rd|th)?\s+(?P<month>[A-Za-z]+)\s+(?P<year>\d{2,4})\b",
     re.IGNORECASE,
 )
 
 _LAW_PATTERNS = [
-    (re.compile(r"\b(?:laws?|law)\s+of\s+(?P<target>[A-Za-z& ,'-]+)", re.IGNORECASE), "target"),
-    (re.compile(r"\bgoverned\s+by\s+(?P<target>[A-Za-z& ,'-]+)\s+law\b", re.IGNORECASE), "target"),
-    (re.compile(r"\b(?P<target>english|scottish|irish)\s+law\b", re.IGNORECASE), "target"),
+    (
+        re.compile(r"\b(?:laws?|law)\s+of\s+(?P<target>[A-Za-z& ,'-]+)", re.IGNORECASE),
+        "target",
+    ),
+    (
+        re.compile(
+            r"\bgoverned\s+by\s+(?P<target>[A-Za-z& ,'-]+)\s+law\b", re.IGNORECASE
+        ),
+        "target",
+    ),
+    (
+        re.compile(r"\b(?P<target>english|scottish|irish)\s+law\b", re.IGNORECASE),
+        "target",
+    ),
 ]
 
 _JURISDICTION_PATTERNS = [
-    (re.compile(r"\b(?:jurisdiction|courts?)\s+of\s+(?P<target>[A-Za-z& ,'-]+)", re.IGNORECASE), "target"),
-    (re.compile(r"\bsubmit\s+to\s+the\s+(?P<target>[A-Za-z& ,'-]+)\s+courts\b", re.IGNORECASE), "target"),
-    (re.compile(r"\b(?P<target>english|scottish|irish)\s+courts\b", re.IGNORECASE), "target"),
+    (
+        re.compile(
+            r"\b(?:jurisdiction|courts?)\s+of\s+(?P<target>[A-Za-z& ,'-]+)",
+            re.IGNORECASE,
+        ),
+        "target",
+    ),
+    (
+        re.compile(
+            r"\bsubmit\s+to\s+the\s+(?P<target>[A-Za-z& ,'-]+)\s+courts\b",
+            re.IGNORECASE,
+        ),
+        "target",
+    ),
+    (
+        re.compile(r"\b(?P<target>english|scottish|irish)\s+courts\b", re.IGNORECASE),
+        "target",
+    ),
 ]
 
 _INCOTERM_PATTERN = re.compile(
@@ -234,7 +262,9 @@ def _canon_value(raw: str) -> Optional[Tuple[str, Tuple[int, int]]]:
     return None
 
 
-def _add_match(results: List[Dict[str, object]], start: int, end: int, value: object, kind: str) -> None:
+def _add_match(
+    results: List[Dict[str, object]], start: int, end: int, value: object, kind: str
+) -> None:
     results.append({"start": start, "end": end, "value": value, "kind": kind})
 
 
@@ -310,7 +340,9 @@ def extract_durations(text: str) -> List[Dict[str, object]]:
         if not code:
             continue
         iso_duration = f"P{int(number)}{code}"
-        _add_match(results, match.start(), match.end(), {"duration": iso_duration}, "duration")
+        _add_match(
+            results, match.start(), match.end(), {"duration": iso_duration}, "duration"
+        )
     return results
 
 
@@ -423,10 +455,12 @@ def extract_roles(text: str, domain: Optional[str] = None) -> List[Dict[str, obj
     for pattern, value in patterns.items():
         for match in pattern.finditer(text):
             span = (match.start(), match.end())
-            if any(not (span[1] <= existing[0] or span[0] >= existing[1]) for existing in spans):
+            if any(
+                not (span[1] <= existing[0] or span[0] >= existing[1])
+                for existing in spans
+            ):
                 continue
             spans.append(span)
             _add_match(results, match.start(), match.end(), {"role": value}, "role")
     results.sort(key=lambda item: item["start"])
     return results
-

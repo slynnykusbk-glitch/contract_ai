@@ -2,6 +2,7 @@ import pytest
 from contract_review_app.core.schemas import AnalysisInput
 from contract_review_app.legal_rules.rules import termination as term
 
+
 def test_termination_strong_clause_ok():
     text = """
     TERMINATION. Either party may terminate this Agreement for cause upon material breach
@@ -15,6 +16,7 @@ def test_termination_strong_clause_ok():
     assert not out.findings
     assert any("termination" in c.lower() for c in out.citations)
 
+
 def test_termination_missing_elements_warn():
     text = """
     TERMINATION. Supplier may terminate this Agreement at any time.
@@ -22,6 +24,7 @@ def test_termination_missing_elements_warn():
     out = term.analyze(AnalysisInput(clause_type="termination", text=text))
     assert out.status in ["WARN", "FAIL"]
     assert any("missing" in f.message.lower() for f in out.findings)
+
 
 def test_termination_empty_clause_fail():
     out = term.analyze(AnalysisInput(clause_type="termination", text=""))

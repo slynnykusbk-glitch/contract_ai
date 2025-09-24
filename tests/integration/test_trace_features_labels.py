@@ -90,9 +90,7 @@ def test_trace_features_include_labels_and_entities():
             durations = segment.get("entities", {}).get("durations", [])
             if durations:
                 assert any(
-                    (
-                        entry.get("unit") == "days" and entry.get("value") == 30
-                    )
+                    (entry.get("unit") == "days" and entry.get("value") == 30)
                     or (
                         isinstance(entry.get("value"), dict)
                         and entry["value"].get("days") == 30

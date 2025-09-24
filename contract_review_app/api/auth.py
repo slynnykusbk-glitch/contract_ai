@@ -55,7 +55,9 @@ def require_api_key_and_schema(request: Request) -> None:
     schema = request.headers.get("x-schema-version")
     if not schema:
         log.info("reject: missing x-schema-version header")
-        raise HTTPException(status_code=400, detail="x-schema-version header is required")
+        raise HTTPException(
+            status_code=400, detail="x-schema-version header is required"
+        )
     if schema != SCHEMA_VERSION:
         log.info("reject: unsupported x-schema-version %s", schema)
         raise HTTPException(status_code=400, detail="unsupported schema version")

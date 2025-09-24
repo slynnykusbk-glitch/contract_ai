@@ -54,14 +54,14 @@ def test_latest_singleton_property(repo, versions: List[str]):
 
 @st.composite
 def variant_text(draw):
-    base = "  Text with \"quotes\"  and  spaces  "
+    base = '  Text with "quotes"  and  spaces  '
     text = base
     if draw(st.booleans()):
-        text = text.replace(" ", "\u00A0")
+        text = text.replace(" ", "\u00a0")
     if draw(st.booleans()):
-        text = text.replace("\"", "“")
+        text = text.replace('"', "“")
     if draw(st.booleans()):
-        text = text.replace("\"", "”")
+        text = text.replace('"', "”")
     if draw(st.booleans()):
         text = "  " + text + "   "
     if draw(st.booleans()):
@@ -89,7 +89,14 @@ def test_checksum_normalization_property(repo, texts):
 
 
 @settings(suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
-@given(st.lists(st.sampled_from(["2024-01", "2024-02", "2024-03"]), min_size=1, max_size=3, unique=True))
+@given(
+    st.lists(
+        st.sampled_from(["2024-01", "2024-02", "2024-03"]),
+        min_size=1,
+        max_size=3,
+        unique=True,
+    )
+)
 def test_unique_version_invariant(repo, versions):
     repo.delete_all()
     for v in versions:

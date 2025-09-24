@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 
 def html_to_pdf(html: str) -> bytes:
     try:

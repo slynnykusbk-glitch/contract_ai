@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 """Central logging configuration using loguru and optional Sentry."""
 
 import os
@@ -24,12 +25,15 @@ def init_logging() -> logger.__class__:
     """
     debug = os.getenv("CAI_DEBUG") == "1"
     logger.remove()
-    logger.add(sys.stderr, level="DEBUG" if debug else "INFO", backtrace=True, diagnose=debug)
+    logger.add(
+        sys.stderr, level="DEBUG" if debug else "INFO", backtrace=True, diagnose=debug
+    )
 
     dsn = os.getenv("SENTRY_DSN")
     if dsn:
         try:  # optional dependency
             import sentry_sdk  # type: ignore
+
             sentry_sdk.init(dsn=dsn)
             logger.debug("Sentry initialised")
         except Exception as e:  # pragma: no cover - diagnostics only

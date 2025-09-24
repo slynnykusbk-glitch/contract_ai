@@ -9,6 +9,7 @@ from contract_review_app.config import CLAUSE_KEYWORDS
 
 logging.basicConfig(level=logging.INFO)
 
+
 def extract_clauses_flexible(text: str) -> Dict[str, dict]:
     """
     Searches for clause blocks using clause keywords.
@@ -26,7 +27,7 @@ def extract_clauses_flexible(text: str) -> Dict[str, dict]:
                 result[clause_type] = {
                     "text": "\n\n".join(paragraphs[start:end]),
                     "category": "core",
-                    "name": clause_type
+                    "name": clause_type,
                 }
                 break
 
@@ -41,6 +42,7 @@ def analyze_document(text: str) -> dict:
 
     # ✅ Новий діагностичний блок:
     from contract_review_app.legal_rules.registry import RULES_REGISTRY
+
     print(f"📦 RULES_REGISTRY contains: {list(RULES_REGISTRY.keys())}")
 
     results = {}
@@ -53,8 +55,8 @@ def analyze_document(text: str) -> dict:
             text=info["text"],
             metadata={
                 "category": info.get("category", ""),
-                "name": info.get("name", "")
-            }
+                "name": info.get("name", ""),
+            },
         )
 
         output: AnalysisOutput = legal_rules.analyze(input_data)
@@ -67,8 +69,4 @@ def analyze_document(text: str) -> dict:
 
     print("✅ analyze_document: Done")
 
-    return {
-        "document_name": "contract.docx",
-        "results": serialized_results
-    }
-
+    return {"document_name": "contract.docx", "results": serialized_results}

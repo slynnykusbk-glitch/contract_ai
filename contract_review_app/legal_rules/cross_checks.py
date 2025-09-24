@@ -11,20 +11,25 @@ from contract_review_app.core.schemas import (
     Citation,
 )
 
+
 # -----------------------------------------------------------------------------
 # Helpers: clause lookup and normalization
 # -----------------------------------------------------------------------------
 def _norm_type(t: str) -> str:
     return (t or "").strip().lower().replace(" ", "_").replace("-", "_")
 
+
 def _map_by_type(outputs: List[AnalysisOutput]) -> Dict[str, List[int]]:
     m: Dict[str, List[int]] = {}
     for i, o in enumerate(outputs or []):
-        ct = _norm_type(getattr(o, "clause_type", None) or getattr(o, "category", "") or "")
+        ct = _norm_type(
+            getattr(o, "clause_type", None) or getattr(o, "category", "") or ""
+        )
         if not ct:
             continue
         m.setdefault(ct, []).append(i)
     return m
+
 
 def _get_text(o: AnalysisOutput) -> str:
     try:
@@ -32,23 +37,34 @@ def _get_text(o: AnalysisOutput) -> str:
     except Exception:
         return ""
 
-def _add_finding(o: AnalysisOutput, code: str, msg: str, severity: str = "major",
-                 citations: Optional[List[Citation]] = None) -> None:
+
+def _add_finding(
+    o: AnalysisOutput,
+    code: str,
+    msg: str,
+    severity: str = "major",
+    citations: Optional[List[Citation]] = None,
+) -> None:
     try:
         o.findings = list(o.findings or [])
-        o.findings.append(Finding(
-            code=str(code),
-            message=str(msg),
-            severity=severity,
-            citations=list(citations or []),
-        ))
+        o.findings.append(
+            Finding(
+                code=str(code),
+                message=str(msg),
+                severity=severity,
+                citations=list(citations or []),
+            )
+        )
         # breadcrumbs; executor will re-evaluate metrics
         o.diagnostics = list(o.diagnostics or []) + [f"cross_check: {code}"]
         o.trace = list(o.trace or []) + [f"cross:{code}"]
     except Exception:
         pass
 
-def _first(outputs: List[AnalysisOutput], m: Dict[str, List[int]], keys: List[str]) -> Optional[Tuple[int, AnalysisOutput]]:
+
+def _first(
+    outputs: List[AnalysisOutput], m: Dict[str, List[int]], keys: List[str]
+) -> Optional[Tuple[int, AnalysisOutput]]:
     for k in keys:
         ids = m.get(k, [])
         if ids:
@@ -56,12 +72,16 @@ def _first(outputs: List[AnalysisOutput], m: Dict[str, List[int]], keys: List[st
             return i, outputs[i]
     return None
 
-def _all(outputs: List[AnalysisOutput], m: Dict[str, List[int]], keys: List[str]) -> List[Tuple[int, AnalysisOutput]]:
+
+def _all(
+    outputs: List[AnalysisOutput], m: Dict[str, List[int]], keys: List[str]
+) -> List[Tuple[int, AnalysisOutput]]:
     out: List[Tuple[int, AnalysisOutput]] = []
     for k in keys:
         for i in m.get(k, []):
             out.append((i, outputs[i]))
     return out
+
 
 # -----------------------------------------------------------------------------
 # Capacity detector (kept from previous version; UK-focused but generic)
@@ -80,14 +100,17 @@ _CAPACITY_PATTERNS = [
 ]
 _CAPACITY_RX = re.compile("|".join(_CAPACITY_PATTERNS), re.IGNORECASE)
 
+
 def _has_party_capacity(text: str) -> bool:
     return bool(_CAPACITY_RX.search(text or ""))
+
 
 # -----------------------------------------------------------------------------
 # Parsers for GL / Jurisdiction (heuristic, deterministic, fast)
 # -----------------------------------------------------------------------------
 _UK_LAW_RX = re.compile(
-    r"\blaws?\s+of\s+(england\s+and\s+wales|england|scotland|northern\s+ireland)\b", re.IGNORECASE
+    r"\blaws?\s+of\s+(england\s+and\s+wales|england|scotland|northern\s+ireland)\b",
+    re.IGNORECASE,
 )
 _JUR_RX = re.compile(
     r"\b(?:courts?\s+of|exclusive\s+jurisdiction\s+of)\s+(england\s+and\s+wales|england|scotland|northern\s+ireland)\b",
@@ -95,12 +118,14 @@ _JUR_RX = re.compile(
 )
 _GENERIC_JUR_RX = re.compile(r"\bexclusive\s+jurisdiction\b", re.IGNORECASE)
 
+
 def _parse_gl(text: str) -> Optional[str]:
     m = _UK_LAW_RX.search(text or "")
     if m:
         val = m.group(1).lower().replace(" ", "_")
         return val  # "england_and_wales", "england", "scotland", "northern_ireland"
     return None
+
 
 def _parse_jur(text: str) -> Optional[str]:
     m = _JUR_RX.search(text or "")
@@ -111,18 +136,23 @@ def _parse_jur(text: str) -> Optional[str]:
         return "unknown_exclusive"
     return None
 
+
 # -----------------------------------------------------------------------------
 # TERM helpers: notice/cure detection; survival list extraction
 # -----------------------------------------------------------------------------
-_NOTICE_RX = re.compile(r"\b(?:\d{1,3})\s*(?:calendar\s+)?days?\b.*\bnotice\b", re.IGNORECASE | re.DOTALL)
+_NOTICE_RX = re.compile(
+    r"\b(?:\d{1,3})\s*(?:calendar\s+)?days?\b.*\bnotice\b", re.IGNORECASE | re.DOTALL
+)
 _CURE_RX = re.compile(r"\b(cure|remedy)\s+period\b", re.IGNORECASE)
-_FOR_CONVENIENCE_RX = re.compile(r"\btermination\s+for\s+convenience\b|\bfor\s+convenience\b", re.IGNORECASE)
+_FOR_CONVENIENCE_RX = re.compile(
+    r"\btermination\s+for\s+convenience\b|\bfor\s+convenience\b", re.IGNORECASE
+)
 _SURVIVE_RX = re.compile(
     r"\bthe\s+following\s+provisions\s+shall\s+survive\b|\bshall\s+survive\s+termination\b",
     re.IGNORECASE,
 )
 _SURVIVAL_ITEM_RX = re.compile(
-    r"\b(" 
+    r"\b("
     r"confidentiality|"
     r"limitation\s+of\s+liability|"
     r"liability\s+cap|"
@@ -134,14 +164,18 @@ _SURVIVAL_ITEM_RX = re.compile(
     re.IGNORECASE,
 )
 
+
 def _has_notice(text: str) -> bool:
     return bool(_NOTICE_RX.search(text or ""))
+
 
 def _has_cure(text: str) -> bool:
     return bool(_CURE_RX.search(text or ""))
 
+
 def _has_for_convenience(text: str) -> bool:
     return bool(_FOR_CONVENIENCE_RX.search(text or ""))
+
 
 def _extract_survival_items(text: str) -> List[str]:
     out: List[str] = []
@@ -151,30 +185,45 @@ def _extract_survival_items(text: str) -> List[str]:
         out.append(m.group(1).lower())
     return sorted(set(out))
 
+
 # -----------------------------------------------------------------------------
 # CONF vs DP helpers
 # -----------------------------------------------------------------------------
-_DP_HINT_RX = re.compile(r"\b(uk\s*gdpr|gdpr|data\s+protection\s+act|controller|processor|processing)\b", re.IGNORECASE)
+_DP_HINT_RX = re.compile(
+    r"\b(uk\s*gdpr|gdpr|data\s+protection\s+act|controller|processor|processing)\b",
+    re.IGNORECASE,
+)
 _CONF_DP_RX = re.compile(r"\b(confidential|confidentiality)\b", re.IGNORECASE)
+
 
 def _has_dp_signals(text: str) -> bool:
     return bool(_DP_HINT_RX.search(text or ""))
 
+
 def _conf_mentions_dp(text: str) -> bool:
     return bool(_DP_HINT_RX.search(text or ""))
+
 
 # -----------------------------------------------------------------------------
 # FM vs Payment helpers
 # -----------------------------------------------------------------------------
 _FM_RX = re.compile(r"\bforce\s+majeure\b", re.IGNORECASE)
-_FM_EXCLUDES_PAY_RX = re.compile(r"\b(?:shall\s+not\s+apply\s+to|does\s+not\s+excuse)\s+payment\b", re.IGNORECASE)
+_FM_EXCLUDES_PAY_RX = re.compile(
+    r"\b(?:shall\s+not\s+apply\s+to|does\s+not\s+excuse)\s+payment\b", re.IGNORECASE
+)
 _PAYMENT_RX = re.compile(r"\b(payment|fees|charges|consideration)\b", re.IGNORECASE)
 
 # -----------------------------------------------------------------------------
 # IP vs License helpers
 # -----------------------------------------------------------------------------
-_IP_OWNER_RX = re.compile(r"\b(all|any)\s+intellectual\s+property\s+(rights?\s+)?(?:remain\s+with|are\s+owned\s+by)\b", re.IGNORECASE)
-_LICENSE_BROAD_RX = re.compile(r"\b(perpetual|irrevocable|worldwide|transferable|sublicensable)\b", re.IGNORECASE)
+_IP_OWNER_RX = re.compile(
+    r"\b(all|any)\s+intellectual\s+property\s+(rights?\s+)?(?:remain\s+with|are\s+owned\s+by)\b",
+    re.IGNORECASE,
+)
+_LICENSE_BROAD_RX = re.compile(
+    r"\b(perpetual|irrevocable|worldwide|transferable|sublicensable)\b", re.IGNORECASE
+)
+
 
 # -----------------------------------------------------------------------------
 # Cross-checks implementation
@@ -194,7 +243,11 @@ def cross_check_clauses(
     for inp in inputs or []:
         try:
             md = inp.metadata or {}
-            if isinstance(md, dict) and isinstance(md.get("full_text"), str) and md["full_text"]:
+            if (
+                isinstance(md, dict)
+                and isinstance(md.get("full_text"), str)
+                and md["full_text"]
+            ):
                 full_text = md["full_text"]
                 break
         except Exception:
@@ -213,7 +266,9 @@ def cross_check_clauses(
     by_type = _map_by_type(outputs)
 
     # ---------- 1) GL <-> JUR alignment -------------------------------------
-    gl_ref = _first(outputs, by_type, ["governing_law", "governinglaw", "law", "applicable_law"])
+    gl_ref = _first(
+        outputs, by_type, ["governing_law", "governinglaw", "law", "applicable_law"]
+    )
     jur_ref = _first(outputs, by_type, ["jurisdiction", "venue", "forum"])
 
     if gl_ref:
@@ -226,43 +281,72 @@ def cross_check_clauses(
             jur_loc = _parse_jur(jur_text)
 
             mismatch = False
-            if gl_loc and jur_loc and jur_loc != "unknown_exclusive" and gl_loc != jur_loc:
+            if (
+                gl_loc
+                and jur_loc
+                and jur_loc != "unknown_exclusive"
+                and gl_loc != jur_loc
+            ):
                 mismatch = True
             if gl_loc and (jur_loc is None or jur_loc == "unknown_exclusive"):
                 mismatch = True
 
             if mismatch:
-                _add_finding(o_gl, "GL_103",
-                             "Governing law and forum selection appear misaligned; consider aligning law and courts.",
-                             severity="major",
-                             citations=[Citation(system="UK", instrument="General contract practice", section="GL↔JUR")])
-                _add_finding(o_jur, "JUR_102",
-                             "Jurisdiction clause may conflict with chosen governing law; clarify forum or adjust law.",
-                             severity="major",
-                             citations=[Citation(system="UK", instrument="General contract practice", section="GL↔JUR")])
+                _add_finding(
+                    o_gl,
+                    "GL_103",
+                    "Governing law and forum selection appear misaligned; consider aligning law and courts.",
+                    severity="major",
+                    citations=[
+                        Citation(
+                            system="UK",
+                            instrument="General contract practice",
+                            section="GL↔JUR",
+                        )
+                    ],
+                )
+                _add_finding(
+                    o_jur,
+                    "JUR_102",
+                    "Jurisdiction clause may conflict with chosen governing law; clarify forum or adjust law.",
+                    severity="major",
+                    citations=[
+                        Citation(
+                            system="UK",
+                            instrument="General contract practice",
+                            section="GL↔JUR",
+                        )
+                    ],
+                )
 
     # ---------- 2) TERM <-> NOTICE / LoL -------------------------------------
-    term_refs = _all(outputs, by_type, ["termination", "term_and_termination", "termination_clause"])
+    term_refs = _all(
+        outputs, by_type, ["termination", "term_and_termination", "termination_clause"]
+    )
 
     for _, o_term in term_refs:
         t = _get_text(o_term)
         if _has_for_convenience(t) and not _has_notice(t):
             _add_finding(
-                o_term, "TERM_205",
+                o_term,
+                "TERM_205",
                 "Termination for convenience without explicit notice period; add clear notice (e.g., 30 days).",
                 severity="major",
             )
         # cure period hint
         if re.search(r"\bfor\s+cause\b", t, re.IGNORECASE) and not _has_cure(t):
             _add_finding(
-                o_term, "TERM_212",
+                o_term,
+                "TERM_212",
                 "Termination for cause without a cure period; consider adding a reasonable cure window.",
                 severity="minor",
             )
 
     # ---------- 3) Survival list ---------------------------------------------
     # Try to find explicit survival list either in termination or a dedicated survival clause
-    survival_sources = term_refs + _all(outputs, by_type, ["survival", "survival_of_terms"])
+    survival_sources = term_refs + _all(
+        outputs, by_type, ["survival", "survival_of_terms"]
+    )
     survival_seen: List[str] = []
     for _, o_src in survival_sources:
         items = _extract_survival_items(_get_text(o_src))
@@ -279,8 +363,11 @@ def cross_check_clauses(
             # add finding to the first termination/survival clause
             _, o_first = survival_sources[0]
             _add_finding(
-                o_first, "TERM_260",
-                "Survival list may be incomplete; consider adding: " + ", ".join(missing) + ".",
+                o_first,
+                "TERM_260",
+                "Survival list may be incomplete; consider adding: "
+                + ", ".join(missing)
+                + ".",
                 severity="major",
             )
 
@@ -291,10 +378,17 @@ def cross_check_clauses(
         conf_text = _get_text(o_conf)
         if _has_dp_signals(full_text) and not _conf_mentions_dp(conf_text):
             _add_finding(
-                o_conf, "CONF_114",
+                o_conf,
+                "CONF_114",
                 "Confidentiality clause lacks data protection carve-outs/references (UK GDPR/DPA).",
                 severity="major",
-                citations=[Citation(system="UK", instrument="UK GDPR / DPA 2018", section="General reference")],
+                citations=[
+                    Citation(
+                        system="UK",
+                        instrument="UK GDPR / DPA 2018",
+                        section="General reference",
+                    )
+                ],
             )
 
     # ---------- 5) FM <-> Payment --------------------------------------------
@@ -308,7 +402,8 @@ def cross_check_clauses(
             # If FM exists and payment is not explicitly excluded, suggest clarifying carve-out
             if not excludes_payment and mentions_payment:
                 _add_finding(
-                    o_fm, "FM_207",
+                    o_fm,
+                    "FM_207",
                     "Force majeure should not excuse payment obligations; add an explicit carve-out.",
                     severity="major",
                 )
@@ -327,7 +422,8 @@ def cross_check_clauses(
         license_broad = bool(_LICENSE_BROAD_RX.search(lic_text))
         if owner_strict and license_broad:
             _add_finding(
-                o_lic, "IP_402",
+                o_lic,
+                "IP_402",
                 "License scope may be inconsistent with strict IP ownership; narrow scope or add limitations.",
                 severity="major",
             )
@@ -341,14 +437,21 @@ def cross_check_clauses(
                 if (getattr(f, "code", "") or "").upper() == "DEF_009":
                     if getattr(f, "severity", "").lower() != "info":
                         f.severity = "info"
-                        base_msg = getattr(f, "message", "No hint of parties’ legal capacity.")
+                        base_msg = getattr(
+                            f, "message", "No hint of parties’ legal capacity."
+                        )
                         if "Cross-check" not in (base_msg or ""):
-                            f.message = base_msg + " (Cross-check: capacity found elsewhere in the document.)"
+                            f.message = (
+                                base_msg
+                                + " (Cross-check: capacity found elsewhere in the document.)"
+                            )
                         changed = True
             if changed:
                 o.diagnostics = list(o.diagnostics or []) + [
                     "Cross-check: party capacity detected; DEF_009 downgraded to info."
                 ]
-                o.trace = list(o.trace or []) + ["cross_check: capacity=True -> DEF_009 -> info"]
+                o.trace = list(o.trace or []) + [
+                    "cross_check: capacity=True -> DEF_009 -> info"
+                ]
 
     return outputs

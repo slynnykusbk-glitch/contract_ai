@@ -243,10 +243,12 @@ _SEVERITY_PRIORITY = {
     "informational": 0,
 }
 
-_MAX_POSITION = 10 ** 12
+_MAX_POSITION = 10**12
 
 
-def apply_legacy_merge_policy(findings: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def apply_legacy_merge_policy(
+    findings: Iterable[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
     """Legacy merge behaviour kept for feature flag rollbacks."""
     items = [f for f in findings if isinstance(f, dict)]
     if not items:

@@ -60,7 +60,14 @@ class ReportEntry:
     metadata: Dict[str, object] = field(default_factory=dict)
 
     def to_row(self) -> List[str]:
-        return [self.path, self.type, self.reason, self.evidence, self.suggested_action, self.confidence]
+        return [
+            self.path,
+            self.type,
+            self.reason,
+            self.evidence,
+            self.suggested_action,
+            self.confidence,
+        ]
 
     def to_dict(self) -> Dict[str, object]:
         payload = {field: getattr(self, field) for field in ENTRY_FIELDS}
@@ -102,7 +109,9 @@ def build_npx_command(*args: str) -> Optional[List[str]]:
     return [npx_path, "--yes", *args]
 
 
-def ensure_npx_command(section: Optional[Section], context: str, *args: str) -> Optional[List[str]]:
+def ensure_npx_command(
+    section: Optional[Section], context: str, *args: str
+) -> Optional[List[str]]:
     """Return an npx command or emit a helpful message if npx is missing."""
     cmd = build_npx_command(*args)
     if cmd is not None:
@@ -201,10 +210,14 @@ def gather_ts_depcheck(section: Section) -> None:
         return
     rc, stdout, stderr = run_command(cmd, cwd=TS_PROJECT)
     if not stdout.strip():
-        section.notes.append(f"depcheck failed (exit {rc}): {stderr.strip() or 'no output'}")
+        section.notes.append(
+            f"depcheck failed (exit {rc}): {stderr.strip() or 'no output'}"
+        )
         return
     if rc not in (0, 1):
-        section.notes.append(f"depcheck exited with {rc}, continuing with parsed stdout")
+        section.notes.append(
+            f"depcheck exited with {rc}, continuing with parsed stdout"
+        )
     try:
         payload = json.loads(stdout)
     except json.JSONDecodeError as exc:  # pragma: no cover - unexpected formatting
@@ -262,8 +275,12 @@ def collect_ts_test_files() -> List[Path]:
     return sorted(set(results))
 
 
-def gather_vitest_list(section: Section, all_tests: List[Path]) -> Tuple[List[Path], Optional[str]]:
-    cmd = ensure_npx_command(section, "vitest list", "vitest", "list", "--config", "vitest.config.ts")
+def gather_vitest_list(
+    section: Section, all_tests: List[Path]
+) -> Tuple[List[Path], Optional[str]]:
+    cmd = ensure_npx_command(
+        section, "vitest list", "vitest", "list", "--config", "vitest.config.ts"
+    )
     if cmd is None:
         return [], None
     rc, stdout, stderr = run_command(cmd, cwd=TS_PROJECT)
@@ -337,7 +354,9 @@ def gather_ts_orphans(section: Section) -> None:
             )
 
     if not snapshot_files:
-        section.notes.append("No Vitest snapshot (*.snap) files found under word_addin_dev.")
+        section.notes.append(
+            "No Vitest snapshot (*.snap) files found under word_addin_dev."
+        )
 
     # Identify vi.mock overrides to highlight heavy mocking
     vi_mock_pattern = re.compile(r"vi\.mock\((['\"])(.+?)\1")
@@ -358,7 +377,9 @@ def gather_ts_orphans(section: Section) -> None:
 
 
 def gather_python_vulture(section: Section) -> None:
-    exclude = "word_addin_dev,node_modules,.git,__pycache__,reports,contract_ai_tree.txt"
+    exclude = (
+        "word_addin_dev,node_modules,.git,__pycache__,reports,contract_ai_tree.txt"
+    )
     cmd = [
         sys.executable,
         "-m",
@@ -371,7 +392,9 @@ def gather_python_vulture(section: Section) -> None:
     ]
     rc, stdout, stderr = run_command(cmd, cwd=REPO_ROOT)
     if rc not in (0, 1, 2, 3):
-        section.notes.append(f"vulture failed (exit {rc}): {stderr.strip() or stdout.strip() or 'no output'}")
+        section.notes.append(
+            f"vulture failed (exit {rc}): {stderr.strip() or stdout.strip() or 'no output'}"
+        )
         return
     lines = [line.strip() for line in stdout.splitlines() if line.strip()]
     for line in lines:
@@ -392,7 +415,9 @@ def gather_python_vulture(section: Section) -> None:
         )
 
     if not lines:
-        section.notes.append("vulture reported no unused Python symbols at >=65% confidence.")
+        section.notes.append(
+            "vulture reported no unused Python symbols at >=65% confidence."
+        )
 
 
 def get_python_import_names(dist_name: str) -> List[str]:
@@ -433,7 +458,9 @@ def gather_python_deps(section: Section) -> None:
     try:
         from pip_chill import chill
     except ImportError:
-        section.notes.append("pip-chill is not available; skipped Python dependency sweep.")
+        section.notes.append(
+            "pip-chill is not available; skipped Python dependency sweep."
+        )
         return
     roots, _ = chill()
     for dist in roots:
@@ -452,11 +479,26 @@ def gather_python_deps(section: Section) -> None:
         )
 
 
-ASSET_EXTENSIONS = {".png", ".jpg", ".jpeg", ".svg", ".css", ".js", ".ico", ".woff", ".woff2", ".ttf", ".otf"}
+ASSET_EXTENSIONS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".svg",
+    ".css",
+    ".js",
+    ".ico",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".otf",
+}
 
 
 def gather_assets(section: Section) -> None:
-    asset_roots = [REPO_ROOT / "word_addin_dev" / "app" / "assets", REPO_ROOT / "assets"]
+    asset_roots = [
+        REPO_ROOT / "word_addin_dev" / "app" / "assets",
+        REPO_ROOT / "assets",
+    ]
     for root in asset_roots:
         if not root.exists():
             continue
@@ -510,7 +552,9 @@ def gather_workflows(section: Section) -> None:
         with wf_path.open("r", encoding="utf-8") as handle:
             data = yaml.safe_load(handle) or {}
         triggers = data.get("on", {})
-        trigger_desc = ", ".join(triggers.keys()) if isinstance(triggers, dict) else str(triggers)
+        trigger_desc = (
+            ", ".join(triggers.keys()) if isinstance(triggers, dict) else str(triggers)
+        )
         jobs = data.get("jobs", {}) or {}
         if not jobs:
             section.entries.append(
@@ -533,7 +577,9 @@ def gather_workflows(section: Section) -> None:
                 if not run_cmd:
                     continue
                 suspicious.extend(find_missing_paths(run_cmd))
-            reason = "Potential issues" if suspicious else "Manual trigger history unknown"
+            reason = (
+                "Potential issues" if suspicious else "Manual trigger history unknown"
+            )
             evidence_parts = []
             if trigger_desc:
                 evidence_parts.append(f"trigger={trigger_desc}")
@@ -725,7 +771,10 @@ def write_markdown(sections: Dict[str, Section], summary: Dict[str, object]) -> 
     lines.append("- Total findings: **{}**".format(summary["total_findings"]))
     confidence = summary.get("confidence_breakdown", {})
     if confidence:
-        lines.append("- Confidence levels: " + ", ".join(f"{k}: {v}" for k, v in confidence.items()))
+        lines.append(
+            "- Confidence levels: "
+            + ", ".join(f"{k}: {v}" for k, v in confidence.items())
+        )
     lines.append("")
 
     for key in SECTION_ORDER:
@@ -742,7 +791,9 @@ def write_markdown(sections: Dict[str, Section], summary: Dict[str, object]) -> 
             lines.append("No findings.")
             lines.append("")
             continue
-        lines.append("| Path | Type | Reason | Evidence | Suggested action | Confidence |")
+        lines.append(
+            "| Path | Type | Reason | Evidence | Suggested action | Confidence |"
+        )
         lines.append("| --- | --- | --- | --- | --- | --- |")
         for entry in section.entries:
             row = [escape_markdown(cell) for cell in entry.to_row()]
@@ -761,18 +812,28 @@ def write_json(sections: Dict[str, Section], summary: Dict[str, object]) -> None
         "summary": summary,
         "sections": {key: sections[key].to_dict() for key in sections},
     }
-    REPORT_JSON.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    REPORT_JSON.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Run garbage sweep checks and build reports.")
+    parser = argparse.ArgumentParser(
+        description="Run garbage sweep checks and build reports."
+    )
     parser.add_argument("--no-ts", action="store_true", help="Skip TypeScript analyses")
     parser.add_argument("--no-python", action="store_true", help="Skip Python analyses")
     parser.add_argument("--no-assets", action="store_true", help="Skip asset scans")
-    parser.add_argument("--no-workflows", action="store_true", help="Skip workflow audit")
+    parser.add_argument(
+        "--no-workflows", action="store_true", help="Skip workflow audit"
+    )
     parser.add_argument("--no-files", action="store_true", help="Skip large file scan")
-    parser.add_argument("--no-fragile", action="store_true", help="Skip fragile test heuristics")
-    parser.add_argument("--verbose", action="store_true", help="Print commands before executing them")
+    parser.add_argument(
+        "--no-fragile", action="store_true", help="Skip fragile test heuristics"
+    )
+    parser.add_argument(
+        "--verbose", action="store_true", help="Print commands before executing them"
+    )
     args = parser.parse_args(argv)
 
     global VERBOSE
@@ -782,12 +843,30 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     sections: Dict[str, Section] = {}
     if not args.no_ts:
-        gather_ts_unused_exports(add_section(sections, "unused_exports", "Unused exports (TypeScript)"))
-        gather_ts_depcheck(add_section(sections, "unused_dependencies", "Unused dependencies (TS/Python)"))
-        gather_ts_orphans(add_section(sections, "orphan_tests_and_snapshots", "Orphan tests & snapshots"))
+        gather_ts_unused_exports(
+            add_section(sections, "unused_exports", "Unused exports (TypeScript)")
+        )
+        gather_ts_depcheck(
+            add_section(
+                sections, "unused_dependencies", "Unused dependencies (TS/Python)"
+            )
+        )
+        gather_ts_orphans(
+            add_section(
+                sections, "orphan_tests_and_snapshots", "Orphan tests & snapshots"
+            )
+        )
     if not args.no_python:
-        gather_python_vulture(add_section(sections, "unused_dependencies", "Unused dependencies (TS/Python)"))
-        gather_python_deps(add_section(sections, "unused_dependencies", "Unused dependencies (TS/Python)"))
+        gather_python_vulture(
+            add_section(
+                sections, "unused_dependencies", "Unused dependencies (TS/Python)"
+            )
+        )
+        gather_python_deps(
+            add_section(
+                sections, "unused_dependencies", "Unused dependencies (TS/Python)"
+            )
+        )
     if not args.no_assets:
         gather_assets(add_section(sections, "orphan_assets", "Orphan assets"))
     if not args.no_workflows:

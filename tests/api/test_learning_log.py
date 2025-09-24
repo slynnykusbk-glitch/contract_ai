@@ -5,6 +5,7 @@ from contract_review_app.api.models import SCHEMA_VERSION
 def test_learning_log_write_error(api, monkeypatch, caplog):
     monkeypatch.setenv("API_KEY", "secret")
     headers = {"x-api-key": "secret", "x-schema-version": SCHEMA_VERSION}
+
     def fail_write(*args, **kwargs):
         raise OSError("boom")
 

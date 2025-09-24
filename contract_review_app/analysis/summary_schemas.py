@@ -46,12 +46,18 @@ class DocumentSnapshot(AppBaseModel):
     governing_law: Optional[str] = None
     jurisdiction: Optional[str] = None
     signatures: List[str] = Field(default_factory=list)
-    liability: LiabilityInfo = Field(default_factory=lambda: LiabilityInfo(has_cap=False))
+    liability: LiabilityInfo = Field(
+        default_factory=lambda: LiabilityInfo(has_cap=False)
+    )
     exclusivity: Optional[bool] = None
     currency: Optional[str] = None
-    carveouts: Dict[str, Any] = Field(default_factory=lambda: {"has_carveouts": False, "carveouts": []})
+    carveouts: Dict[str, Any] = Field(
+        default_factory=lambda: {"has_carveouts": False, "carveouts": []}
+    )
     conditions_vs_warranties: ConditionsVsWarranties = Field(
-        default_factory=lambda: ConditionsVsWarranties(has_conditions=False, has_warranties=False)
+        default_factory=lambda: ConditionsVsWarranties(
+            has_conditions=False, has_warranties=False
+        )
     )
     hints: List[str] = Field(default_factory=list)
     rules_count: int = 0

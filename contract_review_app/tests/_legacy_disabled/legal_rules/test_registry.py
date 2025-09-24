@@ -32,4 +32,3 @@ def test_registry_contains_expected_rules():
     # every registry entry must be callable
     for func in registry.values():
         assert callable(func)
-

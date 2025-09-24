@@ -95,4 +95,3 @@ describe('analyze timeout behaviour', () => {
     abortSpy.mockRestore();
   });
 });
-

@@ -35,7 +35,7 @@ def build_dto(version: str, text: str) -> CorpusRecord:
 
 
 def test_happy_path_and_latest(repo):
-    dto1 = build_dto("2024-06", "Text with\u00A0NBSP and “quotes”.")
+    dto1 = build_dto("2024-06", "Text with\u00a0NBSP and “quotes”.")
     doc1 = repo.upsert(dto1)
 
     latest = repo.list_latest()

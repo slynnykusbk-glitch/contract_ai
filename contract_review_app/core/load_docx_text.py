@@ -5,10 +5,10 @@ import re
 def load_docx_text(file_path: str) -> str:
     """
     Load and clean text from a .docx file.
-    
+
     Args:
         file_path (str): Path to the .docx file.
-        
+
     Returns:
         str: Extracted and cleaned text.
     """

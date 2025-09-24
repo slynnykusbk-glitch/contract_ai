@@ -33,4 +33,3 @@ Full example in the spec we used during design.
 - No raw contract text, no party names, no monetary amounts, no emails, no addresses.
 
 ## Storage layout
-

@@ -160,7 +160,9 @@ def check(text: str, rulepack_path: str = "insurance_rulepack.yaml") -> Dict[str
     return result
 
 
-def check_file(path: str, rulepack_path: str = "insurance_rulepack.yaml") -> Dict[str, Any]:
+def check_file(
+    path: str, rulepack_path: str = "insurance_rulepack.yaml"
+) -> Dict[str, Any]:
     text = Path(path).read_text(encoding="utf-8")
     return check(text, rulepack_path)
 

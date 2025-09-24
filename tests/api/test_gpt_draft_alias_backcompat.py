@@ -16,8 +16,13 @@ def _headers() -> dict[str, str]:
     "payload",
     [
         pytest.param({"text": "Legacy"}, id="top-level-text"),
-        pytest.param({"payload": {"text": "Nested clause content for draft."}}, id="nested-payload-text"),
-        pytest.param({"clause": "Clause coming from legacy clients."}, id="clause-field"),
+        pytest.param(
+            {"payload": {"text": "Nested clause content for draft."}},
+            id="nested-payload-text",
+        ),
+        pytest.param(
+            {"clause": "Clause coming from legacy clients."}, id="clause-field"
+        ),
     ],
 )
 def test_gpt_draft_alias_accepts_legacy_payloads(payload):

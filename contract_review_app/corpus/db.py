@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
 
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import sessionmaker
@@ -33,6 +32,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, future=True)
 
 
 from .models import Base  # imported late to avoid circular import
+
 try:  # ensure retrieval models are registered
     from contract_review_app.retrieval.models import CorpusChunk  # noqa: F401
 except Exception:  # pragma: no cover

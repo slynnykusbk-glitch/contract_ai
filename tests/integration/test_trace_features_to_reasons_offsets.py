@@ -93,10 +93,11 @@ def test_dispatch_reasons_receive_feature_offsets():
     reason_amount_offsets = _reason_offset_set(candidates, "amount", "amounts")
     reason_duration_offsets = _reason_offset_set(candidates, "duration", "durations")
     reason_law_offsets = _reason_offset_set(candidates, "law", "law")
-    reason_juris_offsets = _reason_offset_set(candidates, "jurisdiction", "jurisdiction")
+    reason_juris_offsets = _reason_offset_set(
+        candidates, "jurisdiction", "jurisdiction"
+    )
 
     assert reason_amount_offsets == expected_amount_offsets
     assert reason_duration_offsets == expected_duration_offsets
     assert reason_law_offsets == expected_law_offsets
     assert reason_juris_offsets == expected_juris_offsets
-

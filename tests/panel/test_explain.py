@@ -37,6 +37,8 @@ def client():
 
 
 def test_explain_ok(client):
-    payload = {"finding": {"span": {"start": 0, "end": 1}, "text": "x", "lang": "latin"}}
+    payload = {
+        "finding": {"span": {"start": 0, "end": 1}, "text": "x", "lang": "latin"}
+    }
     r = client.post("/api/explain", json=payload)
     assert r.status_code == 200

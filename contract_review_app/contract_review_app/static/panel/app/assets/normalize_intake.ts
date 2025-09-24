@@ -4,4 +4,3 @@ export function normalizeIntakeText(input: string | null | undefined): string {
   if (!input) return '';
   return normalizeTextFull(input).text;
 }
-

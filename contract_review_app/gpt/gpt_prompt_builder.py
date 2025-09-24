@@ -1,6 +1,7 @@
 """Thin wrapper around prompt_builder_utils.build_prompt.
 Provides backward-compatible functions for constructing GPT prompts.
 """
+
 from __future__ import annotations
 
 """Thin wrapper exposing prompt_builder_utils.build_prompt."""

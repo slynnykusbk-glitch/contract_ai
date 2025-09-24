@@ -54,9 +54,7 @@ def _cleanup(client: TestClient, modules: list[str]) -> None:
 def test_trace_flag_disabled():
     client, modules = _build_client("0")
     try:
-        response = client.post(
-            "/api/analyze", headers=_headers(), json={"text": "Hi"}
-        )
+        response = client.post("/api/analyze", headers=_headers(), json={"text": "Hi"})
         assert response.status_code == 200
         cid = response.headers.get("x-cid")
         assert cid
@@ -72,9 +70,7 @@ def test_trace_flag_disabled():
 def test_trace_flag_enabled():
     client, modules = _build_client("1")
     try:
-        response = client.post(
-            "/api/analyze", headers=_headers(), json={"text": "Hi"}
-        )
+        response = client.post("/api/analyze", headers=_headers(), json={"text": "Hi"})
         assert response.status_code == 200
         data = response.json()
         assert "results" in data

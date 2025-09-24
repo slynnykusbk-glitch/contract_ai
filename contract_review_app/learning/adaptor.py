@@ -12,14 +12,9 @@ and events appended via replay_io.append_events([...]).
 """
 
 import os
-import io
 import json
 import time
-import gzip
 import hmac
-import math
-import uuid
-import errno
 import hashlib
 import threading
 from datetime import datetime, timedelta
@@ -29,7 +24,9 @@ from typing import Dict, Any, List, Tuple
 from . import replay_io as rio
 
 # Paths
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # contract_review_app/
+BASE_DIR = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)  # contract_review_app/
 LEARNING_DIR = os.path.join(BASE_DIR, "learning")
 WEIGHTS_DIR = os.path.join(LEARNING_DIR, "weights")
 WEIGHTS_FILE = os.path.join(WEIGHTS_DIR, "weights.json")
@@ -43,11 +40,13 @@ CFG_ROTATION_MB = int(os.getenv("LEARNING_ROTATION_MB", "10"))
 CFG_UPDATE_MIN_EVENTS = int(os.getenv("LEARNING_UPDATE_MIN_EVENTS", "50"))
 
 # Learning math knobs
-LAPLACE_ALPHA = 1.0           # smoothing for counts
-EWMA_LAMBDA = 0.2             # recency emphasis
-QUALITY_BONUS_RISK = 0.02     # bonus if risk_ord decreased
-QUALITY_BONUS_SCORE = 0.01    # bonus if score_delta > 0
-MAX_DELTA_FROM_BASE = 0.25    # clamp influence in pipeline (documented here for reference)
+LAPLACE_ALPHA = 1.0  # smoothing for counts
+EWMA_LAMBDA = 0.2  # recency emphasis
+QUALITY_BONUS_RISK = 0.02  # bonus if risk_ord decreased
+QUALITY_BONUS_SCORE = 0.01  # bonus if score_delta > 0
+MAX_DELTA_FROM_BASE = (
+    0.25  # clamp influence in pipeline (documented here for reference)
+)
 
 # Segment key fields (keep order stable!)
 SEGMENT_FIELDS = ("clause_type", "mode", "jurisdiction", "contract_type", "user_role")
@@ -56,16 +55,20 @@ _lock_guard = threading.Lock()
 
 # ----------------------- helpers -----------------------
 
+
 def _ensure_dirs():
     os.makedirs(LEARNING_DIR, exist_ok=True)
     os.makedirs(WEIGHTS_DIR, exist_ok=True)
+
 
 def _read_hex(path: str) -> str:
     with open(path, "r", encoding="ascii", errors="ignore") as f:
         return f.read().strip()
 
+
 def _now_iso() -> str:
     return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
 
 def _parse_iso(ts: str) -> datetime:
     # Accept "YYYY-MM-DDTHH:MM:SSZ"
@@ -78,11 +81,13 @@ def _parse_iso(ts: str) -> datetime:
         # Fallback
         return datetime.utcfromtimestamp(0)
 
+
 def _atomic_write_json(path: str, obj: dict):
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="ascii") as f:
         json.dump(obj, f, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     os.replace(tmp, path)
+
 
 def _with_weights_lock(timeout_ms: int = 1000):
     t0 = time.time()
@@ -103,6 +108,7 @@ def _with_weights_lock(timeout_ms: int = 1000):
                 raise TimeoutError("weights lock busy")
             time.sleep(0.01)
 
+
 def _unlock_weights():
     try:
         os.remove(WEIGHTS_LOCK)
@@ -110,6 +116,7 @@ def _unlock_weights():
         pass
     except Exception:
         pass
+
 
 def _verify_hmac(line_obj: dict, key_hex: str) -> bool:
     if "hmac" not in line_obj:
@@ -123,6 +130,7 @@ def _verify_hmac(line_obj: dict, key_hex: str) -> bool:
     # constant-time compare
     return hmac.compare_digest(provided, calc)
 
+
 def _segment_key_from_event(e: dict) -> str:
     # tuple-like stable key string
     vals = []
@@ -132,7 +140,10 @@ def _segment_key_from_event(e: dict) -> str:
             vals.append(str(e.get(f, "")))
         else:
             vals.append(str(ctx.get(f, "")) if isinstance(ctx, dict) else "")
-    return "(" + "|".join(f"{SEGMENT_FIELDS[i]}={vals[i]}" for i in range(len(vals))) + ")"
+    return (
+        "(" + "|".join(f"{SEGMENT_FIELDS[i]}={vals[i]}" for i in range(len(vals))) + ")"
+    )
+
 
 def _segment_key_from_context(clause_type: str, context: dict) -> str:
     vals = []
@@ -140,18 +151,24 @@ def _segment_key_from_context(clause_type: str, context: dict) -> str:
         if f == "clause_type":
             vals.append(str(clause_type or ""))
         elif f == "mode":
-            vals.append(str(context.get("mode", "")) if isinstance(context, dict) else "")
+            vals.append(
+                str(context.get("mode", "")) if isinstance(context, dict) else ""
+            )
         else:
             vals.append(str(context.get(f, "")) if isinstance(context, dict) else "")
-    return "(" + "|".join(f"{SEGMENT_FIELDS[i]}={vals[i]}" for i in range(len(vals))) + ")"
+    return (
+        "(" + "|".join(f"{SEGMENT_FIELDS[i]}={vals[i]}" for i in range(len(vals))) + ")"
+    )
+
 
 def _default_weights_obj() -> dict:
     return {
         "version": CFG_VERSION,
         "updated": _now_iso(),
         "watermark": {"last_event_ts": "", "last_event_id": ""},
-        "by_segment": {}
+        "by_segment": {},
     }
+
 
 def _load_weights() -> dict:
     if not os.path.exists(WEIGHTS_FILE):
@@ -165,7 +182,9 @@ def _load_weights() -> dict:
     except Exception:
         return _default_weights_obj()
 
+
 # ----------------------- public API -----------------------
+
 
 def get_config() -> dict:
     """
@@ -180,6 +199,7 @@ def get_config() -> dict:
         "version": str(CFG_VERSION),
     }
 
+
 def log_event(event: dict) -> None:
     """
     Append a single event using replay_io (which handles dedup, HMAC, rotation).
@@ -189,10 +209,13 @@ def log_event(event: dict) -> None:
     rio.ensure_storage()
     # Single-item batch append; ignore result (API is fire-and-forget)
     try:
-        rio.append_events([event], rotation_mb=CFG_ROTATION_MB, retention_days=CFG_RETENTION_DAYS)
+        rio.append_events(
+            [event], rotation_mb=CFG_ROTATION_MB, retention_days=CFG_RETENTION_DAYS
+        )
     except Exception:
         # Do not raise to caller; learning is best-effort
         return
+
 
 def update_weights(min_events: int | None = None) -> dict:
     """
@@ -202,7 +225,9 @@ def update_weights(min_events: int | None = None) -> dict:
     """
     rio.ensure_storage()
     _ensure_dirs()
-    min_required = int(min_events) if isinstance(min_events, int) else int(CFG_UPDATE_MIN_EVENTS)
+    min_required = (
+        int(min_events) if isinstance(min_events, int) else int(CFG_UPDATE_MIN_EVENTS)
+    )
 
     weights = _load_weights()
     by_segment: Dict[str, Dict[str, Dict[str, Any]]] = weights.get("by_segment") or {}
@@ -230,7 +255,14 @@ def update_weights(min_events: int | None = None) -> dict:
         key = (seg, tpl)
         o = counters.get(key)
         if not o:
-            o = {"applied": 0, "rejected": 0, "risk_improved": 0, "score_gain": 0.0, "n": 0, "last": ""}
+            o = {
+                "applied": 0,
+                "rejected": 0,
+                "risk_improved": 0,
+                "score_gain": 0.0,
+                "n": 0,
+                "last": "",
+            }
             counters[key] = o
         o[field] = o.get(field, 0) + inc
         return o
@@ -316,19 +348,27 @@ def update_weights(min_events: int | None = None) -> dict:
 
     # Prepare new weights object
     new_weights = _load_weights()
-    new_by_segment: Dict[str, Dict[str, Dict[str, Any]]] = new_weights.get("by_segment") or {}
+    new_by_segment: Dict[str, Dict[str, Dict[str, Any]]] = (
+        new_weights.get("by_segment") or {}
+    )
 
     # If not enough new events, we still record watermark and updated time, but keep scores as-is.
     if used < min_required:
         new_weights["updated"] = _now_iso()
-        new_weights["watermark"] = {"last_event_ts": last_ts_iso, "last_event_id": last_id}
+        new_weights["watermark"] = {
+            "last_event_ts": last_ts_iso,
+            "last_event_id": last_id,
+        }
         _with_weights_lock()
         try:
             _atomic_write_json(WEIGHTS_FILE, new_weights)
         finally:
             _unlock_weights()
-        return {"updated": new_weights["updated"], "events_used": used,
-                "template_count": sum(len(v or {}) for v in new_by_segment.values())}
+        return {
+            "updated": new_weights["updated"],
+            "events_used": used,
+            "template_count": sum(len(v or {}) for v in new_by_segment.values()),
+        }
 
     # Apply Laplace + EWMA + quality bonus onto segments affected by counters
     for (seg_key, tpl_id), agg in counters.items():
@@ -384,8 +424,12 @@ def update_weights(min_events: int | None = None) -> dict:
     finally:
         _unlock_weights()
 
-    return {"updated": new_weights["updated"], "events_used": used,
-            "template_count": sum(len(v or {}) for v in new_by_segment.values())}
+    return {
+        "updated": new_weights["updated"],
+        "events_used": used,
+        "template_count": sum(len(v or {}) for v in new_by_segment.values()),
+    }
+
 
 def _trend_symbol(prev: float, curr: float) -> str:
     try:
@@ -396,6 +440,7 @@ def _trend_symbol(prev: float, curr: float) -> str:
         return "="
     except Exception:
         return "="
+
 
 def rank_templates(clause_type: str, context: dict) -> List[dict]:
     """
@@ -410,15 +455,19 @@ def rank_templates(clause_type: str, context: dict) -> List[dict]:
     if not seg_map:
         return []
     # Sort by score desc, tie-breaker template_id asc
-    items = sorted(seg_map.items(), key=lambda kv: (-float(kv[1].get("score", 0.0)), str(kv[0])))
+    items = sorted(
+        seg_map.items(), key=lambda kv: (-float(kv[1].get("score", 0.0)), str(kv[0]))
+    )
     out = []
     for tpl_id, meta in items:
         sc = float(meta.get("score", 0.0))
         n = int(meta.get("n", 0))
         trend = str(meta.get("trend", "="))
-        out.append({
-            "template_id": tpl_id,
-            "score": sc,
-            "reason": f"learned score={sc:.3f}, n={n}, trend={trend}"
-        })
+        out.append(
+            {
+                "template_id": tpl_id,
+                "score": sc,
+                "reason": f"learned score={sc:.3f}, n={n}, trend={trend}",
+            }
+        )
     return out

@@ -3,6 +3,7 @@ import type { AnalyzeFindingEx } from "./types.ts";
 import { parseFindings } from "./findings.ts";
 import domSchema from "../panel_dom.schema.json";
 import { normalizeText, dedupeFindings, severityRank, type RiskLevel } from "./dedupe.ts";
+import { mergeQaFindings } from "./qa/mergeQaResults.ts";
 export { normalizeText, dedupeFindings } from "./dedupe.ts";
 import { planAnnotations, annotateFindingsIntoWord, AnnotationPlan, COMMENT_PREFIX, safeInsertComment, fallbackAnnotateWithContentControl } from "./annotate.ts";
 import { findAnchors } from "./anchors.ts";
@@ -948,7 +949,7 @@ export function renderResults(res: any) {
 function mergeQaResults(json: any) {
   const existing: AnalyzeFinding[] = (window as any).__findings || [];
   const incoming = parseFindings(json);
-  const merged = dedupeFindings([...existing, ...incoming]);
+  const merged = mergeQaFindings(existing, incoming);
   return { ...(json || {}), findings: merged };
 }
 

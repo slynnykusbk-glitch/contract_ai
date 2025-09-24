@@ -2,6 +2,7 @@ import { AnalyzeFinding } from "./api-client.ts";
 import { dedupeFindings, normalizeText } from "./dedupe.ts";
 import { anchorByOffsets, findAnchors, pickLongToken } from "./anchors.ts";
 import type { AnchorMethod as AnchorCascadeMethod } from "./anchors.ts";
+import { traceOffsetsForFinding } from "./traceOffsetsForFinding.ts";
 import { normalizeTextFull, type NormalizeTextFullResult } from "./normalize_full.ts";
 import { normalizeIntakeText } from "./normalize_intake.ts";
 import type { AnalyzeFindingEx, AnnotationPlanEx } from "./types.ts";
@@ -210,6 +211,10 @@ export interface AnnotationPlan extends AnnotationPlanEx {
   rule_id: string;
   code?: string;
   normalized_fallback: string;
+  anchorStart?: number;
+  anchorEnd?: number;
+  segment_id?: number | string;
+  finding?: AnalyzeFindingEx;
 }
 
 export const MAX_ANNOTATE_OPS = 200;
@@ -232,13 +237,27 @@ export function planAnnotations(findings: AnalyzeFindingEx[]): AnnotationPlan[] 
 
   let skipped = 0;
   for (const f of sorted) {
-    if (!f || !f.rule_id || !f.snippet || typeof f.start !== "number") {
+    if (!f || !f.rule_id || !f.snippet) {
       skipped++;
       continue;
     }
     const snippet = f.snippet;
-    const start = f.start;
-    const end = typeof f.end === "number" ? f.end : start + snippet.length;
+    const anchor = (f as any)?.anchor ?? {};
+    const anchorStart = typeof anchor?.start === "number" && Number.isFinite(anchor.start)
+      ? Math.floor(anchor.start)
+      : undefined;
+    const anchorEnd = typeof anchor?.end === "number" && Number.isFinite(anchor.end)
+      ? Math.floor(anchor.end)
+      : undefined;
+    const rawStart = typeof f.start === "number" && Number.isFinite(f.start) ? Math.floor(f.start) : undefined;
+    const rawEnd = typeof f.end === "number" && Number.isFinite(f.end) ? Math.floor(f.end) : undefined;
+    const start = anchorStart ?? rawStart;
+    if (typeof start !== "number") {
+      skipped++;
+      continue;
+    }
+    const endSource = anchorEnd ?? rawEnd;
+    const end = typeof endSource === "number" && endSource > start ? endSource : start + snippet.length;
     if (start < lastEnd) {
       skipped++;
       continue;
@@ -247,6 +266,8 @@ export function planAnnotations(findings: AnalyzeFindingEx[]): AnnotationPlan[] 
     const nthSource = typeof f.nth === "number" ? f.nth : computeNthFromOffsets(baseText, snippet, start);
     const nth = typeof nthSource === "number" && nthSource >= 0 ? Math.floor(nthSource) : undefined;
     const occIdx = typeof nth === "number" ? nth : nthOccurrenceIndex(baseNorm, norm, start);
+    const segmentId = (f as any)?.segment_id ?? (f as any)?.segmentId ?? (f as any)?.segment?.id;
+
     ops.push({
       raw: snippet,
       norm,
@@ -257,7 +278,11 @@ export function planAnnotations(findings: AnalyzeFindingEx[]): AnnotationPlan[] 
       normalized_fallback: normalizeIntakeText((f as any).normalized_snippet || "").trim(),
       start,
       end,
-      nth
+      nth,
+      anchorStart,
+      anchorEnd,
+      segment_id: segmentId,
+      finding: f as AnalyzeFindingEx,
     });
 
     lastEnd = end;
@@ -278,6 +303,9 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFindingEx[]): Pr
   const ops = planAnnotations(findings);
   if (!ops.length) return 0;
   const g: any = globalThis as any;
+  const traceCache = g.__traceCache;
+  const traceCid = typeof g.__lastCid === "string" && g.__lastCid ? g.__lastCid : undefined;
+  const trace = traceCid && traceCache && typeof traceCache.get === "function" ? traceCache.get(traceCid) : undefined;
   return await g.Word?.run?.(async (ctx: any) => {
     const body = ctx.document.body as any;
     const searchOptions = { matchCase: false, matchWholeWord: false } as Word.SearchOptions;
@@ -288,10 +316,25 @@ export async function annotateFindingsIntoWord(findings: AnalyzeFindingEx[]): Pr
       let target: any = null;
       let anchorMethod: AnchorMethod | undefined;
 
-      const normalizedCandidates = [
-        op.normalized_fallback && op.normalized_fallback !== op.raw ? op.normalized_fallback : null,
-        op.norm && op.norm !== op.raw ? op.norm : null,
-      ];
+      const normalizedCandidates: Array<string | { start: number; end: number }> = [];
+      const hasAnchorRange = typeof op.anchorStart === "number" && typeof op.anchorEnd === "number" && op.anchorEnd > op.anchorStart;
+      const sourceFinding = op.finding;
+      if (!hasAnchorRange && sourceFinding) {
+        try {
+          const spans = traceOffsetsForFinding(trace, sourceFinding);
+          for (const span of spans) {
+            normalizedCandidates.push({ start: span.start, end: span.end });
+          }
+        } catch (err) {
+          console.warn('[trace] offsets lookup failed', err);
+        }
+      }
+      if (op.normalized_fallback && op.normalized_fallback !== op.raw) {
+        normalizedCandidates.push(op.normalized_fallback);
+      }
+      if (op.norm && op.norm !== op.raw) {
+        normalizedCandidates.push(op.norm);
+      }
 
       try {
         target = await anchorByOffsets({

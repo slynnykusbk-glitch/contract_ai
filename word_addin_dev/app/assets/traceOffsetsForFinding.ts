@@ -61,24 +61,23 @@ function matchSegmentId(segment: TraceSegment | null | undefined, expected: numb
   return seg === exp;
 }
 
-function iterateCandidates(trace: TraceBody | null | undefined, segmentId?: number | string) {
+function gatherCandidates(trace: TraceBody | null | undefined, segmentId?: number | string) {
   const dispatch = trace?.dispatch ?? {};
   const segments = Array.isArray(dispatch.segments) ? dispatch.segments : [];
-  const buckets: TraceCandidate[] = [];
+  const segmentCandidates: TraceCandidate[] = [];
   for (const segment of segments) {
     if (!matchSegmentId(segment, segmentId)) continue;
     const candidates = Array.isArray(segment?.candidates) ? segment?.candidates : [];
     for (const cand of candidates) {
-      if (cand) buckets.push(cand);
+      if (cand) segmentCandidates.push(cand);
     }
   }
-  if (!buckets.length) {
-    const fallback = Array.isArray(dispatch.candidates) ? dispatch.candidates : [];
-    for (const cand of fallback) {
-      if (cand) buckets.push(cand);
-    }
+  const globalCandidates: TraceCandidate[] = [];
+  const fallback = Array.isArray(dispatch.candidates) ? dispatch.candidates : [];
+  for (const cand of fallback) {
+    if (cand) globalCandidates.push(cand);
   }
-  return buckets;
+  return { segmentCandidates, globalCandidates };
 }
 
 function collectOffsetsFromCandidate(candidate: TraceCandidate | null | undefined): OffsetSpan[] {
@@ -98,7 +97,23 @@ export function traceOffsetsForFinding(trace: TraceBody | null | undefined, find
   const ruleId = String(finding.rule_id);
   const seen = new Set<string>();
   const collected: OffsetSpan[] = [];
-  for (const candidate of iterateCandidates(trace, segmentId)) {
+  const { segmentCandidates, globalCandidates } = gatherCandidates(trace, segmentId);
+  let matchedRule = false;
+  for (const candidate of segmentCandidates) {
+    if (!candidate || String(candidate.rule_id ?? "") !== ruleId) continue;
+    matchedRule = true;
+    for (const span of collectOffsetsFromCandidate(candidate)) {
+      const key = `${span.start}:${span.end}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      collected.push(span);
+      if (collected.length >= 4) return collected;
+    }
+  }
+  if (matchedRule) {
+    return collected.slice(0, 4);
+  }
+  for (const candidate of globalCandidates) {
     if (!candidate || String(candidate.rule_id ?? "") !== ruleId) continue;
     for (const span of collectOffsetsFromCandidate(candidate)) {
       const key = `${span.start}:${span.end}`;

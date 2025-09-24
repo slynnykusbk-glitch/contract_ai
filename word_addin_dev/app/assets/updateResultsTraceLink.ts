@@ -6,9 +6,11 @@ export function updateResultsTraceLink(cid: string | null | undefined, backend: 
   }
 
   const parent = document.getElementById('resultsBlock') as HTMLElement | null;
-  if (!parent) return;
+  if (!parent || typeof parent.querySelector !== 'function') return;
   const header = parent.querySelector('.muted') as HTMLElement | null;
   if (!header) return;
+
+  if (typeof header.querySelector !== 'function') return;
 
   let container = header.querySelector('[data-role="trace-link"]') as HTMLElement | null;
   if (!container) {

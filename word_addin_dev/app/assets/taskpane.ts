@@ -32,7 +32,6 @@ declare const Violins: { initAudio: () => void };
 const gg: any = (globalThis as any);
 const oe: any = gg.OfficeExtension;
 const BUILD_ID = 'build-20250921-085759';
-console.log('ContractAI build', BUILD_ID);
 let __cfg_timeout: string | null = null;
 let __cfg_abort_hidden = '1';
 let __cfg_abort_nav = '1';
@@ -415,6 +414,9 @@ function getBackend(): string {
     return 'https://127.0.0.1:9443';
   }
 }
+
+const BOOT_BACKEND = getBackend();
+console.log(`[PANEL] build=${BUILD_ID} backend=${BOOT_BACKEND}`);
 
 function onSaveBackend() {
   const inp = mustGetElementById<HTMLInputElement>('backendUrl');

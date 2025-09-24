@@ -8,7 +8,7 @@
     "lint": "eslint app --ext .ts --max-warnings=0",
     "format": "prettier --write .",
     "lint:staged": "lint-staged",
-    "test:ci": "vitest run -c vitest.config.ci.ts"
+    "test:ci": "vitest run -c vitest.config.ci.ts --reporter=default --reporter=junit --outputFile=junit/vitest.xml"
   },
   "devDependencies": {
     "vitest": "^0.34.6",

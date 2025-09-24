@@ -1280,7 +1280,7 @@ async function doAnalyze() {
       const respSchema = resp.headers.get('x-schema-version');
       if (respSchema) setSchemaVersion(respSchema);
       if (json?.schema) setSchemaVersion(json.schema);
-      lastCid = resp.headers.get('x-cid') || '';
+      lastCid = (resp.headers.get('x-cid') || '').trim();
       g.__lastCid = lastCid;
       updateStatusChip(null, lastCid);
       renderResults(json);

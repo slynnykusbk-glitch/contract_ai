@@ -75,6 +75,7 @@ secret*.json
 
 # ==== Наши точечные пути с дев-сертификатами и т.п. ====
 dev/
+!scripts/dev/
 word_addin_dev/certs/
 tools/**/certs/
 **/.cert/

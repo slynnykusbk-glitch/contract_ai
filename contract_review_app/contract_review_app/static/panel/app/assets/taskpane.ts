@@ -957,6 +957,7 @@ export function renderResults(res: any) {
   const findingsList = slot("findingsList", "findings") as HTMLElement | null;
   if (findingsList) {
     findingsList.innerHTML = "";
+    // DO NOT SORT: backend order (agenda).
     findingsArr.forEach((f: any) => {
       const li = document.createElement("li");
       li.textContent = typeof f === "string" ? f : JSON.stringify(f);

@@ -289,6 +289,7 @@ const DraftAssistantPanel: React.FC<PanelProps> = ({ initialAnalysis = null, ini
               <div>No findings (rules_evaluated: {meta.rules_evaluated}, triggered: {meta.rules_triggered})</div>
             )}
             {Array.isArray(findings) &&
+              // DO NOT SORT: backend order (agenda).
               findings.slice(0, findingsLimit).map((f: any, i: number) => (
                 <div key={f?.rule_id || i} style={{ background: '#f8f9fa', padding: 8, borderRadius: 4, marginBottom: 6 }}>
                   <div><b>{f?.code || 'FINDING'}</b> {f?.severity ? `(${f.severity})` : ''}</div>

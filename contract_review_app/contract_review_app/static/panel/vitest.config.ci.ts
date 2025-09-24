@@ -47,6 +47,7 @@ export default defineConfig({
     ],
     // Разрешённый «белый список» — логика, утилиты, поиск, аннотации, таймауты, нормализация:
     include: [
+      'app/__tests__/**/*.{spec,test}.ts',
       'app/assets/__tests__/**/*.{spec,test}.ts',
       // допускаем явные файлы, которые важны нам в CI (если присутствуют):
       'app/assets/__tests__/**/*anchors*.spec.ts',

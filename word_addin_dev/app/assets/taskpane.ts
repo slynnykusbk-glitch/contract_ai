@@ -1280,7 +1280,7 @@ async function doAnalyze() {
       const respSchema = resp.headers.get('x-schema-version');
       if (respSchema) setSchemaVersion(respSchema);
       if (json?.schema) setSchemaVersion(json.schema);
-      lastCid = resp.headers.get('x-cid') || '';
+      lastCid = (resp.headers.get('x-cid') || '').trim();
       g.__lastCid = lastCid;
       updateStatusChip(null, lastCid);
       renderResults(json);
@@ -1290,11 +1290,16 @@ async function doAnalyze() {
 
       if (lastCid) {
         try {
-          const tracePromise = getTrace(lastCid);
+          const fetchedCid = lastCid.trim();
+          const tracePromise = getTrace(fetchedCid);
           tracePromise.then(trace => {
             if (!trace) return;
             const cache: Map<string, any> = (g.__traceCache ||= new Map());
-            cache.set(lastCid, trace);
+            cache.set(fetchedCid, trace);
+            const currentCid = (lastCid || '').trim();
+            if (currentCid === fetchedCid) {
+              renderTraceBadges(fetchedCid);
+            }
           }).catch(err => {
             console.warn('[trace] fetch failed', err);
           });

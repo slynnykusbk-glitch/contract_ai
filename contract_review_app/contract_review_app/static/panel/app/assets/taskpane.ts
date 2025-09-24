@@ -85,6 +85,22 @@ export function logRichError(e: any, tag = "Word") {
 export { parseFindings };
 
 const g: any = globalThis as any;
+
+const DEFAULT_PAGE_SIZE = 100;
+const PAGE_SIZE = (() => {
+  try {
+    const override = Number((globalThis as any).__CAI_PAGE_SIZE__);
+    if (Number.isFinite(override) && override > 0) {
+      return Math.floor(override);
+    }
+  } catch {}
+  return DEFAULT_PAGE_SIZE;
+})();
+const LOAD_STEP = PAGE_SIZE * 2;
+let findingsLimit = PAGE_SIZE;
+let lastRenderPayload: any = null;
+let lastFilteredFindings: AnalyzeFinding[] = [];
+let findingsLoadMoreBtn: HTMLButtonElement | null = null;
 g.parseFindings = g.parseFindings || parseFindings;
 g.applyMetaToBadges = g.applyMetaToBadges || applyMetaToBadges;
 g.getApiKeyFromStore = g.getApiKeyFromStore || getApiKeyFromStore;
@@ -513,6 +529,34 @@ export function filterFindingsByRiskForTests(list: AnalyzeFinding[], thr: RiskLe
   return filterByThreshold(list, thr);
 }
 
+export function computeFilteredFindings(all: AnalyzeFinding[], threshold: RiskLevel): AnalyzeFinding[] {
+  return filterByThreshold(all, threshold);
+}
+
+function resolveFindingsLoadMoreButton(): HTMLButtonElement | null {
+  try {
+    if (typeof document === 'undefined') return null;
+  } catch {
+    return null;
+  }
+  if (findingsLoadMoreBtn && findingsLoadMoreBtn.isConnected) {
+    return findingsLoadMoreBtn;
+  }
+  const byId = document.getElementById('findingsLoadMore') as HTMLButtonElement | null;
+  const byRole = document.querySelector('[data-role="findings-more"]') as HTMLButtonElement | null;
+  findingsLoadMoreBtn = byId || byRole || null;
+  return findingsLoadMoreBtn;
+}
+
+function onLoadMoreFindings(): void {
+  if (!lastRenderPayload) return;
+  const prevLimit = Math.min(findingsLimit, lastFilteredFindings.length);
+  const nextLimit = Math.min(prevLimit + LOAD_STEP, lastFilteredFindings.length);
+  if (nextLimit <= prevLimit) return;
+  findingsLimit = nextLimit;
+  renderResults(lastRenderPayload, { append: true, prevLimit });
+}
+
 function buildLegalComment(f: AnalyzeFinding): string {
   if (!f || !f.rule_id || !f.snippet) {
     console.warn("buildLegalComment: missing required fields", f);
@@ -898,7 +942,8 @@ export function renderAnalysisSummary(json: any) {
   renderCompaniesHouse(json);
 }
 
-export function renderResults(res: any) {
+export function renderResults(res: any, options?: { append?: boolean; prevLimit?: number }) {
+  lastRenderPayload = res;
   const clause = slot("resClauseType", "clause-type");
   clause.textContent = res?.clause_type || "—";
 
@@ -906,19 +951,40 @@ export function renderResults(res: any) {
   (window as any).__findings = findingsArr;
   (window as any).__findingIdx = 0;
 
+  const threshold = getRiskThreshold();
+  const filtered = computeFilteredFindings(findingsArr, threshold);
+  lastFilteredFindings = filtered;
 
-  const findingsList = slot("findingsList", "findings") as HTMLElement | null;
+  const append = !!options?.append;
+  const findingsList = slot("findingsList", "findings") as HTMLOListElement | null;
+  if (!append) {
+    findingsLimit = filtered.length ? Math.min(PAGE_SIZE, filtered.length) : PAGE_SIZE;
+    if (findingsList) findingsList.innerHTML = "";
+  } else {
+    findingsLimit = Math.min(findingsLimit, filtered.length);
+  }
+  const effectiveLimit = Math.min(findingsLimit, filtered.length);
+  const prevLimit = append ? Math.min(options?.prevLimit ?? 0, effectiveLimit) : 0;
+  const fragment = document.createDocumentFragment();
+  const visibleFindings = filtered.slice(prevLimit, effectiveLimit); // DO NOT SORT/DEDUP: backend agenda order
+  visibleFindings.forEach((f: any) => {
+    const li = document.createElement("li");
+    li.textContent = typeof f === "string" ? f : JSON.stringify(f);
+    fragment.appendChild(li);
+  });
   if (findingsList) {
-    findingsList.innerHTML = "";
-    // DO NOT DEDUPE/SORT: backend agenda order
-    findingsArr.forEach((f: any) => {
-      const li = document.createElement("li");
-      li.textContent = typeof f === "string" ? f : JSON.stringify(f);
-      findingsList.appendChild(li);
-    });
+    findingsList.appendChild(fragment);
   }
   const findingsBlock = mustGetElementById('findingsBlock');
-  findingsBlock.style.display = findingsArr.length ? '' : 'none';
+  findingsBlock.style.display = effectiveLimit ? '' : 'none';
+
+  const loadMoreBtn = resolveFindingsLoadMoreButton();
+  if (loadMoreBtn) {
+    const hasMore = effectiveLimit < filtered.length;
+    loadMoreBtn.style.display = hasMore ? '' : 'none';
+    loadMoreBtn.disabled = !hasMore;
+    loadMoreBtn.onclick = onLoadMoreFindings;
+  }
 
   const recoArr = Array.isArray(res?.recommendations) ? res.recommendations : [];
   const recommendationsList = slot("recommendationsList", "recommendations") as HTMLElement | null;

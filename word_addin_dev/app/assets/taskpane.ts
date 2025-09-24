@@ -21,6 +21,8 @@ import { registerUnloadHandlers, wasUnloaded, resetUnloadFlag, withBusy, pending
 import { checkHealth } from './health.ts';
 import { runStartupSelftest } from './startup.selftest.ts';
 import { PartyRegistry, CompaniesMetaItem } from './types.ts';
+import { updateResultsTraceLink } from './updateResultsTraceLink.ts';
+import { renderTraceBadges } from './traceBadges.ts';
 import DiffMatchPatch from 'diff-match-patch';
 
 declare const Violins: { initAudio: () => void };
@@ -375,63 +377,14 @@ export function renderCompaniesHouse(
   });
 }
 
-function traceLinkForCid(cid?: string | null): { href: string; label: string } | null {
-  const normalized = (cid ?? '').trim();
-  if (!normalized) return null;
-  const href = `${getBackend()}/api/trace/${normalized}`;
-  const label = `/api/trace/${normalized}`;
-  return { href, label };
-}
-
-function updateResultsTraceLink(cid?: string | null) {
-  try {
-    if (typeof document === 'undefined') return;
-  } catch {
-    return;
-  }
-
-  const parent = document.getElementById('resultsBlock') as HTMLElement | null;
-  if (!parent) return;
-  const header = parent.querySelector('.muted') as HTMLElement | null;
-  if (!header) return;
-
-  let container = header.querySelector('[data-role="trace-link"]') as HTMLElement | null;
-  if (!container) {
-    container = document.createElement('span');
-    container.dataset.role = 'trace-link';
-    container.style.marginLeft = '8px';
-    header.appendChild(container);
-  }
-
-  const trace = traceLinkForCid(cid);
-  if (!trace) {
-    container.textContent = '';
-    container.style.display = 'none';
-    return;
-  }
-
-  container.textContent = '';
-  container.style.display = '';
-
-  const separator = document.createElement('span');
-  separator.textContent = ' · ';
-  container.appendChild(separator);
-
-  const link = document.createElement('a');
-  link.href = trace.href;
-  link.target = '_blank';
-  link.rel = 'noreferrer noopener';
-  link.textContent = trace.label;
-  container.appendChild(link);
-}
-
 function updateStatusChip(schema?: string | null, cid?: string | null) {
   const el = mustGetElementById<HTMLElement>('status-chip');
   const s = (schema ?? getSchemaFromStore()) || '—';
   const normalizedCid = (cid ?? lastCid)?.trim() || '';
   const c = normalizedCid || '—';
   el.textContent = `schema: ${s} | cid: ${c}`;
-  updateResultsTraceLink(normalizedCid);
+  updateResultsTraceLink(normalizedCid, getBackend());
+  renderTraceBadges(normalizedCid);
 }
 
 function updateAnchorBadge() {
@@ -984,7 +937,9 @@ export function renderResults(res: any) {
   count.textContent = String(findingsArr.length);
 
   const cidFromResponse = res?.meta?.cid ?? res?.cid ?? null;
-  updateResultsTraceLink(cidFromResponse ?? lastCid);
+  const normalizedCid = (cidFromResponse ?? lastCid)?.trim() || '';
+  updateResultsTraceLink(normalizedCid, getBackend());
+  renderTraceBadges(normalizedCid);
 
   const pre = slot("rawJson", "raw-json");
   pre.textContent = JSON.stringify(res ?? {}, null, 2);

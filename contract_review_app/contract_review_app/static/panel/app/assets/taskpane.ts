@@ -957,7 +957,7 @@ export function renderResults(res: any) {
   const findingsList = slot("findingsList", "findings") as HTMLElement | null;
   if (findingsList) {
     findingsList.innerHTML = "";
-    // DO NOT SORT: backend order (agenda).
+    // DO NOT DEDUPE/SORT: backend agenda order
     findingsArr.forEach((f: any) => {
       const li = document.createElement("li");
       li.textContent = typeof f === "string" ? f : JSON.stringify(f);
@@ -996,6 +996,8 @@ function mergeQaResults(json: any) {
   const merged = dedupeFindings([...existing, ...incoming]);
   return { ...(json || {}), findings: merged };
 }
+
+export const mergeQaResultsForTests = mergeQaResults;
 
 function wireResultsToggle() {
   const toggle = slot("toggleRaw", "toggle-raw-json");

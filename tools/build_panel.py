@@ -18,11 +18,13 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(ROOT.as_posix())
 
-from bump_build import bump_build
+from bump_build import bump_build, inject_cache_busters
 
 SRC = ROOT / "word_addin_dev"
 DEST = ROOT / "contract_review_app" / "contract_review_app" / "static" / "panel"
 ASSETS_SRC = SRC / "app" / "assets"
+MANIFEST_SRC = SRC / "manifest.xml"
+CATALOG_DIR = ROOT / "_shared_catalog"
 
 FILES = [
     "taskpane.html",
@@ -56,29 +58,27 @@ def main(*, run_tests: bool = False) -> None:
             cwd=ROOT,
         )
 
-    token = bump_build(paths=[DEST])
-
     DEST.mkdir(parents=True, exist_ok=True)
     for name in FILES:
         dst = DEST / name
         shutil.copy2(SRC / name, dst)
-        try:
-            text = dst.read_text(encoding="utf-8")
-            dst.write_text(text.replace("__BUILD_TS__", token), encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
-            pass
 
     # copy auxiliary assets referenced from taskpane.html
     assets_dest = DEST / "app" / "assets"
     shutil.copytree(ASSETS_SRC, assets_dest, dirs_exist_ok=True)
-    for path in assets_dest.rglob("*"):
-        try:
-            text = path.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
-            continue
-        path.write_text(text.replace("__BUILD_TS__", token), encoding="utf-8")
+    token = bump_build(paths=[DEST])
 
-    (DEST / ".build-token").write_text(token, encoding="utf-8")
+    if MANIFEST_SRC.is_file():
+        try:
+            manifest_text = MANIFEST_SRC.read_text(encoding="utf-8")
+        except OSError:
+            manifest_text = ""
+        if manifest_text:
+            updated_manifest = inject_cache_busters(manifest_text, token)
+            CATALOG_DIR.mkdir(parents=True, exist_ok=True)
+            (CATALOG_DIR / "manifest.xml").write_text(
+                updated_manifest, encoding="utf-8"
+            )
 
 
 if __name__ == "__main__":

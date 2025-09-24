@@ -13,6 +13,7 @@ def test_build_token_injected(tmp_path):
 
     manifest = Path("word_addin_dev/manifest.xml").read_text(encoding="utf-8")
     assert f"b={token}" in manifest
+    assert f"v={token}" in manifest
 
     html = Path(
         "contract_review_app/contract_review_app/static/panel/taskpane.html"

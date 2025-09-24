@@ -3736,11 +3736,27 @@ def _normalize_alias_payload(raw_payload: Any) -> tuple[DraftRequest, dict[str, 
         return _coerce_legacy_request(payload)
 
 
+def _extract_candidate_text(payload: MappingABC[str, Any]) -> str | None:
+    for key in ("text", "clause"):
+        value = payload.get(key)
+        if isinstance(value, str):
+            return value
+    inner = payload.get("payload")
+    if isinstance(inner, MappingABC):
+        return _extract_candidate_text(inner)
+    return None
+
+
 @router.post(
     "/api/gpt-draft",
     responses={422: {"model": ProblemDetail}},
 )
 async def gpt_draft_alias(response: Response, payload: dict[str, Any] = Body(default_factory=dict)):
+    text_candidate: str | None = None
+    if isinstance(payload, MappingABC):
+        text_candidate = _extract_candidate_text(payload)
+    if text_candidate is not None and not text_candidate.strip():
+        raise HTTPException(status_code=422, detail={"error": "empty text"})
     try:
         req, meta = _normalize_alias_payload(payload)
     except ValidationError as exc:  # pragma: no cover - forwarded as validation error

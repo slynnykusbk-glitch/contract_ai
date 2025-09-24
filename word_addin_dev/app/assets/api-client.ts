@@ -103,6 +103,19 @@ function base(): string {
   catch { return DEFAULT_BASE; }
 }
 
+export async function getTrace(cid: string): Promise<any | undefined> {
+  if (!cid) return undefined;
+  const url = `${base()}/api/trace/${cid}`;
+  try {
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) return undefined;
+    return await res.json();
+  } catch (err) {
+    logError('[trace] fetch failed', err);
+    return undefined;
+  }
+}
+
 export function computeAnalyzeTimeout(textBytes: number): number {
   const BASE = 28_000;   // 28с базово
   const PER_KB = 50;     // +50мс за каждый КБ текста

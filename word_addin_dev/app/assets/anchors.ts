@@ -34,6 +34,8 @@ interface BodyLike {
 
 export type AnchorMethod = 'offset' | 'nth' | 'normalized' | 'token';
 
+type OffsetCandidate = { start: number; end?: number | null | undefined };
+
 export interface AnchorByOffsetsOptions {
   body: BodyLike;
   snippet: string;
@@ -41,7 +43,7 @@ export interface AnchorByOffsetsOptions {
   end?: number | null;
   nth?: number | null;
   searchOptions?: Word.SearchOptions;
-  normalizedCandidates?: Array<string | null | undefined>;
+  normalizedCandidates?: Array<string | OffsetCandidate | null | undefined>;
   token?: string | null;
   onMethod?: (method: AnchorMethod) => void;
 }
@@ -162,6 +164,10 @@ function trackRange(body: BodyLike, range: RangeLike | null | undefined): void {
   } catch {}
 }
 
+function isOffsetCandidate(value: unknown): value is OffsetCandidate {
+  return !!value && typeof value === 'object' && typeof (value as any).start === 'number';
+}
+
 export async function anchorByOffsets(opts: AnchorByOffsetsOptions): Promise<RangeLike | null> {
   if (!opts?.body || !opts.snippet) return null;
   const { body, snippet } = opts;
@@ -175,20 +181,48 @@ export async function anchorByOffsets(opts: AnchorByOffsetsOptions): Promise<Ran
 
   const g: any = globalThis as any;
   const allowOffsets = g?.__cfg_anchorOffsets !== 0;
+  const snippetNormalized = normalizeSnippetForSearch(snippet);
+  const textCandidates: string[] = [];
+  const offsetGuesses: { start: number; end?: number | null }[] = [];
+  const seenOffsets = new Set<string>();
+
+  const addOffsetGuess = (startValue: number | null | undefined, endValue: number | null | undefined) => {
+    if (typeof startValue !== 'number' || !Number.isFinite(startValue) || startValue < 0) return;
+    const start = Math.floor(startValue);
+    let end: number | null = null;
+    if (typeof endValue === 'number' && Number.isFinite(endValue) && endValue > startValue) {
+      end = Math.floor(endValue);
+    }
+    const key = `${start}:${end ?? ''}`;
+    if (seenOffsets.has(key)) return;
+    seenOffsets.add(key);
+    offsetGuesses.push({ start, end });
+  };
 
   if (allowOffsets && typeof opts.start === 'number' && Number.isFinite(opts.start) && opts.start >= 0) {
-    const expectedStart = Math.floor(opts.start);
+    addOffsetGuess(opts.start, opts.end ?? null);
+  }
+
+  for (const cand of opts.normalizedCandidates || []) {
+    if (isOffsetCandidate(cand)) {
+      if (allowOffsets) addOffsetGuess(cand.start, cand.end ?? null);
+    } else if (typeof cand === 'string') {
+      textCandidates.push(cand);
+    }
+  }
+
+  const tryOffset = async (expectedStart: number, expectedEndHint: number | null | undefined) => {
     const expectedEnd =
-      typeof opts.end === 'number' && Number.isFinite(opts.end) && opts.end >= opts.start
-        ? Math.floor(opts.end)
-        : expectedStart + normalizeSnippetForSearch(snippet).length;
+      typeof expectedEndHint === 'number' && Number.isFinite(expectedEndHint) && expectedEndHint > expectedStart
+        ? Math.floor(expectedEndHint)
+        : expectedStart + snippetNormalized.length;
     const expectedLength = Math.max(1, expectedEnd - expectedStart);
 
     const needles = new Set<string>();
     if (snippet) needles.add(snippet);
-    pushNormalizedVariant(needles, snippet);
-    for (const cand of opts.normalizedCandidates || []) {
-      pushNormalizedVariant(needles, cand);
+    if (snippetNormalized && snippetNormalized !== snippet) needles.add(snippetNormalized);
+    for (const cand of textCandidates) {
+      pushNormalizedVariant(needles, cand, snippetNormalized);
     }
 
     let bestRange: RangeLike | null = null;
@@ -215,6 +249,16 @@ export async function anchorByOffsets(opts: AnchorByOffsetsOptions): Promise<Ran
       logMethod('offset');
       return bestRange;
     }
+    return null;
+  };
+
+  if (allowOffsets) {
+    for (const guess of offsetGuesses) {
+      const range = await tryOffset(guess.start, guess.end ?? null);
+      if (range) {
+        return range;
+      }
+    }
   }
 
   let range = await searchNth(body, snippet, nth, searchOptions);
@@ -224,9 +268,9 @@ export async function anchorByOffsets(opts: AnchorByOffsetsOptions): Promise<Ran
   }
 
   const variants = new Set<string>();
-  pushNormalizedVariant(variants, snippet, snippet);
-  for (const cand of opts.normalizedCandidates || []) {
-    pushNormalizedVariant(variants, cand, snippet);
+  if (snippetNormalized) variants.add(snippetNormalized);
+  for (const cand of textCandidates) {
+    pushNormalizedVariant(variants, cand, snippetNormalized);
   }
 
   for (const variant of variants) {

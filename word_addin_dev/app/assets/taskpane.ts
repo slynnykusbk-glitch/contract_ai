@@ -1,4 +1,4 @@
-import { applyMetaToBadges, AnalyzeFinding, AnalyzeResponse, postRedlines, analyze, apiQaRecheck } from "./api-client.ts";
+import { applyMetaToBadges, AnalyzeFinding, AnalyzeResponse, postRedlines, analyze, apiQaRecheck, getTrace } from "./api-client.ts";
 import type { AnalyzeFindingEx } from "./types.ts";
 import { parseFindings } from "./findings.ts";
 import domSchema from "../panel_dom.schema.json";
@@ -1326,11 +1326,27 @@ async function doAnalyze() {
       if (respSchema) setSchemaVersion(respSchema);
       if (json?.schema) setSchemaVersion(json.schema);
       lastCid = resp.headers.get('x-cid') || '';
+      g.__lastCid = lastCid;
       updateStatusChip(null, lastCid);
       renderResults(json);
       renderAnalysisSummary(json);
 
       try { localStorage.setItem('last_analysis_json', JSON.stringify(json)); } catch {}
+
+      if (lastCid) {
+        try {
+          const tracePromise = getTrace(lastCid);
+          tracePromise.then(trace => {
+            if (!trace) return;
+            const cache: Map<string, any> = (g.__traceCache ||= new Map());
+            cache.set(lastCid, trace);
+          }).catch(err => {
+            console.warn('[trace] fetch failed', err);
+          });
+        } catch (err) {
+          console.warn('[trace] schedule fetch failed', err);
+        }
+      }
 
       try {
         const all = (globalThis as any).parseFindings(json);

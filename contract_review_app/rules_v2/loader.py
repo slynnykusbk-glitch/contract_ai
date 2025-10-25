@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
 
@@ -27,6 +28,24 @@ from .yaml_schema import RuleYaml  # noqa: E402
 
 ALLOWED_RULE_EXTS = {".yml", ".yaml"}
 log = logging.getLogger(__name__)
+
+
+def _preprocess_yaml(raw: str) -> str:
+    """Sanitize YAML text before parsing.
+
+    - strip BOM and carriage returns
+    - replace tabs with spaces
+    - drop ``!!python/*`` tags
+    - ensure a space follows ``:`` before ``{`` or ``[``
+    """
+
+    s = raw.replace("\ufeff", "")  # remove BOM
+    s = s.replace("\r", "")
+    s = s.replace("\t", "    ")
+    s = re.sub(r"!!python/[^:]+:\s*", "", s)
+    s = re.sub(r":\\{", ": {", s)
+    s = re.sub(r":\\[", ": [", s)
+    return s
 
 
 # ---------- Discover: no YAML parsing, detect by file presence ----------
@@ -108,7 +127,8 @@ def execute(source: RuleSource, context: Dict[str, Any]) -> List[FindingV2]:
 
     if source.format is RuleFormat.YAML:
         raw = source.path.read_text(encoding="utf-8")
-        data = yaml.safe_load(_preprocess_yaml(raw))
+        raw = _preprocess_yaml(raw)
+        data = yaml.safe_load(raw)
         rule = RuleYaml.model_validate(data)
         if rule.engine_version != ENGINE_VERSION:
             raise ValueError("engine_version mismatch")
